@@ -1,0 +1,14 @@
+// Auto-upgrades configuration for Proxmox VE
+// Controls automatic package list updates and unattended upgrades
+
+// Automatically run apt-get update (1 = daily)
+APT::Periodic::Update-Package-Lists "1";
+
+// Automatically download upgradeable packages (1 = daily)
+APT::Periodic::Download-Upgradeable-Packages "1";
+
+// Automatically install security updates (1 = daily)
+APT::Periodic::Unattended-Upgrade "1";
+
+// Automatically clean old downloaded packages (7 = weekly)
+APT::Periodic::AutocleanInterval "7";

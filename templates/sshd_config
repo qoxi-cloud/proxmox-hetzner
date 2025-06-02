@@ -1,0 +1,102 @@
+# ============================================
+# Proxmox VE Hardened SSH Configuration
+# ============================================
+
+# Basic settings
+Port 22
+AddressFamily inet
+ListenAddress 0.0.0.0
+
+# Protocol
+Protocol 2
+
+# Host keys
+HostKey /etc/ssh/ssh_host_rsa_key
+HostKey /etc/ssh/ssh_host_ecdsa_key
+HostKey /etc/ssh/ssh_host_ed25519_key
+
+# ------------------------------------------
+# Authentication: Hardened settings
+# ------------------------------------------
+# Disable root password login, only allow key-based
+PermitRootLogin prohibit-password
+
+# Disable password authentication entirely
+PasswordAuthentication no
+
+# Enable public key authentication
+PubkeyAuthentication yes
+
+# Disable empty passwords
+PermitEmptyPasswords no
+
+# Disable challenge-response authentication
+ChallengeResponseAuthentication no
+KbdInteractiveAuthentication no
+
+# Enable PAM for session management (MOTD, limits, accounting)
+# This is safe with key-only auth - PAM won't handle authentication
+UsePAM yes
+
+# ------------------------------------------
+# Security: Additional hardening
+# ------------------------------------------
+# Disable X11 forwarding
+X11Forwarding no
+
+# Disable TCP forwarding (enable if needed for tunnels)
+AllowTcpForwarding no
+
+# Disable agent forwarding
+AllowAgentForwarding no
+
+# Disable gateway ports
+GatewayPorts no
+
+# Disable user environment
+PermitUserEnvironment no
+
+# Strict mode checking
+StrictModes yes
+
+# ------------------------------------------
+# Timeouts and limits
+# ------------------------------------------
+# Disconnect after 3 minutes of inactivity
+ClientAliveInterval 180
+ClientAliveCountMax 2
+
+# Login grace time (30 seconds)
+LoginGraceTime 30
+
+# Maximum authentication attempts
+MaxAuthTries 3
+
+# Maximum concurrent sessions
+MaxSessions 5
+
+# Maximum concurrent unauthenticated connections
+MaxStartups 10:30:60
+
+# ------------------------------------------
+# Logging
+# ------------------------------------------
+SyslogFacility AUTH
+LogLevel VERBOSE
+
+# ------------------------------------------
+# Cryptographic settings (modern ciphers only)
+# ------------------------------------------
+Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr
+MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,hmac-sha2-512,hmac-sha2-256
+KexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512
+HostKeyAlgorithms ssh-ed25519,ssh-ed25519-cert-v01@openssh.com,rsa-sha2-512,rsa-sha2-256
+
+# ------------------------------------------
+# Misc
+# ------------------------------------------
+PrintMotd no
+PrintLastLog yes
+TCPKeepAlive yes
+Compression no
+UseDNS no

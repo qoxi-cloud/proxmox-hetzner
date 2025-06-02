@@ -1,0 +1,28 @@
+name: ShellCheck
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/**"
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "scripts/**"
+
+jobs:
+  shellcheck:
+    name: ShellCheck
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run ShellCheck
+        uses: ludeeus/action-shellcheck@master
+        with:
+          scandir: "./scripts"
+          severity: warning
+        env:
+          SHELLCHECK_OPTS: -e SC1091 -e SC2034 -e SC2086
