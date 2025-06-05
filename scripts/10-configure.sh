@@ -42,7 +42,6 @@ make_templates() {
 # Configure the installed Proxmox via SSH
 configure_proxmox_via_ssh() {
     make_templates
-    ssh-keygen -f "/root/.ssh/known_hosts" -R "[localhost]:5555" 2>/dev/null || true
 
     # Copy template files
     remote_copy "templates/hosts" "/etc/hosts"

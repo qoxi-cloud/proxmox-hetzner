@@ -58,6 +58,12 @@ boot_proxmox_with_port_forwarding() {
 
     QEMU_PID=$!
 
-    # Wait for SSH with progress indicator (timeout 5 minutes)
-    wait_with_progress "Booting installed Proxmox" 300 "(echo >/dev/tcp/localhost/5555)" 3 "Proxmox booted, SSH available"
+    # Wait for port to be open first (quick check)
+    wait_with_progress "Booting installed Proxmox" 300 "(echo >/dev/tcp/localhost/5555)" 3 "Proxmox booted, port open"
+
+    # Wait for SSH to be fully ready (handles key exchange timing)
+    wait_for_ssh_ready 60 || {
+        print_error "SSH connection failed. Check qemu_output.log for details."
+        return 1
+    }
 }
