@@ -36,13 +36,41 @@ setup_qemu_config() {
 install_proxmox() {
     setup_qemu_config
 
-    # Run QEMU in background and show progress
+    # Verify ISO exists
+    if [[ ! -f "./pve-autoinstall.iso" ]]; then
+        print_error "Autoinstall ISO not found!"
+        exit 1
+    fi
+
+    # Run QEMU in background with error logging
     qemu-system-x86_64 -enable-kvm $UEFI_OPTS \
         -cpu host -smp $QEMU_CORES -m $QEMU_RAM \
         -boot d -cdrom ./pve-autoinstall.iso \
-        $DRIVE_ARGS -no-reboot -display none > /dev/null 2>&1 &
+        $DRIVE_ARGS -no-reboot -display none > qemu_install.log 2>&1 &
 
-    show_progress $! "Installing Proxmox VE (${QEMU_CORES} vCPUs, ${QEMU_RAM}MB RAM)" "Proxmox VE installed"
+    local qemu_pid=$!
+
+    # Give QEMU a moment to start or fail
+    sleep 2
+
+    # Check if QEMU is still running
+    if ! kill -0 $qemu_pid 2>/dev/null; then
+        print_error "QEMU failed to start! Check qemu_install.log:"
+        cat qemu_install.log
+        exit 1
+    fi
+
+    show_progress $qemu_pid "Installing Proxmox VE (${QEMU_CORES} vCPUs, ${QEMU_RAM}MB RAM)" "Proxmox VE installed"
+
+    # Verify installation completed (QEMU exited cleanly)
+    wait $qemu_pid
+    local exit_code=$?
+    if [[ $exit_code -ne 0 ]]; then
+        print_error "QEMU installation failed with exit code $exit_code"
+        print_error "Check qemu_install.log for details"
+        cat qemu_install.log
+        exit 1
+    fi
 }
 
 # Boot installed Proxmox with SSH port forwarding
