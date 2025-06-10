@@ -43,18 +43,24 @@ make_templates() {
 configure_proxmox_via_ssh() {
     make_templates
 
-    # Copy template files
-    remote_copy "templates/hosts" "/etc/hosts"
-    remote_copy "templates/interfaces" "/etc/network/interfaces"
-    remote_copy "templates/99-proxmox.conf" "/etc/sysctl.d/99-proxmox.conf"
-    remote_copy "templates/debian.sources" "/etc/apt/sources.list.d/debian.sources"
-    remote_copy "templates/proxmox.sources" "/etc/apt/sources.list.d/proxmox.sources"
+    # Copy template files to VM
+    (
+        remote_copy "templates/hosts" "/etc/hosts"
+        remote_copy "templates/interfaces" "/etc/network/interfaces"
+        remote_copy "templates/99-proxmox.conf" "/etc/sysctl.d/99-proxmox.conf"
+        remote_copy "templates/debian.sources" "/etc/apt/sources.list.d/debian.sources"
+        remote_copy "templates/proxmox.sources" "/etc/apt/sources.list.d/proxmox.sources"
+    ) > /dev/null 2>&1 &
+    show_progress $! "Copying configuration files" "Configuration files copied"
 
     # Basic system configuration
-    remote_exec "[ -f /etc/apt/sources.list ] && mv /etc/apt/sources.list /etc/apt/sources.list.bak"
-    remote_exec "echo -e 'nameserver 1.1.1.1\nnameserver 1.0.0.1\nnameserver 8.8.8.8\nnameserver 8.8.4.4' > /etc/resolv.conf"
-    remote_exec "echo '$PVE_HOSTNAME' > /etc/hostname"
-    remote_exec "systemctl disable --now rpcbind rpcbind.socket 2>/dev/null"
+    (
+        remote_exec "[ -f /etc/apt/sources.list ] && mv /etc/apt/sources.list /etc/apt/sources.list.bak"
+        remote_exec "echo -e 'nameserver 1.1.1.1\nnameserver 1.0.0.1\nnameserver 8.8.8.8\nnameserver 8.8.4.4' > /etc/resolv.conf"
+        remote_exec "echo '$PVE_HOSTNAME' > /etc/hostname"
+        remote_exec "systemctl disable --now rpcbind rpcbind.socket 2>/dev/null"
+    ) > /dev/null 2>&1 &
+    show_progress $! "Applying basic system settings" "Basic system settings applied"
 
     # Configure ZFS ARC memory limits
     remote_exec_with_progress "Configuring ZFS ARC memory limits" '
@@ -161,8 +167,11 @@ ENVEOF
         apt-get install -yqq chrony
         systemctl stop chrony
     ' "NTP (chrony) installed"
-    remote_copy "templates/chrony" "/etc/chrony/chrony.conf"
-    remote_exec "systemctl enable chrony && systemctl start chrony" > /dev/null 2>&1
+    (
+        remote_copy "templates/chrony" "/etc/chrony/chrony.conf"
+        remote_exec "systemctl enable chrony && systemctl start chrony"
+    ) > /dev/null 2>&1 &
+    show_progress $! "Configuring chrony" "Chrony configured"
 
     # Configure dynamic MOTD
     (
@@ -178,9 +187,12 @@ ENVEOF
         export DEBIAN_FRONTEND=noninteractive
         apt-get install -yqq unattended-upgrades apt-listchanges
     ' "Unattended Upgrades installed"
-    remote_copy "templates/50unattended-upgrades" "/etc/apt/apt.conf.d/50unattended-upgrades"
-    remote_copy "templates/20auto-upgrades" "/etc/apt/apt.conf.d/20auto-upgrades"
-    remote_exec "systemctl enable unattended-upgrades" > /dev/null 2>&1
+    (
+        remote_copy "templates/50unattended-upgrades" "/etc/apt/apt.conf.d/50unattended-upgrades"
+        remote_copy "templates/20auto-upgrades" "/etc/apt/apt.conf.d/20auto-upgrades"
+        remote_exec "systemctl enable unattended-upgrades"
+    ) > /dev/null 2>&1 &
+    show_progress $! "Configuring Unattended Upgrades" "Unattended Upgrades configured"
 
     # Configure nf_conntrack
     remote_exec_with_progress "Configuring nf_conntrack" '
