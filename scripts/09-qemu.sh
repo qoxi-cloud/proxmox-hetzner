@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # =============================================================================
 # QEMU installation and boot functions
 # =============================================================================
@@ -16,8 +17,9 @@ setup_qemu_config() {
     fi
 
     # CPU and RAM configuration
-    local available_cores=$(nproc)
-    local available_ram_mb=$(free -m | awk '/^Mem:/{print $2}')
+    local available_cores available_ram_mb
+    available_cores=$(nproc)
+    available_ram_mb=$(free -m | awk '/^Mem:/{print $2}')
 
     QEMU_CORES=$((available_cores / 2))
     [[ $QEMU_CORES -lt 2 ]] && QEMU_CORES=2

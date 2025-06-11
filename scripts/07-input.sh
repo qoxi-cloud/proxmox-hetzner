@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # =============================================================================
 # User input functions
 # =============================================================================
@@ -334,7 +335,8 @@ get_inputs_interactive() {
         parse_ssh_key "$SSH_PUBLIC_KEY"
         print_success "SSH key: ${SSH_KEY_TYPE} (from env)"
     else
-        local DETECTED_SSH_KEY=$(get_rescue_ssh_key)
+        local DETECTED_SSH_KEY
+        DETECTED_SSH_KEY=$(get_rescue_ssh_key)
 
         if [[ -n "$DETECTED_SSH_KEY" ]]; then
             parse_ssh_key "$DETECTED_SSH_KEY"

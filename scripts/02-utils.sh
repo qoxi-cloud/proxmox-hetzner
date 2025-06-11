@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # =============================================================================
 # General utilities
 # =============================================================================
@@ -104,7 +105,8 @@ wait_with_progress() {
     local check_cmd="$3"
     local interval="${4:-5}"
     local done_message="${5:-$message}"
-    local start_time=$(date +%s)
+    local start_time
+    start_time=$(date +%s)
     local i=0
 
     while true; do

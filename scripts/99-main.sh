@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # =============================================================================
 # Finish and reboot
 # =============================================================================
@@ -10,9 +11,10 @@ reboot_to_main_os() {
     local summary=""
 
     # Calculate duration
-    local end_time=$(date +%s)
-    local total_seconds=$((end_time - INSTALL_START_TIME))
-    local duration=$(format_duration $total_seconds)
+    local end_time total_seconds duration
+    end_time=$(date +%s)
+    total_seconds=$((end_time - INSTALL_START_TIME))
+    duration=$(format_duration $total_seconds)
 
     summary+="[OK]|Installation time|${duration}"$'\n'
     summary+="|--- Security ---|"$'\n'

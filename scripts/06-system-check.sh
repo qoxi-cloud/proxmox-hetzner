@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # =============================================================================
 # System checks and hardware detection
 # =============================================================================
@@ -57,7 +58,8 @@ collect_system_info() {
 
     # Check available disk space (need at least 5GB in /root)
     update_progress
-    local free_space_mb=$(df -m /root | awk 'NR==2 {print $4}')
+    local free_space_mb
+    free_space_mb=$(df -m /root | awk 'NR==2 {print $4}')
     if [[ $free_space_mb -ge 5000 ]]; then
         PREFLIGHT_DISK="${free_space_mb} MB"
         PREFLIGHT_DISK_STATUS="ok"
@@ -70,7 +72,8 @@ collect_system_info() {
 
     # Check RAM (need at least 4GB)
     update_progress
-    local total_ram_mb=$(free -m | awk '/^Mem:/{print $2}')
+    local total_ram_mb
+    total_ram_mb=$(free -m | awk '/^Mem:/{print $2}')
     if [[ $total_ram_mb -ge 4000 ]]; then
         PREFLIGHT_RAM="${total_ram_mb} MB"
         PREFLIGHT_RAM_STATUS="ok"
@@ -83,7 +86,8 @@ collect_system_info() {
 
     # Check CPU cores
     update_progress
-    local cpu_cores=$(nproc)
+    local cpu_cores
+    cpu_cores=$(nproc)
     if [[ $cpu_cores -ge 2 ]]; then
         PREFLIGHT_CPU="${cpu_cores} cores"
         PREFLIGHT_CPU_STATUS="ok"
@@ -114,7 +118,7 @@ collect_system_info() {
 # Detect NVMe drives
 detect_nvme_drives() {
     # Find all NVMe drives (excluding partitions)
-    NVME_DRIVES=($(lsblk -d -n -o NAME,TYPE | grep nvme | grep disk | awk '{print "/dev/"$1}' | sort))
+    mapfile -t NVME_DRIVES < <(lsblk -d -n -o NAME,TYPE | grep nvme | grep disk | awk '{print "/dev/"$1}' | sort)
     NVME_COUNT=${#NVME_DRIVES[@]}
 
     # Collect drive info
@@ -123,9 +127,10 @@ detect_nvme_drives() {
     DRIVE_MODELS=()
 
     for drive in "${NVME_DRIVES[@]}"; do
-        local name=$(basename "$drive")
-        local size=$(lsblk -d -n -o SIZE "$drive" | xargs)
-        local model=$(lsblk -d -n -o MODEL "$drive" 2>/dev/null | xargs || echo "NVMe")
+        local name size model
+        name=$(basename "$drive")
+        size=$(lsblk -d -n -o SIZE "$drive" | xargs)
+        model=$(lsblk -d -n -o MODEL "$drive" 2>/dev/null | xargs || echo "NVMe")
         DRIVE_NAMES+=("$name")
         DRIVE_SIZES+=("$size")
         DRIVE_MODELS+=("$model")

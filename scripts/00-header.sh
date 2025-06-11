@@ -94,6 +94,7 @@ load_config() {
     local file="$1"
     if [[ -f "$file" ]]; then
         echo -e "${CLR_GREEN}✓ Loading configuration from: $file${CLR_RESET}"
+        # shellcheck source=/dev/null
         source "$file"
         return 0
     else

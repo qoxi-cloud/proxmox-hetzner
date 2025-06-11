@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # =============================================================================
 # Package preparation and ISO download
 # =============================================================================
@@ -37,7 +38,8 @@ prepare_packages() {
 # Fetch latest Proxmox VE ISO
 get_latest_proxmox_ve_iso() {
     local base_url="https://enterprise.proxmox.com/iso/"
-    local latest_iso=$(curl -s "$base_url" | grep -oE 'proxmox-ve_[0-9]+\.[0-9]+-[0-9]+\.iso' | sort -V | tail -n1)
+    local latest_iso
+    latest_iso=$(curl -s "$base_url" | grep -oE 'proxmox-ve_[0-9]+\.[0-9]+-[0-9]+\.iso' | sort -V | tail -n1)
 
     if [[ -n "$latest_iso" ]]; then
         echo "${base_url}${latest_iso}"
