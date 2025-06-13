@@ -56,11 +56,11 @@ collect_system_info() {
         errors=$((errors + 1))
     fi
 
-    # Check available disk space (need at least 5GB in /root)
+    # Check available disk space (need at least 3GB in /root for ISO)
     update_progress
     local free_space_mb min_space_mb
     free_space_mb=$(df -m /root | awk 'NR==2 {print $4}')
-    min_space_mb=5000
+    min_space_mb=3000
     if [[ $free_space_mb -ge $min_space_mb ]]; then
         PREFLIGHT_DISK="${free_space_mb} MB"
         PREFLIGHT_DISK_STATUS="ok"
