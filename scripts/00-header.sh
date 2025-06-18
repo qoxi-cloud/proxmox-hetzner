@@ -25,6 +25,7 @@ INSTALL_START_TIME=$(date +%s)
 NON_INTERACTIVE=false
 CONFIG_FILE=""
 SAVE_CONFIG=""
+TEST_MODE=false
 
 # =============================================================================
 # Command line argument parsing
@@ -40,6 +41,7 @@ Options:
   -c, --config FILE       Load configuration from file
   -s, --save-config FILE  Save configuration to file after input
   -n, --non-interactive   Run without prompts (requires --config)
+  -t, --test              Test mode (use TCG emulation, no KVM required)
   -v, --version           Show version
 
 Examples:
@@ -71,6 +73,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         -n|--non-interactive)
             NON_INTERACTIVE=true
+            shift
+            ;;
+        -t|--test)
+            TEST_MODE=true
             shift
             ;;
         *)
@@ -184,5 +190,8 @@ if [[ -n "$CONFIG_FILE" ]]; then
 fi
 if [[ "$NON_INTERACTIVE" == true ]]; then
     echo -e "${CLR_YELLOW}Mode: Non-interactive${CLR_RESET}"
+fi
+if [[ "$TEST_MODE" == true ]]; then
+    echo -e "${CLR_YELLOW}Mode: Test (TCG emulation, no KVM)${CLR_RESET}"
 fi
 echo ""

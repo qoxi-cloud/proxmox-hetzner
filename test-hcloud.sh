@@ -3,7 +3,10 @@ set -e
 
 # =============================================================================
 # Hetzner Cloud Test Script for Proxmox Installer (Interactive Mode)
-# Creates a CPX21 server, runs installer interactively, then cleans up
+# Creates a cloud server, runs installer in test mode (TCG), then cleans up
+#
+# Note: Cloud VMs don't have nested KVM, so installer uses TCG emulation.
+#       This is slower but allows testing the full installation flow.
 #
 # Environment variables:
 #   TAILSCALE_AUTH_KEY - Tailscale auth key (will be passed to installer)
@@ -204,10 +207,11 @@ run_installer_interactive() {
     fi
 
     # Connect interactively - user controls the installer
+    # Use --test flag for TCG emulation (cloud VMs don't have nested KVM)
     sshpass -p "$RESCUE_PASSWORD" ssh -o StrictHostKeyChecking=no \
         -o UserKnownHostsFile=/dev/null \
         -t root@"$SERVER_IP" \
-        "${env_vars}bash <(curl -sSL $INSTALL_SCRIPT_URL)" || true
+        "${env_vars}bash <(curl -sSL $INSTALL_SCRIPT_URL) --test" || true
 
     echo ""
     log_info "SSH session ended"

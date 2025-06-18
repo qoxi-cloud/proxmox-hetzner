@@ -16,6 +16,16 @@ setup_qemu_config() {
         UEFI_OPTS=""
     fi
 
+    # KVM or TCG mode
+    if [[ "$TEST_MODE" == true ]]; then
+        # TCG (software emulation) for testing without KVM
+        KVM_OPTS="-accel tcg"
+        CPU_OPTS="-cpu qemu64"
+    else
+        KVM_OPTS="-enable-kvm"
+        CPU_OPTS="-cpu host"
+    fi
+
     # CPU and RAM configuration
     local available_cores available_ram_mb
     available_cores=$(nproc)
@@ -77,8 +87,8 @@ install_proxmox() {
 
     # Run QEMU in background with error logging
     # shellcheck disable=SC2086
-    qemu-system-x86_64 -enable-kvm $UEFI_OPTS \
-        -cpu host -smp "$QEMU_CORES" -m "$QEMU_RAM" \
+    qemu-system-x86_64 $KVM_OPTS $UEFI_OPTS \
+        $CPU_OPTS -smp "$QEMU_CORES" -m "$QEMU_RAM" \
         -boot d -cdrom ./pve-autoinstall.iso \
         $DRIVE_ARGS -no-reboot -display none > qemu_install.log 2>&1 &
 
@@ -113,8 +123,8 @@ boot_proxmox_with_port_forwarding() {
     setup_qemu_config
 
     # shellcheck disable=SC2086
-    nohup qemu-system-x86_64 -enable-kvm $UEFI_OPTS \
-        -cpu host -device e1000,netdev=net0 \
+    nohup qemu-system-x86_64 $KVM_OPTS $UEFI_OPTS \
+        $CPU_OPTS -device e1000,netdev=net0 \
         -netdev user,id=net0,hostfwd=tcp::5555-:22 \
         -smp "$QEMU_CORES" -m "$QEMU_RAM" \
         $DRIVE_ARGS -display none \
