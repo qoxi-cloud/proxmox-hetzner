@@ -122,6 +122,12 @@ make_answer_toml() {
             ;;
     esac
 
+    # Build ZFS raid line only if multiple disks
+    local zfs_raid_line=""
+    if [[ "$DRIVE_COUNT" -ge 2 && -n "$ZFS_RAID" && "$ZFS_RAID" != "single" ]]; then
+        zfs_raid_line="    zfs.raid = \"$ZFS_RAID\""
+    fi
+
     cat <<EOF > answer.toml
 [global]
     keyboard = "en-us"
@@ -137,7 +143,7 @@ make_answer_toml() {
 
 [disk-setup]
     filesystem = "zfs"
-    zfs.raid = "$ZFS_RAID"
+${zfs_raid_line}
     disk_list = $DISK_LIST
 
 EOF
