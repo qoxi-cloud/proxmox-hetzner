@@ -9,11 +9,15 @@ is_uefi_mode() {
 
 # Configure QEMU settings (shared between install and boot)
 setup_qemu_config() {
+    log "Setting up QEMU configuration"
+
     # UEFI configuration
     if is_uefi_mode; then
         UEFI_OPTS="-bios /usr/share/ovmf/OVMF.fd"
+        log "UEFI mode detected"
     else
         UEFI_OPTS=""
+        log "Legacy BIOS mode"
     fi
 
     # KVM or TCG mode
@@ -21,15 +25,18 @@ setup_qemu_config() {
         # TCG (software emulation) for testing without KVM
         KVM_OPTS="-accel tcg"
         CPU_OPTS="-cpu qemu64"
+        log "Using TCG emulation (test mode)"
     else
         KVM_OPTS="-enable-kvm"
         CPU_OPTS="-cpu host"
+        log "Using KVM acceleration"
     fi
 
     # CPU and RAM configuration
     local available_cores available_ram_mb
     available_cores=$(nproc)
     available_ram_mb=$(free -m | awk '/^Mem:/{print $2}')
+    log "Available cores: $available_cores, Available RAM: ${available_ram_mb}MB"
 
     QEMU_CORES=$((available_cores / 2))
     [[ $QEMU_CORES -lt 2 ]] && QEMU_CORES=2
@@ -39,11 +46,14 @@ setup_qemu_config() {
     QEMU_RAM=8192
     [[ $available_ram_mb -lt 16384 ]] && QEMU_RAM=4096
 
+    log "QEMU config: $QEMU_CORES vCPUs, ${QEMU_RAM}MB RAM"
+
     # Drive configuration - add all detected drives
     DRIVE_ARGS=""
     for drive in "${DRIVES[@]}"; do
         DRIVE_ARGS="$DRIVE_ARGS -drive file=$drive,format=raw,media=disk,if=virtio"
     done
+    log "Drive args: $DRIVE_ARGS"
 }
 
 # Release drives from any existing locks

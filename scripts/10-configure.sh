@@ -4,8 +4,10 @@
 # =============================================================================
 
 make_templates() {
+    log "Starting template preparation"
     mkdir -p ./templates
     local interfaces_template="interfaces.${BRIDGE_MODE:-internal}"
+    log "Using interfaces template: $interfaces_template"
 
     # Download template files in background with progress
     (
@@ -42,6 +44,7 @@ make_templates() {
 
 # Configure the installed Proxmox via SSH
 configure_proxmox_via_ssh() {
+    log "Starting Proxmox configuration via SSH"
     make_templates
 
     # Copy template files to VM

@@ -96,24 +96,43 @@ reboot_to_main_os() {
 # Main execution flow
 # =============================================================================
 
+log "=========================================="
+log "Proxmox VE Automated Installer v${VERSION}"
+log "=========================================="
+log "TEST_MODE=$TEST_MODE"
+log "NON_INTERACTIVE=$NON_INTERACTIVE"
+log "CONFIG_FILE=$CONFIG_FILE"
+
 # Collect system info and display status
+log "Step: collect_system_info"
 collect_system_info
+log "Step: show_system_status"
 show_system_status
+log "Step: get_system_inputs"
 get_system_inputs
+log "Step: prepare_packages"
 prepare_packages
+log "Step: download_proxmox_iso"
 download_proxmox_iso
+log "Step: make_answer_toml"
 make_answer_toml
+log "Step: make_autoinstall_iso"
 make_autoinstall_iso
+log "Step: install_proxmox"
 install_proxmox
 
 # Boot and configure via SSH
+log "Step: boot_proxmox_with_port_forwarding"
 boot_proxmox_with_port_forwarding || {
+    log "ERROR: Failed to boot Proxmox with port forwarding"
     print_error "Failed to boot Proxmox with port forwarding. Exiting."
     exit 1
 }
 
 # Configure Proxmox via SSH
+log "Step: configure_proxmox_via_ssh"
 configure_proxmox_via_ssh
 
 # Reboot to the main OS
+log "Step: reboot_to_main_os"
 reboot_to_main_os
