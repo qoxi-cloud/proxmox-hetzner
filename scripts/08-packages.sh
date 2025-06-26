@@ -156,14 +156,16 @@ make_answer_toml() {
     esac
     log "DISK_LIST=$DISK_LIST"
 
-    # Build ZFS raid line only if multiple disks
-    local zfs_raid_line=""
+    # Determine ZFS raid level - always required for ZFS filesystem
+    local zfs_raid_value
     if [[ "$DRIVE_COUNT" -ge 2 && -n "$ZFS_RAID" && "$ZFS_RAID" != "single" ]]; then
-        zfs_raid_line="    zfs.raid = \"$ZFS_RAID\""
-        log "Using ZFS raid: $ZFS_RAID"
+        zfs_raid_value="$ZFS_RAID"
     else
-        log "Single disk mode - no ZFS raid setting"
+        # Single disk or single mode selected - must use raid0 (single disk stripe)
+        zfs_raid_value="raid0"
     fi
+    local zfs_raid_line="    zfs.raid = \"$zfs_raid_value\""
+    log "Using ZFS raid: $zfs_raid_value"
 
     cat <<EOF > answer.toml
 [global]
