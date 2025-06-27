@@ -84,6 +84,7 @@ bash <(curl -sSL https://qoxi-cloud.github.io/proxmox-hetzner/pve-install.sh)
 | `-c, --config FILE` | Load configuration from file |
 | `-s, --save-config FILE` | Save configuration to file after input |
 | `-n, --non-interactive` | Run without prompts (requires `--config`) |
+| `-t, --test` | Test mode (TCG emulation, no KVM required) |
 
 #### Usage Examples
 
@@ -99,6 +100,9 @@ bash pve-install.sh -c proxmox.conf
 
 # Fully automated installation
 bash pve-install.sh -c proxmox.conf -n
+
+# Test mode (for systems without KVM support)
+bash pve-install.sh -t
 ```
 
 ### Environment Variables
