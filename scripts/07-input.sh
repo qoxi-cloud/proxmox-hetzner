@@ -130,7 +130,11 @@ get_inputs_non_interactive() {
         exit 1
     fi
     if ! validate_password "$NEW_ROOT_PASSWORD"; then
-        print_error "Password contains invalid characters (Cyrillic or non-ASCII)."
+        if [[ ${#NEW_ROOT_PASSWORD} -lt 8 ]]; then
+            print_error "Password must be at least 8 characters long."
+        else
+            print_error "Password contains invalid characters (Cyrillic or non-ASCII)."
+        fi
         exit 1
     fi
 
@@ -213,8 +217,12 @@ get_inputs_interactive() {
     # Password
     if [[ -n "$NEW_ROOT_PASSWORD" ]]; then
         if ! validate_password "$NEW_ROOT_PASSWORD"; then
-            print_error "Password contains invalid characters (Cyrillic or non-ASCII)."
-            print_error "Only Latin letters, digits, and special characters are allowed."
+            if [[ ${#NEW_ROOT_PASSWORD} -lt 8 ]]; then
+                print_error "Password must be at least 8 characters long."
+            else
+                print_error "Password contains invalid characters (Cyrillic or non-ASCII)."
+                print_error "Only Latin letters, digits, and special characters are allowed."
+            fi
             exit 1
         fi
         print_success "Password: ******** (from env)"

@@ -23,6 +23,10 @@ validate_email() {
 
 validate_password() {
     local password="$1"
+    # Password must be at least 8 characters (Proxmox requirement)
+    if [[ ${#password} -lt 8 ]]; then
+        return 1
+    fi
     # Password must contain only ASCII printable characters (no Cyrillic or other non-ASCII)
     # Allowed: Latin letters, digits, and special characters (ASCII 32-126)
     # Using LC_ALL=C ensures only ASCII characters match [:print:]
@@ -99,6 +103,8 @@ prompt_password() {
     while [[ -z "$password" ]] || ! validate_password "$password"; do
         if [[ -z "$password" ]]; then
             print_error "Password cannot be empty!"
+        elif [[ ${#password} -lt 8 ]]; then
+            print_error "Password must be at least 8 characters long."
         else
             print_error "Password contains invalid characters (Cyrillic or non-ASCII)."
             print_error "Only Latin letters, digits, and special characters are allowed."
