@@ -157,14 +157,8 @@ detect_drives() {
         DRIVE_MODELS+=("$model")
     done
 
-    # Set default RAID mode if not already set
-    if [[ -z "$ZFS_RAID" ]]; then
-        if [[ $DRIVE_COUNT -lt 2 ]]; then
-            ZFS_RAID="single"
-        else
-            ZFS_RAID="raid1"
-        fi
-    fi
+    # Note: ZFS_RAID defaults are set in 07-input.sh during input collection
+    # Only preserve ZFS_RAID if it was explicitly set by user via environment
 
 }
 

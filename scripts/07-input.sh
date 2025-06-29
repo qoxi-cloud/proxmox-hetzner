@@ -336,6 +336,14 @@ get_inputs_interactive() {
             ZFS_RAID="${zfs_options[$MENU_SELECTED]}"
             print_success "ZFS mode: ${zfs_labels[$MENU_SELECTED]}"
         fi
+    else
+        # Single drive - no RAID options available
+        if [[ -n "$ZFS_RAID" ]]; then
+            print_success "ZFS mode: ${ZFS_RAID} (from env)"
+        else
+            ZFS_RAID="single"
+            print_success "ZFS mode: single (1 drive detected)"
+        fi
     fi
 
     # --- SSH Public Key ---
