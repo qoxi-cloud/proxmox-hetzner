@@ -5,9 +5,9 @@
   <img src="https://github.com/qoxi-cloud/proxmox-hetzner/raw/main/icons/hetzner.png" alt="Hetzner" height="50" />
   <h3>Automated Installation for Hetzner Dedicated Servers</h3>
 
-  ![GitHub Stars](https://img.shields.io/github/stars/qoxi-cloud/proxmox-hetzner.svg)
-  ![GitHub Watchers](https://img.shields.io/github/watchers/qoxi-cloud/proxmox-hetzner.svg)
-  ![GitHub Forks](https://img.shields.io/github/forks/qoxi-cloud/proxmox-hetzner.svg)
+  ![GitHub Stars](https://img.shields.io/github/stars/qoxi-cloud/proxmox-hetzner?style=for-the-badge&logo=github)
+  ![GitHub Forks](https://img.shields.io/github/forks/qoxi-cloud/proxmox-hetzner?style=for-the-badge&logo=github)
+  ![GitHub License](https://img.shields.io/github/license/qoxi-cloud/proxmox-hetzner?style=for-the-badge)
 </div>
 
 ## Overview
