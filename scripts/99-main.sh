@@ -42,6 +42,11 @@ reboot_to_main_os() {
         fi
     fi
 
+    # Show generated password if applicable
+    if [[ "$PASSWORD_GENERATED" == "yes" ]]; then
+        summary+="[WARN]|Root password|${NEW_ROOT_PASSWORD}"$'\n'
+    fi
+
     summary+="|--- Access ---|"$'\n'
 
     # Show access methods based on stealth mode and OpenSSH status

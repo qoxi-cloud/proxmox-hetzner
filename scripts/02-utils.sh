@@ -28,6 +28,14 @@ download_file() {
     exit 1
 }
 
+# Generate a secure random password
+# Usage: generate_password [length]
+generate_password() {
+    local length="${1:-16}"
+    # Use /dev/urandom with base64, filter to alphanumeric + some special chars
+    tr -dc 'A-Za-z0-9!@#$%^&*' < /dev/urandom | head -c "$length"
+}
+
 # Function to read password with asterisks shown for each character
 read_password() {
     local prompt="$1"

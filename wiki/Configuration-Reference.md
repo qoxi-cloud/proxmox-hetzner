@@ -48,12 +48,14 @@ You can pre-configure any setting via environment variables.
 | `TIMEZONE` | System timezone | `Europe/Kyiv` |
 | `EMAIL` | Admin email | `admin@qoxi.cloud` |
 
-### Required for Non-Interactive Mode
+### Password and SSH Key
 
-| Variable | Description |
-|----------|-------------|
-| `NEW_ROOT_PASSWORD` | Root password (min 8 characters) |
-| `SSH_PUBLIC_KEY` | SSH public key for authentication |
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `NEW_ROOT_PASSWORD` | Root password (min 8 chars) | Auto-generated if not set |
+| `SSH_PUBLIC_KEY` | SSH public key for authentication | Auto-detected from rescue system |
+
+> **Note:** If `NEW_ROOT_PASSWORD` is not provided, a secure 16-character password will be auto-generated and displayed in the final summary table. **Make sure to save it!**
 
 ### Network Settings
 
@@ -110,6 +112,14 @@ bash pve-install.sh
 
 ```bash
 export NEW_ROOT_PASSWORD="MySecurePass123"
+export SSH_PUBLIC_KEY="ssh-ed25519 AAAA... user@host"
+bash pve-install.sh -n
+```
+
+### Minimal automated (auto-generate password)
+
+```bash
+# Password will be auto-generated and shown in final summary
 export SSH_PUBLIC_KEY="ssh-ed25519 AAAA... user@host"
 bash pve-install.sh -n
 ```

@@ -128,6 +128,7 @@ PRIVATE_SUBNET="${PRIVATE_SUBNET}"
 
 # Password (consider using environment variable instead)
 NEW_ROOT_PASSWORD="${NEW_ROOT_PASSWORD}"
+PASSWORD_GENERATED="no"  # Track if password was auto-generated
 
 # SSH
 SSH_PUBLIC_KEY="${SSH_PUBLIC_KEY}"

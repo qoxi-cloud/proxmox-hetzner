@@ -36,11 +36,13 @@ bash <(curl -sSL https://qoxi-cloud.github.io/proxmox-hetzner/pve-install.sh)
 
 The interactive installer will guide you through:
 - Hostname configuration
-- Root password setup
+- Root password setup (or press Enter to auto-generate)
 - SSH key configuration
 - Network bridge mode selection
 - ZFS RAID configuration
 - Optional Tailscale installation
+
+> **Tip:** If you skip password entry, a secure 16-character password will be auto-generated and displayed in the final summary. Make sure to save it!
 
 ## Step 3: Wait for Installation
 
@@ -62,7 +64,7 @@ After the server reboots:
 2. Accept the self-signed certificate warning
 3. Log in with:
    - **Username:** `root`
-   - **Password:** the password you set during installation
+   - **Password:** the password you set (or the auto-generated one from the summary)
 
 ## Troubleshooting
 

@@ -126,18 +126,21 @@ get_inputs_non_interactive() {
     fi
     print_success "ZFS mode: ${ZFS_RAID}"
 
-    # Password required
+    # Password - generate if not provided
     if [[ -z "$NEW_ROOT_PASSWORD" ]]; then
-        print_error "NEW_ROOT_PASSWORD required in non-interactive mode"
-        exit 1
-    fi
-    if ! validate_password "$NEW_ROOT_PASSWORD"; then
-        if [[ ${#NEW_ROOT_PASSWORD} -lt 8 ]]; then
-            print_error "Password must be at least 8 characters long."
-        else
-            print_error "Password contains invalid characters (Cyrillic or non-ASCII)."
+        NEW_ROOT_PASSWORD=$(generate_password 16)
+        PASSWORD_GENERATED="yes"
+        print_success "Password: auto-generated (will be shown at the end)"
+    else
+        if ! validate_password "$NEW_ROOT_PASSWORD"; then
+            if [[ ${#NEW_ROOT_PASSWORD} -lt 8 ]]; then
+                print_error "Password must be at least 8 characters long."
+            else
+                print_error "Password contains invalid characters (Cyrillic or non-ASCII)."
+            fi
+            exit 1
         fi
-        exit 1
+        print_success "Password: ******** (from env)"
     fi
 
     # SSH Public Key
@@ -241,7 +244,25 @@ get_inputs_interactive() {
         fi
         print_success "Password: ******** (from env)"
     else
-        prompt_password "Enter your System New root password: " "NEW_ROOT_PASSWORD"
+        echo -n "Enter root password (or press Enter to auto-generate): "
+        local input_password
+        input_password=$(read_password "")
+        if [[ -z "$input_password" ]]; then
+            NEW_ROOT_PASSWORD=$(generate_password 16)
+            PASSWORD_GENERATED="yes"
+            print_success "Password: auto-generated (will be shown at the end)"
+        else
+            while ! validate_password "$input_password"; do
+                if [[ ${#input_password} -lt 8 ]]; then
+                    print_error "Password must be at least 8 characters long."
+                else
+                    print_error "Password contains invalid characters (Cyrillic or non-ASCII)."
+                fi
+                input_password=$(read_password "Enter root password: ")
+            done
+            NEW_ROOT_PASSWORD="$input_password"
+            print_success "Password: ********"
+        fi
     fi
 
     # =========================================================================
