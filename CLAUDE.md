@@ -42,18 +42,48 @@ shellcheck scripts/*.sh
 
 Scripts are numbered and concatenated in order:
 
-1. `00-header.sh` - Shebang, colors, CLI args, config loading
-2. `01-display.sh` - Box/table display utilities using `boxes` command
-3. `02-utils.sh` - Download, password input, progress spinners
-4. `03-ssh.sh` - SSH helpers for remote execution into QEMU VM
-5. `04-menu.sh` - Interactive arrow-key menu system
-6. `05-validation.sh` - Input validators (hostname, email, subnet, etc.)
-7. `06-system-check.sh` - Pre-flight checks (root, RAM, KVM, NVMe detection)
-8. `07-input.sh` - User input collection (interactive and non-interactive modes)
-9. `08-packages.sh` - Package installation, ISO download, answer.toml generation
-10. `09-qemu.sh` - QEMU VM management for installation and boot
-11. `10-configure.sh` - Post-install configuration via SSH into VM
-12. `99-main.sh` - Main execution flow, calls functions in order
+#### Initialization (00-00d)
+
+- `00-init.sh` - Shebang, colors, version, default values
+- `00a-cli.sh` - Command line argument parsing
+- `00b-config.sh` - Config file load/save functions
+- `00c-logging.sh` - Logging functions
+- `00d-banner.sh` - ASCII banner and startup display
+
+#### UI and Utilities (01-05)
+
+- `01-display.sh` - Box/table display utilities using `boxes` command
+- `02-utils.sh` - Download, password input, progress spinners
+- `03-ssh.sh` - SSH helpers for remote execution into QEMU VM
+- `04-menu.sh` - Interactive arrow-key menu system
+- `05-validation.sh` - Input validators (hostname, email, subnet, etc.)
+
+#### System Detection (06-07)
+
+- `06-system-check.sh` - Pre-flight checks (root, RAM, KVM, NVMe detection)
+- `07-network.sh` - Network interface detection
+
+#### Input Collection (08-10)
+
+- `08-input-non-interactive.sh` - Non-interactive input collection
+- `09-input-interactive.sh` - Interactive input collection with menus
+- `10-input-main.sh` - Main input orchestration function
+
+#### Installation (11-12)
+
+- `11-packages.sh` - Package installation, ISO download, answer.toml generation
+- `12-qemu.sh` - QEMU VM management for installation and boot
+
+#### Post-Install Configuration (13-16)
+
+- `13-templates.sh` - Template download and preparation
+- `14-configure-base.sh` - Base system configuration (ZFS, packages, shell)
+- `15-configure-tailscale.sh` - Tailscale VPN configuration
+- `16-configure-finalize.sh` - SSH hardening and VM finalization
+
+#### Main Flow (99)
+
+- `99-main.sh` - Main execution flow and installation summary
 
 ### Key Flow
 
