@@ -42,10 +42,10 @@ interactive_menu() {
         for i in "${!labels[@]}"; do
             if [ $i -eq $selected ]; then
                 content+="[*] ${labels[$i]}"$'\n'
-                content+="    └─ ${descriptions[$i]}"$'\n'
+                [[ -n "${descriptions[$i]}" ]] && content+="    └─ ${descriptions[$i]}"$'\n'
             else
                 content+="[ ] ${labels[$i]}"$'\n'
-                content+="    └─ ${descriptions[$i]}"$'\n'
+                [[ -n "${descriptions[$i]}" ]] && content+="    └─ ${descriptions[$i]}"$'\n'
             fi
         done
 
