@@ -92,6 +92,7 @@ prompt_validated() {
 SPINNER_CHARS='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
 
 # Progress indicator with spinner
+# Waits for process to complete, shows success or failure
 show_progress() {
     local pid=$1
     local message="${2:-Processing}"
@@ -103,7 +104,17 @@ show_progress() {
         sleep 0.2
     done
 
-    printf "\r\e[K${CLR_GREEN}✓ %s${CLR_RESET}\n" "$done_message"
+    # Wait for exit code (process already finished, this just gets the code)
+    wait "$pid" 2>/dev/null
+    local exit_code=$?
+
+    if [[ $exit_code -eq 0 ]]; then
+        printf "\r\e[K${CLR_GREEN}✓ %s${CLR_RESET}\n" "$done_message"
+    else
+        printf "\r\e[K${CLR_RED}✗ %s${CLR_RESET}\n" "$message"
+    fi
+
+    return $exit_code
 }
 
 # Wait for condition with progress
