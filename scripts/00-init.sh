@@ -2,6 +2,10 @@
 set -e
 cd /root
 
+# Ensure UTF-8 locale for proper Unicode display (spinner characters)
+export LANG=en_US.UTF-8
+export LC_ALL=en_US.UTF-8
+
 # =============================================================================
 # Colors and configuration
 # =============================================================================

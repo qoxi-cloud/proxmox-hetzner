@@ -63,8 +63,8 @@ get_inputs_interactive() {
         echo -n "Enter root password (or press Enter to auto-generate): "
         local input_password
         input_password=$(read_password "")
-        # Move cursor up and clear the prompt line
-        printf "\033[A\r\033[K"
+        # Move cursor up twice (read_password adds a newline) and clear
+        printf "\033[A\033[A\r\033[K"
         if [[ -z "$input_password" ]]; then
             NEW_ROOT_PASSWORD=$(generate_password 16)
             PASSWORD_GENERATED="yes"
