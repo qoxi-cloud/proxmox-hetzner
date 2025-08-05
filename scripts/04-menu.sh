@@ -69,8 +69,8 @@ interactive_menu() {
     # - Lines starting with "! " are warnings (yellow)
     _draw_menu | sed -e $'s/\\[\\*\\]/\033[1;32m[●]\033[m/g' \
                      -e $'s/\\[ \\]/\033[1;34m[○]\033[m/g' \
-                     -e $'s/| ! /| \033[1;33m! /g' \
-                     -e $'s/|   - /| \033[1;33m  - /g'
+                     -e $'s/^| ! /| \033[1;33m! /g' \
+                     -e $'s/^|   - /| \033[1;33m  - /g'
 
     while true; do
         # Read a single keypress
@@ -110,8 +110,8 @@ interactive_menu() {
         # Draw the menu with colors
         _draw_menu | sed -e $'s/\\[\\*\\]/\033[1;32m[●]\033[m/g' \
                          -e $'s/\\[ \\]/\033[1;34m[○]\033[m/g' \
-                         -e $'s/| ! /| \033[1;33m! /g' \
-                         -e $'s/|   - /| \033[1;33m  - /g'
+                         -e $'s/^| ! /| \033[1;33m! /g' \
+                         -e $'s/^|   - /| \033[1;33m  - /g'
     done
 
     # Show cursor again
