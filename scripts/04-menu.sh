@@ -65,15 +65,18 @@ interactive_menu() {
     box_lines=$(_draw_menu | wc -l)
 
     # Colorize menu output
-    # - Box frame in blue, [●] selected (green), [○] unselected (blue)
-    # - Lines with "! " are warnings (yellow)
+    # - Box frame in cyan (like logo), text white, [●] green, [○] blue
+    # - Lines with "! " and key info are warnings (yellow)
     _colorize_menu() {
-        sed -e $'s/\\[\\*\\]/\033[1;32m[●]\033[1;34m/g' \
-            -e $'s/\\[ \\]/\033[1;34m[○]\033[1;34m/g' \
-            -e $'s/^\\(+[-+]*+\\)$/\033[1;34m\\1\033[m/g' \
-            -e $'s/^|/\033[1;34m|/g' \
-            -e $'s/|$/|\033[m/g' \
-            -e $'s/! /\033[1;33m! /g' \
+        sed -e $'s/^\\(+[-+]*+\\)$/\033[1;36m\\1\033[m/' \
+            -e $'s/^|\\(.*\\)|$/\033[1;36m|\033[m\\1\033[1;36m|\033[m/' \
+            -e $'s/\\[\\*\\]/\033[1;32m[●]\033[m/g' \
+            -e $'s/\\[ \\]/\033[1;34m[○]\033[m/g' \
+            -e $'s/! \\(.*\\)/\033[1;33m! \\1\033[m/g' \
+            -e $'s/Detected key/\033[1;33mDetected key/g' \
+            -e $'s/Type:/\033[1;33mType:/g' \
+            -e $'s/Key:/\033[1;33mKey:/g' \
+            -e $'s/Comment:/\033[1;33mComment:/g' \
             -e $'s/  - /\033[1;33m  - /g'
     }
 
