@@ -57,24 +57,18 @@ display_info_table() {
 # Colorize the output of boxes (post-process)
 # Adds cyan frame and colors for [OK], [WARN], [ERROR]
 colorize_status() {
-    local cyan=$'\033[1;36m'
-    local green=$'\033[1;32m'
-    local yellow=$'\033[1;33m'
-    local red=$'\033[1;31m'
-    local reset=$'\033[m'
-
     while IFS= read -r line; do
         # Top/bottom border
         if [[ "$line" =~ ^\+[-+]+\+$ ]]; then
-            echo "${cyan}${line}${reset}"
+            echo "${CLR_CYAN}${line}${CLR_RESET}"
         # Content line with | borders
         elif [[ "$line" =~ ^(\|)(.*)\|$ ]]; then
             local content="${BASH_REMATCH[2]}"
             # Color status markers
-            content="${content//\[OK\]/${green}[OK]${reset}}"
-            content="${content//\[WARN\]/${yellow}[WARN]${reset}}"
-            content="${content//\[ERROR\]/${red}[ERROR]${reset}}"
-            echo "${cyan}|${reset}${content}${cyan}|${reset}"
+            content="${content//\[OK\]/${CLR_GREEN}[OK]${CLR_RESET}}"
+            content="${content//\[WARN\]/${CLR_YELLOW}[WARN]${CLR_RESET}}"
+            content="${content//\[ERROR\]/${CLR_RED}[ERROR]${CLR_RESET}}"
+            echo "${CLR_CYAN}|${CLR_RESET}${content}${CLR_CYAN}|${CLR_RESET}"
         else
             echo "$line"
         fi

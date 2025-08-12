@@ -68,32 +68,27 @@ interactive_menu() {
     # - Box frame and [○] in cyan, [●] green, text white
     # - Lines with "! " and key info are warnings (yellow)
     _colorize_menu() {
-        local cyan=$'\033[1;36m'
-        local green=$'\033[1;32m'
-        local yellow=$'\033[1;33m'
-        local reset=$'\033[m'
-
         while IFS= read -r line; do
             # Top/bottom border
             if [[ "$line" =~ ^\+[-+]+\+$ ]]; then
-                echo "${cyan}${line}${reset}"
+                echo "${CLR_CYAN}${line}${CLR_RESET}"
             # Content line with | borders
             elif [[ "$line" =~ ^(\|)(.*)\|$ ]]; then
                 local content="${BASH_REMATCH[2]}"
                 # Apply content colors
-                content="${content//\[\*\]/${green}[●]${reset}}"
-                content="${content//\[ \]/${cyan}[○]${reset}}"
+                content="${content//\[\*\]/${CLR_GREEN}[●]${CLR_RESET}}"
+                content="${content//\[ \]/${CLR_CYAN}[○]${CLR_RESET}}"
                 # Yellow for warnings and key info
                 if [[ "$content" == *"! "* ]]; then
-                    content="${content//! /${yellow}! }"
-                    content="${content}${reset}"
+                    content="${content//! /${CLR_YELLOW}! }"
+                    content="${content}${CLR_RESET}"
                 fi
-                content="${content//  - /${yellow}  - }"
-                content="${content//Detected key/${yellow}Detected key}"
-                content="${content//Type:/${yellow}Type:}"
-                content="${content//Key:/${yellow}Key:}"
-                content="${content//Comment:/${yellow}Comment:}"
-                echo "${cyan}|${reset}${content}${cyan}|${reset}"
+                content="${content//  - /${CLR_YELLOW}  - }"
+                content="${content//Detected key/${CLR_YELLOW}Detected key}"
+                content="${content//Type:/${CLR_YELLOW}Type:}"
+                content="${content//Key:/${CLR_YELLOW}Key:}"
+                content="${content//Comment:/${CLR_YELLOW}Comment:}"
+                echo "${CLR_CYAN}|${CLR_RESET}${content}${CLR_CYAN}|${CLR_RESET}"
             else
                 echo "$line"
             fi

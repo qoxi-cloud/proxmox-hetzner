@@ -9,12 +9,12 @@ export LC_ALL=en_US.UTF-8
 # =============================================================================
 # Colors and configuration
 # =============================================================================
-CLR_RED="\033[1;31m"
-CLR_GREEN="\033[1;32m"
-CLR_YELLOW="\033[1;33m"
-CLR_BLUE="\033[1;34m"
-CLR_CYAN="\033[1;36m"
-CLR_RESET="\033[m"
+CLR_RED=$'\033[1;31m'
+CLR_GREEN=$'\033[1;32m'
+CLR_YELLOW=$'\033[1;33m'
+CLR_BLUE=$'\033[1;34m'
+CLR_CYAN=$'\033[1;36m'
+CLR_RESET=$'\033[m'
 
 # Version
 VERSION="1.2.3"
