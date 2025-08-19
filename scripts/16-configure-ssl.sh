@@ -17,13 +17,16 @@ configure_ssl_certificate() {
     log "configure_ssl_certificate: domain=$cert_domain"
 
     # Install certbot and obtain certificate
-    remote_exec_with_progress "Installing Certbot" '
+    if ! remote_exec_with_progress "Installing Certbot" '
         export DEBIAN_FRONTEND=noninteractive
         apt-get install -yqq certbot
-    ' "Certbot installed"
+    ' "Certbot installed"; then
+        print_error "Failed to install Certbot. Check log file: $LOG_FILE"
+        exit 1
+    fi
 
     # Stop pveproxy temporarily to free port 8006 and use standalone mode on port 80
-    remote_exec_with_progress "Obtaining Let's Encrypt certificate" "
+    if ! remote_exec_with_progress "Obtaining Let's Encrypt certificate" "
         systemctl stop pveproxy
 
         # Obtain certificate using standalone mode (port 80)
@@ -44,10 +47,13 @@ configure_ssl_certificate() {
         chmod 600 /etc/pve/local/pveproxy-ssl.key
 
         systemctl start pveproxy
-    " "Let's Encrypt certificate obtained"
+    " "Let's Encrypt certificate obtained"; then
+        print_error "Failed to obtain Let's Encrypt certificate. Check log file: $LOG_FILE"
+        exit 1
+    fi
 
     # Setup auto-renewal with deploy hook
-    remote_exec_with_progress "Configuring certificate auto-renewal" "
+    if ! remote_exec_with_progress "Configuring certificate auto-renewal" "
         mkdir -p /etc/letsencrypt/renewal-hooks/deploy
 
         cat > /etc/letsencrypt/renewal-hooks/deploy/proxmox.sh << HOOKEOF
@@ -65,7 +71,10 @@ HOOKEOF
         # Enable certbot timer for auto-renewal
         systemctl enable certbot.timer
         systemctl start certbot.timer
-    " "Auto-renewal configured"
+    " "Auto-renewal configured"; then
+        print_error "Failed to configure auto-renewal. Check log file: $LOG_FILE"
+        exit 1
+    fi
 
     # Store the domain for summary
     LETSENCRYPT_DOMAIN="$cert_domain"
