@@ -107,7 +107,8 @@ Configuration files in `templates/` are downloaded at runtime from GitHub raw UR
 Post-install configuration runs via SSH into QEMU VM on port 5555:
 
 - `remote_exec "command"` - Run single command
-- `remote_exec_with_progress "message" 'script' "done_msg"` - Run with spinner
+- `run_remote "message" 'script' "done_msg"` - Run with spinner, exit on failure with log reference
+- `remote_exec_with_progress "message" 'script' "done_msg"` - Run with spinner (returns exit code)
 - `remote_copy "local" "remote"` - SCP file to VM
 
 ## CLI Options

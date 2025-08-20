@@ -8,7 +8,7 @@ configure_tailscale() {
         return 0
     fi
 
-    remote_exec_with_progress "Installing Tailscale VPN" '
+    run_remote "Installing Tailscale VPN" '
         curl -fsSL https://pkgs.tailscale.com/stable/debian/bookworm.noarmor.gpg | tee /usr/share/keyrings/tailscale-archive-keyring.gpg >/dev/null
         curl -fsSL https://pkgs.tailscale.com/stable/debian/bookworm.tailscale-keyring.list | tee /etc/apt/sources.list.d/tailscale.list
         apt-get update -qq

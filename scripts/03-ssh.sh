@@ -69,6 +69,20 @@ remote_exec_with_progress() {
     return $exit_code
 }
 
+# Execute remote script with progress, exit on failure
+# Usage: run_remote "message" 'script' ["done_message"]
+run_remote() {
+    local message="$1"
+    local script="$2"
+    local done_message="${3:-$message}"
+
+    if ! remote_exec_with_progress "$message" "$script" "$done_message"; then
+        print_error "$message failed"
+        echo "       Check log file: $LOG_FILE"
+        exit 1
+    fi
+}
+
 remote_copy() {
     local src="$1"
     local dst="$2"

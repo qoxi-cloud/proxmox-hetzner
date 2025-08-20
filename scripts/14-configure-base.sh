@@ -24,7 +24,7 @@ configure_base_system() {
     show_progress $! "Applying basic system settings" "Basic system settings applied"
 
     # Configure ZFS ARC memory limits
-    remote_exec_with_progress "Configuring ZFS ARC memory limits" '
+    run_remote "Configuring ZFS ARC memory limits" '
         TOTAL_RAM_KB=$(grep MemTotal /proc/meminfo | awk "{print \$2}")
         TOTAL_RAM_GB=$((TOTAL_RAM_KB / 1024 / 1024))
 
@@ -52,7 +52,7 @@ configure_base_system() {
     if [[ "${PVE_REPO_TYPE:-no-subscription}" == "enterprise" ]]; then
         log "configure_base_system: configuring enterprise repository"
         # Enterprise: disable default no-subscription repo (template already has enterprise)
-        remote_exec_with_progress "Configuring enterprise repository" '
+        run_remote "Configuring enterprise repository" '
             for repo_file in /etc/apt/sources.list.d/*.list /etc/apt/sources.list.d/*.sources; do
                 [ -f "$repo_file" ] || continue
                 if grep -q "pve-no-subscription\|pvetest" "$repo_file" 2>/dev/null; then
@@ -64,14 +64,14 @@ configure_base_system() {
         # Register subscription key if provided
         if [[ -n "$PVE_SUBSCRIPTION_KEY" ]]; then
             log "configure_base_system: registering subscription key"
-            remote_exec_with_progress "Registering subscription key" \
+            run_remote "Registering subscription key" \
                 "pvesubscription set '${PVE_SUBSCRIPTION_KEY}' 2>/dev/null || true" \
                 "Subscription key registered"
         fi
     else
         # No-subscription or test: disable enterprise repo
         log "configure_base_system: configuring ${PVE_REPO_TYPE:-no-subscription} repository"
-        remote_exec_with_progress "Configuring ${PVE_REPO_TYPE:-no-subscription} repository" '
+        run_remote "Configuring ${PVE_REPO_TYPE:-no-subscription} repository" '
             for repo_file in /etc/apt/sources.list.d/*.list /etc/apt/sources.list.d/*.sources; do
                 [ -f "$repo_file" ] || continue
                 if grep -q "enterprise.proxmox.com" "$repo_file" 2>/dev/null; then
@@ -86,7 +86,7 @@ configure_base_system() {
     fi
 
     # Update all system packages
-    remote_exec_with_progress "Updating system packages" '
+    run_remote "Updating system packages" '
         export DEBIAN_FRONTEND=noninteractive
         apt-get update -qq
         apt-get dist-upgrade -yqq
@@ -97,7 +97,7 @@ configure_base_system() {
     ' "System packages updated"
 
     # Install monitoring and system utilities
-    remote_exec_with_progress "Installing system utilities" '
+    run_remote "Installing system utilities" '
         export DEBIAN_FRONTEND=noninteractive
         apt-get install -yqq btop iotop ncdu tmux pigz smartmontools jq bat 2>/dev/null || {
             for pkg in btop iotop ncdu tmux pigz smartmontools jq bat; do
@@ -108,7 +108,7 @@ configure_base_system() {
     ' "System utilities installed"
 
     # Configure UTF-8 locales (fix for btop and other apps)
-    remote_exec_with_progress "Configuring UTF-8 locales" '
+    run_remote "Configuring UTF-8 locales" '
         export DEBIAN_FRONTEND=noninteractive
         apt-get install -yqq locales
         sed -i "s/# en_US.UTF-8/en_US.UTF-8/" /etc/locale.gen
@@ -143,22 +143,22 @@ ENVEOF
 configure_shell() {
     # Configure default shell for root
     if [[ "$DEFAULT_SHELL" == "zsh" ]]; then
-        remote_exec_with_progress "Installing ZSH and Git" '
+        run_remote "Installing ZSH and Git" '
             export DEBIAN_FRONTEND=noninteractive
             apt-get install -yqq zsh git curl
         ' "ZSH and Git installed"
 
-        remote_exec_with_progress "Installing Oh-My-Zsh" '
+        run_remote "Installing Oh-My-Zsh" '
             export RUNZSH=no
             export CHSH=no
             sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
         ' "Oh-My-Zsh installed"
 
-        remote_exec_with_progress "Installing Powerlevel10k theme" '
+        run_remote "Installing Powerlevel10k theme" '
             git clone --depth=1 https://github.com/romkatv/powerlevel10k.git /root/.oh-my-zsh/custom/themes/powerlevel10k
         ' "Powerlevel10k theme installed"
 
-        remote_exec_with_progress "Installing ZSH plugins" '
+        run_remote "Installing ZSH plugins" '
             git clone --depth=1 https://github.com/zsh-users/zsh-autosuggestions /root/.oh-my-zsh/custom/plugins/zsh-autosuggestions
             git clone --depth=1 https://github.com/zsh-users/zsh-syntax-highlighting /root/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting
         ' "ZSH plugins installed"
@@ -176,7 +176,7 @@ configure_shell() {
 
 configure_system_services() {
     # Configure NTP time synchronization with chrony
-    remote_exec_with_progress "Installing NTP (chrony)" '
+    run_remote "Installing NTP (chrony)" '
         export DEBIAN_FRONTEND=noninteractive
         apt-get install -yqq chrony
         systemctl stop chrony
@@ -188,7 +188,7 @@ configure_system_services() {
     show_progress $! "Configuring chrony" "Chrony configured"
 
     # Configure Unattended Upgrades (security updates, kernel excluded)
-    remote_exec_with_progress "Installing Unattended Upgrades" '
+    run_remote "Installing Unattended Upgrades" '
         export DEBIAN_FRONTEND=noninteractive
         apt-get install -yqq unattended-upgrades apt-listchanges
     ' "Unattended Upgrades installed"
@@ -200,7 +200,7 @@ configure_system_services() {
     show_progress $! "Configuring Unattended Upgrades" "Unattended Upgrades configured"
 
     # Configure nf_conntrack
-    remote_exec_with_progress "Configuring nf_conntrack" '
+    run_remote "Configuring nf_conntrack" '
         if ! grep -q "nf_conntrack" /etc/modules 2>/dev/null; then
             echo "nf_conntrack" >> /etc/modules
         fi
@@ -212,7 +212,7 @@ configure_system_services() {
     ' "nf_conntrack configured"
 
     # Configure CPU governor for maximum performance
-    remote_exec_with_progress "Configuring CPU governor" '
+    run_remote "Configuring CPU governor" '
         apt-get update -qq && apt-get install -yqq cpufrequtils 2>/dev/null || true
         echo "GOVERNOR=\"performance\"" > /etc/default/cpufrequtils
         systemctl enable cpufrequtils 2>/dev/null || true
@@ -226,7 +226,7 @@ configure_system_services() {
     # Remove Proxmox subscription notice (only for non-enterprise)
     if [[ "${PVE_REPO_TYPE:-no-subscription}" != "enterprise" ]]; then
         log "configure_system_services: removing subscription notice (non-enterprise)"
-        remote_exec_with_progress "Removing Proxmox subscription notice" '
+        run_remote "Removing Proxmox subscription notice" '
             if [ -f /usr/share/javascript/proxmox-widget-toolkit/proxmoxlib.js ]; then
                 sed -Ezi.bak "s/(Ext.Msg.show\(\{\s+title: gettext\('"'"'No valid sub)/void\(\{ \/\/\1/g" /usr/share/javascript/proxmox-widget-toolkit/proxmoxlib.js
                 systemctl restart pveproxy.service
