@@ -66,7 +66,7 @@ run_remote() {
 
     if ! remote_exec_with_progress "$message" "$script" "$done_message"; then
         print_error "$message failed"
-        echo "       Check log file: $LOG_FILE"
+        echo "Check log file: $LOG_FILE"
         exit 1
     fi
 }
