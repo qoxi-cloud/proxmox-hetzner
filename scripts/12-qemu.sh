@@ -157,12 +157,8 @@ boot_proxmox_with_port_forwarding() {
     # Wait for port to be open first (quick check)
     wait_with_progress "Booting installed Proxmox" 300 "(echo >/dev/tcp/localhost/5555)" 3 "Proxmox booted, port open"
 
-    # Show immediate feedback before SSH ready check
-    printf "${CLR_YELLOW}⠋ Waiting for SSH to be ready...${CLR_RESET}"
-
     # Wait for SSH to be fully ready (handles key exchange timing)
-    printf "\r\e[K"
-    wait_for_ssh_ready 60 || {
+    wait_for_ssh_ready 120 || {
         print_error "SSH connection failed. Check qemu_output.log for details."
         return 1
     }

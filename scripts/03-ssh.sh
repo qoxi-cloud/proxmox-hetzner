@@ -8,28 +8,16 @@ SSH_PORT="5555"
 
 # Wait for SSH to be fully ready (not just port open)
 wait_for_ssh_ready() {
-    local max_attempts="${1:-60}"
-    local attempt=0
-    local i=0
+    local timeout="${1:-120}"
 
     # Clear any stale known_hosts entries
     ssh-keygen -f "/root/.ssh/known_hosts" -R "[localhost]:${SSH_PORT}" 2>/dev/null || true
 
-    while [[ $attempt -lt $max_attempts ]]; do
-        # Try actual SSH connection with echo command
-        # Use SSHPASS env var to avoid password exposure in process list
-        # shellcheck disable=SC2086
-        if SSHPASS="$NEW_ROOT_PASSWORD" sshpass -e ssh -p "$SSH_PORT" $SSH_OPTS root@localhost "echo ready" >/dev/null 2>&1; then
-            printf "\r\e[K${CLR_GREEN}✓ SSH connection established${CLR_RESET}\n"
-            return 0
-        fi
-        printf "\r${CLR_YELLOW}${SPINNER_CHARS:i++%${#SPINNER_CHARS}:1} Waiting for SSH to be ready (attempt $((attempt+1))/${max_attempts})${CLR_RESET}"
-        sleep 2
-        ((attempt++))
-    done
-
-    printf "\r\e[K${CLR_RED}✗ SSH connection failed after ${max_attempts} attempts${CLR_RESET}\n"
-    return 1
+    # Use SSHPASS env var to avoid password exposure in process list
+    # shellcheck disable=SC2086
+    wait_with_progress "Waiting for SSH to be ready" "$timeout" \
+        "SSHPASS=\"$NEW_ROOT_PASSWORD\" sshpass -e ssh -p \"$SSH_PORT\" $SSH_OPTS root@localhost 'echo ready' >/dev/null 2>&1" \
+        2 "SSH connection established"
 }
 
 remote_exec() {
