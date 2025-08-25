@@ -29,6 +29,23 @@ Automated Proxmox VE installer for Hetzner dedicated servers **without console a
 
 **Compatible:** [AX](https://www.hetzner.com/dedicated-rootserver/matrix-ax), [EX](https://www.hetzner.com/dedicated-rootserver/matrix-ex), [SX](https://www.hetzner.com/dedicated-rootserver/matrix-sx) series servers
 
+## Time Savings
+
+| Task | Manual Install | This Script |
+|------|----------------|-------------|
+| Proxmox installation | 20-30 min | ~5 min (automated) |
+| ZFS RAID configuration | 15-20 min | Included |
+| Network bridge setup | 10-15 min | Included |
+| SSH hardening | 10-15 min | Included |
+| Security updates config | 5-10 min | Included |
+| ZSH + plugins setup | 10-15 min | Included |
+| NTP configuration | 5 min | Included |
+| Let's Encrypt SSL | 10-15 min | Included |
+| Tailscale + firewall | 15-20 min | Included |
+| **Total** | **1.5-2.5 hours** | **~5 minutes** |
+
+One command replaces hours of manual configuration with battle-tested defaults.
+
 ## Quick Start
 
 1. Boot server into **Rescue Mode** (Hetzner Robot → Rescue → Linux 64-bit → Reset)

@@ -20,30 +20,47 @@ The installer offers Tailscale as an optional component:
 | Enable Web UI | `yes` / `no` | `yes` |
 | Disable OpenSSH | `yes` / `no` | `yes` when auth key provided, `no` otherwise |
 
-> **Important:** When you provide a Tailscale auth key, security hardening is **automatically enabled**: OpenSSH is disabled and stealth firewall is activated on first boot. Without an auth key, these features are NOT configured - you must set them up manually after installation.
+> **Important:** In **interactive mode**, when you provide a Tailscale auth key, security hardening is **automatically enabled**: OpenSSH is disabled and stealth firewall is activated on first boot. In **non-interactive mode**, you must explicitly set `TAILSCALE_DISABLE_SSH=yes` and `STEALTH_MODE=yes` in your config file.
 
 ### Environment Variables
 
-**Full automatic setup (recommended):**
+**Interactive mode (env vars skip prompts):**
 
 ```bash
 export INSTALL_TAILSCALE="yes"
-export TAILSCALE_AUTH_KEY="tskey-auth-xxxxx"  # Enables automatic security hardening
-export TAILSCALE_SSH="yes"
-export TAILSCALE_WEBUI="yes"
-# TAILSCALE_DISABLE_SSH defaults to "yes" when auth key is provided
+export TAILSCALE_AUTH_KEY="tskey-auth-xxxxx"
+# When auth key is provided in interactive mode, security hardening is auto-enabled
 bash pve-install.sh
 ```
 
-**Manual setup (no automatic security hardening):**
+**Non-interactive mode with full security hardening:**
 
 ```bash
-export INSTALL_TAILSCALE="yes"
-# No TAILSCALE_AUTH_KEY - requires manual `tailscale up` after install
-export TAILSCALE_SSH="yes"
-export TAILSCALE_WEBUI="yes"
-export TAILSCALE_DISABLE_SSH="no"  # OpenSSH stays enabled for initial access
-bash pve-install.sh
+# Non-interactive requires explicit settings
+cat > proxmox.conf << 'EOF'
+INSTALL_TAILSCALE=yes
+TAILSCALE_SSH=yes
+TAILSCALE_WEBUI=yes
+TAILSCALE_DISABLE_SSH=yes
+STEALTH_MODE=yes
+EOF
+
+export TAILSCALE_AUTH_KEY="tskey-auth-xxxxx"
+bash pve-install.sh -c proxmox.conf -n
+```
+
+**Non-interactive without security hardening:**
+
+```bash
+cat > proxmox.conf << 'EOF'
+INSTALL_TAILSCALE=yes
+TAILSCALE_SSH=yes
+TAILSCALE_WEBUI=yes
+# TAILSCALE_DISABLE_SSH defaults to no in non-interactive mode
+EOF
+
+bash pve-install.sh -c proxmox.conf -n
+# Manual `tailscale up` required after install
 ```
 
 ## Getting an Auth Key

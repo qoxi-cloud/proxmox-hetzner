@@ -69,20 +69,14 @@ Select "Let's Encrypt" from the SSL Certificate menu. The installer will use you
 **Non-interactive mode:**
 
 ```bash
-export SSL_TYPE="letsencrypt"
-export PVE_HOSTNAME="proxmox"
-export DOMAIN_SUFFIX="example.com"
-export EMAIL="admin@example.com"
-bash pve-install.sh -n
-```
-
-**Config file:**
-
-```bash
+cat > proxmox.conf << 'EOF'
 SSL_TYPE=letsencrypt
 PVE_HOSTNAME=proxmox
 DOMAIN_SUFFIX=example.com
 EMAIL=admin@example.com
+EOF
+
+bash pve-install.sh -c proxmox.conf -n
 ```
 
 ### Verifying Certificate

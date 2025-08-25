@@ -69,7 +69,7 @@ Kernel updates require a reboot to take effect. Automatic reboots could disrupt 
 | Setting | Value | Purpose |
 |---------|-------|---------|
 | `nf_conntrack_max` | 1048576 | Support 1M+ connections |
-| `nf_conntrack_tcp_timeout_established` | 86400 | 24h timeout for established connections |
+| `nf_conntrack_tcp_timeout_established` | 28800 | 8h timeout for established connections |
 
 ### Performance Settings
 

@@ -10,7 +10,7 @@ Complete reference for all configuration options available in the installer.
 | `-v, --version` | Show version |
 | `-c, --config FILE` | Load configuration from file |
 | `-s, --save-config FILE` | Save configuration to file after input |
-| `-n, --non-interactive` | Run without prompts (requires `--config` or env vars) |
+| `-n, --non-interactive` | Run without prompts (requires `--config`) |
 | `-t, --test` | Test mode (TCG emulation, no KVM required) |
 | `--validate` | Validate configuration only, do not install |
 | `--qemu-ram MB` | Set QEMU RAM in MB (default: auto 4096-8192) |
@@ -146,26 +146,35 @@ export TAILSCALE_AUTH_KEY="tskey-auth-xxx"
 bash pve-install.sh
 ```
 
-### Fully automated (no config file)
+### Fully automated with config file
 
 ```bash
-export NEW_ROOT_PASSWORD="MySecurePass123"
-export SSH_PUBLIC_KEY="ssh-ed25519 AAAA... user@host"
-bash pve-install.sh -n
+# Create minimal config
+cat > proxmox.conf << 'EOF'
+NEW_ROOT_PASSWORD=MySecurePass123
+SSH_PUBLIC_KEY=ssh-ed25519 AAAA... user@host
+EOF
+
+bash pve-install.sh -c proxmox.conf -n
 ```
 
 ### Minimal automated (auto-generate password)
 
 ```bash
+# SSH key will be auto-detected from rescue system
 # Password will be auto-generated and shown in final summary
-export SSH_PUBLIC_KEY="ssh-ed25519 AAAA... user@host"
-bash pve-install.sh -n
+cat > proxmox.conf << 'EOF'
+# All other settings use defaults
+EOF
+
+bash pve-install.sh -c proxmox.conf -n
 ```
 
-### Single-line command
+### Single-line with env vars + config
 
 ```bash
-NEW_ROOT_PASSWORD="pass" SSH_PUBLIC_KEY="ssh-ed25519 ..." bash pve-install.sh -n
+# Env vars override config file values
+NEW_ROOT_PASSWORD="pass" bash pve-install.sh -c proxmox.conf -n
 ```
 
 ## Configuration File Format
