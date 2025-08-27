@@ -97,7 +97,36 @@ get_inputs_non_interactive() {
 
     # SSL certificate
     SSL_TYPE="${SSL_TYPE:-self-signed}"
-    print_success "SSL certificate: ${SSL_TYPE}"
+    if [[ "$SSL_TYPE" == "letsencrypt" ]]; then
+        local le_fqdn="${FQDN:-$PVE_HOSTNAME.$DOMAIN_SUFFIX}"
+        local expected_ip="${MAIN_IPV4_CIDR%/*}"
+
+        validate_dns_resolution "$le_fqdn" "$expected_ip"
+        local dns_result=$?
+
+        case $dns_result in
+            0)
+                print_success "SSL certificate: letsencrypt (DNS verified: ${le_fqdn} → ${expected_ip})"
+                ;;
+            1)
+                print_error "SSL certificate: letsencrypt (DNS FAILED)"
+                print_error "${le_fqdn} does not resolve"
+                echo ""
+                print_info "Let's Encrypt requires valid DNS configuration."
+                print_info "Create DNS A record: ${le_fqdn} → ${expected_ip}"
+                exit 1
+                ;;
+            2)
+                print_error "SSL certificate: letsencrypt (DNS MISMATCH)"
+                print_error "${le_fqdn} resolves to ${DNS_RESOLVED_IP}, expected ${expected_ip}"
+                echo ""
+                print_info "Update DNS A record: ${le_fqdn} → ${expected_ip}"
+                exit 1
+                ;;
+        esac
+    else
+        print_success "SSL certificate: ${SSL_TYPE}"
+    fi
 
     # Tailscale
     INSTALL_TAILSCALE="${INSTALL_TAILSCALE:-no}"
