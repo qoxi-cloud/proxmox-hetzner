@@ -45,7 +45,7 @@ reboot_to_main_os() {
 
     # SSL certificate info
     if [[ "$SSL_TYPE" == "letsencrypt" ]]; then
-        summary+="[OK]|SSL certificate|Let's Encrypt"$'\n'
+        summary+="[OK]|SSL certificate|Let's Encrypt (on first boot)"$'\n'
         summary+="[OK]|SSL auto-renewal|enabled"$'\n'
     else
         summary+="[OK]|SSL certificate|self-signed"$'\n'

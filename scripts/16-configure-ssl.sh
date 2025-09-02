@@ -16,57 +16,38 @@ configure_ssl_certificate() {
     local cert_domain="${FQDN:-$PVE_HOSTNAME.$DOMAIN_SUFFIX}"
     log "configure_ssl_certificate: domain=$cert_domain"
 
-    # Install certbot and obtain certificate
+    # Install certbot (will be used on first boot)
     run_remote "Installing Certbot" '
         export DEBIAN_FRONTEND=noninteractive
         apt-get install -yqq certbot
     ' "Certbot installed"
 
-    # Stop pveproxy temporarily to free port 8006 and use standalone mode on port 80
-    run_remote "Obtaining Let's Encrypt certificate" "
-        systemctl stop pveproxy
-
-        # Obtain certificate using standalone mode (port 80)
-        certbot certonly --standalone \
-            --non-interactive \
-            --agree-tos \
-            --email '${EMAIL}' \
-            --domain '${cert_domain}' \
-            --preferred-challenges http \
-            || { systemctl start pveproxy; exit 1; }
-
-        # Copy certificates to Proxmox location
-        cp /etc/letsencrypt/live/${cert_domain}/fullchain.pem /etc/pve/local/pveproxy-ssl.pem
-        cp /etc/letsencrypt/live/${cert_domain}/privkey.pem /etc/pve/local/pveproxy-ssl.key
-
-        # Set proper permissions
-        chmod 640 /etc/pve/local/pveproxy-ssl.pem
-        chmod 600 /etc/pve/local/pveproxy-ssl.key
-
-        systemctl start pveproxy
-    " "Let's Encrypt certificate obtained"
-
-    # Setup auto-renewal with deploy hook
-    run_remote "Configuring certificate auto-renewal" "
+    # Download and configure first-boot certificate script
+    run_remote "Downloading Let's Encrypt templates" "
         mkdir -p /etc/letsencrypt/renewal-hooks/deploy
 
-        cat > /etc/letsencrypt/renewal-hooks/deploy/proxmox.sh << HOOKEOF
-#!/bin/bash
-# Deploy renewed certificate to Proxmox
-cp /etc/letsencrypt/live/${cert_domain}/fullchain.pem /etc/pve/local/pveproxy-ssl.pem
-cp /etc/letsencrypt/live/${cert_domain}/privkey.pem /etc/pve/local/pveproxy-ssl.key
-chmod 640 /etc/pve/local/pveproxy-ssl.pem
-chmod 600 /etc/pve/local/pveproxy-ssl.key
-systemctl restart pveproxy
-HOOKEOF
-
+        # Download deploy hook for renewals
+        curl -fsSL '$TEMPLATE_BASE_URL/letsencrypt-deploy-hook.sh' \
+            -o /etc/letsencrypt/renewal-hooks/deploy/proxmox.sh
         chmod +x /etc/letsencrypt/renewal-hooks/deploy/proxmox.sh
 
-        # Enable certbot timer for auto-renewal
-        systemctl enable certbot.timer
-        systemctl start certbot.timer
-    " "Auto-renewal configured"
+        # Download first-boot script
+        curl -fsSL '$TEMPLATE_BASE_URL/letsencrypt-firstboot.sh' \
+            -o /usr/local/bin/obtain-letsencrypt-cert.sh
+
+        # Substitute placeholders
+        sed -i 's|{{CERT_DOMAIN}}|${cert_domain}|g' /usr/local/bin/obtain-letsencrypt-cert.sh
+        sed -i 's|{{CERT_EMAIL}}|${EMAIL}|g' /usr/local/bin/obtain-letsencrypt-cert.sh
+        chmod +x /usr/local/bin/obtain-letsencrypt-cert.sh
+
+        # Download and enable systemd service
+        curl -fsSL '$TEMPLATE_BASE_URL/letsencrypt-firstboot.service' \
+            -o /etc/systemd/system/letsencrypt-firstboot.service
+        systemctl daemon-reload
+        systemctl enable letsencrypt-firstboot.service
+    " "First-boot certificate service configured"
 
     # Store the domain for summary
     LETSENCRYPT_DOMAIN="$cert_domain"
+    LETSENCRYPT_FIRSTBOOT=true
 }

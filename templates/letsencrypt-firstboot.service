@@ -1,0 +1,15 @@
+[Unit]
+Description=Obtain Let's Encrypt certificate on first boot
+After=network-online.target pve-cluster.service
+Wants=network-online.target
+ConditionPathExists=!/etc/letsencrypt/.certificate-obtained
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/obtain-letsencrypt-cert.sh
+RemainAfterExit=yes
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

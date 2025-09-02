@@ -76,17 +76,25 @@ DNS validation fails immediately without retries if the domain doesn't resolve c
 
 ### How It Works
 
-1. **Certificate Issuance**
+1. **During Installation**
    - Certbot is installed on the server
-   - pveproxy is temporarily stopped
-   - Certificate is obtained via HTTP-01 challenge (port 80)
-   - Certificate is copied to Proxmox location
-   - pveproxy is restarted with new certificate
+   - First-boot systemd service (`letsencrypt-firstboot.service`) is configured
+   - Deploy hook for auto-renewal is set up
 
-2. **Auto-Renewal**
+2. **On First Boot** (after server reboot from rescue mode)
+   - The first-boot service runs automatically when the server is accessible from the internet
+   - pveproxy is temporarily stopped to free port 80
+   - Certificate is obtained via HTTP-01 challenge (port 80)
+   - Certificate is copied to Proxmox location (`/etc/pve/local/pveproxy-ssl.pem`)
+   - pveproxy is restarted with the new certificate
+   - Marker file is created to prevent re-running
+
+3. **Auto-Renewal**
    - Systemd timer runs certbot renewal twice daily
    - Deploy hook automatically copies renewed certificate to Proxmox
    - pveproxy is restarted after renewal
+
+> **Why first boot?** During installation, the server runs inside QEMU in Hetzner Rescue System. Port 80 is not accessible from the internet, so Let's Encrypt HTTP-01 challenge would fail. The first-boot service ensures the certificate is obtained when the server is fully operational.
 
 ### Certificate Locations
 
@@ -95,6 +103,9 @@ DNS validation fails immediately without retries if the domain doesn't resolve c
 | Certificate | `/etc/pve/local/pveproxy-ssl.pem` |
 | Private Key | `/etc/pve/local/pveproxy-ssl.key` |
 | Let's Encrypt files | `/etc/letsencrypt/live/<domain>/` |
+| First-boot script | `/usr/local/bin/obtain-letsencrypt-cert.sh` |
+| First-boot log | `/var/log/letsencrypt-firstboot.log` |
+| Marker file | `/etc/letsencrypt/.certificate-obtained` |
 
 ### Configuration
 
@@ -117,9 +128,15 @@ bash pve-install.sh -c proxmox.conf -n
 
 ### Verifying Certificate
 
-After installation, verify your certificate:
+After the first boot completes, verify your certificate:
 
 ```bash
+# Check first-boot service status
+systemctl status letsencrypt-firstboot.service
+
+# Check first-boot log
+cat /var/log/letsencrypt-firstboot.log
+
 # Check certificate issuer and dates
 openssl x509 -in /etc/pve/local/pveproxy-ssl.pem -noout -issuer -dates
 
@@ -140,17 +157,36 @@ notAfter=Feb 27 12:00:00 2025 GMT
 
 ### Troubleshooting
 
-**Certificate issuance failed:**
+**First-boot certificate failed:**
 
 ```bash
+# Check first-boot service logs
+journalctl -u letsencrypt-firstboot.service
+
+# Check detailed first-boot log
+cat /var/log/letsencrypt-firstboot.log
+
 # Check certbot logs
-journalctl -u certbot
+cat /var/log/letsencrypt/letsencrypt.log
 
 # Verify domain resolves correctly
 dig +short proxmox.example.com
 
 # Verify port 80 is accessible
 curl -I http://proxmox.example.com
+```
+
+**Re-run certificate obtainment manually:**
+
+```bash
+# Remove marker file to allow re-run
+rm -f /etc/letsencrypt/.certificate-obtained
+
+# Run the first-boot script manually
+/usr/local/bin/obtain-letsencrypt-cert.sh
+
+# Or restart the service
+systemctl restart letsencrypt-firstboot.service
 ```
 
 **Renewal failed:**
