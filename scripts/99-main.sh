@@ -221,10 +221,14 @@ install_proxmox
 
 # Boot and configure via SSH
 log "Step: boot_proxmox_with_port_forwarding"
-boot_proxmox_with_port_forwarding || {
+boot_proxmox_with_port_forwarding
+boot_result=$?
+echo "[DEBUG] boot_proxmox_with_port_forwarding returned: $boot_result" >&2
+if [[ $boot_result -ne 0 ]]; then
     log "ERROR: Failed to boot Proxmox with port forwarding"
+    echo "[DEBUG] About to exit 1 from main" >&2
     exit 1
-}
+fi
 
 # Configure Proxmox via SSH
 log "Step: configure_proxmox_via_ssh"
