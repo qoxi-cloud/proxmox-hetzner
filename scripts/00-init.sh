@@ -26,37 +26,27 @@ LOG_FILE="/root/pve-install-$(date +%Y%m%d-%H%M%S).log"
 # Track if installation completed successfully
 INSTALL_COMPLETED=false
 
-# Error handler - show message when script exits unexpectedly
-error_handler() {
+# Cleanup handler - restore cursor and show error if needed
+cleanup_and_error_handler() {
     local exit_code=$?
-    # Debug: always log that handler was called
-    echo "[DEBUG] error_handler called: exit_code=$exit_code, INSTALL_COMPLETED=$INSTALL_COMPLETED" >&2
+
+    # Always restore cursor visibility
+    tput cnorm 2>/dev/null || true
+
+    # Show error message if installation failed
     if [[ "$INSTALL_COMPLETED" != "true" && $exit_code -ne 0 ]]; then
         echo ""
-        local error_content="An error occurred and the installation was aborted."$'\n'
-        error_content+=$'\n'
-        error_content+="Please check the log file for details:"$'\n'
-        error_content+="  ${LOG_FILE}"$'\n'
-        error_content+=$'\n'
-        error_content+="View the last 50 lines with:"$'\n'
-        error_content+="  tail -50 ${LOG_FILE}"
-
-        if command -v boxes &>/dev/null; then
-            {
-                echo "INSTALLATION FAILED"
-                echo ""
-                echo "$error_content"
-            } | boxes -d stone -p a1 -s 60
-        else
-            echo -e "${CLR_RED}*** INSTALLATION FAILED ***${CLR_RESET}"
-            echo ""
-            echo -e "${CLR_YELLOW}${error_content}${CLR_RESET}"
-        fi
+        echo -e "${CLR_RED}*** INSTALLATION FAILED ***${CLR_RESET}"
+        echo ""
+        echo -e "${CLR_YELLOW}An error occurred and the installation was aborted.${CLR_RESET}"
+        echo ""
+        echo -e "${CLR_YELLOW}Please check the log file for details:${CLR_RESET}"
+        echo -e "${CLR_YELLOW}  ${LOG_FILE}${CLR_RESET}"
         echo ""
     fi
 }
 
-trap error_handler EXIT
+trap cleanup_and_error_handler EXIT
 
 # Start time for total duration tracking
 INSTALL_START_TIME=$(date +%s)
