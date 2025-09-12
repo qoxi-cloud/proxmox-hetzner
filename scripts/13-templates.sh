@@ -30,6 +30,10 @@ make_templates() {
         download_file "./templates/50unattended-upgrades" "https://github.com/qoxi-cloud/proxmox-hetzner/raw/refs/heads/main/templates/50unattended-upgrades"
         download_file "./templates/20auto-upgrades" "https://github.com/qoxi-cloud/proxmox-hetzner/raw/refs/heads/main/templates/20auto-upgrades"
         download_file "./templates/interfaces" "https://github.com/qoxi-cloud/proxmox-hetzner/raw/refs/heads/main/templates/${interfaces_template}"
+        # Let's Encrypt templates
+        download_file "./templates/letsencrypt-deploy-hook.sh" "https://github.com/qoxi-cloud/proxmox-hetzner/raw/refs/heads/main/templates/letsencrypt-deploy-hook.sh"
+        download_file "./templates/letsencrypt-firstboot.sh" "https://github.com/qoxi-cloud/proxmox-hetzner/raw/refs/heads/main/templates/letsencrypt-firstboot.sh"
+        download_file "./templates/letsencrypt-firstboot.service" "https://github.com/qoxi-cloud/proxmox-hetzner/raw/refs/heads/main/templates/letsencrypt-firstboot.service"
     ) > /dev/null 2>&1 &
     show_progress $! "Downloading template files"
 

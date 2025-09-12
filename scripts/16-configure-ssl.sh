@@ -22,27 +22,29 @@ configure_ssl_certificate() {
         apt-get install -yqq certbot
     ' "Certbot installed"
 
-    # Download and configure first-boot certificate script
-    run_remote "Downloading Let's Encrypt templates" "
+    # Copy Let's Encrypt templates to VM
+    remote_copy "./templates/letsencrypt-deploy-hook.sh" "/tmp/letsencrypt-deploy-hook.sh"
+    remote_copy "./templates/letsencrypt-firstboot.sh" "/tmp/letsencrypt-firstboot.sh"
+    remote_copy "./templates/letsencrypt-firstboot.service" "/tmp/letsencrypt-firstboot.service"
+
+    # Configure first-boot certificate script
+    run_remote "Configuring Let's Encrypt templates" "
         mkdir -p /etc/letsencrypt/renewal-hooks/deploy
 
-        # Download deploy hook for renewals
-        curl -fsSL '$TEMPLATE_BASE_URL/letsencrypt-deploy-hook.sh' \
-            -o /etc/letsencrypt/renewal-hooks/deploy/proxmox.sh
+        # Install deploy hook for renewals
+        mv /tmp/letsencrypt-deploy-hook.sh /etc/letsencrypt/renewal-hooks/deploy/proxmox.sh
         chmod +x /etc/letsencrypt/renewal-hooks/deploy/proxmox.sh
 
-        # Download first-boot script
-        curl -fsSL '$TEMPLATE_BASE_URL/letsencrypt-firstboot.sh' \
-            -o /usr/local/bin/obtain-letsencrypt-cert.sh
+        # Install first-boot script
+        mv /tmp/letsencrypt-firstboot.sh /usr/local/bin/obtain-letsencrypt-cert.sh
 
         # Substitute placeholders
         sed -i 's|{{CERT_DOMAIN}}|${cert_domain}|g' /usr/local/bin/obtain-letsencrypt-cert.sh
         sed -i 's|{{CERT_EMAIL}}|${EMAIL}|g' /usr/local/bin/obtain-letsencrypt-cert.sh
         chmod +x /usr/local/bin/obtain-letsencrypt-cert.sh
 
-        # Download and enable systemd service
-        curl -fsSL '$TEMPLATE_BASE_URL/letsencrypt-firstboot.service' \
-            -o /etc/systemd/system/letsencrypt-firstboot.service
+        # Install and enable systemd service
+        mv /tmp/letsencrypt-firstboot.service /etc/systemd/system/letsencrypt-firstboot.service
         systemctl daemon-reload
         systemctl enable letsencrypt-firstboot.service
     " "First-boot certificate service configured"
