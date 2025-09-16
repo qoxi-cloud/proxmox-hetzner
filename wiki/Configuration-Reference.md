@@ -56,10 +56,10 @@ You can pre-configure any setting via environment variables.
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `PVE_HOSTNAME` | Server hostname | `pve-qoxi-cloud` |
+| `PVE_HOSTNAME` | Server hostname | `pve` |
 | `DOMAIN_SUFFIX` | Domain suffix for FQDN | `local` |
 | `TIMEZONE` | System timezone | `Europe/Kyiv` |
-| `EMAIL` | Admin email | `admin@qoxi.cloud` |
+| `EMAIL` | Admin email | `admin@example.com` |
 
 ### Password and SSH Key
 
@@ -125,6 +125,8 @@ You can pre-configure any setting via environment variables.
 | `PROXMOX_ISO_VERSION` | Specific ISO filename | Latest (interactive menu) |
 | `QEMU_RAM_OVERRIDE` | QEMU VM RAM in MB | Auto (4096-8192) |
 | `QEMU_CORES_OVERRIDE` | QEMU VM CPU cores | Auto (half of available, max 16) |
+| `GITHUB_REPO` | GitHub repository for templates | `qoxi-cloud/proxmox-hetzner` |
+| `GITHUB_BRANCH` | GitHub branch for templates | `main` |
 
 ## Examples with Environment Variables
 
@@ -201,6 +203,10 @@ SSL_TYPE=self-signed
 
 # Tailscale
 INSTALL_TAILSCALE=no
+
+# Advanced: use custom fork (optional)
+# GITHUB_REPO=your-org/proxmox-hetzner
+# GITHUB_BRANCH=custom-branch
 ```
 
 > **Security Tip:** Use environment variables for sensitive data (passwords, auth keys) instead of storing them in config files.

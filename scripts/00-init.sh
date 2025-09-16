@@ -18,7 +18,61 @@ CLR_CYAN=$'\033[1;36m'
 CLR_RESET=$'\033[m'
 
 # Version
-VERSION="1.2.3"
+VERSION="1.3.0"
+
+# =============================================================================
+# Configuration constants
+# =============================================================================
+
+# GitHub repository for template downloads (can be overridden via environment)
+GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
+GITHUB_BRANCH="${GITHUB_BRANCH:-main}"
+GITHUB_BASE_URL="https://github.com/${GITHUB_REPO}/raw/refs/heads/${GITHUB_BRANCH}"
+
+# Proxmox ISO download URLs
+PROXMOX_ISO_BASE_URL="https://enterprise.proxmox.com/iso/"
+PROXMOX_CHECKSUM_URL="https://enterprise.proxmox.com/iso/SHA256SUMS"
+
+# DNS servers for connectivity checks and resolution
+DNS_SERVERS=("1.1.1.1" "8.8.8.8" "9.9.9.9")
+DNS_PRIMARY="1.1.1.1"
+DNS_SECONDARY="1.0.0.1"
+DNS_TERTIARY="8.8.8.8"
+DNS_QUATERNARY="8.8.4.4"
+
+# Resource requirements
+MIN_DISK_SPACE_MB=3000
+MIN_RAM_MB=4000
+MIN_CPU_CORES=2
+
+# QEMU defaults
+DEFAULT_QEMU_RAM=8192
+MIN_QEMU_RAM=4096
+MAX_QEMU_CORES=16
+QEMU_LOW_RAM_THRESHOLD=16384
+
+# Download settings
+DOWNLOAD_RETRY_COUNT=3
+DOWNLOAD_RETRY_DELAY=2
+
+# SSH settings
+SSH_READY_TIMEOUT=120
+QEMU_BOOT_TIMEOUT=300
+
+# Default configuration values
+DEFAULT_HOSTNAME="pve"
+DEFAULT_DOMAIN="local"
+DEFAULT_TIMEZONE="Europe/Kyiv"
+DEFAULT_EMAIL="admin@example.com"
+DEFAULT_BRIDGE_MODE="internal"
+DEFAULT_SUBNET="10.0.0.0/24"
+DEFAULT_SHELL="zsh"
+DEFAULT_REPO_TYPE="no-subscription"
+DEFAULT_SSL_TYPE="self-signed"
+
+# System utilities to install on Proxmox
+SYSTEM_UTILITIES="btop iotop ncdu tmux pigz smartmontools jq bat"
+OPTIONAL_PACKAGES="libguestfs-tools"
 
 # Log file
 LOG_FILE="/root/pve-install-$(date +%Y%m%d-%H%M%S).log"

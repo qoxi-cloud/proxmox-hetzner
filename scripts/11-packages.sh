@@ -48,19 +48,17 @@ prepare_packages() {
 # Returns array of ISO filenames, newest first
 get_available_proxmox_isos() {
     local count="${1:-5}"
-    local base_url="https://enterprise.proxmox.com/iso/"
 
-    curl -s "$base_url" | grep -oE 'proxmox-ve_[0-9]+\.[0-9]+-[0-9]+\.iso' | sort -uV | tail -n "$count" | tac
+    curl -s "$PROXMOX_ISO_BASE_URL" | grep -oE 'proxmox-ve_[0-9]+\.[0-9]+-[0-9]+\.iso' | sort -uV | tail -n "$count" | tac
 }
 
 # Fetch latest Proxmox VE ISO URL
 get_latest_proxmox_ve_iso() {
-    local base_url="https://enterprise.proxmox.com/iso/"
     local latest_iso
-    latest_iso=$(curl -s "$base_url" | grep -oE 'proxmox-ve_[0-9]+\.[0-9]+-[0-9]+\.iso' | sort -V | tail -n1)
+    latest_iso=$(curl -s "$PROXMOX_ISO_BASE_URL" | grep -oE 'proxmox-ve_[0-9]+\.[0-9]+-[0-9]+\.iso' | sort -V | tail -n1)
 
     if [[ -n "$latest_iso" ]]; then
-        echo "${base_url}${latest_iso}"
+        echo "${PROXMOX_ISO_BASE_URL}${latest_iso}"
     else
         echo "No Proxmox VE ISO found." >&2
         return 1
@@ -70,7 +68,7 @@ get_latest_proxmox_ve_iso() {
 # Get ISO URL by filename
 get_proxmox_iso_url() {
     local iso_filename="$1"
-    echo "https://enterprise.proxmox.com/iso/${iso_filename}"
+    echo "${PROXMOX_ISO_BASE_URL}${iso_filename}"
 }
 
 # Extract version from ISO filename (e.g., "8.3-1" from "proxmox-ve_8.3-1.iso")
@@ -104,7 +102,6 @@ download_proxmox_iso() {
     log "Found ISO URL: $PROXMOX_ISO_URL"
 
     ISO_FILENAME=$(basename "$PROXMOX_ISO_URL")
-    CHECKSUM_URL="https://enterprise.proxmox.com/iso/SHA256SUMS"
 
     # Download ISO with progress spinner (silent wget)
     log "Downloading ISO: $ISO_FILENAME"
@@ -126,7 +123,7 @@ download_proxmox_iso() {
 
     # Download ISO checksum
     log "Downloading checksum file"
-    wget -q -O SHA256SUMS "$CHECKSUM_URL" >> "$LOG_FILE" 2>&1
+    wget -q -O SHA256SUMS "$PROXMOX_CHECKSUM_URL" >> "$LOG_FILE" 2>&1
 
     if [[ -f "SHA256SUMS" ]]; then
         EXPECTED_CHECKSUM=$(grep "$ISO_FILENAME" SHA256SUMS | awk '{print $1}')
@@ -158,6 +155,26 @@ download_proxmox_iso() {
     fi
 }
 
+# Validate answer.toml has required fields
+validate_answer_toml() {
+    local file="$1"
+    local required_fields=("fqdn" "mailto" "timezone" "root_password")
+
+    for field in "${required_fields[@]}"; do
+        if ! grep -q "^\s*${field}\s*=" "$file" 2>/dev/null; then
+            log "ERROR: Missing required field in answer.toml: $field"
+            return 1
+        fi
+    done
+
+    if ! grep -q "\[global\]" "$file" 2>/dev/null; then
+        log "ERROR: Missing [global] section in answer.toml"
+        return 1
+    fi
+
+    return 0
+}
+
 make_answer_toml() {
     log "Creating answer.toml for autoinstall"
     log "ZFS_RAID=$ZFS_RAID, DRIVE_COUNT=$DRIVE_COUNT"
@@ -185,30 +202,27 @@ make_answer_toml() {
         # Single disk or single mode selected - must use raid0 (single disk stripe)
         zfs_raid_value="raid0"
     fi
-    local zfs_raid_line="    zfs.raid = \"$zfs_raid_value\""
     log "Using ZFS raid: $zfs_raid_value"
 
-    cat <<EOF > answer.toml
-[global]
-    keyboard = "en-us"
-    country = "us"
-    fqdn = "$FQDN"
-    mailto = "$EMAIL"
-    timezone = "$TIMEZONE"
-    root_password = "$NEW_ROOT_PASSWORD"
-    reboot_on_error = false
+    # Download and process answer.toml template
+    download_template "./answer.toml" "answer.toml"
 
-[network]
-    source = "from-dhcp"
+    # Apply variable substitutions
+    apply_template_vars "./answer.toml" \
+        "FQDN=$FQDN" \
+        "EMAIL=$EMAIL" \
+        "TIMEZONE=$TIMEZONE" \
+        "ROOT_PASSWORD=$NEW_ROOT_PASSWORD" \
+        "ZFS_RAID=$zfs_raid_value" \
+        "DISK_LIST=$DISK_LIST"
 
-[disk-setup]
-    filesystem = "zfs"
-${zfs_raid_line}
-    disk_list = $DISK_LIST
+    # Validate the generated file
+    if ! validate_answer_toml "./answer.toml"; then
+        log "ERROR: answer.toml validation failed"
+        exit 1
+    fi
 
-EOF
-
-    log "answer.toml created:"
+    log "answer.toml created and validated:"
     cat answer.toml >> "$LOG_FILE"
 }
 

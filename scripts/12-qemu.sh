@@ -44,9 +44,9 @@ setup_qemu_config() {
         log "Using user-specified cores: $QEMU_CORES"
     else
         QEMU_CORES=$((available_cores / 2))
-        [[ $QEMU_CORES -lt 2 ]] && QEMU_CORES=2
+        [[ $QEMU_CORES -lt $MIN_CPU_CORES ]] && QEMU_CORES=$MIN_CPU_CORES
         [[ $QEMU_CORES -gt $available_cores ]] && QEMU_CORES=$available_cores
-        [[ $QEMU_CORES -gt 16 ]] && QEMU_CORES=16
+        [[ $QEMU_CORES -gt $MAX_QEMU_CORES ]] && QEMU_CORES=$MAX_QEMU_CORES
     fi
 
     if [[ -n "$QEMU_RAM_OVERRIDE" ]]; then
@@ -57,8 +57,8 @@ setup_qemu_config() {
             print_warning "Requested QEMU RAM (${QEMU_RAM}MB) may exceed safe limits (available: ${available_ram_mb}MB)"
         fi
     else
-        QEMU_RAM=8192
-        [[ $available_ram_mb -lt 16384 ]] && QEMU_RAM=4096
+        QEMU_RAM=$DEFAULT_QEMU_RAM
+        [[ $available_ram_mb -lt $QEMU_LOW_RAM_THRESHOLD ]] && QEMU_RAM=$MIN_QEMU_RAM
     fi
 
     log "QEMU config: $QEMU_CORES vCPUs, ${QEMU_RAM}MB RAM"

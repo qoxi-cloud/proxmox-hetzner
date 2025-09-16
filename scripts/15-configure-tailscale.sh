@@ -52,7 +52,7 @@ configure_tailscale() {
         if [[ "$TAILSCALE_SSH" == "yes" && "$TAILSCALE_DISABLE_SSH" == "yes" ]]; then
             log "Deploying disable-openssh.service (TAILSCALE_SSH=$TAILSCALE_SSH, TAILSCALE_DISABLE_SSH=$TAILSCALE_DISABLE_SSH)"
             (
-                download_file "./templates/disable-openssh.service" "https://github.com/qoxi-cloud/proxmox-hetzner/raw/refs/heads/main/templates/disable-openssh.service"
+                download_template "./templates/disable-openssh.service"
                 log "Downloaded disable-openssh.service, size: $(wc -c < ./templates/disable-openssh.service 2>/dev/null || echo 'failed')"
                 remote_copy "templates/disable-openssh.service" "/etc/systemd/system/disable-openssh.service"
                 log "Copied disable-openssh.service to VM"
@@ -68,7 +68,7 @@ configure_tailscale() {
         if [[ "$STEALTH_MODE" == "yes" ]]; then
             log "Deploying stealth-firewall.service (STEALTH_MODE=$STEALTH_MODE)"
             (
-                download_file "./templates/stealth-firewall.service" "https://github.com/qoxi-cloud/proxmox-hetzner/raw/refs/heads/main/templates/stealth-firewall.service"
+                download_template "./templates/stealth-firewall.service"
                 log "Downloaded stealth-firewall.service, size: $(wc -c < ./templates/stealth-firewall.service 2>/dev/null || echo 'failed')"
                 remote_copy "templates/stealth-firewall.service" "/etc/systemd/system/stealth-firewall.service"
                 log "Copied stealth-firewall.service to VM"

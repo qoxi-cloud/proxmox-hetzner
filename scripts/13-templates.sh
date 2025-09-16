@@ -19,37 +19,36 @@ make_templates() {
 
     # Download template files in background with progress
     (
-        download_file "./templates/99-proxmox.conf" "https://github.com/qoxi-cloud/proxmox-hetzner/raw/refs/heads/main/templates/99-proxmox.conf"
-        download_file "./templates/hosts" "https://github.com/qoxi-cloud/proxmox-hetzner/raw/refs/heads/main/templates/hosts"
-        download_file "./templates/debian.sources" "https://github.com/qoxi-cloud/proxmox-hetzner/raw/refs/heads/main/templates/debian.sources"
-        download_file "./templates/proxmox.sources" "https://github.com/qoxi-cloud/proxmox-hetzner/raw/refs/heads/main/templates/${proxmox_sources_template}"
-        download_file "./templates/sshd_config" "https://github.com/qoxi-cloud/proxmox-hetzner/raw/refs/heads/main/templates/sshd_config"
-        download_file "./templates/zshrc" "https://github.com/qoxi-cloud/proxmox-hetzner/raw/refs/heads/main/templates/zshrc"
-        download_file "./templates/p10k.zsh" "https://github.com/qoxi-cloud/proxmox-hetzner/raw/refs/heads/main/templates/p10k.zsh"
-        download_file "./templates/chrony" "https://github.com/qoxi-cloud/proxmox-hetzner/raw/refs/heads/main/templates/chrony"
-        download_file "./templates/50unattended-upgrades" "https://github.com/qoxi-cloud/proxmox-hetzner/raw/refs/heads/main/templates/50unattended-upgrades"
-        download_file "./templates/20auto-upgrades" "https://github.com/qoxi-cloud/proxmox-hetzner/raw/refs/heads/main/templates/20auto-upgrades"
-        download_file "./templates/interfaces" "https://github.com/qoxi-cloud/proxmox-hetzner/raw/refs/heads/main/templates/${interfaces_template}"
+        download_template "./templates/99-proxmox.conf"
+        download_template "./templates/hosts"
+        download_template "./templates/debian.sources"
+        download_template "./templates/proxmox.sources" "$proxmox_sources_template"
+        download_template "./templates/sshd_config"
+        download_template "./templates/zshrc"
+        download_template "./templates/p10k.zsh"
+        download_template "./templates/chrony"
+        download_template "./templates/50unattended-upgrades"
+        download_template "./templates/20auto-upgrades"
+        download_template "./templates/interfaces" "$interfaces_template"
+        download_template "./templates/resolv.conf"
+        download_template "./templates/configure-zfs-arc.sh"
+        download_template "./templates/locale.sh"
+        download_template "./templates/default-locale"
+        download_template "./templates/environment"
+        download_template "./templates/cpufrequtils"
+        download_template "./templates/remove-subscription-nag.sh"
         # Let's Encrypt templates
-        download_file "./templates/letsencrypt-deploy-hook.sh" "https://github.com/qoxi-cloud/proxmox-hetzner/raw/refs/heads/main/templates/letsencrypt-deploy-hook.sh"
-        download_file "./templates/letsencrypt-firstboot.sh" "https://github.com/qoxi-cloud/proxmox-hetzner/raw/refs/heads/main/templates/letsencrypt-firstboot.sh"
-        download_file "./templates/letsencrypt-firstboot.service" "https://github.com/qoxi-cloud/proxmox-hetzner/raw/refs/heads/main/templates/letsencrypt-firstboot.service"
+        download_template "./templates/letsencrypt-deploy-hook.sh"
+        download_template "./templates/letsencrypt-firstboot.sh"
+        download_template "./templates/letsencrypt-firstboot.service"
     ) > /dev/null 2>&1 &
     show_progress $! "Downloading template files"
 
     # Modify template files in background with progress
     (
-        sed -i "s|{{MAIN_IPV4}}|$MAIN_IPV4|g" ./templates/hosts
-        sed -i "s|{{FQDN}}|$FQDN|g" ./templates/hosts
-        sed -i "s|{{HOSTNAME}}|$PVE_HOSTNAME|g" ./templates/hosts
-        sed -i "s|{{MAIN_IPV6}}|$MAIN_IPV6|g" ./templates/hosts
-        sed -i "s|{{INTERFACE_NAME}}|$INTERFACE_NAME|g" ./templates/interfaces
-        sed -i "s|{{MAIN_IPV4}}|$MAIN_IPV4|g" ./templates/interfaces
-        sed -i "s|{{MAIN_IPV4_GW}}|$MAIN_IPV4_GW|g" ./templates/interfaces
-        sed -i "s|{{MAIN_IPV6}}|$MAIN_IPV6|g" ./templates/interfaces
-        sed -i "s|{{PRIVATE_IP_CIDR}}|$PRIVATE_IP_CIDR|g" ./templates/interfaces
-        sed -i "s|{{PRIVATE_SUBNET}}|$PRIVATE_SUBNET|g" ./templates/interfaces
-        sed -i "s|{{FIRST_IPV6_CIDR}}|$FIRST_IPV6_CIDR|g" ./templates/interfaces
+        apply_common_template_vars "./templates/hosts"
+        apply_common_template_vars "./templates/interfaces"
+        apply_common_template_vars "./templates/resolv.conf"
     ) &
     show_progress $! "Modifying template files"
 }

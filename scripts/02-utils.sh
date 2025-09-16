@@ -7,10 +7,11 @@
 download_file() {
     local output_file="$1"
     local url="$2"
-    local max_retries=3
+    local max_retries="${DOWNLOAD_RETRY_COUNT:-3}"
+    local retry_delay="${DOWNLOAD_RETRY_DELAY:-2}"
     local retry_count=0
 
-    while [ $retry_count -lt $max_retries ]; do
+    while [ "$retry_count" -lt "$max_retries" ]; do
         if wget -q -O "$output_file" "$url"; then
             if [ -s "$output_file" ]; then
                 return 0
@@ -21,11 +22,79 @@ download_file() {
             print_warning "Download failed (attempt $((retry_count + 1))/$max_retries): $url"
         fi
         retry_count=$((retry_count + 1))
-        [ $retry_count -lt $max_retries ] && sleep 2
+        [ "$retry_count" -lt "$max_retries" ] && sleep "$retry_delay"
     done
 
     log "ERROR: Failed to download $url after $max_retries attempts"
     exit 1
+}
+
+# =============================================================================
+# Template processing utilities
+# =============================================================================
+
+# Apply template variable substitutions to a file
+# Usage: apply_template_vars FILE [VAR1=VALUE1] [VAR2=VALUE2] ...
+apply_template_vars() {
+    local file="$1"
+    shift
+
+    if [[ ! -f "$file" ]]; then
+        log "ERROR: Template file not found: $file"
+        return 1
+    fi
+
+    # Build sed command with all substitutions
+    local sed_args=()
+
+    if [[ $# -gt 0 ]]; then
+        # Use provided VAR=VALUE pairs
+        for pair in "$@"; do
+            local var="${pair%%=*}"
+            local value="${pair#*=}"
+            # Escape special characters in value for sed
+            value="${value//\\/\\\\}"
+            value="${value//&/\\&}"
+            value="${value//|/\\|}"
+            sed_args+=(-e "s|{{${var}}}|${value}|g")
+        done
+    fi
+
+    if [[ ${#sed_args[@]} -gt 0 ]]; then
+        sed -i "${sed_args[@]}" "$file"
+    fi
+}
+
+# Apply common template variables to a file using global variables
+# Usage: apply_common_template_vars FILE
+apply_common_template_vars() {
+    local file="$1"
+
+    apply_template_vars "$file" \
+        "MAIN_IPV4=${MAIN_IPV4:-}" \
+        "MAIN_IPV4_GW=${MAIN_IPV4_GW:-}" \
+        "MAIN_IPV6=${MAIN_IPV6:-}" \
+        "FIRST_IPV6_CIDR=${FIRST_IPV6_CIDR:-}" \
+        "FQDN=${FQDN:-}" \
+        "HOSTNAME=${PVE_HOSTNAME:-}" \
+        "INTERFACE_NAME=${INTERFACE_NAME:-}" \
+        "PRIVATE_IP_CIDR=${PRIVATE_IP_CIDR:-}" \
+        "PRIVATE_SUBNET=${PRIVATE_SUBNET:-}" \
+        "DNS_PRIMARY=${DNS_PRIMARY:-1.1.1.1}" \
+        "DNS_SECONDARY=${DNS_SECONDARY:-1.0.0.1}" \
+        "DNS_TERTIARY=${DNS_TERTIARY:-8.8.8.8}" \
+        "DNS_QUATERNARY=${DNS_QUATERNARY:-8.8.4.4}"
+}
+
+# Download template from GitHub repository
+# Usage: download_template LOCAL_PATH [REMOTE_FILENAME]
+# REMOTE_FILENAME defaults to basename of LOCAL_PATH
+download_template() {
+    local local_path="$1"
+    local remote_file="${2:-$(basename "$local_path")}"
+    local url="${GITHUB_BASE_URL}/templates/${remote_file}"
+
+    download_file "$local_path" "$url"
 }
 
 # Generate a secure random password
