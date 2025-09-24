@@ -33,7 +33,7 @@ configure_tailscale() {
                 remote_exec "tailscale up --authkey='$TAILSCALE_AUTH_KEY'" || exit 1
             fi
             remote_exec "tailscale ip -4" > "$tmp_ip" 2>/dev/null || true
-            remote_exec "tailscale status --json | grep -o '\"DNSName\":\"[^\"]*\"' | head -1 | cut -d'\"' -f4 | sed 's/\\.$//'" > "$tmp_hostname" 2>/dev/null || true
+            remote_exec "tailscale status --json | jq -r '.Self.DNSName // empty' | sed 's/\\.$//' " > "$tmp_hostname" 2>/dev/null || true
         ) > /dev/null 2>&1 &
         show_progress $! "Authenticating Tailscale"
 
