@@ -165,6 +165,22 @@ input_box() {
     local prompt="$3"
     local default="$4"
 
+    # Colorize input box: cyan frame, yellow text
+    _colorize_input_box() {
+        while IFS= read -r line; do
+            # Top/bottom border (lines with + and -)
+            if [[ "$line" =~ ^\+[-+]+\+$ ]]; then
+                echo -e "${CLR_CYAN}${line}${CLR_RESET}"
+            # Content line with | borders
+            elif [[ "$line" =~ ^(\|)(.*)\|$ ]]; then
+                local content="${BASH_REMATCH[2]}"
+                echo -e "${CLR_CYAN}|${CLR_RESET}${CLR_YELLOW}${content}${CLR_RESET}${CLR_CYAN}|${CLR_RESET}"
+            else
+                echo "$line"
+            fi
+        done
+    }
+
     local box_lines
     box_lines=$({
         echo "$title"
@@ -174,7 +190,7 @@ input_box() {
     {
         echo "$title"
         echo "$content"
-    } | boxes -d stone -p a1 -s $MENU_BOX_WIDTH
+    } | boxes -d stone -p a1 -s $MENU_BOX_WIDTH | _colorize_input_box
 
     read -e -p "$prompt" -i "$default" INPUT_VALUE
 
