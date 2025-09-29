@@ -49,34 +49,27 @@ get_inputs_interactive() {
 
     # Password
     if [[ -n "$NEW_ROOT_PASSWORD" ]]; then
-        if ! validate_password "$NEW_ROOT_PASSWORD"; then
-            if [[ ${#NEW_ROOT_PASSWORD} -lt 8 ]]; then
-                print_error "Password must be at least 8 characters long."
-            else
-                print_error "Password contains invalid characters (Cyrillic or non-ASCII)."
-                print_error "Only Latin letters, digits, and special characters are allowed."
-            fi
+        if ! validate_password_with_error "$NEW_ROOT_PASSWORD"; then
             exit 1
         fi
         print_success "Password: ******** (from env)"
     else
         echo -n "Enter root password (or press Enter to auto-generate): "
         local input_password
+        local password_error
         input_password=$(read_password "")
         # Move cursor up twice (read_password adds a newline) and clear
         printf "\033[A\033[A\r\033[K"
         if [[ -z "$input_password" ]]; then
-            NEW_ROOT_PASSWORD=$(generate_password 16)
+            NEW_ROOT_PASSWORD=$(generate_password "$DEFAULT_PASSWORD_LENGTH")
             PASSWORD_GENERATED="yes"
             print_success "Password: auto-generated (will be shown at the end)"
         else
-            while ! validate_password "$input_password"; do
-                if [[ ${#input_password} -lt 8 ]]; then
-                    print_error "Password must be at least 8 characters long."
-                else
-                    print_error "Password contains invalid characters (Cyrillic or non-ASCII)."
-                fi
+            password_error=$(get_password_error "$input_password")
+            while [[ -n "$password_error" ]]; do
+                print_error "$password_error"
                 input_password=$(read_password "Enter root password: ")
+                password_error=$(get_password_error "$input_password")
             done
             NEW_ROOT_PASSWORD="$input_password"
             print_success "Password: ********"
@@ -502,8 +495,8 @@ get_inputs_interactive() {
                     fi
 
                     if [[ $attempt -lt $max_attempts ]]; then
-                        print_info "Retrying in 10 seconds... (Press Ctrl+C to cancel)"
-                        sleep 10
+                        print_info "Retrying in ${DNS_RETRY_DELAY} seconds... (Press Ctrl+C to cancel)"
+                        sleep "$DNS_RETRY_DELAY"
                     fi
                     ((attempt++))
                 done

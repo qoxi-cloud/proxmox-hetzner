@@ -125,9 +125,36 @@ You can pre-configure any setting via environment variables.
 | `PROXMOX_ISO_VERSION` | Specific ISO filename | Latest (interactive menu) |
 | `QEMU_RAM_OVERRIDE` | QEMU VM RAM in MB | Auto (4096-8192) |
 | `QEMU_CORES_OVERRIDE` | QEMU VM CPU cores | Auto (half of available, max 16) |
-| `DNS_LOOKUP_TIMEOUT` | DNS resolution timeout in seconds | `5` |
 | `GITHUB_REPO` | GitHub repository for templates | `qoxi-cloud/proxmox-hetzner` |
 | `GITHUB_BRANCH` | GitHub branch for templates | `main` |
+
+### Timeout and Retry Settings
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `DNS_LOOKUP_TIMEOUT` | DNS resolution timeout in seconds | `5` |
+| `DNS_RETRY_DELAY` | Delay between DNS retry attempts in seconds | `10` |
+| `SSH_CONNECT_TIMEOUT` | SSH connection timeout in seconds | `10` |
+| `SSH_READY_TIMEOUT` | SSH ready check timeout in seconds | `120` |
+| `QEMU_BOOT_TIMEOUT` | QEMU boot timeout in seconds | `300` |
+| `DOWNLOAD_RETRY_COUNT` | Number of download retry attempts | `3` |
+| `DOWNLOAD_RETRY_DELAY` | Delay between download retries in seconds | `2` |
+
+### QEMU Resource Limits
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `DEFAULT_QEMU_RAM` | Default QEMU RAM in MB | `8192` |
+| `MIN_QEMU_RAM` | Minimum QEMU RAM in MB | `4096` |
+| `MAX_QEMU_CORES` | Maximum QEMU CPU cores | `16` |
+| `QEMU_MIN_RAM_RESERVE` | Minimum RAM to reserve for host in MB | `2048` |
+| `QEMU_LOW_RAM_THRESHOLD` | Threshold for low RAM systems in MB | `16384` |
+
+### Password Settings
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `DEFAULT_PASSWORD_LENGTH` | Length of auto-generated passwords | `16` |
 
 ## Examples with Environment Variables
 
@@ -211,6 +238,26 @@ INSTALL_TAILSCALE=no
 ```
 
 > **Security Tip:** Use environment variables for sensitive data (passwords, auth keys) instead of storing them in config files.
+
+## Configuration Validation
+
+When loading a configuration file (`-c` option), the installer validates all values:
+
+| Setting | Valid Values |
+|---------|--------------|
+| `BRIDGE_MODE` | `internal`, `external`, `both` |
+| `ZFS_RAID` | `single`, `raid0`, `raid1` |
+| `PVE_REPO_TYPE` | `no-subscription`, `enterprise`, `test` |
+| `SSL_TYPE` | `self-signed`, `letsencrypt` |
+| `DEFAULT_SHELL` | `bash`, `zsh` |
+
+Invalid values will cause the installer to exit with an error message.
+
+Use `--validate` to check configuration without running the installation:
+
+```bash
+bash pve-install.sh -c proxmox.conf --validate
+```
 
 ---
 

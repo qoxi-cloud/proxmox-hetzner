@@ -14,10 +14,11 @@ log_debug() {
 }
 
 # Log command output to file
+# Usage: log_cmd command [args...]
+# Example: log_cmd apt-get update
 log_cmd() {
-    local cmd="$1"
-    log_debug "Running: $cmd"
-    eval "$cmd" >> "$LOG_FILE" 2>&1
+    log_debug "Running: $*"
+    "$@" >> "$LOG_FILE" 2>&1
     local exit_code=$?
     log_debug "Exit code: $exit_code"
     return $exit_code

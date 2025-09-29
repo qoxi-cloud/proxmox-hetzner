@@ -53,7 +53,7 @@ setup_qemu_config() {
         QEMU_RAM="$QEMU_RAM_OVERRIDE"
         log "Using user-specified RAM: ${QEMU_RAM}MB"
         # Warn if requested RAM exceeds available
-        if [[ $QEMU_RAM -gt $((available_ram_mb - 2048)) ]]; then
+        if [[ $QEMU_RAM -gt $((available_ram_mb - QEMU_MIN_RAM_RESERVE)) ]]; then
             print_warning "Requested QEMU RAM (${QEMU_RAM}MB) may exceed safe limits (available: ${available_ram_mb}MB)"
         fi
     else
@@ -71,110 +71,159 @@ setup_qemu_config() {
     log "Drive args: $DRIVE_ARGS"
 }
 
-# Release drives from any existing locks
-release_drives() {
-    log "Releasing drives from locks..."
-    
-    # More aggressive QEMU cleanup - find all QEMU processes
-    local qemu_pids
-    qemu_pids=$(pgrep -f "qemu-system-x86" 2>/dev/null || true)
-    if [[ -n "$qemu_pids" ]]; then
-        log "Found QEMU processes: $qemu_pids"
-        # Try graceful shutdown first
-        for pid in $qemu_pids; do
-            if kill -0 "$pid" 2>/dev/null; then
-                log "Sending TERM to QEMU process $pid"
-                kill -TERM "$pid" 2>/dev/null || true
-            fi
+# =============================================================================
+# Drive release helper functions
+# =============================================================================
+
+# Send signal to process if it's running
+# Usage: _signal_process PID SIGNAL LOG_MESSAGE
+_signal_process() {
+    local pid="$1"
+    local signal="$2"
+    local message="$3"
+
+    if kill -0 "$pid" 2>/dev/null; then
+        log "$message"
+        kill "-$signal" "$pid" 2>/dev/null || true
+    fi
+}
+
+# Kill processes by pattern with graceful then forced termination
+# Usage: _kill_processes_by_pattern PATTERN
+_kill_processes_by_pattern() {
+    local pattern="$1"
+    local pids
+
+    pids=$(pgrep -f "$pattern" 2>/dev/null || true)
+    if [[ -n "$pids" ]]; then
+        log "Found processes matching '$pattern': $pids"
+
+        # Graceful shutdown first (SIGTERM)
+        for pid in $pids; do
+            _signal_process "$pid" "TERM" "Sending TERM to process $pid"
         done
         sleep 3
-        # Force kill if still running
-        for pid in $qemu_pids; do
-            if kill -0 "$pid" 2>/dev/null; then
-                log "Force killing QEMU process $pid"
-                kill -9 "$pid" 2>/dev/null || true
-            fi
+
+        # Force kill if still running (SIGKILL)
+        for pid in $pids; do
+            _signal_process "$pid" "9" "Force killing process $pid"
         done
         sleep 1
     fi
-    
+
     # Also try pkill as fallback
-    pkill -TERM qemu-system-x86 2>/dev/null || true
+    pkill -TERM "$pattern" 2>/dev/null || true
     sleep 1
-    pkill -9 qemu-system-x86 2>/dev/null || true
-    
-    # Stop mdadm arrays that might use the drives
-    if command -v mdadm &>/dev/null; then
-        log "Stopping mdadm arrays..."
-        mdadm --stop --scan 2>/dev/null || true
-        # Stop specific arrays if found
-        for md in /dev/md*; do
-            if [[ -b "$md" ]]; then
-                mdadm --stop "$md" 2>/dev/null || true
-            fi
-        done
+    pkill -9 "$pattern" 2>/dev/null || true
+}
+
+# Stop mdadm RAID arrays
+_stop_mdadm_arrays() {
+    if ! command -v mdadm &>/dev/null; then
+        return 0
     fi
-    
-    # Deactivate LVM volume groups - more thorough approach
-    if command -v vgchange &>/dev/null; then
-        log "Deactivating LVM volume groups..."
-        vgchange -an 2>/dev/null || true
-        # Deactivate specific VGs by name if vgs is available
-        if command -v vgs &>/dev/null; then
-            while IFS= read -r vg; do
-                [[ -n "$vg" ]] && vgchange -an "$vg" 2>/dev/null || true
-            done < <(vgs --noheadings -o vg_name 2>/dev/null)
+
+    log "Stopping mdadm arrays..."
+    mdadm --stop --scan 2>/dev/null || true
+
+    # Stop specific arrays if found
+    for md in /dev/md*; do
+        if [[ -b "$md" ]]; then
+            mdadm --stop "$md" 2>/dev/null || true
         fi
+    done
+}
+
+# Deactivate LVM volume groups
+_deactivate_lvm() {
+    if ! command -v vgchange &>/dev/null; then
+        return 0
     fi
-    
-    # Unmount any filesystems on target drives
-    if [[ -n "${DRIVES[*]}" ]]; then
-        log "Unmounting filesystems on target drives..."
-        for drive in "${DRIVES[@]}"; do
-            # Use findmnt for efficient mount point detection (faster and more reliable)
-            if command -v findmnt &>/dev/null; then
-                while IFS= read -r mountpoint; do
-                    [[ -z "$mountpoint" ]] && continue
-                    log "Unmounting $mountpoint"
-                    umount -f "$mountpoint" 2>/dev/null || true
-                done < <(findmnt -rn -o TARGET "$drive"* 2>/dev/null)
-            else
-                # Fallback to mount | grep
-                local drive_name
-                drive_name=$(basename "$drive")
-                while IFS= read -r mountpoint; do
-                    [[ -z "$mountpoint" ]] && continue
-                    log "Unmounting $mountpoint"
-                    umount -f "$mountpoint" 2>/dev/null || true
-                done < <(mount | grep -E "(^|/)$drive_name" | awk '{print $3}')
-            fi
-        done
+
+    log "Deactivating LVM volume groups..."
+    vgchange -an 2>/dev/null || true
+
+    # Deactivate specific VGs by name if vgs is available
+    if command -v vgs &>/dev/null; then
+        while IFS= read -r vg; do
+            [[ -n "$vg" ]] && vgchange -an "$vg" 2>/dev/null || true
+        done < <(vgs --noheadings -o vg_name 2>/dev/null)
     fi
-    
+}
+
+# Unmount filesystems on specified drives
+_unmount_drive_filesystems() {
+    [[ -z "${DRIVES[*]}" ]] && return 0
+
+    log "Unmounting filesystems on target drives..."
+    for drive in "${DRIVES[@]}"; do
+        # Use findmnt for efficient mount point detection (faster and more reliable)
+        if command -v findmnt &>/dev/null; then
+            while IFS= read -r mountpoint; do
+                [[ -z "$mountpoint" ]] && continue
+                log "Unmounting $mountpoint"
+                umount -f "$mountpoint" 2>/dev/null || true
+            done < <(findmnt -rn -o TARGET "$drive"* 2>/dev/null)
+        else
+            # Fallback to mount | grep
+            local drive_name
+            drive_name=$(basename "$drive")
+            while IFS= read -r mountpoint; do
+                [[ -z "$mountpoint" ]] && continue
+                log "Unmounting $mountpoint"
+                umount -f "$mountpoint" 2>/dev/null || true
+            done < <(mount | grep -E "(^|/)$drive_name" | awk '{print $3}')
+        fi
+    done
+}
+
+# Kill processes holding drives open
+_kill_drive_holders() {
+    [[ -z "${DRIVES[*]}" ]] && return 0
+
+    log "Checking for processes using drives..."
+    for drive in "${DRIVES[@]}"; do
+        # Use lsof if available
+        if command -v lsof &>/dev/null; then
+            while IFS= read -r pid; do
+                [[ -z "$pid" ]] && continue
+                _signal_process "$pid" "9" "Killing process $pid using $drive"
+            done < <(lsof "$drive" 2>/dev/null | awk 'NR>1 {print $2}' | sort -u)
+        fi
+
+        # Use fuser as alternative
+        if command -v fuser &>/dev/null; then
+            fuser -k "$drive" 2>/dev/null || true
+        fi
+    done
+}
+
+# =============================================================================
+# Main drive release function
+# =============================================================================
+
+# Release drives from any existing locks
+release_drives() {
+    log "Releasing drives from locks..."
+
+    # Kill QEMU processes
+    _kill_processes_by_pattern "qemu-system-x86"
+
+    # Stop RAID arrays
+    _stop_mdadm_arrays
+
+    # Deactivate LVM
+    _deactivate_lvm
+
+    # Unmount filesystems
+    _unmount_drive_filesystems
+
     # Additional pause for locks to release
     sleep 2
-    
-    # Check for processes still using drives and kill them
-    if [[ -n "${DRIVES[*]}" ]]; then
-        log "Checking for processes using drives..."
-        for drive in "${DRIVES[@]}"; do
-            # Use lsof if available
-            if command -v lsof &>/dev/null; then
-                while IFS= read -r pid; do
-                    [[ -z "$pid" ]] && continue
-                    if kill -0 "$pid" 2>/dev/null; then
-                        log "Killing process $pid using $drive"
-                        kill -9 "$pid" 2>/dev/null || true
-                    fi
-                done < <(lsof "$drive" 2>/dev/null | awk 'NR>1 {print $2}' | sort -u)
-            fi
-            # Use fuser as alternative
-            if command -v fuser &>/dev/null; then
-                fuser -k "$drive" 2>/dev/null || true
-            fi
-        done
-    fi
-    
+
+    # Kill any remaining processes holding drives
+    _kill_drive_holders
+
     log "Drives released"
 }
 

@@ -237,7 +237,10 @@ make_answer_toml() {
     log "Using ZFS raid: $zfs_raid_value"
 
     # Download and process answer.toml template
-    download_template "./answer.toml" "answer.toml"
+    if ! download_template "./answer.toml" "answer.toml"; then
+        log "ERROR: Failed to download answer.toml template"
+        exit 1
+    fi
 
     # Apply variable substitutions
     apply_template_vars "./answer.toml" \

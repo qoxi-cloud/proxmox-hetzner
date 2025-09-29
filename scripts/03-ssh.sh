@@ -3,7 +3,9 @@
 # SSH helper functions
 # =============================================================================
 
-SSH_OPTS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -o ConnectTimeout=10"
+# SSH options for QEMU VM on localhost - host key checking disabled since VM is local/ephemeral
+# NOT suitable for production remote servers
+SSH_OPTS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -o ConnectTimeout=${SSH_CONNECT_TIMEOUT:-10}"
 SSH_PORT="5555"
 
 # Check if port is available before use

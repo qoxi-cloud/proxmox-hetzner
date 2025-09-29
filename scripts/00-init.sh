@@ -57,7 +57,20 @@ DOWNLOAD_RETRY_DELAY=2
 
 # SSH settings
 SSH_READY_TIMEOUT=120
+SSH_CONNECT_TIMEOUT=10
 QEMU_BOOT_TIMEOUT=300
+
+# Password settings
+DEFAULT_PASSWORD_LENGTH=16
+
+# QEMU memory settings
+QEMU_MIN_RAM_RESERVE=2048
+
+# DNS lookup timeout (seconds)
+DNS_LOOKUP_TIMEOUT=5
+
+# Retry delays (seconds)
+DNS_RETRY_DELAY=10
 
 # Default configuration values
 DEFAULT_HOSTNAME="pve"

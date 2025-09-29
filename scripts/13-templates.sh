@@ -19,30 +19,33 @@ make_templates() {
 
     # Download template files in background with progress
     (
-        download_template "./templates/99-proxmox.conf"
-        download_template "./templates/hosts"
-        download_template "./templates/debian.sources"
-        download_template "./templates/proxmox.sources" "$proxmox_sources_template"
-        download_template "./templates/sshd_config"
-        download_template "./templates/zshrc"
-        download_template "./templates/p10k.zsh"
-        download_template "./templates/chrony"
-        download_template "./templates/50unattended-upgrades"
-        download_template "./templates/20auto-upgrades"
-        download_template "./templates/interfaces" "$interfaces_template"
-        download_template "./templates/resolv.conf"
-        download_template "./templates/configure-zfs-arc.sh"
-        download_template "./templates/locale.sh"
-        download_template "./templates/default-locale"
-        download_template "./templates/environment"
-        download_template "./templates/cpufrequtils"
-        download_template "./templates/remove-subscription-nag.sh"
+        download_template "./templates/99-proxmox.conf" || exit 1
+        download_template "./templates/hosts" || exit 1
+        download_template "./templates/debian.sources" || exit 1
+        download_template "./templates/proxmox.sources" "$proxmox_sources_template" || exit 1
+        download_template "./templates/sshd_config" || exit 1
+        download_template "./templates/zshrc" || exit 1
+        download_template "./templates/p10k.zsh" || exit 1
+        download_template "./templates/chrony" || exit 1
+        download_template "./templates/50unattended-upgrades" || exit 1
+        download_template "./templates/20auto-upgrades" || exit 1
+        download_template "./templates/interfaces" "$interfaces_template" || exit 1
+        download_template "./templates/resolv.conf" || exit 1
+        download_template "./templates/configure-zfs-arc.sh" || exit 1
+        download_template "./templates/locale.sh" || exit 1
+        download_template "./templates/default-locale" || exit 1
+        download_template "./templates/environment" || exit 1
+        download_template "./templates/cpufrequtils" || exit 1
+        download_template "./templates/remove-subscription-nag.sh" || exit 1
         # Let's Encrypt templates
-        download_template "./templates/letsencrypt-deploy-hook.sh"
-        download_template "./templates/letsencrypt-firstboot.sh"
-        download_template "./templates/letsencrypt-firstboot.service"
+        download_template "./templates/letsencrypt-deploy-hook.sh" || exit 1
+        download_template "./templates/letsencrypt-firstboot.sh" || exit 1
+        download_template "./templates/letsencrypt-firstboot.service" || exit 1
     ) > /dev/null 2>&1 &
-    show_progress $! "Downloading template files"
+    if ! show_progress $! "Downloading template files"; then
+        log "ERROR: Failed to download template files"
+        exit 1
+    fi
 
     # Modify template files in background with progress
     (

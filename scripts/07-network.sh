@@ -71,62 +71,65 @@ detect_network_interface() {
     fi
 }
 
-# Get network information from current interface
-collect_network_info() {
-    # Retry network info collection (network may be unstable in rescue mode)
-    local max_attempts=3
-    local attempt=0
+# =============================================================================
+# Network info collection helper functions
+# =============================================================================
 
-    while [[ $attempt -lt $max_attempts ]]; do
-        attempt=$((attempt + 1))
+# Get IPv4 info using ip command with JSON output (most reliable)
+# Returns: 0 on success, 1 on failure
+# Sets: MAIN_IPV4_CIDR, MAIN_IPV4, MAIN_IPV4_GW
+_get_ipv4_via_ip_json() {
+    MAIN_IPV4_CIDR=$(ip -j address show "$CURRENT_INTERFACE" 2>/dev/null | jq -r '.[0].addr_info[] | select(.family == "inet" and .scope == "global") | "\(.local)/\(.prefixlen)"' | head -n1)
+    MAIN_IPV4="${MAIN_IPV4_CIDR%/*}"
+    MAIN_IPV4_GW=$(ip -j route 2>/dev/null | jq -r '.[] | select(.dst == "default") | .gateway' | head -n1)
+    [[ -n "$MAIN_IPV4" ]] && [[ -n "$MAIN_IPV4_GW" ]]
+}
 
-        # Try ip command with JSON output first (most reliable), fallback to text parsing
-        if command -v ip &>/dev/null && command -v jq &>/dev/null; then
-            # Use JSON output for reliable parsing
-            MAIN_IPV4_CIDR=$(ip -j address show "$CURRENT_INTERFACE" 2>/dev/null | jq -r '.[0].addr_info[] | select(.family == "inet" and .scope == "global") | "\(.local)/\(.prefixlen)"' | head -n1)
-            MAIN_IPV4="${MAIN_IPV4_CIDR%/*}"
-            MAIN_IPV4_GW=$(ip -j route 2>/dev/null | jq -r '.[] | select(.dst == "default") | .gateway' | head -n1)
-        elif command -v ip &>/dev/null; then
-            MAIN_IPV4_CIDR=$(ip address show "$CURRENT_INTERFACE" 2>/dev/null | grep global | grep "inet " | awk '{print $2}' | head -n1)
-            MAIN_IPV4="${MAIN_IPV4_CIDR%/*}"
-            MAIN_IPV4_GW=$(ip route 2>/dev/null | grep default | awk '{print $3}' | head -n1)
-        elif command -v ifconfig &>/dev/null; then
-            # Fallback to ifconfig for older systems
-            MAIN_IPV4=$(ifconfig "$CURRENT_INTERFACE" 2>/dev/null | awk '/inet / {print $2}' | sed 's/addr://')
-            local netmask
-            netmask=$(ifconfig "$CURRENT_INTERFACE" 2>/dev/null | awk '/inet / {print $4}' | sed 's/Mask://')
-            # Convert netmask to CIDR if available
-            if [[ -n "$MAIN_IPV4" ]] && [[ -n "$netmask" ]]; then
-                # Simple netmask to CIDR conversion for common cases
-                case "$netmask" in
-                    255.255.255.0)   MAIN_IPV4_CIDR="${MAIN_IPV4}/24" ;;
-                    255.255.255.128) MAIN_IPV4_CIDR="${MAIN_IPV4}/25" ;;
-                    255.255.255.192) MAIN_IPV4_CIDR="${MAIN_IPV4}/26" ;;
-                    255.255.255.224) MAIN_IPV4_CIDR="${MAIN_IPV4}/27" ;;
-                    255.255.255.240) MAIN_IPV4_CIDR="${MAIN_IPV4}/28" ;;
-                    255.255.255.248) MAIN_IPV4_CIDR="${MAIN_IPV4}/29" ;;
-                    255.255.255.252) MAIN_IPV4_CIDR="${MAIN_IPV4}/30" ;;
-                    255.255.0.0)     MAIN_IPV4_CIDR="${MAIN_IPV4}/16" ;;
-                    *)               MAIN_IPV4_CIDR="${MAIN_IPV4}/24" ;;  # Default assumption
-                esac
-            fi
-            # Get gateway via route command
-            if command -v route &>/dev/null; then
-                MAIN_IPV4_GW=$(route -n 2>/dev/null | awk '/^0\.0\.0\.0/ {print $2}' | head -n1)
-            fi
-        fi
+# Get IPv4 info using ip command with text parsing
+# Returns: 0 on success, 1 on failure
+# Sets: MAIN_IPV4_CIDR, MAIN_IPV4, MAIN_IPV4_GW
+_get_ipv4_via_ip_text() {
+    MAIN_IPV4_CIDR=$(ip address show "$CURRENT_INTERFACE" 2>/dev/null | grep global | grep "inet " | awk '{print $2}' | head -n1)
+    MAIN_IPV4="${MAIN_IPV4_CIDR%/*}"
+    MAIN_IPV4_GW=$(ip route 2>/dev/null | grep default | awk '{print $3}' | head -n1)
+    [[ -n "$MAIN_IPV4" ]] && [[ -n "$MAIN_IPV4_GW" ]]
+}
 
-        if [[ -n "$MAIN_IPV4" ]] && [[ -n "$MAIN_IPV4_GW" ]]; then
-            break
-        fi
+# Get IPv4 info using legacy ifconfig/route commands
+# Returns: 0 on success, 1 on failure
+# Sets: MAIN_IPV4_CIDR, MAIN_IPV4, MAIN_IPV4_GW
+_get_ipv4_via_ifconfig() {
+    MAIN_IPV4=$(ifconfig "$CURRENT_INTERFACE" 2>/dev/null | awk '/inet / {print $2}' | sed 's/addr://')
+    local netmask
+    netmask=$(ifconfig "$CURRENT_INTERFACE" 2>/dev/null | awk '/inet / {print $4}' | sed 's/Mask://')
 
-        if [[ $attempt -lt $max_attempts ]]; then
-            log "Network info attempt $attempt failed, retrying in 2 seconds..."
-            sleep 2
-        fi
-    done
+    # Convert netmask to CIDR if available
+    if [[ -n "$MAIN_IPV4" ]] && [[ -n "$netmask" ]]; then
+        # Simple netmask to CIDR conversion for common cases
+        case "$netmask" in
+            255.255.255.0)   MAIN_IPV4_CIDR="${MAIN_IPV4}/24" ;;
+            255.255.255.128) MAIN_IPV4_CIDR="${MAIN_IPV4}/25" ;;
+            255.255.255.192) MAIN_IPV4_CIDR="${MAIN_IPV4}/26" ;;
+            255.255.255.224) MAIN_IPV4_CIDR="${MAIN_IPV4}/27" ;;
+            255.255.255.240) MAIN_IPV4_CIDR="${MAIN_IPV4}/28" ;;
+            255.255.255.248) MAIN_IPV4_CIDR="${MAIN_IPV4}/29" ;;
+            255.255.255.252) MAIN_IPV4_CIDR="${MAIN_IPV4}/30" ;;
+            255.255.0.0)     MAIN_IPV4_CIDR="${MAIN_IPV4}/16" ;;
+            *)               MAIN_IPV4_CIDR="${MAIN_IPV4}/24" ;;  # Default assumption
+        esac
+    fi
 
-    # Get MAC address and IPv6 info
+    # Get gateway via route command
+    if command -v route &>/dev/null; then
+        MAIN_IPV4_GW=$(route -n 2>/dev/null | awk '/^0\.0\.0\.0/ {print $2}' | head -n1)
+    fi
+
+    [[ -n "$MAIN_IPV4" ]] && [[ -n "$MAIN_IPV4_GW" ]]
+}
+
+# Get MAC address and IPv6 info from current interface
+# Sets: MAC_ADDRESS, IPV6_CIDR, MAIN_IPV6
+_get_mac_and_ipv6() {
     if command -v ip &>/dev/null && command -v jq &>/dev/null; then
         MAC_ADDRESS=$(ip -j link show "$CURRENT_INTERFACE" 2>/dev/null | jq -r '.[0].address // empty')
         IPV6_CIDR=$(ip -j address show "$CURRENT_INTERFACE" 2>/dev/null | jq -r '.[0].addr_info[] | select(.family == "inet6" and .scope == "global") | "\(.local)/\(.prefixlen)"' | head -n1)
@@ -138,8 +141,14 @@ collect_network_info() {
         IPV6_CIDR=$(ifconfig "$CURRENT_INTERFACE" 2>/dev/null | awk '/inet6/ && /global/ {print $2}')
     fi
     MAIN_IPV6="${IPV6_CIDR%/*}"
+}
 
-    # Validate network configuration with detailed error messages
+# Validate network configuration
+# Returns: 0 on success, exits with error message on failure
+_validate_network_config() {
+    local max_attempts="$1"
+
+    # Check if IPv4 and gateway are set
     if [[ -z "$MAIN_IPV4" ]] || [[ -z "$MAIN_IPV4_GW" ]]; then
         print_error "Failed to detect network configuration after $max_attempts attempts"
         print_error ""
@@ -180,23 +189,75 @@ collect_network_info() {
         log "ERROR: Invalid gateway address format: '$MAIN_IPV4_GW'"
         exit 1
     fi
-    
+
     # Check gateway reachability (may be normal in rescue mode, so warning only)
     if ! ping -c 1 -W 2 "$MAIN_IPV4_GW" > /dev/null 2>&1; then
         print_warning "Gateway $MAIN_IPV4_GW is not reachable (may be normal in rescue mode)"
         log "WARNING: Gateway $MAIN_IPV4_GW not reachable"
     fi
+}
 
-    # Set a default value for FIRST_IPV6_CIDR
+# Calculate IPv6 prefix for VM network
+# IPv6 prefix extraction: Get first 4 groups (network portion) for /80 CIDR assignment
+# Example: 2001:db8:85a3:0:8a2e:370:7334:1234 → 2001:db8:85a3:0:1::1/80
+# This allows assigning /80 subnets to VMs within the /64 allocation
+# Sets: FIRST_IPV6_CIDR
+_calculate_ipv6_prefix() {
     if [[ -n "$IPV6_CIDR" ]]; then
         # Extract first 4 groups of IPv6 using parameter expansion
+        # Pattern: remove everything after 4th colon group (greedy match)
         local ipv6_prefix="${MAIN_IPV6%%:*:*:*:*}"
+
         # Fallback: if expansion didn't work as expected, use cut
+        # This happens when IPv6 has compressed zeros (::)
         if [[ "$ipv6_prefix" == "$MAIN_IPV6" ]] || [[ -z "$ipv6_prefix" ]]; then
             ipv6_prefix=$(printf '%s' "$MAIN_IPV6" | cut -d':' -f1-4)
         fi
+
         FIRST_IPV6_CIDR="${ipv6_prefix}:1::1/80"
     else
         FIRST_IPV6_CIDR=""
     fi
+}
+
+# =============================================================================
+# Main network info collection function
+# =============================================================================
+
+# Get network information from current interface
+# Tries multiple detection methods with fallback chain:
+# 1. ip -j (JSON) + jq - most reliable
+# 2. ip (text parsing) - common fallback
+# 3. ifconfig + route - legacy systems
+collect_network_info() {
+    local max_attempts=3
+    local attempt=0
+
+    # Try to get IPv4 info with retries
+    while [[ $attempt -lt $max_attempts ]]; do
+        attempt=$((attempt + 1))
+
+        # Try detection methods in order of preference
+        if command -v ip &>/dev/null && command -v jq &>/dev/null; then
+            _get_ipv4_via_ip_json && break
+        elif command -v ip &>/dev/null; then
+            _get_ipv4_via_ip_text && break
+        elif command -v ifconfig &>/dev/null; then
+            _get_ipv4_via_ifconfig && break
+        fi
+
+        if [[ $attempt -lt $max_attempts ]]; then
+            log "Network info attempt $attempt failed, retrying in 2 seconds..."
+            sleep 2
+        fi
+    done
+
+    # Get MAC address and IPv6 info
+    _get_mac_and_ipv6
+
+    # Validate network configuration (exits on failure)
+    _validate_network_config "$max_attempts"
+
+    # Calculate IPv6 prefix for VM network
+    _calculate_ipv6_prefix
 }

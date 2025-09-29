@@ -5,12 +5,23 @@
 
 configure_ssh_hardening() {
     # Deploy SSH hardening LAST (after all other operations)
+    # CRITICAL: This must succeed - if it fails, system remains with password auth enabled
+
+    # Escape single quotes in SSH key to prevent injection
+    local escaped_ssh_key="${SSH_PUBLIC_KEY//\'/\'\\\'\'}"
+
     (
-        remote_exec "mkdir -p /root/.ssh && chmod 700 /root/.ssh"
-        remote_exec "echo '$SSH_PUBLIC_KEY' >> /root/.ssh/authorized_keys && chmod 600 /root/.ssh/authorized_keys"
-        remote_copy "templates/sshd_config" "/etc/ssh/sshd_config"
+        remote_exec "mkdir -p /root/.ssh && chmod 700 /root/.ssh" || exit 1
+        remote_exec "echo '${escaped_ssh_key}' >> /root/.ssh/authorized_keys && chmod 600 /root/.ssh/authorized_keys" || exit 1
+        remote_copy "templates/sshd_config" "/etc/ssh/sshd_config" || exit 1
     ) > /dev/null 2>&1 &
     show_progress $! "Deploying SSH hardening" "Security hardening configured"
+    local exit_code=$?
+
+    if [[ $exit_code -ne 0 ]]; then
+        log "ERROR: SSH hardening failed - system may be insecure"
+        exit 1
+    fi
 }
 
 finalize_vm() {

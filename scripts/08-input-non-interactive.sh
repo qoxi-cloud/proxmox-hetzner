@@ -35,7 +35,7 @@ get_inputs_non_interactive() {
     EMAIL="${EMAIL:-$DEFAULT_EMAIL}"
     BRIDGE_MODE="${BRIDGE_MODE:-$DEFAULT_BRIDGE_MODE}"
     PRIVATE_SUBNET="${PRIVATE_SUBNET:-$DEFAULT_SUBNET}"
-    DEFAULT_SHELL="${DEFAULT_SHELL:-$DEFAULT_SHELL}"
+    DEFAULT_SHELL="${DEFAULT_SHELL:-zsh}"
 
     # Display configuration
     print_success "Network interface: ${INTERFACE_NAME}"

@@ -92,8 +92,10 @@ After the server reboots:
 
 Check the log file for detailed output:
 ```bash
-cat /tmp/pve-install.log
+cat /root/pve-install-*.log
 ```
+
+The log file is named with a timestamp, e.g., `pve-install-20241130-123456.log`.
 
 ### Cannot connect after reboot
 

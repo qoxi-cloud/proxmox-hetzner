@@ -4,6 +4,8 @@
 # =============================================================================
 
 # Download files with retry
+# Returns: 0 on success, 1 on failure
+# Note: Caller should handle the error (exit or continue)
 download_file() {
     local output_file="$1"
     local url="$2"
@@ -37,7 +39,7 @@ download_file() {
     done
 
     log "ERROR: Failed to download $url after $max_retries attempts"
-    exit 1
+    return 1
 }
 
 # =============================================================================
@@ -100,20 +102,24 @@ apply_common_template_vars() {
 # Download template from GitHub repository
 # Usage: download_template LOCAL_PATH [REMOTE_FILENAME]
 # REMOTE_FILENAME defaults to basename of LOCAL_PATH
+# Returns: 0 on success, 1 on failure
+# Note: Caller should handle the error (exit or continue)
 download_template() {
     local local_path="$1"
     local remote_file="${2:-$(basename "$local_path")}"
     local url="${GITHUB_BASE_URL}/templates/${remote_file}"
 
-    download_file "$local_path" "$url"
-    
+    if ! download_file "$local_path" "$url"; then
+        return 1
+    fi
+
     # Verify file is not empty after download
     if [[ ! -s "$local_path" ]]; then
         print_error "Template $remote_file is empty or download failed"
         log "ERROR: Template $remote_file is empty after download"
-        exit 1
+        return 1
     fi
-    
+
     # Validate template integrity based on file type
     local filename
     filename=$(basename "$local_path")
@@ -122,14 +128,14 @@ download_template() {
             if ! grep -q "\[global\]" "$local_path" 2>/dev/null; then
                 print_error "Template $remote_file appears corrupted (missing [global] section)"
                 log "ERROR: Template $remote_file corrupted - missing [global] section"
-                exit 1
+                return 1
             fi
             ;;
         sshd_config)
             if ! grep -q "PasswordAuthentication" "$local_path" 2>/dev/null; then
                 print_error "Template $remote_file appears corrupted (missing PasswordAuthentication)"
                 log "ERROR: Template $remote_file corrupted - missing PasswordAuthentication"
-                exit 1
+                return 1
             fi
             ;;
         *.sh)
@@ -137,7 +143,7 @@ download_template() {
             if ! head -1 "$local_path" | grep -qE "^#!.*bash|^# shellcheck|^export " && ! grep -qE "(if|then|echo|function|export)" "$local_path" 2>/dev/null; then
                 print_error "Template $remote_file appears corrupted (invalid shell script)"
                 log "ERROR: Template $remote_file corrupted - invalid shell script"
-                exit 1
+                return 1
             fi
             ;;
         *.conf|*.sources|*.service)
@@ -145,12 +151,13 @@ download_template() {
             if [[ $(wc -l < "$local_path" 2>/dev/null || echo 0) -lt 2 ]]; then
                 print_error "Template $remote_file appears corrupted (too short)"
                 log "ERROR: Template $remote_file corrupted - file too short"
-                exit 1
+                return 1
             fi
             ;;
     esac
-    
+
     log "Template $remote_file downloaded and validated successfully"
+    return 0
 }
 
 # Generate a secure random password

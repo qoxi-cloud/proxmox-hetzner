@@ -20,11 +20,14 @@ configure_tailscale() {
     # If auth key is provided, authenticate Tailscale
     if [[ -n "$TAILSCALE_AUTH_KEY" ]]; then
         # Use unique temporary files to avoid race conditions
-        local tmp_ip
-        local tmp_hostname
+        local tmp_ip tmp_hostname
         tmp_ip=$(mktemp)
         tmp_hostname=$(mktemp)
-        
+
+        # Ensure cleanup on function exit (handles errors too)
+        # shellcheck disable=SC2064
+        trap "rm -f '$tmp_ip' '$tmp_hostname'" RETURN
+
         # Build and execute tailscale up command with proper quoting
         (
             if [[ "$TAILSCALE_SSH" == "yes" ]]; then
@@ -40,9 +43,8 @@ configure_tailscale() {
         # Get Tailscale IP and hostname for display
         TAILSCALE_IP=$(cat "$tmp_ip" 2>/dev/null || echo "pending")
         TAILSCALE_HOSTNAME=$(cat "$tmp_hostname" 2>/dev/null || echo "")
-        rm -f "$tmp_ip" "$tmp_hostname"
         # Overwrite completion line with IP
-        printf "\033[1A\r${CLR_GREEN}✓ Tailscale authenticated. IP: ${TAILSCALE_IP}${CLR_RESET}                              \n"
+        printf "\033[1A\r%s✓ Tailscale authenticated. IP: %s%s                              \n" "${CLR_GREEN}" "${TAILSCALE_IP}" "${CLR_RESET}"
 
         # Configure Tailscale Serve for Proxmox Web UI
         if [[ "$TAILSCALE_WEBUI" == "yes" ]]; then
@@ -54,11 +56,11 @@ configure_tailscale() {
         if [[ "$TAILSCALE_SSH" == "yes" && "$TAILSCALE_DISABLE_SSH" == "yes" ]]; then
             log "Deploying disable-openssh.service (TAILSCALE_SSH=$TAILSCALE_SSH, TAILSCALE_DISABLE_SSH=$TAILSCALE_DISABLE_SSH)"
             (
-                download_template "./templates/disable-openssh.service"
+                download_template "./templates/disable-openssh.service" || exit 1
                 log "Downloaded disable-openssh.service, size: $(wc -c < ./templates/disable-openssh.service 2>/dev/null || echo 'failed')"
-                remote_copy "templates/disable-openssh.service" "/etc/systemd/system/disable-openssh.service"
+                remote_copy "templates/disable-openssh.service" "/etc/systemd/system/disable-openssh.service" || exit 1
                 log "Copied disable-openssh.service to VM"
-                remote_exec "systemctl daemon-reload && systemctl enable disable-openssh.service" > /dev/null 2>&1
+                remote_exec "systemctl daemon-reload && systemctl enable disable-openssh.service" > /dev/null 2>&1 || exit 1
                 log "Enabled disable-openssh.service"
             ) &
             show_progress $! "Configuring OpenSSH disable on boot" "OpenSSH disable configured"
@@ -70,11 +72,11 @@ configure_tailscale() {
         if [[ "$STEALTH_MODE" == "yes" ]]; then
             log "Deploying stealth-firewall.service (STEALTH_MODE=$STEALTH_MODE)"
             (
-                download_template "./templates/stealth-firewall.service"
+                download_template "./templates/stealth-firewall.service" || exit 1
                 log "Downloaded stealth-firewall.service, size: $(wc -c < ./templates/stealth-firewall.service 2>/dev/null || echo 'failed')"
-                remote_copy "templates/stealth-firewall.service" "/etc/systemd/system/stealth-firewall.service"
+                remote_copy "templates/stealth-firewall.service" "/etc/systemd/system/stealth-firewall.service" || exit 1
                 log "Copied stealth-firewall.service to VM"
-                remote_exec "systemctl daemon-reload && systemctl enable stealth-firewall.service" > /dev/null 2>&1
+                remote_exec "systemctl daemon-reload && systemctl enable stealth-firewall.service" > /dev/null 2>&1 || exit 1
                 log "Enabled stealth-firewall.service"
             ) &
             show_progress $! "Configuring stealth firewall" "Stealth firewall configured"
