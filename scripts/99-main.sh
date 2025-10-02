@@ -3,6 +3,25 @@
 # Finish and reboot
 # =============================================================================
 
+# Truncate string with ellipsis in the middle
+# Usage: truncate_middle "string" max_length
+truncate_middle() {
+    local str="$1"
+    local max_len="${2:-25}"
+    local len=${#str}
+
+    if [[ $len -le $max_len ]]; then
+        echo "$str"
+        return
+    fi
+
+    # Keep more chars at start, less at end
+    local keep_start=$(( (max_len - 3) * 2 / 3 ))
+    local keep_end=$(( max_len - 3 - keep_start ))
+
+    echo "${str:0:$keep_start}...${str: -$keep_end}"
+}
+
 # Function to reboot into the main OS
 reboot_to_main_os() {
     local inner_width=$((MENU_BOX_WIDTH - 6))
@@ -57,7 +76,6 @@ reboot_to_main_os() {
     summary+="[OK]|ZFS ARC limits|configured"$'\n'
     summary+="[OK]|nf_conntrack|optimized"$'\n'
     summary+="[OK]|NTP sync|chrony (Hetzner)"$'\n'
-    summary+="[OK]|Dynamic MOTD|enabled"$'\n'
     summary+="[OK]|Security updates|unattended"$'\n'
 
     # Tailscale status
@@ -87,9 +105,9 @@ reboot_to_main_os() {
         if [[ "$INSTALL_TAILSCALE" == "yes" && -n "$TAILSCALE_AUTH_KEY" && "$TAILSCALE_IP" != "pending" && "$TAILSCALE_IP" != "not authenticated" ]]; then
             summary+=$'\n'"[OK]|Tailscale SSH|root@${TAILSCALE_IP}"
             if [[ -n "$TAILSCALE_HOSTNAME" ]]; then
-                summary+=$'\n'"[OK]|Tailscale Web|https://${TAILSCALE_HOSTNAME}"
+                summary+=$'\n'"[OK]|Tailscale Web|$(truncate_middle "$TAILSCALE_HOSTNAME" 25)"
             else
-                summary+=$'\n'"[OK]|Tailscale Web|https://${TAILSCALE_IP}:8006"
+                summary+=$'\n'"[OK]|Tailscale Web|${TAILSCALE_IP}:8006"
             fi
         fi
     else
@@ -99,9 +117,9 @@ reboot_to_main_os() {
         if [[ "$INSTALL_TAILSCALE" == "yes" && -n "$TAILSCALE_AUTH_KEY" && "$TAILSCALE_IP" != "pending" && "$TAILSCALE_IP" != "not authenticated" ]]; then
             summary+=$'\n'"[OK]|Tailscale SSH|root@${TAILSCALE_IP}"
             if [[ -n "$TAILSCALE_HOSTNAME" ]]; then
-                summary+=$'\n'"[OK]|Tailscale Web|https://${TAILSCALE_HOSTNAME}"
+                summary+=$'\n'"[OK]|Tailscale Web|$(truncate_middle "$TAILSCALE_HOSTNAME" 25)"
             else
-                summary+=$'\n'"[OK]|Tailscale Web|https://${TAILSCALE_IP}:8006"
+                summary+=$'\n'"[OK]|Tailscale Web|${TAILSCALE_IP}:8006"
             fi
         fi
     fi
