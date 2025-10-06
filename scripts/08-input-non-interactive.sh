@@ -125,6 +125,14 @@ get_inputs_non_interactive() {
         print_success "SSL certificate: ${SSL_TYPE}"
     fi
 
+    # Audit logging (auditd)
+    INSTALL_AUDITD="${INSTALL_AUDITD:-no}"
+    if [[ "$INSTALL_AUDITD" == "yes" ]]; then
+        print_success "Audit logging: enabled"
+    else
+        print_success "Audit logging: disabled"
+    fi
+
     # Tailscale
     INSTALL_TAILSCALE="${INSTALL_TAILSCALE:-no}"
     if [[ "$INSTALL_TAILSCALE" == "yes" ]]; then

@@ -114,6 +114,14 @@ You can pre-configure any setting via environment variables.
 
 > **Note:** Let's Encrypt requires your domain (FQDN) to resolve to the server's IP address. The installer validates DNS using public servers (Cloudflare, Google, Quad9) before proceeding. The SSL menu is only shown if Tailscale is not enabled (Tailscale provides its own HTTPS via `tailscale serve`).
 
+### Security Settings
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `INSTALL_AUDITD` | Install auditd for audit logging: `yes`, `no` | `no` |
+
+> **Note:** Auditd provides comprehensive audit logging for security compliance and forensics. It monitors administrative actions including Proxmox CLI commands, user changes, SSH config, firewall modifications, and more. See [Security](Security#audit-logging-auditd) for details.
+
 ### Tailscale Settings
 
 | Variable | Description | Default |
@@ -236,6 +244,9 @@ PVE_REPO_TYPE=no-subscription
 # SSL certificate (self-signed, letsencrypt)
 SSL_TYPE=self-signed
 
+# Audit logging (yes, no) - disabled by default
+INSTALL_AUDITD=no
+
 # Tailscale
 INSTALL_TAILSCALE=no
 
@@ -257,6 +268,7 @@ When loading a configuration file (`-c` option), the installer validates all val
 | `PVE_REPO_TYPE` | `no-subscription`, `enterprise`, `test` |
 | `SSL_TYPE` | `self-signed`, `letsencrypt` |
 | `DEFAULT_SHELL` | `bash`, `zsh` |
+| `INSTALL_AUDITD` | `yes`, `no` |
 
 Invalid values will cause the installer to exit with an error message.
 

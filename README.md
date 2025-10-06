@@ -25,6 +25,7 @@ Automated Proxmox VE installer for Hetzner dedicated servers **without console a
 - SSH hardening with key-only auth
 - Automatic security updates
 - Fail2Ban brute-force protection (when Tailscale not used)
+- Optional audit logging (auditd) for security compliance
 - Optional Tailscale VPN integration
 - Stealth firewall mode (blocks all incoming on public IP when Tailscale is enabled)
 

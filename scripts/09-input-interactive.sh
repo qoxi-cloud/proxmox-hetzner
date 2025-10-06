@@ -523,4 +523,30 @@ get_inputs_interactive() {
         # Tailscale provides its own HTTPS via serve
         SSL_TYPE="self-signed"
     fi
+
+    # --- Audit Logging (auditd) ---
+    if [[ -n "$INSTALL_AUDITD" ]]; then
+        if [[ "$INSTALL_AUDITD" == "yes" ]]; then
+            print_success "Audit logging: enabled (from env)"
+        else
+            print_success "Audit logging: skipped (from env)"
+        fi
+    else
+        local audit_header="Auditd tracks administrative actions for security compliance."$'\n'
+        audit_header+="Monitors: user changes, Proxmox CLI, SSH, firewall, ZFS, etc."
+
+        interactive_menu \
+            "Audit Logging - Optional (↑/↓ select, Enter confirm)" \
+            "$audit_header" \
+            "Skip installation|No audit logging (default)" \
+            "Install auditd|Enable administrative action tracking"
+
+        if [[ $MENU_SELECTED -eq 1 ]]; then
+            INSTALL_AUDITD="yes"
+            print_success "Audit logging enabled"
+        else
+            INSTALL_AUDITD="no"
+            print_success "Audit logging skipped"
+        fi
+    fi
 }

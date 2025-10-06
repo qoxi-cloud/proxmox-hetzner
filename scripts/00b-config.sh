@@ -43,6 +43,11 @@ validate_config() {
         has_errors=true
     fi
 
+    if [[ -n "$INSTALL_AUDITD" ]] && [[ ! "$INSTALL_AUDITD" =~ ^(yes|no)$ ]]; then
+        echo -e "${CLR_RED}Invalid INSTALL_AUDITD: $INSTALL_AUDITD (must be: yes or no)${CLR_RESET}"
+        has_errors=true
+    fi
+
     if [[ "$has_errors" == true ]]; then
         return 1
     fi
@@ -109,6 +114,9 @@ PVE_SUBSCRIPTION_KEY="${PVE_SUBSCRIPTION_KEY}"
 
 # SSL certificate (self-signed, letsencrypt)
 SSL_TYPE="${SSL_TYPE}"
+
+# Audit logging (yes, no)
+INSTALL_AUDITD="${INSTALL_AUDITD}"
 EOF
     chmod 600 "$file"
     echo -e "${CLR_GREEN}✓ Configuration saved to: $file${CLR_RESET}"

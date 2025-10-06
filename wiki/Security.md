@@ -140,6 +140,156 @@ nano /etc/fail2ban/jail.local
 systemctl restart fail2ban
 ```
 
+## Audit Logging (auditd)
+
+The installer can optionally configure [auditd](https://linux.die.net/man/8/auditd) for comprehensive administrative action tracking.
+
+> **Note:** Audit logging is **disabled by default**. Enable it during installation if you need security compliance or forensic capabilities.
+
+### What auditd Does
+
+Auditd provides a detailed audit trail of system activities, essential for:
+
+- **Security compliance** (PCI-DSS, HIPAA, SOC2)
+- **Forensic analysis** after security incidents
+- **Change tracking** for administrative actions
+- **Anomaly detection** through log analysis
+
+### Monitored Events
+
+| Category | Examples |
+|----------|----------|
+| **User/Group changes** | `/etc/passwd`, `/etc/shadow`, user creation/deletion |
+| **Privileged commands** | `sudo`, `su`, `passwd`, user management tools |
+| **SSH configuration** | `sshd_config`, authorized_keys changes |
+| **Network configuration** | `/etc/network/interfaces`, `/etc/hosts`, `/etc/resolv.conf` |
+| **Proxmox CLI** | `qm`, `pct`, `pvesh`, `pveum`, `vzdump`, `pvesm`, etc. |
+| **Proxmox config** | `/etc/pve/`, cluster config, firewall rules |
+| **System services** | systemd units, cron jobs, init scripts |
+| **Kernel modules** | `insmod`, `rmmod`, `modprobe` |
+| **Package management** | `apt`, `apt-get`, `dpkg` |
+| **Firewall changes** | `iptables`, `ip6tables`, `nft`, `pve-firewall` |
+| **ZFS administration** | `zpool`, `zfs` commands |
+| **Fail2Ban** | Configuration and client commands |
+| **Time changes** | System clock modifications |
+| **Login events** | Login/logout, failed attempts |
+
+### Enabling auditd
+
+**Interactive mode:**
+
+During installation, select "Install auditd" in the Audit Logging menu.
+
+**Non-interactive mode:**
+
+```bash
+INSTALL_AUDITD=yes bash pve-install.sh -c config.conf -n
+```
+
+**Configuration file:**
+
+```bash
+INSTALL_AUDITD=yes
+```
+
+### Viewing Audit Logs
+
+```bash
+# View recent audit events
+ausearch -ts recent
+
+# Search by key (tag)
+ausearch -k proxmox_vm          # VM operations
+ausearch -k proxmox_config      # Config changes
+ausearch -k identity            # User/group changes
+ausearch -k privileged          # Privileged commands
+ausearch -k sshd_config         # SSH config changes
+ausearch -k firewall            # Firewall changes
+ausearch -k zfs_admin           # ZFS operations
+
+# Generate summary report
+aureport --summary
+
+# Generate authentication report
+aureport --auth
+
+# View events for specific user
+ausearch -ua root
+
+# View events for specific time range
+ausearch -ts today -te now
+```
+
+### Audit Reports
+
+```bash
+# Summary of all events
+aureport
+
+# Failed authentication attempts
+aureport --failed
+
+# System configuration changes
+aureport --config
+
+# Executable file runs
+aureport --executable
+
+# Anomaly events
+aureport --anomaly
+```
+
+### Auditd Configuration Files
+
+| File | Purpose |
+|------|---------|
+| `/etc/audit/auditd.conf` | Main auditd configuration |
+| `/etc/audit/rules.d/proxmox.rules` | Audit rules for Proxmox |
+
+### Log Retention
+
+Default settings configured by the installer:
+
+| Setting | Value | Description |
+|---------|-------|-------------|
+| `max_log_file` | 50 MB | Maximum size per log file |
+| `num_logs` | 10 | Number of log files to retain |
+| `max_log_file_action` | ROTATE | Rotate logs when full |
+
+Logs are stored in `/var/log/audit/`.
+
+### Customizing Rules
+
+To add custom audit rules:
+
+```bash
+# Edit rules file
+nano /etc/audit/rules.d/custom.rules
+
+# Example: Monitor specific file
+-w /path/to/file -p wa -k custom_watch
+
+# Reload rules
+augenrules --load
+
+# Verify rules loaded
+auditctl -l
+```
+
+### Performance Considerations
+
+Audit logging adds minimal overhead but consider:
+
+- **High-traffic systems:** May generate large log volumes
+- **Storage:** Monitor `/var/log/audit/` disk usage
+- **Rules optimization:** Remove unnecessary rules if needed
+
+To temporarily disable auditd:
+
+```bash
+systemctl stop auditd
+```
+
 ## SSH Hardening
 
 Both configurations (with or without Tailscale) include SSH hardening:

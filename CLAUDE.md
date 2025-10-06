@@ -80,6 +80,7 @@ Scripts are numbered and concatenated in order:
 - `14-configure-base.sh` - Base system configuration (ZFS, packages, shell)
 - `15-configure-tailscale.sh` - Tailscale VPN configuration (uses jq for JSON parsing)
 - `15a-configure-fail2ban.sh` - Fail2Ban brute-force protection (when Tailscale not used)
+- `15b-configure-auditd.sh` - Auditd audit logging for administrative actions
 - `16-configure-ssl.sh` - SSL certificate configuration (self-signed or Let's Encrypt)
 - `17-configure-finalize.sh` - SSH hardening and VM finalization
 
@@ -147,7 +148,7 @@ Configuration files in `templates/` are downloaded at runtime from GitHub raw UR
 | Services | `cpufrequtils`, `50unattended-upgrades`, `20auto-upgrades` |
 | SSL | `letsencrypt-deploy-hook.sh`, `letsencrypt-firstboot.sh`, `letsencrypt-firstboot.service` |
 | Tailscale | `disable-openssh.service`, `stealth-firewall.service` |
-| Security | `fail2ban-jail.local`, `fail2ban-proxmox.conf` |
+| Security | `fail2ban-jail.local`, `fail2ban-proxmox.conf`, `auditd-rules` |
 | Installation | `answer.toml` |
 
 #### Template Placeholders
@@ -319,6 +320,7 @@ The `validate_config()` function validates configuration values:
 - `PVE_REPO_TYPE` - must be: `no-subscription`, `enterprise`, or `test`
 - `SSL_TYPE` - must be: `self-signed` or `letsencrypt`
 - `DEFAULT_SHELL` - must be: `bash` or `zsh`
+- `INSTALL_AUDITD` - must be: `yes` or `no`
 
 ### Password Validation (05-validation.sh)
 

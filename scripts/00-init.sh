@@ -180,3 +180,10 @@ SSL_TYPE=""
 # Fail2Ban installation flag (set by configure_fail2ban)
 # shellcheck disable=SC2034
 FAIL2BAN_INSTALLED=""
+
+# Auditd installation setting (yes/no, default: no)
+INSTALL_AUDITD=""
+
+# Auditd installation flag (set by configure_auditd)
+# shellcheck disable=SC2034
+AUDITD_INSTALLED=""

@@ -93,6 +93,11 @@ reboot_to_main_os() {
         fi
     fi
 
+    # Auditd status
+    if [[ "$AUDITD_INSTALLED" == "yes" ]]; then
+        summary+="[OK]|Audit logging|auditd enabled"$'\n'
+    fi
+
     summary+="|--- Access ---|"$'\n'
 
     # Show generated password if applicable
@@ -214,6 +219,7 @@ if [[ "$VALIDATE_ONLY" == true ]]; then
         echo "  Private Net:  $PRIVATE_SUBNET"
     fi
     echo "  Tailscale:    $INSTALL_TAILSCALE"
+    echo "  Auditd:       ${INSTALL_AUDITD:-no}"
     echo "  Repository:   ${PVE_REPO_TYPE:-no-subscription}"
     echo "  SSL:          ${SSL_TYPE:-self-signed}"
     if [[ -n "$PROXMOX_ISO_VERSION" ]]; then
@@ -312,6 +318,9 @@ if [[ "$DRY_RUN" == true ]]; then
     else
         echo "      - Install Fail2Ban (SSH + Proxmox API brute-force protection)"
     fi
+    if [[ "$INSTALL_AUDITD" == "yes" ]]; then
+        echo "      - Install and configure auditd (audit logging)"
+    fi
     echo "      - Harden SSH configuration"
     echo "      - Deploy SSH public key"
     echo ""
@@ -333,6 +342,7 @@ if [[ "$DRY_RUN" == true ]]; then
         echo "  Private Net:  $PRIVATE_SUBNET"
     fi
     echo "  Tailscale:    ${INSTALL_TAILSCALE:-no}"
+    echo "  Auditd:       ${INSTALL_AUDITD:-no}"
     echo "  Repository:   ${PVE_REPO_TYPE:-no-subscription}"
     echo "  SSL:          ${SSL_TYPE:-self-signed}"
     echo ""
