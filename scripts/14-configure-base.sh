@@ -99,16 +99,23 @@ configure_base_system() {
         pveam update 2>/dev/null || true
     ' "System packages updated"
 
-    # Install monitoring and system utilities
+    # Install monitoring and system utilities (with individual package error reporting)
     # shellcheck disable=SC2086
     run_remote "Installing system utilities" "
         export DEBIAN_FRONTEND=noninteractive
-        apt-get install -yqq ${SYSTEM_UTILITIES} 2>/dev/null || {
-            for pkg in ${SYSTEM_UTILITIES}; do
-                apt-get install -yqq \"\$pkg\" 2>/dev/null || true
-            done
-        }
-        apt-get install -yqq ${OPTIONAL_PACKAGES} 2>/dev/null || true
+        failed_pkgs=''
+        for pkg in ${SYSTEM_UTILITIES}; do
+            if ! apt-get install -yqq \"\$pkg\" 2>&1; then
+                failed_pkgs=\"\${failed_pkgs} \$pkg\"
+                echo \"WARNING: Failed to install \$pkg\" >&2
+            fi
+        done
+        for pkg in ${OPTIONAL_PACKAGES}; do
+            apt-get install -yqq \"\$pkg\" 2>/dev/null || true
+        done
+        if [[ -n \"\$failed_pkgs\" ]]; then
+            echo \"WARNING: Some packages failed to install:\$failed_pkgs\" >&2
+        fi
     " "System utilities installed"
 
     # Configure UTF-8 locales using template files
