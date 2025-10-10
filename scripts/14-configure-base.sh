@@ -100,23 +100,37 @@ configure_base_system() {
     ' "System packages updated"
 
     # Install monitoring and system utilities (with individual package error reporting)
+    local pkg_output
+    pkg_output=$(mktemp)
     # shellcheck disable=SC2086
-    run_remote "Installing system utilities" "
-        export DEBIAN_FRONTEND=noninteractive
-        failed_pkgs=''
-        for pkg in ${SYSTEM_UTILITIES}; do
-            if ! apt-get install -yqq \"\$pkg\" 2>&1; then
-                failed_pkgs=\"\${failed_pkgs} \$pkg\"
-                echo \"WARNING: Failed to install \$pkg\" >&2
+    (
+        remote_exec "
+            export DEBIAN_FRONTEND=noninteractive
+            failed_pkgs=''
+            for pkg in ${SYSTEM_UTILITIES}; do
+                if ! apt-get install -yqq \"\$pkg\" 2>&1; then
+                    failed_pkgs=\"\${failed_pkgs} \$pkg\"
+                fi
+            done
+            for pkg in ${OPTIONAL_PACKAGES}; do
+                apt-get install -yqq \"\$pkg\" 2>/dev/null || true
+            done
+            if [[ -n \"\$failed_pkgs\" ]]; then
+                echo \"FAILED_PACKAGES:\$failed_pkgs\"
             fi
-        done
-        for pkg in ${OPTIONAL_PACKAGES}; do
-            apt-get install -yqq \"\$pkg\" 2>/dev/null || true
-        done
-        if [[ -n \"\$failed_pkgs\" ]]; then
-            echo \"WARNING: Some packages failed to install:\$failed_pkgs\" >&2
-        fi
-    " "System utilities installed"
+        " 2>&1
+    ) > "$pkg_output" &
+    show_progress $! "Installing system utilities" "System utilities installed"
+
+    # Check for failed packages and show warning to user
+    if grep -q "FAILED_PACKAGES:" "$pkg_output" 2>/dev/null; then
+        local failed_list
+        failed_list=$(grep "FAILED_PACKAGES:" "$pkg_output" | sed 's/FAILED_PACKAGES://')
+        print_warning "Some packages failed to install:$failed_list"
+        log "WARNING: Failed to install packages:$failed_list"
+    fi
+    cat "$pkg_output" >> "$LOG_FILE"
+    rm -f "$pkg_output"
 
     # Configure UTF-8 locales using template files
     run_remote "Configuring UTF-8 locales" '
