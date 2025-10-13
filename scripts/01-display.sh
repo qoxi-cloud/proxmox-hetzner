@@ -85,9 +85,17 @@ print_error() {
     echo -e "${CLR_RED}✗${CLR_RESET} $1"
 }
 
-# Print warning message (with indent for sub-status display)
+# Print warning message
+# Usage: print_warning "message" [nested]
+# If nested=true, adds indent before the warning icon
 print_warning() {
-    echo -e "  ${CLR_YELLOW}⚠️${CLR_RESET}  $1"
+    local message="$1"
+    local nested="${2:-false}"
+    local indent=""
+    if [[ "$nested" == "true" ]]; then
+        indent="  "
+    fi
+    echo -e "${indent}${CLR_YELLOW}⚠️${CLR_RESET} $message"
 }
 
 # Print info message

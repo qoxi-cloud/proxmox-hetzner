@@ -126,7 +126,7 @@ configure_base_system() {
     if grep -q "FAILED_PACKAGES:" "$pkg_output" 2>/dev/null; then
         local failed_list
         failed_list=$(grep "FAILED_PACKAGES:" "$pkg_output" | sed 's/FAILED_PACKAGES://')
-        print_warning "Some packages failed to install:$failed_list"
+        print_warning "Some packages failed to install:$failed_list" true
         log "WARNING: Failed to install packages:$failed_list"
     fi
     cat "$pkg_output" >> "$LOG_FILE"
