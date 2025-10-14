@@ -78,7 +78,7 @@ interactive_menu() {
                 # Apply content colors
                 # Yellow for warnings and info lines (apply BEFORE checkbox colors)
                 if [[ "$content" == *"! "* ]]; then
-                    content="${content//! /${CLR_YELLOW}! }"
+                    content="${content//! /${CLR_YELLOW}⚠️ }"
                     content="${content}${CLR_RESET}"
                 fi
                 # Lines starting with "  - " should be entirely yellow
