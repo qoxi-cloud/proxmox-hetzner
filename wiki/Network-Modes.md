@@ -146,6 +146,24 @@ When using NAT (internal or both modes), you can customize the private subnet:
 
 The host will use `.1` address (e.g., `10.0.0.1`) as the gateway for VMs.
 
+## MTU Configuration (Jumbo Frames)
+
+Private bridges (vmbr0 in internal mode, vmbr1 in both mode) are configured with MTU 9000 (jumbo frames) by default for improved VM-to-VM performance.
+
+| Bridge | MTU | Purpose |
+|--------|-----|---------|
+| vmbr0 (internal) | 9000 | VM-to-VM traffic optimization |
+| vmbr1 (both mode) | 9000 | VM-to-VM traffic optimization |
+| vmbr0 (external) | 1500 | Standard MTU for external network |
+
+**Benefits of Jumbo Frames:**
+
+- Reduced CPU overhead for large data transfers
+- Higher throughput for VM-to-VM communication
+- Better performance for storage traffic (NFS, iSCSI)
+
+**Note:** External bridges keep the default MTU (1500) since Hetzner's network may not support jumbo frames. VMs connected to internal bridges should also configure MTU 9000 for optimal performance.
+
 ---
 
 **Next:** [Post-Installation](Post-Installation) | [Tailscale Setup](Tailscale-Setup)

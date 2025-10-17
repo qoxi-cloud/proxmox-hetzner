@@ -84,6 +84,7 @@ You can pre-configure any setting via environment variables.
 | `INTERFACE_NAME` | Network interface | Auto-detected |
 | `BRIDGE_MODE` | Network mode: `internal`, `external`, `both` | `internal` |
 | `PRIVATE_SUBNET` | NAT subnet (CIDR notation) | `10.0.0.0/24` |
+| `DEFAULT_BRIDGE_MTU` | MTU for private bridges (jumbo frames) | `9000` |
 
 ### Storage Settings
 

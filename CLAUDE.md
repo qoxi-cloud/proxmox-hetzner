@@ -108,7 +108,7 @@ Centralized constants in `00-init.sh` (can be overridden via environment variabl
 | DNS servers | `DNS_SERVERS[]`, `DNS_PRIMARY`, `DNS_SECONDARY`, etc. |
 | Resource limits | `MIN_DISK_SPACE_MB`, `MIN_RAM_MB`, `MIN_CPU_CORES` |
 | QEMU defaults | `DEFAULT_QEMU_RAM`, `MIN_QEMU_RAM`, `MAX_QEMU_CORES`, `QEMU_MIN_RAM_RESERVE` |
-| Default values | `DEFAULT_HOSTNAME`, `DEFAULT_TIMEZONE`, `DEFAULT_SUBNET`, etc. |
+| Default values | `DEFAULT_HOSTNAME`, `DEFAULT_TIMEZONE`, `DEFAULT_SUBNET`, `DEFAULT_BRIDGE_MTU`, etc. |
 | Packages | `SYSTEM_UTILITIES`, `OPTIONAL_PACKAGES` |
 | Timeouts | `DNS_LOOKUP_TIMEOUT`, `SSH_CONNECT_TIMEOUT`, `SSH_READY_TIMEOUT`, `QEMU_BOOT_TIMEOUT` |
 | Retry settings | `DNS_RETRY_DELAY`, `DOWNLOAD_RETRY_COUNT`, `DOWNLOAD_RETRY_DELAY` |
@@ -154,7 +154,7 @@ Configuration files in `templates/` are downloaded at runtime from GitHub raw UR
 #### Template Placeholders
 
 - `{{MAIN_IPV4}}`, `{{FQDN}}`, `{{HOSTNAME}}` - Network/host values
-- `{{INTERFACE_NAME}}`, `{{PRIVATE_IP_CIDR}}`, `{{PRIVATE_SUBNET}}` - Bridge config
+- `{{INTERFACE_NAME}}`, `{{PRIVATE_IP_CIDR}}`, `{{PRIVATE_SUBNET}}`, `{{BRIDGE_MTU}}` - Bridge config
 - `{{DNS_PRIMARY}}`, `{{DNS_SECONDARY}}`, etc. - DNS servers
 
 #### Template Utility Functions

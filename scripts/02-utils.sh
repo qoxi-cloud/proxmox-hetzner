@@ -93,6 +93,7 @@ apply_common_template_vars() {
         "INTERFACE_NAME=${INTERFACE_NAME:-}" \
         "PRIVATE_IP_CIDR=${PRIVATE_IP_CIDR:-}" \
         "PRIVATE_SUBNET=${PRIVATE_SUBNET:-}" \
+        "BRIDGE_MTU=${DEFAULT_BRIDGE_MTU:-9000}" \
         "DNS_PRIMARY=${DNS_PRIMARY:-1.1.1.1}" \
         "DNS_SECONDARY=${DNS_SECONDARY:-1.0.0.1}" \
         "DNS_TERTIARY=${DNS_TERTIARY:-8.8.8.8}" \

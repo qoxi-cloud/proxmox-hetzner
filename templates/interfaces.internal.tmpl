@@ -29,12 +29,14 @@ iface {{INTERFACE_NAME}} inet6 static
 
 # vmbr0: Private NAT network for VMs
 # All VMs connect here and access internet via NAT
+# MTU 9000 (jumbo frames) for improved VM-to-VM performance
 auto vmbr0
 iface vmbr0 inet static
     address {{PRIVATE_IP_CIDR}}
     bridge-ports none
     bridge-stp off
     bridge-fd 0
+    mtu {{BRIDGE_MTU}}
     post-up   echo 1 > /proc/sys/net/ipv4/ip_forward
     post-up   iptables -t nat -A POSTROUTING -s '{{PRIVATE_SUBNET}}' -o {{INTERFACE_NAME}} -j MASQUERADE
     post-down iptables -t nat -D POSTROUTING -s '{{PRIVATE_SUBNET}}' -o {{INTERFACE_NAME}} -j MASQUERADE
