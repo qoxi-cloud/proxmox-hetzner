@@ -48,5 +48,6 @@ configure_proxmox_via_ssh() {
     configure_auditd
     configure_ssl_certificate
     configure_ssh_hardening
+    validate_installation
     finalize_vm
 }

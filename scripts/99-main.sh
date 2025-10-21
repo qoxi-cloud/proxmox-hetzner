@@ -36,11 +36,21 @@ reboot_to_main_os() {
     duration=$(format_duration $total_seconds)
 
     summary+="[OK]|Installation time|${duration}"$'\n'
-    summary+="|--- Security ---|"$'\n'
-    summary+="[OK]|SSH public key|deployed"$'\n'
-    summary+="[OK]|Password auth|DISABLED"$'\n'
+
+    # Add validation results if available
+    if [[ ${#VALIDATION_RESULTS[@]} -gt 0 ]]; then
+        summary+="|--- System Checks ---|"$'\n'
+        for result in "${VALIDATION_RESULTS[@]}"; do
+            summary+="${result}"$'\n'
+        done
+    fi
+
+    summary+="|--- Configuration ---|"$'\n'
     summary+="[OK]|CPU governor|performance"$'\n'
     summary+="[OK]|Kernel params|optimized"$'\n'
+    summary+="[OK]|nf_conntrack|optimized"$'\n'
+    summary+="[OK]|Security updates|unattended"$'\n'
+    summary+="[OK]|Monitoring tools|btop, iotop, ncdu..."$'\n'
 
     # Repository info
     case "${PVE_REPO_TYPE:-no-subscription}" in
@@ -54,42 +64,27 @@ reboot_to_main_os() {
             ;;
         test)
             summary+="[WARN]|Repository|test (unstable)"$'\n'
-            summary+="[OK]|Subscription notice|removed"$'\n'
             ;;
         *)
             summary+="[OK]|Repository|no-subscription"$'\n'
-            summary+="[OK]|Subscription notice|removed"$'\n'
             ;;
     esac
 
-    # SSL certificate info
+    # SSL certificate info (only if not in validation results)
     if [[ "$SSL_TYPE" == "letsencrypt" ]]; then
-        summary+="[OK]|SSL certificate|Let's Encrypt (on first boot)"$'\n'
         summary+="[OK]|SSL auto-renewal|enabled"$'\n'
-    else
-        summary+="[OK]|SSL certificate|self-signed"$'\n'
     fi
-
-    summary+="|--- Optimizations ---|"$'\n'
-    summary+="[OK]|Monitoring tools|btop, iotop, ncdu, tmux..."$'\n'
-    summary+="[OK]|VM image tools|libguestfs-tools"$'\n'
-    summary+="[OK]|ZFS ARC limits|configured"$'\n'
-    summary+="[OK]|nf_conntrack|optimized"$'\n'
-    summary+="[OK]|NTP sync|chrony (Hetzner)"$'\n'
-    summary+="[OK]|Security updates|unattended"$'\n'
 
     # Tailscale status
     if [[ "$INSTALL_TAILSCALE" == "yes" ]]; then
         summary+="[OK]|Tailscale VPN|installed"$'\n'
-        if [[ -n "$TAILSCALE_AUTH_KEY" ]]; then
-            summary+="[OK]|Tailscale IP|${TAILSCALE_IP:-pending}"$'\n'
-        else
+        if [[ -z "$TAILSCALE_AUTH_KEY" ]]; then
             summary+="[WARN]|Tailscale|needs auth after reboot"$'\n'
         fi
     else
         # Fail2Ban is installed when Tailscale is not used
         if [[ "$FAIL2BAN_INSTALLED" == "yes" ]]; then
-            summary+="[OK]|Fail2Ban|SSH + Proxmox API protected"$'\n'
+            summary+="[OK]|Fail2Ban|SSH + Proxmox protected"$'\n'
         fi
     fi
 
@@ -134,16 +129,21 @@ reboot_to_main_os() {
         fi
     fi
 
-    # Display ASCII art header (centered for MENU_BOX_WIDTH=60)
-    echo -e "${CLR_CYAN}"
-    cat << 'BANNER'
-               ____
-              / ___| _   _  ___ ___ ___  ___ ___
-              \___ \| | | |/ __/ __/ _ \/ __/ __|
-               ___) | |_| | (_| (_|  __/\__ \__ \
-              |____/ \__,_|\___\___\___||___/___/
-BANNER
-    echo -e "${CLR_RESET}"
+    # Add validation summary at the end if there were issues
+    if [[ $VALIDATION_FAILED -gt 0 || $VALIDATION_WARNINGS -gt 0 ]]; then
+        summary+=$'\n'"|--- Validation ---|"$'\n'
+        summary+="[OK]|Checks passed|${VALIDATION_PASSED}"$'\n'
+        if [[ $VALIDATION_WARNINGS -gt 0 ]]; then
+            summary+="[WARN]|Warnings|${VALIDATION_WARNINGS}"$'\n'
+        fi
+        if [[ $VALIDATION_FAILED -gt 0 ]]; then
+            summary+="[ERROR]|Failed|${VALIDATION_FAILED}"$'\n'
+        fi
+    fi
+
+    # Clear screen and show main banner (without version info)
+    clear
+    show_banner --no-info
 
     # Display with boxes
     {
@@ -153,6 +153,12 @@ BANNER
         done
     } | boxes -d stone -p a1 -s $MENU_BOX_WIDTH | colorize_status
     echo ""
+
+    # Show warning if validation failed
+    if [[ $VALIDATION_FAILED -gt 0 ]]; then
+        print_warning "Some validation checks failed. Review the summary above."
+        echo ""
+    fi
 
     # Show Tailscale auth instructions if needed
     if [[ "$INSTALL_TAILSCALE" == "yes" && -z "$TAILSCALE_AUTH_KEY" ]]; then

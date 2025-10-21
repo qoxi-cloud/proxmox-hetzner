@@ -74,7 +74,7 @@ Scripts are numbered and concatenated in order:
 - `11-packages.sh` - Package installation, ISO download (with fallback chain), answer.toml generation
 - `12-qemu.sh` - QEMU VM management for installation and boot, drive release with findmnt
 
-#### Post-Install Configuration (13-17)
+#### Post-Install Configuration (13-18)
 
 - `13-templates.sh` - Template download and preparation
 - `14-configure-base.sh` - Base system configuration (ZFS, packages, shell)
@@ -83,6 +83,7 @@ Scripts are numbered and concatenated in order:
 - `15b-configure-auditd.sh` - Auditd audit logging for administrative actions
 - `16-configure-ssl.sh` - SSL certificate configuration (self-signed or Let's Encrypt)
 - `17-configure-finalize.sh` - SSH hardening and VM finalization
+- `18-validate.sh` - Post-installation validation (SSH, ZFS, network, services)
 
 #### Main Flow (99)
 
@@ -258,6 +259,18 @@ Large functions are decomposed into smaller helper functions prefixed with `_` f
 - `_deactivate_lvm()` - Deactivate LVM volume groups
 - `_unmount_drive_filesystems()` - Unmount filesystems on drives
 - `_kill_drive_holders()` - Kill processes holding drives open
+
+#### Validation Helpers (18-validate.sh)
+
+- `_add_validation_result()` - Add result with status (pass/fail/warn)
+- `_validate_ssh()` - Check SSH service, keys, and authentication settings
+- `_validate_zfs()` - Check ZFS pools, health, and ARC configuration
+- `_validate_network()` - Check interfaces, bridges, IPv4/IPv6 connectivity, DNS
+- `_validate_services()` - Check Proxmox services (pve-cluster, pvedaemon, etc.)
+- `_validate_proxmox()` - Check web UI, API, and storage
+- `_validate_optional()` - Check Tailscale, Fail2Ban, Auditd if installed
+- `_validate_ssl()` - Check SSL certificate presence and validity
+- `_display_validation_summary()` - Display results in formatted box
 
 ### Error Handling Patterns
 
