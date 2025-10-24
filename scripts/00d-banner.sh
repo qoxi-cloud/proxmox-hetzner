@@ -18,7 +18,7 @@ show_banner() {
     echo -e "${CLR_GRAY}| |     | |   | (_) |${CLR_ORANGE} >  <${CLR_GRAY}  | | | | | || (_) |${CLR_ORANGE} >  <${CLR_RESET}"
     echo -e "${CLR_GRAY}|_|     |_|    \\___/ ${CLR_ORANGE}/_/\\_\\\\${CLR_GRAY} |_| |_| |_| \\___/ ${CLR_ORANGE}/_/\\_\\\\${CLR_RESET}"
     echo -e ""
-    echo -e "${CLR_CYAN}            Hetzner Automated Installer${CLR_RESET}"
+    echo -e "${CLR_GRAY}            Hetzner Automated Installer${CLR_RESET}"
     echo -e ""
 
     if [[ "$show_info" == true ]]; then

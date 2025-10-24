@@ -71,7 +71,7 @@ interactive_menu() {
         while IFS= read -r line; do
             # Top/bottom border
             if [[ "$line" =~ ^\+[-+]+\+$ ]]; then
-                echo "${CLR_CYAN}${line}${CLR_RESET}"
+                echo "${CLR_GRAY}${line}${CLR_RESET}"
             # Content line with | borders
             elif [[ "$line" =~ ^(\|)(.*)\|$ ]]; then
                 local content="${BASH_REMATCH[2]}"
@@ -93,8 +93,8 @@ interactive_menu() {
                 content="${content//Comment:/${CLR_YELLOW}Comment:${CLR_RESET}}"
                 # Checkbox colors (apply AFTER yellow to ensure correct colors)
                 content="${content//\[\*\]/${CLR_GREEN}[●]${CLR_RESET}}"
-                content="${content//\[ \]/${CLR_CYAN}[○]${CLR_RESET}}"
-                echo "${CLR_CYAN}|${CLR_RESET}${content}${CLR_CYAN}|${CLR_RESET}"
+                content="${content//\[ \]/${CLR_GRAY}[○]${CLR_RESET}}"
+                echo "${CLR_GRAY}|${CLR_RESET}${content}${CLR_GRAY}|${CLR_RESET}"
             else
                 echo "$line"
             fi
@@ -170,11 +170,11 @@ input_box() {
         while IFS= read -r line; do
             # Top/bottom border (lines with + and -)
             if [[ "$line" =~ ^\+[-+]+\+$ ]]; then
-                echo -e "${CLR_CYAN}${line}${CLR_RESET}"
+                echo -e "${CLR_GRAY}${line}${CLR_RESET}"
             # Content line with | borders
             elif [[ "$line" =~ ^(\|)(.*)\|$ ]]; then
                 local content="${BASH_REMATCH[2]}"
-                echo -e "${CLR_CYAN}|${CLR_RESET}${CLR_YELLOW}${content}${CLR_RESET}${CLR_CYAN}|${CLR_RESET}"
+                echo -e "${CLR_GRAY}|${CLR_RESET}${CLR_YELLOW}${content}${CLR_RESET}${CLR_GRAY}|${CLR_RESET}"
             else
                 echo "$line"
             fi

@@ -240,7 +240,7 @@ if [[ "$VALIDATE_ONLY" == true ]]; then
         echo "  QEMU Cores:   ${QEMU_CORES_OVERRIDE} (override)"
     fi
     echo ""
-    echo -e "${CLR_CYAN}Run without --validate to start installation${CLR_RESET}"
+    echo -e "${CLR_GRAY}Run without --validate to start installation${CLR_RESET}"
     exit 0
 fi
 
@@ -248,9 +248,9 @@ fi
 if [[ "$DRY_RUN" == true ]]; then
     log "DRY-RUN MODE: Simulating installation"
     echo ""
-    echo -e "${CLR_CYAN}═══════════════════════════════════════════════════════════${CLR_RESET}"
-    echo -e "${CLR_CYAN}                    DRY-RUN MODE                            ${CLR_RESET}"
-    echo -e "${CLR_CYAN}═══════════════════════════════════════════════════════════${CLR_RESET}"
+    echo -e "${CLR_GRAY}═══════════════════════════════════════════════════════════${CLR_RESET}"
+    echo -e "${CLR_GRAY}                    DRY-RUN MODE                            ${CLR_RESET}"
+    echo -e "${CLR_GRAY}═══════════════════════════════════════════════════════════${CLR_RESET}"
     echo ""
     echo -e "${CLR_YELLOW}The following steps would be performed:${CLR_RESET}"
     echo ""
@@ -331,7 +331,7 @@ if [[ "$DRY_RUN" == true ]]; then
     echo "      - Deploy SSH public key"
     echo ""
 
-    echo -e "${CLR_CYAN}═══════════════════════════════════════════════════════════${CLR_RESET}"
+    echo -e "${CLR_GRAY}═══════════════════════════════════════════════════════════${CLR_RESET}"
     echo ""
     echo -e "${CLR_GREEN}Configuration Summary:${CLR_RESET}"
     echo "  Hostname:     $HOSTNAME"
@@ -352,7 +352,7 @@ if [[ "$DRY_RUN" == true ]]; then
     echo "  Repository:   ${PVE_REPO_TYPE:-no-subscription}"
     echo "  SSL:          ${SSL_TYPE:-self-signed}"
     echo ""
-    echo -e "${CLR_CYAN}═══════════════════════════════════════════════════════════${CLR_RESET}"
+    echo -e "${CLR_GRAY}═══════════════════════════════════════════════════════════${CLR_RESET}"
     echo ""
     echo -e "${CLR_GREEN}✓ Dry-run completed successfully${CLR_RESET}"
     echo -e "${CLR_YELLOW}Run without --dry-run to perform actual installation${CLR_RESET}"

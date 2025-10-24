@@ -60,7 +60,7 @@ colorize_status() {
     while IFS= read -r line; do
         # Top/bottom border
         if [[ "$line" =~ ^\+[-+]+\+$ ]]; then
-            echo "${CLR_CYAN}${line}${CLR_RESET}"
+            echo "${CLR_GRAY}${line}${CLR_RESET}"
         # Content line with | borders
         elif [[ "$line" =~ ^(\|)(.*)\|$ ]]; then
             local content="${BASH_REMATCH[2]}"
@@ -68,7 +68,7 @@ colorize_status() {
             content="${content//\[OK\]/${CLR_GREEN}[OK]${CLR_RESET}}"
             content="${content//\[WARN\]/${CLR_YELLOW}[WARN]${CLR_RESET}}"
             content="${content//\[ERROR\]/${CLR_RED}[ERROR]${CLR_RESET}}"
-            echo "${CLR_CYAN}|${CLR_RESET}${content}${CLR_CYAN}|${CLR_RESET}"
+            echo "${CLR_GRAY}|${CLR_RESET}${content}${CLR_GRAY}|${CLR_RESET}"
         else
             echo "$line"
         fi
@@ -100,5 +100,5 @@ print_warning() {
 
 # Print info message
 print_info() {
-    echo -e "${CLR_CYAN}ℹ${CLR_RESET} $1"
+    echo -e "${CLR_GRAY}ℹ${CLR_RESET} $1"
 }

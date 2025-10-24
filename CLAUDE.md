@@ -196,7 +196,7 @@ Post-install configuration runs via SSH into QEMU VM on port 5555:
 - All scripts share global variables (no `local` for exported values)
 - Progress indicators use spinner chars: `SPINNER_CHARS='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'`
 - Menu width is fixed: `MENU_BOX_WIDTH=60`
-- Colors: `CLR_RED`, `CLR_GREEN`, `CLR_YELLOW`, `CLR_BLUE`, `CLR_CYAN`, `CLR_RESET`
+- Colors: `CLR_RED`, `CLR_GREEN`, `CLR_YELLOW`, `CLR_BLUE`, `CLR_ORANGE`, `CLR_GRAY`, `CLR_RESET`
 - Status markers: `[OK]`, `[WARN]`, `[ERROR]` - colorized by `colorize_status` function
 - SSH functions use `SSHPASS` env var to avoid password exposure in process list
 

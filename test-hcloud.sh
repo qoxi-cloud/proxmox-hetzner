@@ -16,7 +16,7 @@ set -e
 CLR_RED="\033[1;31m"
 CLR_GREEN="\033[1;32m"
 CLR_YELLOW="\033[1;33m"
-CLR_CYAN="\033[1;36m"
+CLR_GRAY="\033[38;5;240m"
 CLR_RESET="\033[m"
 
 # Configuration
@@ -35,7 +35,7 @@ STATE_FILE="/tmp/test-hcloud-state-$$"
 # =============================================================================
 
 log_info() {
-    echo -e "${CLR_CYAN}[INFO]${CLR_RESET} $*"
+    echo -e "${CLR_GRAY}[INFO]${CLR_RESET} $*"
 }
 
 log_success() {
@@ -192,9 +192,9 @@ run_installer_interactive() {
     echo ""
     log_success "Server is ready!"
     echo ""
-    echo -e "${CLR_CYAN}═══════════════════════════════════════════════════════════${CLR_RESET}"
+    echo -e "${CLR_GRAY}═══════════════════════════════════════════════════════════${CLR_RESET}"
     echo -e "${CLR_GREEN}  Connecting to server in INTERACTIVE mode${CLR_RESET}"
-    echo -e "${CLR_CYAN}═══════════════════════════════════════════════════════════${CLR_RESET}"
+    echo -e "${CLR_GRAY}═══════════════════════════════════════════════════════════${CLR_RESET}"
     echo ""
     echo -e "  Server IP:     ${CLR_YELLOW}$SERVER_IP${CLR_RESET}"
     echo -e "  Server ID:     ${CLR_YELLOW}$SERVER_ID${CLR_RESET}"
@@ -206,7 +206,7 @@ run_installer_interactive() {
     echo -e "${CLR_YELLOW}  When installer completes - disconnect with Ctrl+D or 'exit'${CLR_RESET}"
     echo -e "${CLR_YELLOW}  You will then be asked if you want to verify the installation.${CLR_RESET}"
     echo ""
-    echo -e "${CLR_CYAN}═══════════════════════════════════════════════════════════${CLR_RESET}"
+    echo -e "${CLR_GRAY}═══════════════════════════════════════════════════════════${CLR_RESET}"
     echo ""
 
     # Build environment variables to pass
@@ -235,17 +235,17 @@ verification_menu() {
 
     while true; do
         echo ""
-        echo -e "${CLR_CYAN}═══════════════════════════════════════════════════════════${CLR_RESET}"
+        echo -e "${CLR_GRAY}═══════════════════════════════════════════════════════════${CLR_RESET}"
         echo -e "${CLR_GREEN}  Installation completed - Verification Menu${CLR_RESET}"
-        echo -e "${CLR_CYAN}═══════════════════════════════════════════════════════════${CLR_RESET}"
+        echo -e "${CLR_GRAY}═══════════════════════════════════════════════════════════${CLR_RESET}"
         echo ""
         echo -e "  Server IP:     ${CLR_YELLOW}$SERVER_IP${CLR_RESET}"
         echo -e "  Server ID:     ${CLR_YELLOW}$SERVER_ID${CLR_RESET}"
         echo ""
-        echo -e "  ${CLR_CYAN}1)${CLR_RESET} Reboot server to Proxmox and connect via SSH"
-        echo -e "  ${CLR_CYAN}2)${CLR_RESET} Open Proxmox WebUI in browser"
-        echo -e "  ${CLR_CYAN}3)${CLR_RESET} Connect to current system (rescue/QEMU)"
-        echo -e "  ${CLR_CYAN}4)${CLR_RESET} Delete server and exit"
+        echo -e "  ${CLR_GRAY}1)${CLR_RESET} Reboot server to Proxmox and connect via SSH"
+        echo -e "  ${CLR_GRAY}2)${CLR_RESET} Open Proxmox WebUI in browser"
+        echo -e "  ${CLR_GRAY}3)${CLR_RESET} Connect to current system (rescue/QEMU)"
+        echo -e "  ${CLR_GRAY}4)${CLR_RESET} Delete server and exit"
         echo ""
         read -rp "Select option [1-4]: " choice
 
@@ -356,9 +356,9 @@ connect_current() {
 
 main() {
     echo ""
-    echo -e "${CLR_CYAN}═══════════════════════════════════════════════════════════${CLR_RESET}"
-    echo -e "${CLR_CYAN}  Hetzner Cloud Proxmox Installer Test (Interactive)${CLR_RESET}"
-    echo -e "${CLR_CYAN}═══════════════════════════════════════════════════════════${CLR_RESET}"
+    echo -e "${CLR_GRAY}═══════════════════════════════════════════════════════════${CLR_RESET}"
+    echo -e "${CLR_GRAY}  Hetzner Cloud Proxmox Installer Test (Interactive)${CLR_RESET}"
+    echo -e "${CLR_GRAY}═══════════════════════════════════════════════════════════${CLR_RESET}"
     echo ""
 
     check_prerequisites
