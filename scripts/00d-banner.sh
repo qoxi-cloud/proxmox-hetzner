@@ -11,14 +11,15 @@ show_banner() {
     local show_info=true
     [[ "$1" == "--no-info" ]] && show_info=false
 
-    echo -e "${CLR_CYAN}         ____"
-    echo -e "        |  _ \\ _ __ _____  ___ __ ___   _____  __"
-    echo -e "        | |_) | '__/ _ \\ \\/ / '\`_ \` _ \\ / _ \\ \\/ /"
-    echo -e "        |  __/| | | (_) ${CLR_YELLOW}>${CLR_CYAN}  ${CLR_YELLOW}<${CLR_CYAN}| | | | | | (_) ${CLR_YELLOW}>${CLR_CYAN}  ${CLR_YELLOW}<${CLR_CYAN}"
-    echo -e "        |_|   |_|  \\___/_/${CLR_YELLOW}\\${CLR_CYAN}_${CLR_YELLOW}\\${CLR_CYAN}_| |_| |_|\\___/_/${CLR_YELLOW}\\${CLR_CYAN}_${CLR_YELLOW}\\${CLR_CYAN}"
+    echo -e "${CLR_GRAY} _____                                              ${CLR_RESET}"
+    echo -e "${CLR_GRAY}|  __ \\                                             ${CLR_RESET}"
+    echo -e "${CLR_GRAY}| |__) | _ __   ___  ${CLR_ORANGE}__  __${CLR_GRAY}  _ __ ___    ___  ${CLR_ORANGE}__  __${CLR_RESET}"
+    echo -e "${CLR_GRAY}|  ___/ | '__| / _ \\ ${CLR_ORANGE}\\ \\/ /${CLR_GRAY} | '_ \\\` _ \\  / _ \\ ${CLR_ORANGE}\\ \\/ /${CLR_RESET}"
+    echo -e "${CLR_GRAY}| |     | |   | (_) |${CLR_ORANGE} >  <${CLR_GRAY}  | | | | | || (_) |${CLR_ORANGE} >  <${CLR_RESET}"
+    echo -e "${CLR_GRAY}|_|     |_|    \\___/ ${CLR_ORANGE}/_/\\_\\\\${CLR_GRAY} |_| |_| |_| \\___/ ${CLR_ORANGE}/_/\\_\\\\${CLR_RESET}"
     echo -e ""
-    echo -e "            Hetzner Automated Installer"
-    echo -e "${CLR_RESET}"
+    echo -e "${CLR_CYAN}            Hetzner Automated Installer${CLR_RESET}"
+    echo -e ""
 
     if [[ "$show_info" == true ]]; then
         echo -e "${CLR_YELLOW}Version: ${VERSION}${CLR_RESET}"
