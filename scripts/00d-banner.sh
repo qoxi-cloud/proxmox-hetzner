@@ -22,8 +22,6 @@ show_banner() {
     echo -e ""
 
     if [[ "$show_info" == true ]]; then
-        echo -e "${CLR_YELLOW}Version: ${VERSION}${CLR_RESET}"
-        echo -e "${CLR_YELLOW}Log file: ${LOG_FILE}${CLR_RESET}"
         if [[ -n "$CONFIG_FILE" ]]; then
             echo -e "${CLR_YELLOW}Config: ${CONFIG_FILE}${CLR_RESET}"
         fi

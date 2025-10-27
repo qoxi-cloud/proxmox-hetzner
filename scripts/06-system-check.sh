@@ -212,6 +212,7 @@ show_system_status() {
         esac
     }
 
+    add_row "ok" "Installer" "v${VERSION}"
     add_row "$PREFLIGHT_ROOT_STATUS" "Root Access" "$PREFLIGHT_ROOT"
     add_row "$PREFLIGHT_NET_STATUS" "Internet" "$PREFLIGHT_NET"
     add_row "$PREFLIGHT_DISK_STATUS" "Temp Space" "$PREFLIGHT_DISK"
