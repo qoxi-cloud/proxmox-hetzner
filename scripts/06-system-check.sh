@@ -260,7 +260,4 @@ show_system_status() {
         log "ERROR: No drives detected"
         exit 1
     fi
-
-    print_success "All checks passed!"
-    echo ""
 }
