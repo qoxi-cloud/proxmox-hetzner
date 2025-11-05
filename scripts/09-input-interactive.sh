@@ -345,12 +345,13 @@ get_inputs_interactive() {
         PVE_REPO_TYPE="${repo_options[$MENU_SELECTED]}"
 
         if [[ "$PVE_REPO_TYPE" == "enterprise" ]]; then
-            local key_content="Enterprise repository requires a valid subscription key."$'\n'
-            key_content+="Get your key from: https://www.proxmox.com/proxmox-ve/pricing"$'\n'
+            local key_content="Enterprise repository requires a subscription key."$'\n'
+            key_content+="Get your key from:"$'\n'
+            key_content+="https://www.proxmox.com/proxmox-ve/pricing"$'\n'
             key_content+=$'\n'
             key_content+="Format: pve1c-XXXXXXXXXX or pve2c-XXXXXXXXXX"
 
-            input_box "Proxmox Subscription Key" "$key_content" "Subscription Key: " ""
+            input_box "Proxmox Subscription Key" "$key_content" "Key: " ""
             PVE_SUBSCRIPTION_KEY="$INPUT_VALUE"
 
             if [[ -n "$PVE_SUBSCRIPTION_KEY" ]]; then
