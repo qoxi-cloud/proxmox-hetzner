@@ -191,7 +191,7 @@ get_inputs_interactive() {
 
             interactive_menu \
                 "Private Subnet (↑/↓ select, Enter confirm)" \
-                "Internal network for VMs and containers" \
+                "Internal network for VMs and containers"$'\n' \
                 "10.0.0.0/24|Class A private (recommended)" \
                 "192.168.1.0/24|Class C private (common home network)" \
                 "172.16.0.0/24|Class B private" \
@@ -308,7 +308,7 @@ get_inputs_interactive() {
 
             interactive_menu \
                 "ZFS Storage Mode (↑/↓ select, Enter confirm)" \
-                "" \
+                "Select ZFS pool configuration for your drives"$'\n' \
                 "${zfs_labels[0]}|Survives 1 disk failure" \
                 "${zfs_labels[1]}|2x space & speed, no redundancy" \
                 "${zfs_labels[2]}|Uses first drive only"
@@ -337,7 +337,7 @@ get_inputs_interactive() {
 
         interactive_menu \
             "Proxmox Repository (↑/↓ select, Enter confirm)" \
-            "Select which repository to use for updates" \
+            "Select which repository to use for updates"$'\n' \
             "No-Subscription|Free community repository (default)" \
             "Enterprise|Stable, requires subscription key" \
             "Test|Latest packages, may be unstable"
