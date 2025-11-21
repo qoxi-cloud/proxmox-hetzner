@@ -92,16 +92,25 @@ print_error() {
 }
 
 # Print warning message
-# Usage: print_warning "message" [nested]
+# Usage: print_warning "message" [nested] OR print_warning "label" "value"
+# When 2 args provided and second is not "true", value is highlighted in cyan
 # If nested=true, adds indent before the warning icon
 print_warning() {
     local message="$1"
-    local nested="${2:-false}"
+    local second="${2:-false}"
     local indent=""
-    if [[ "$nested" == "true" ]]; then
-        indent="  "
+
+    # Check if second argument is a value (not "true" for nested)
+    if [[ $# -eq 2 && "$second" != "true" ]]; then
+        # Two-argument format: label and value
+        echo -e "${CLR_YELLOW}⚠️${CLR_RESET} $message ${CLR_CYAN}$second${CLR_RESET}"
+    else
+        # Original format: message with optional nested indent
+        if [[ "$second" == "true" ]]; then
+            indent="  "
+        fi
+        echo -e "${indent}${CLR_YELLOW}⚠️${CLR_RESET} $message"
     fi
-    echo -e "${indent}${CLR_YELLOW}⚠️${CLR_RESET} $message"
 }
 
 # Print info message

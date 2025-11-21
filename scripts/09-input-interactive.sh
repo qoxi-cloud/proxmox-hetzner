@@ -75,6 +75,8 @@ get_inputs_interactive() {
                 password_error=$(get_password_error "$input_password")
             done
             NEW_ROOT_PASSWORD="$input_password"
+            # Clear the password input line
+            printf "\033[A\r\033[K"
             print_success "Password:" "********"
         fi
     fi
@@ -360,7 +362,7 @@ get_inputs_interactive() {
             if [[ -n "$PVE_SUBSCRIPTION_KEY" ]]; then
                 print_success "Repository:" "enterprise (key configured)"
             else
-                print_warning "Repository: enterprise (no key - will show warning in UI)"
+                print_warning "Repository:" "enterprise (no key - will show warning in UI)"
             fi
         else
             PVE_SUBSCRIPTION_KEY=""
@@ -524,7 +526,7 @@ get_inputs_interactive() {
                 print_success "OpenSSH:" "will be disabled on first boot"
                 print_success "Stealth firewall:" "enabled (server hidden from internet)"
             else
-                print_warning "Tailscale: enabled (no key - manual auth required)"
+                print_warning "Tailscale:" "enabled (no key - manual auth required)"
                 STEALTH_MODE="no"
             fi
         else
