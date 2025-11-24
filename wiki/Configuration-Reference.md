@@ -125,13 +125,15 @@ You can pre-configure any setting via environment variables.
 
 > **Note:** Let's Encrypt requires your domain (FQDN) to resolve to the server's IP address. The installer validates DNS using public servers (Cloudflare, Google, Quad9) before proceeding. The SSL menu is only shown if Tailscale is not enabled (Tailscale provides its own HTTPS via `tailscale serve`).
 
-### Security Settings
+### Optional Features
 
 | Variable | Description | Default |
 |----------|-------------|---------|
+| `INSTALL_VNSTAT` | Install vnstat for bandwidth monitoring: `yes`, `no` | `yes` |
+| `INSTALL_UNATTENDED_UPGRADES` | Enable automatic security updates: `yes`, `no` | `yes` |
 | `INSTALL_AUDITD` | Install auditd for audit logging: `yes`, `no` | `no` |
 
-> **Note:** Auditd provides comprehensive audit logging for security compliance and forensics. It monitors administrative actions including Proxmox CLI commands, user changes, SSH config, firewall modifications, and more. See [Security](Security#audit-logging-auditd) for details.
+> **Note:** These optional features are presented in a checkbox menu during interactive installation. vnstat is useful for monitoring Hetzner transfer usage. Unattended-upgrades automatically installs security updates. Auditd provides comprehensive audit logging for security compliance. See [Security](Security#audit-logging-auditd) for details.
 
 ### Tailscale Settings
 
@@ -255,8 +257,10 @@ PVE_REPO_TYPE=no-subscription
 # SSL certificate (self-signed, letsencrypt)
 SSL_TYPE=self-signed
 
-# Audit logging (yes, no) - disabled by default
-INSTALL_AUDITD=no
+# Optional features
+INSTALL_VNSTAT=yes              # Bandwidth monitoring
+INSTALL_UNATTENDED_UPGRADES=yes # Automatic security updates
+INSTALL_AUDITD=no               # Audit logging - disabled by default
 
 # Tailscale
 INSTALL_TAILSCALE=no
@@ -280,6 +284,8 @@ When loading a configuration file (`-c` option), the installer validates all val
 | `SSL_TYPE` | `self-signed`, `letsencrypt` |
 | `DEFAULT_SHELL` | `bash`, `zsh` |
 | `INSTALL_AUDITD` | `yes`, `no` |
+| `INSTALL_VNSTAT` | `yes`, `no` |
+| `INSTALL_UNATTENDED_UPGRADES` | `yes`, `no` |
 | `IPV6_MODE` | `auto`, `manual`, `disabled` |
 | `IPV6_GATEWAY` | Valid IPv6 address or `auto` |
 | `IPV6_ADDRESS` | Valid IPv6 CIDR notation (e.g., `2001:db8::1/64`) |

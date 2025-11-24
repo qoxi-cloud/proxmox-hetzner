@@ -118,7 +118,7 @@ get_inputs_interactive() {
                 fi
             done <<< "$iso_list"
 
-            interactive_menu \
+            radio_menu \
                 "Proxmox VE Version (↑/↓ select, Enter confirm)" \
                 "Select which Proxmox VE version to install"$'\n' \
                 "${iso_menu_items[@]}"
@@ -140,7 +140,7 @@ get_inputs_interactive() {
     else
         local tz_options=("Europe/Kyiv" "Europe/London" "Europe/Berlin" "America/New_York" "America/Los_Angeles" "Asia/Tokyo" "UTC" "custom")
 
-        interactive_menu \
+        radio_menu \
             "Timezone (↑/↓ select, Enter confirm)" \
             "Select your server timezone"$'\n' \
             "Europe/Kyiv|Ukraine" \
@@ -175,7 +175,7 @@ get_inputs_interactive() {
         bridge_header+="vmbr0 = external (bridged to physical NIC)"$'\n'
         bridge_header+="vmbr1 = internal (NAT with private subnet)"$'\n'
 
-        interactive_menu \
+        radio_menu \
             "Network Bridge Mode (↑/↓ select, Enter confirm)" \
             "$bridge_header" \
             "Internal only (NAT)|VMs use private IPs with NAT" \
@@ -197,7 +197,7 @@ get_inputs_interactive() {
         else
             local subnet_options=("10.0.0.0/24" "192.168.1.0/24" "172.16.0.0/24" "custom")
 
-            interactive_menu \
+            radio_menu \
                 "Private Subnet (↑/↓ select, Enter confirm)" \
                 "Internal network for VMs and containers"$'\n' \
                 "10.0.0.0/24|Class A private (recommended)" \
@@ -252,7 +252,7 @@ get_inputs_interactive() {
             ipv6_header+="No IPv6 address detected on interface."$'\n'
         fi
 
-        interactive_menu \
+        radio_menu \
             "IPv6 Configuration (↑/↓ select, Enter confirm)" \
             "$ipv6_header" \
             "Auto|Use detected IPv6 address (recommended)" \
@@ -315,7 +315,7 @@ get_inputs_interactive() {
             local zfs_options=("raid1" "raid0" "single")
             local zfs_labels=("RAID-1 (mirror) - Recommended" "RAID-0 (stripe) - No redundancy" "Single drive - No redundancy")
 
-            interactive_menu \
+            radio_menu \
                 "ZFS Storage Mode (↑/↓ select, Enter confirm)" \
                 "Select ZFS pool configuration for your drives"$'\n' \
                 "${zfs_labels[0]}|Survives 1 disk failure" \
@@ -344,7 +344,7 @@ get_inputs_interactive() {
     else
         local repo_options=("no-subscription" "enterprise" "test")
 
-        interactive_menu \
+        radio_menu \
             "Proxmox Repository (↑/↓ select, Enter confirm)" \
             "Select which repository to use for updates"$'\n' \
             "No-Subscription|Free community repository (default)" \
@@ -374,22 +374,89 @@ get_inputs_interactive() {
         fi
     fi
 
-    # --- Default Shell ---
-    if [[ -n "$DEFAULT_SHELL" ]]; then
+    # --- Optional Features (checkbox menu) ---
+    # Check if any of the optional features are already set from env
+    local all_features_from_env=true
+    [[ -z "$DEFAULT_SHELL" ]] && all_features_from_env=false
+    [[ -z "$INSTALL_VNSTAT" ]] && all_features_from_env=false
+    [[ -z "$INSTALL_AUDITD" ]] && all_features_from_env=false
+    [[ -z "$INSTALL_UNATTENDED_UPGRADES" ]] && all_features_from_env=false
+
+    if [[ "$all_features_from_env" == true ]]; then
+        # All set from environment, just display them
         print_success "Default shell:" "${DEFAULT_SHELL} (from env)"
+        if [[ "$INSTALL_VNSTAT" == "yes" ]]; then
+            print_success "Bandwidth monitoring:" "enabled (from env)"
+        else
+            print_success "Bandwidth monitoring:" "disabled (from env)"
+        fi
+        if [[ "$INSTALL_UNATTENDED_UPGRADES" == "yes" ]]; then
+            print_success "Auto security updates:" "enabled (from env)"
+        else
+            print_success "Auto security updates:" "disabled (from env)"
+        fi
+        if [[ "$INSTALL_AUDITD" == "yes" ]]; then
+            print_success "Audit logging:" "enabled (from env)"
+        else
+            print_success "Audit logging:" "disabled (from env)"
+        fi
     else
-        local shell_options=("zsh" "bash")
-        local shell_header="Select the default shell for root user."$'\n'
-        shell_header+="ZSH includes autosuggestions and syntax highlighting."$'\n'
+        # Show checkbox menu for optional features
+        local features_header="Select optional features to install."$'\n'
+        features_header+="Use ↑/↓ to navigate, Space to toggle, Enter to confirm."$'\n'
 
-        interactive_menu \
-            "Default Shell (↑/↓ select, Enter confirm)" \
-            "$shell_header" \
-            "ZSH|Modern shell with plugins (recommended)" \
-            "Bash|Default system shell"
+        # Determine default states (1=checked, 0=unchecked)
+        local zsh_default=1
+        local vnstat_default=1
+        local unattended_default=1
+        local auditd_default=0
 
-        DEFAULT_SHELL="${shell_options[$MENU_SELECTED]}"
-        print_success "Default shell:" "${DEFAULT_SHELL}"
+        # Override with env values if set
+        [[ "$DEFAULT_SHELL" == "bash" ]] && zsh_default=0
+        [[ "$INSTALL_VNSTAT" == "no" ]] && vnstat_default=0
+        [[ "$INSTALL_UNATTENDED_UPGRADES" == "no" ]] && unattended_default=0
+        [[ "$INSTALL_AUDITD" == "yes" ]] && auditd_default=1
+
+        checkbox_menu \
+            "Optional Features (↑/↓ navigate, Space toggle, Enter confirm)" \
+            "$features_header" \
+            "ZSH shell|Modern shell with autosuggestions and syntax highlighting|${zsh_default}" \
+            "vnstat|Bandwidth monitoring for tracking Hetzner transfer usage|${vnstat_default}" \
+            "Unattended upgrades|Automatic security updates|${unattended_default}" \
+            "auditd|Audit logging for administrative action tracking|${auditd_default}"
+
+        # Process results
+        if [[ "${CHECKBOX_RESULTS[0]}" == "1" ]]; then
+            DEFAULT_SHELL="zsh"
+            print_success "Default shell:" "zsh"
+        else
+            DEFAULT_SHELL="bash"
+            print_success "Default shell:" "bash"
+        fi
+
+        if [[ "${CHECKBOX_RESULTS[1]}" == "1" ]]; then
+            INSTALL_VNSTAT="yes"
+            print_success "Bandwidth monitoring:" "enabled (vnstat)"
+        else
+            INSTALL_VNSTAT="no"
+            print_success "Bandwidth monitoring:" "disabled"
+        fi
+
+        if [[ "${CHECKBOX_RESULTS[2]}" == "1" ]]; then
+            INSTALL_UNATTENDED_UPGRADES="yes"
+            print_success "Auto security updates:" "enabled"
+        else
+            INSTALL_UNATTENDED_UPGRADES="no"
+            print_success "Auto security updates:" "disabled"
+        fi
+
+        if [[ "${CHECKBOX_RESULTS[3]}" == "1" ]]; then
+            INSTALL_AUDITD="yes"
+            print_success "Audit logging:" "enabled (auditd)"
+        else
+            INSTALL_AUDITD="no"
+            print_success "Audit logging:" "disabled"
+        fi
     fi
 
     # --- CPU Governor / Power Profile ---
@@ -400,7 +467,7 @@ get_inputs_interactive() {
         local governor_header="Select CPU frequency scaling governor (power profile)."$'\n'
         governor_header+="Affects power consumption, heat, and performance."$'\n'
 
-        interactive_menu \
+        radio_menu \
             "Power Profile (↑/↓ select, Enter confirm)" \
             "$governor_header" \
             "Performance|Max speed, highest power (recommended)" \
@@ -434,7 +501,7 @@ get_inputs_interactive() {
             fi
             ssh_header+=$'\n'
 
-            interactive_menu \
+            radio_menu \
                 "SSH Public Key (↑/↓ select, Enter confirm)" \
                 "$ssh_header" \
                 "Use detected key|Already configured in Hetzner" \
@@ -499,7 +566,7 @@ get_inputs_interactive() {
         local ts_header="Tailscale provides secure remote access to your server."$'\n'
         ts_header+="Auth key: https://login.tailscale.com/admin/settings/keys"$'\n'
 
-        interactive_menu \
+        radio_menu \
             "Tailscale VPN - Optional (↑/↓ select, Enter confirm)" \
             "$ts_header" \
             "Install Tailscale|Recommended for secure remote access" \
@@ -558,7 +625,7 @@ get_inputs_interactive() {
             ssl_header+="  - DNS A record points to ${MAIN_IPV4_CIDR%/*}"$'\n'
             ssl_header+="  - Port 80 is accessible from the internet"
 
-            interactive_menu \
+            radio_menu \
                 "SSL Certificate (↑/↓ select, Enter confirm)" \
                 "$ssl_header" \
                 "Self-signed|Default Proxmox certificate (recommended)" \
@@ -641,31 +708,5 @@ get_inputs_interactive() {
     else
         # Tailscale provides its own HTTPS via serve
         SSL_TYPE="self-signed"
-    fi
-
-    # --- Audit Logging (auditd) ---
-    if [[ -n "$INSTALL_AUDITD" ]]; then
-        if [[ "$INSTALL_AUDITD" == "yes" ]]; then
-            print_success "Audit logging:" "enabled (from env)"
-        else
-            print_success "Audit logging:" "skipped (from env)"
-        fi
-    else
-        local audit_header="Auditd tracks administrative actions for security compliance."$'\n'
-        audit_header+="Monitors: user changes, Proxmox CLI, SSH, firewall, ZFS, etc."$'\n'
-
-        interactive_menu \
-            "Audit Logging - Optional (↑/↓ select, Enter confirm)" \
-            "$audit_header" \
-            "Skip installation|No audit logging (default)" \
-            "Install auditd|Enable administrative action tracking"
-
-        if [[ $MENU_SELECTED -eq 1 ]]; then
-            INSTALL_AUDITD="yes"
-            print_success "Audit logging:" "enabled"
-        else
-            INSTALL_AUDITD="no"
-            print_success "Audit logging:" "skipped"
-        fi
     fi
 }

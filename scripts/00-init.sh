@@ -210,3 +210,13 @@ CPU_GOVERNOR=""
 # Auditd installation flag (set by configure_auditd)
 # shellcheck disable=SC2034
 AUDITD_INSTALLED=""
+
+# vnstat bandwidth monitoring setting (yes/no, default: yes)
+INSTALL_VNSTAT=""
+
+# vnstat installation flag (set by configure_vnstat)
+# shellcheck disable=SC2034
+VNSTAT_INSTALLED=""
+
+# Unattended upgrades setting (yes/no, default: yes)
+INSTALL_UNATTENDED_UPGRADES=""

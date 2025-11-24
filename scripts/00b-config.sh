@@ -48,6 +48,16 @@ validate_config() {
         has_errors=true
     fi
 
+    if [[ -n "$INSTALL_VNSTAT" ]] && [[ ! "$INSTALL_VNSTAT" =~ ^(yes|no)$ ]]; then
+        echo -e "${CLR_RED}Invalid INSTALL_VNSTAT: $INSTALL_VNSTAT (must be: yes or no)${CLR_RESET}"
+        has_errors=true
+    fi
+
+    if [[ -n "$INSTALL_UNATTENDED_UPGRADES" ]] && [[ ! "$INSTALL_UNATTENDED_UPGRADES" =~ ^(yes|no)$ ]]; then
+        echo -e "${CLR_RED}Invalid INSTALL_UNATTENDED_UPGRADES: $INSTALL_UNATTENDED_UPGRADES (must be: yes or no)${CLR_RESET}"
+        has_errors=true
+    fi
+
     if [[ -n "$CPU_GOVERNOR" ]] && [[ ! "$CPU_GOVERNOR" =~ ^(performance|ondemand|powersave|schedutil|conservative)$ ]]; then
         echo -e "${CLR_RED}Invalid CPU_GOVERNOR: $CPU_GOVERNOR (must be: performance, ondemand, powersave, schedutil, or conservative)${CLR_RESET}"
         has_errors=true
@@ -140,6 +150,12 @@ SSL_TYPE="${SSL_TYPE}"
 
 # Audit logging (yes, no)
 INSTALL_AUDITD="${INSTALL_AUDITD}"
+
+# Bandwidth monitoring with vnstat (yes, no)
+INSTALL_VNSTAT="${INSTALL_VNSTAT}"
+
+# Unattended upgrades for automatic security updates (yes, no)
+INSTALL_UNATTENDED_UPGRADES="${INSTALL_UNATTENDED_UPGRADES}"
 
 # CPU governor / power profile (performance, ondemand, powersave, schedutil, conservative)
 CPU_GOVERNOR="${CPU_GOVERNOR:-performance}"

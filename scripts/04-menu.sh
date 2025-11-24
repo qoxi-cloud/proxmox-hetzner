@@ -1,14 +1,14 @@
 # shellcheck shell=bash
 # =============================================================================
-# Interactive menu selection
+# Interactive menu selection (radio buttons - single select)
 # =============================================================================
-# Usage: interactive_menu "Title" "header_content" "label1|desc1" "label2|desc2" ...
+# Usage: radio_menu "Title" "header_content" "label1|desc1" "label2|desc2" ...
 # Sets: MENU_SELECTED (0-based index of selected option)
 # Fixed width: 60 characters for consistent appearance
 
 MENU_BOX_WIDTH=60
 
-interactive_menu() {
+radio_menu() {
     local title="$1"
     local header="$2"
     shift 2
@@ -201,4 +201,164 @@ input_box() {
         printf "\033[2K\n"
     done
     tput cuu $((box_lines + 1))
+}
+
+# =============================================================================
+# Interactive checkbox menu (multi-select)
+# =============================================================================
+# Usage: checkbox_menu "Title" "header_content" "label1|desc1|default1" "label2|desc2|default2" ...
+# - default: 1 = checked, 0 = unchecked
+# - Space toggles selection, Enter confirms
+# Sets: CHECKBOX_RESULTS array (1=selected, 0=not selected for each item)
+
+checkbox_menu() {
+    local title="$1"
+    local header="$2"
+    shift 2
+    local items=("$@")
+
+    local -a labels=()
+    local -a descriptions=()
+    local -a selected_states=()
+
+    # Parse items into labels, descriptions, and default states
+    for item in "${items[@]}"; do
+        local label="${item%%|*}"
+        local rest="${item#*|}"
+        local desc="${rest%%|*}"
+        local default_state="${rest##*|}"
+        labels+=("$label")
+        descriptions+=("$desc")
+        selected_states+=("${default_state:-0}")
+    done
+
+    local cursor=0
+    local key=""
+    local box_lines=0
+    local num_options=${#labels[@]}
+
+    # Function to draw the checkbox menu
+    _draw_checkbox_menu() {
+        local content=""
+
+        # Add header content if provided
+        if [[ -n "$header" ]]; then
+            content+="$header"$'\n'
+        fi
+
+        # Add options with checkboxes
+        for i in "${!labels[@]}"; do
+            local checkbox
+            if [[ "${selected_states[$i]}" == "1" ]]; then
+                checkbox="[x]"
+            else
+                checkbox="[ ]"
+            fi
+
+            if [ "$i" -eq "$cursor" ]; then
+                content+="> ${checkbox} ${labels[$i]}"$'\n'
+            else
+                content+="  ${checkbox} ${labels[$i]}"$'\n'
+            fi
+            [[ -n "${descriptions[$i]}" ]] && content+="       └─ ${descriptions[$i]}"$'\n'
+        done
+
+        # Add footer hint
+        content+=$'\n'"  Space: toggle, Enter: confirm"
+
+        {
+            echo "$title"
+            echo "$content"
+        } | boxes -d stone -p a1 -s $MENU_BOX_WIDTH
+    }
+
+    # Colorize checkbox menu output
+    _colorize_checkbox_menu() {
+        while IFS= read -r line; do
+            # Top/bottom border
+            if [[ "$line" =~ ^\+[-+]+\+$ ]]; then
+                echo "${CLR_GRAY}${line}${CLR_RESET}"
+            # Content line with | borders
+            elif [[ "$line" =~ ^(\|)(.*)\|$ ]]; then
+                local content="${BASH_REMATCH[2]}"
+                # Cursor indicator
+                content="${content//> />${CLR_ORANGE} ${CLR_RESET}}"
+                # Checked checkbox - green
+                content="${content//\[x\]/${CLR_CYAN}[✓]${CLR_RESET}}"
+                # Unchecked checkbox - gray
+                content="${content//\[ \]/${CLR_GRAY}[ ]${CLR_RESET}}"
+                # Footer hint - gray
+                if [[ "$content" == *"Space:"* ]]; then
+                    content="${CLR_GRAY}${content}${CLR_RESET}"
+                fi
+                echo "${CLR_GRAY}|${CLR_RESET}${content}${CLR_GRAY}|${CLR_RESET}"
+            else
+                echo "$line"
+            fi
+        done
+    }
+
+    # Hide cursor
+    tput civis
+
+    # Calculate box height
+    box_lines=$(_draw_checkbox_menu | wc -l)
+
+    # Draw initial menu
+    _draw_checkbox_menu | _colorize_checkbox_menu
+
+    while true; do
+        # Read a single keypress
+        IFS= read -rsn1 key
+
+        # Check for escape sequence (arrow keys)
+        if [[ "$key" == $'\x1b' ]]; then
+            read -rsn2 -t 0.1 key || true
+            case "$key" in
+                '[A') # Up arrow
+                    ((cursor--)) || true
+                    [ $cursor -lt 0 ] && cursor=$((num_options - 1))
+                    ;;
+                '[B') # Down arrow
+                    ((cursor++)) || true
+                    [ "$cursor" -ge "$num_options" ] && cursor=0
+                    ;;
+            esac
+        elif [[ "$key" == " " ]]; then
+            # Space pressed - toggle selection
+            if [[ "${selected_states[cursor]}" == "1" ]]; then
+                selected_states[cursor]=0
+            else
+                selected_states[cursor]=1
+            fi
+        elif [[ "$key" == "" ]]; then
+            # Enter pressed - confirm selection
+            break
+        fi
+
+        # Move cursor up to redraw menu
+        tput cuu "$box_lines"
+
+        # Clear lines and redraw
+        for ((i=0; i<box_lines; i++)); do
+            printf "\033[2K\n"
+        done
+        tput cuu "$box_lines"
+
+        # Draw the menu with colors
+        _draw_checkbox_menu | _colorize_checkbox_menu
+    done
+
+    # Show cursor again
+    tput cnorm
+
+    # Clear the menu box
+    tput cuu "$box_lines"
+    for ((i=0; i<box_lines; i++)); do
+        printf "\033[2K\n"
+    done
+    tput cuu "$box_lines"
+
+    # Set results array
+    CHECKBOX_RESULTS=("${selected_states[@]}")
 }

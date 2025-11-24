@@ -55,7 +55,7 @@ Scripts are numbered and concatenated in order:
 - `01-display.sh` - Box/table display utilities using `boxes` command
 - `02-utils.sh` - Download, password input, progress spinners, template utilities
 - `03-ssh.sh` - SSH helpers for remote execution into QEMU VM
-- `04-menu.sh` - Interactive arrow-key menu system
+- `04-menu.sh` - Interactive menu system (radio_menu for single-select, checkbox_menu for multi-select)
 - `05-validation.sh` - Input validators (hostname, email, subnet, password, etc.)
 
 #### System Detection (06-07)
@@ -340,6 +340,8 @@ The `validate_config()` function validates configuration values:
 - `SSL_TYPE` - must be: `self-signed` or `letsencrypt`
 - `DEFAULT_SHELL` - must be: `bash` or `zsh`
 - `INSTALL_AUDITD` - must be: `yes` or `no`
+- `INSTALL_VNSTAT` - must be: `yes` or `no`
+- `INSTALL_UNATTENDED_UPGRADES` - must be: `yes` or `no`
 - `CPU_GOVERNOR` - must be: `performance`, `ondemand`, `powersave`, `schedutil`, or `conservative`
 - `IPV6_MODE` - must be: `auto`, `manual`, or `disabled`
 - `IPV6_GATEWAY` - must be valid IPv6 address or `auto`
@@ -356,6 +358,31 @@ IPv6 validation functions for dual-stack support:
 - `is_ipv6_link_local()` - Check if address is link-local (fe80::/10)
 - `is_ipv6_ula()` - Check if address is ULA (fc00::/7)
 - `is_ipv6_global()` - Check if address is global unicast (2000::/3)
+
+### Interactive Menu Functions (04-menu.sh)
+
+Two types of interactive menus are available:
+
+#### Radio Menu (single-select)
+
+```bash
+radio_menu "Title" "header_content" "label1|desc1" "label2|desc2" ...
+# Result: MENU_SELECTED (0-based index)
+```
+
+#### Checkbox Menu (multi-select)
+
+```bash
+checkbox_menu "Title" "header_content" "label1|desc1|default1" "label2|desc2|default2" ...
+# default: 1 = checked, 0 = unchecked
+# Result: CHECKBOX_RESULTS array (1=selected, 0=not selected)
+```
+
+Navigation:
+
+- ↑/↓ arrows to move cursor
+- Space to toggle selection (checkbox only)
+- Enter to confirm
 
 ### Password Validation (05-validation.sh)
 

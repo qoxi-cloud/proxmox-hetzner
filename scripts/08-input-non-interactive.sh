@@ -162,6 +162,22 @@ get_inputs_non_interactive() {
         print_success "Audit logging:" "disabled"
     fi
 
+    # Bandwidth monitoring (vnstat)
+    INSTALL_VNSTAT="${INSTALL_VNSTAT:-yes}"
+    if [[ "$INSTALL_VNSTAT" == "yes" ]]; then
+        print_success "Bandwidth monitoring:" "enabled (vnstat)"
+    else
+        print_success "Bandwidth monitoring:" "disabled"
+    fi
+
+    # Unattended upgrades
+    INSTALL_UNATTENDED_UPGRADES="${INSTALL_UNATTENDED_UPGRADES:-yes}"
+    if [[ "$INSTALL_UNATTENDED_UPGRADES" == "yes" ]]; then
+        print_success "Auto security updates:" "enabled"
+    else
+        print_success "Auto security updates:" "disabled"
+    fi
+
     # Tailscale
     INSTALL_TAILSCALE="${INSTALL_TAILSCALE:-no}"
     if [[ "$INSTALL_TAILSCALE" == "yes" ]]; then
