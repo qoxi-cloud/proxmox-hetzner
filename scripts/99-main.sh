@@ -141,6 +141,10 @@ reboot_to_main_os() {
         fi
     fi
 
+    # Show summarizing progress bar
+    echo ""
+    show_timed_progress "Summarizing..." 5
+
     # Clear screen and show main banner (without version info)
     clear
     show_banner --no-info
@@ -203,6 +207,34 @@ log "Step: show_system_status"
 show_system_status
 log "Step: get_system_inputs"
 get_system_inputs
+
+# Show configuring progress bar and task list
+if [[ "$NON_INTERACTIVE" != true ]]; then
+    echo ""
+    show_timed_progress "Configuring..." 5
+
+    # Clear screen and show banner
+    clear
+    show_banner --no-info
+
+    # Show installation tasks overview
+    TASK_BOX_WIDTH=$((MENU_BOX_WIDTH - 6))
+    TASK_LIST=""
+    TASK_LIST+="[ ]|Download Proxmox ISO"$'\n'
+    TASK_LIST+="[ ]|Create autoinstall ISO"$'\n'
+    TASK_LIST+="[ ]|Install Proxmox VE"$'\n'
+    TASK_LIST+="[ ]|Configure system"$'\n'
+    TASK_LIST+="[ ]|Apply security hardening"$'\n'
+    TASK_LIST+="[ ]|Validate installation"
+
+    {
+        echo "INSTALLATION TASKS"
+        echo "$TASK_LIST" | column -t -s '|' | while IFS= read -r line; do
+            printf "%-${TASK_BOX_WIDTH}s\n" "$line"
+        done
+    } | boxes -d stone -p a1 -s "$MENU_BOX_WIDTH"
+    echo ""
+fi
 
 # If validate-only mode, show summary and exit
 if [[ "$VALIDATE_ONLY" == true ]]; then

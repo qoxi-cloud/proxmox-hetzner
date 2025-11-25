@@ -293,6 +293,42 @@ wait_with_progress() {
     done
 }
 
+# Show timed progress bar
+# Usage: show_timed_progress "message" [duration_seconds]
+# Duration defaults to 5-7 seconds (random for visual effect)
+show_timed_progress() {
+    local message="$1"
+    local duration="${2:-$((5 + RANDOM % 3))}"  # 5-7 seconds default
+    local steps=20
+    local sleep_interval
+    sleep_interval=$(awk "BEGIN {printf \"%.2f\", $duration / $steps}")
+
+    local current=0
+    while [[ $current -le $steps ]]; do
+        local pct=$((current * 100 / steps))
+        local filled=$current
+        local empty=$((steps - filled))
+        local bar_filled="" bar_empty=""
+
+        # Build progress bar strings without spawning subprocesses
+        printf -v bar_filled '%*s' "$filled" ''
+        bar_filled="${bar_filled// /█}"
+        printf -v bar_empty '%*s' "$empty" ''
+        bar_empty="${bar_empty// /░}"
+
+        printf "\r${CLR_ORANGE}%s [${CLR_ORANGE}%s${CLR_RESET}${CLR_GRAY}%s${CLR_RESET}${CLR_ORANGE}] %3d%%${CLR_RESET}" \
+            "$message" "$bar_filled" "$bar_empty" "$pct"
+
+        if [[ $current -lt $steps ]]; then
+            sleep "$sleep_interval"
+        fi
+        current=$((current + 1))
+    done
+
+    # Clear the progress bar line
+    printf "\r\e[K"
+}
+
 # Format time duration
 format_duration() {
     local seconds="$1"
