@@ -217,22 +217,14 @@ if [[ "$NON_INTERACTIVE" != true ]]; then
     clear
     show_banner --no-info
 
-    # Show installation tasks overview
-    TASK_BOX_WIDTH=$((MENU_BOX_WIDTH - 6))
-    TASK_LIST=""
-    TASK_LIST+="[ ]|Download Proxmox ISO"$'\n'
-    TASK_LIST+="[ ]|Create autoinstall ISO"$'\n'
-    TASK_LIST+="[ ]|Install Proxmox VE"$'\n'
-    TASK_LIST+="[ ]|Configure system"$'\n'
-    TASK_LIST+="[ ]|Apply security hardening"$'\n'
-    TASK_LIST+="[ ]|Validate installation"
-
-    {
-        echo "INSTALLATION TASKS"
-        echo "$TASK_LIST" | column -t -s '|' | while IFS= read -r line; do
-            printf "%-${TASK_BOX_WIDTH}s\n" "$line"
-        done
-    } | boxes -d stone -p a1 -s "$MENU_BOX_WIDTH"
+    # Show installation steps
+    echo -e "${CLR_GRAY}Installation steps:${CLR_RESET}"
+    echo -e "  ${CLR_GRAY}○${CLR_RESET} Download Proxmox ISO"
+    echo -e "  ${CLR_GRAY}○${CLR_RESET} Create autoinstall ISO"
+    echo -e "  ${CLR_GRAY}○${CLR_RESET} Install Proxmox VE"
+    echo -e "  ${CLR_GRAY}○${CLR_RESET} Configure system"
+    echo -e "  ${CLR_GRAY}○${CLR_RESET} Apply security hardening"
+    echo -e "  ${CLR_GRAY}○${CLR_RESET} Validate installation"
     echo ""
 fi
 
