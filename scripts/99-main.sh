@@ -208,7 +208,7 @@ show_system_status
 log "Step: get_system_inputs"
 get_system_inputs
 
-# Show configuring progress bar and task list
+# Show configuring progress bar and clear screen
 if [[ "$NON_INTERACTIVE" != true ]]; then
     echo ""
     show_timed_progress "Configuring..." 5
@@ -216,16 +216,6 @@ if [[ "$NON_INTERACTIVE" != true ]]; then
     # Clear screen and show banner
     clear
     show_banner --no-info
-
-    # Show installation steps
-    echo -e "${CLR_GRAY}Installation steps:${CLR_RESET}"
-    echo -e "  ${CLR_GRAY}○${CLR_RESET} Download Proxmox ISO"
-    echo -e "  ${CLR_GRAY}○${CLR_RESET} Create autoinstall ISO"
-    echo -e "  ${CLR_GRAY}○${CLR_RESET} Install Proxmox VE"
-    echo -e "  ${CLR_GRAY}○${CLR_RESET} Configure system"
-    echo -e "  ${CLR_GRAY}○${CLR_RESET} Apply security hardening"
-    echo -e "  ${CLR_GRAY}○${CLR_RESET} Validate installation"
-    echo ""
 fi
 
 # If validate-only mode, show summary and exit
