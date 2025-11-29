@@ -86,6 +86,36 @@ If you didn't provide an auth key during installation, complete the setup manual
    tailscale serve --bg --https=443 https://127.0.0.1:8006
    ```
 
+> **Important:** When you don't provide an auth key during installation, the automatic security hardening features (OpenSSH disable, stealth firewall) are NOT configured. After manual Tailscale authorization, OpenSSH will remain enabled and the server will still be accessible via the public IP.
+
+### Enabling Security Features Manually
+
+If you want the same security level as auto-configured installations, you can enable these features manually after Tailscale is working:
+
+#### Enable Stealth Firewall
+
+```bash
+# Download and install the stealth firewall service
+curl -sSL https://github.com/qoxi-cloud/proxmox-hetzner/raw/refs/heads/main/templates/stealth-firewall.service \
+  -o /etc/systemd/system/stealth-firewall.service
+
+# Enable and start
+systemctl daemon-reload
+systemctl enable stealth-firewall.service
+systemctl start stealth-firewall.service
+```
+
+#### Disable OpenSSH (Use with Caution!)
+
+> **Warning:** Only disable OpenSSH after confirming Tailscale SSH is working! Test by connecting via `ssh root@YOUR-HOSTNAME` through Tailscale first.
+
+```bash
+# Stop and disable OpenSSH
+systemctl stop ssh.service ssh.socket
+systemctl disable ssh.service ssh.socket
+systemctl mask ssh.service ssh.socket
+```
+
 ## Tailscale Features
 
 ### Tailscale SSH
