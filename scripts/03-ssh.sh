@@ -17,7 +17,9 @@ wait_for_ssh_ready() {
 
     while [[ $attempt -lt $max_attempts ]]; do
         # Try actual SSH connection with echo command
-        if sshpass -p "$NEW_ROOT_PASSWORD" ssh -p "$SSH_PORT" $SSH_OPTS root@localhost "echo ready" >/dev/null 2>&1; then
+        # Use SSHPASS env var to avoid password exposure in process list
+        # shellcheck disable=SC2086
+        if SSHPASS="$NEW_ROOT_PASSWORD" sshpass -e ssh -p "$SSH_PORT" $SSH_OPTS root@localhost "echo ready" >/dev/null 2>&1; then
             printf "\r\e[K${CLR_GREEN}✓ SSH connection established${CLR_RESET}\n"
             return 0
         fi
@@ -31,11 +33,14 @@ wait_for_ssh_ready() {
 }
 
 remote_exec() {
-    sshpass -p "$NEW_ROOT_PASSWORD" ssh -p "$SSH_PORT" $SSH_OPTS root@localhost "$@"
+    # Use SSHPASS env var to avoid password exposure in process list
+    # shellcheck disable=SC2086
+    SSHPASS="$NEW_ROOT_PASSWORD" sshpass -e ssh -p "$SSH_PORT" $SSH_OPTS root@localhost "$@"
 }
 
 remote_exec_script() {
-    sshpass -p "$NEW_ROOT_PASSWORD" ssh -p "$SSH_PORT" $SSH_OPTS root@localhost 'bash -s'
+    # shellcheck disable=SC2086
+    SSHPASS="$NEW_ROOT_PASSWORD" sshpass -e ssh -p "$SSH_PORT" $SSH_OPTS root@localhost 'bash -s'
 }
 
 # Execute remote script with progress indicator (hides output, shows spinner)
@@ -44,7 +49,8 @@ remote_exec_with_progress() {
     local script="$2"
     local done_message="${3:-$message}"
 
-    echo "$script" | sshpass -p "$NEW_ROOT_PASSWORD" ssh -p "$SSH_PORT" $SSH_OPTS root@localhost 'bash -s' > /dev/null 2>&1 &
+    # shellcheck disable=SC2086
+    echo "$script" | SSHPASS="$NEW_ROOT_PASSWORD" sshpass -e ssh -p "$SSH_PORT" $SSH_OPTS root@localhost 'bash -s' > /dev/null 2>&1 &
     local pid=$!
     show_progress $pid "$message" "$done_message"
     wait $pid
@@ -54,7 +60,8 @@ remote_exec_with_progress() {
 remote_copy() {
     local src="$1"
     local dst="$2"
-    sshpass -p "$NEW_ROOT_PASSWORD" scp -P "$SSH_PORT" $SSH_OPTS "$src" "root@localhost:$dst"
+    # shellcheck disable=SC2086
+    SSHPASS="$NEW_ROOT_PASSWORD" sshpass -e scp -P "$SSH_PORT" $SSH_OPTS "$src" "root@localhost:$dst"
 }
 
 # =============================================================================

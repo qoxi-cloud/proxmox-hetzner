@@ -12,6 +12,10 @@ Complete reference for all configuration options available in the installer.
 | `-s, --save-config FILE` | Save configuration to file after input |
 | `-n, --non-interactive` | Run without prompts (requires `--config` or env vars) |
 | `-t, --test` | Test mode (TCG emulation, no KVM required) |
+| `--validate` | Validate configuration only, do not install |
+| `--qemu-ram MB` | Set QEMU RAM in MB (default: auto 4096-8192) |
+| `--qemu-cores N` | Set QEMU CPU cores (default: auto, max 16) |
+| `--iso-version FILE` | Use specific Proxmox ISO (e.g., `proxmox-ve_8.3-1.iso`) |
 
 ## Usage Examples
 
@@ -30,6 +34,15 @@ bash pve-install.sh -c proxmox.conf -n
 
 # Test mode (for systems without KVM support)
 bash pve-install.sh -t
+
+# Validate configuration without installing
+bash pve-install.sh -c proxmox.conf --validate
+
+# Use specific Proxmox version
+bash pve-install.sh --iso-version proxmox-ve_8.2-1.iso
+
+# Custom QEMU resources (for high-memory servers)
+bash pve-install.sh --qemu-ram 16384 --qemu-cores 8
 ```
 
 ## Environment Variables
@@ -87,6 +100,14 @@ You can pre-configure any setting via environment variables.
 | `TAILSCALE_WEBUI` | Enable Tailscale Web UI | `yes` |
 | `TAILSCALE_DISABLE_SSH` | Disable OpenSSH on first boot: `yes`, `no` | `no` |
 | `STEALTH_MODE` | Block all incoming on public IP: `yes`, `no` | `yes` when `TAILSCALE_DISABLE_SSH=yes` |
+
+### Advanced Settings
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `PROXMOX_ISO_VERSION` | Specific ISO filename | Latest (interactive menu) |
+| `QEMU_RAM_OVERRIDE` | QEMU VM RAM in MB | Auto (4096-8192) |
+| `QEMU_CORES_OVERRIDE` | QEMU VM CPU cores | Auto (half of available, max 16) |
 
 ## Examples with Environment Variables
 

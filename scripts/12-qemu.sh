@@ -38,13 +38,28 @@ setup_qemu_config() {
     available_ram_mb=$(free -m | awk '/^Mem:/{print $2}')
     log "Available cores: $available_cores, Available RAM: ${available_ram_mb}MB"
 
-    QEMU_CORES=$((available_cores / 2))
-    [[ $QEMU_CORES -lt 2 ]] && QEMU_CORES=2
-    [[ $QEMU_CORES -gt $available_cores ]] && QEMU_CORES=$available_cores
-    [[ $QEMU_CORES -gt 16 ]] && QEMU_CORES=16
+    # Use override values if provided, otherwise auto-detect
+    if [[ -n "$QEMU_CORES_OVERRIDE" ]]; then
+        QEMU_CORES="$QEMU_CORES_OVERRIDE"
+        log "Using user-specified cores: $QEMU_CORES"
+    else
+        QEMU_CORES=$((available_cores / 2))
+        [[ $QEMU_CORES -lt 2 ]] && QEMU_CORES=2
+        [[ $QEMU_CORES -gt $available_cores ]] && QEMU_CORES=$available_cores
+        [[ $QEMU_CORES -gt 16 ]] && QEMU_CORES=16
+    fi
 
-    QEMU_RAM=8192
-    [[ $available_ram_mb -lt 16384 ]] && QEMU_RAM=4096
+    if [[ -n "$QEMU_RAM_OVERRIDE" ]]; then
+        QEMU_RAM="$QEMU_RAM_OVERRIDE"
+        log "Using user-specified RAM: ${QEMU_RAM}MB"
+        # Warn if requested RAM exceeds available
+        if [[ $QEMU_RAM -gt $((available_ram_mb - 2048)) ]]; then
+            print_warning "Requested QEMU RAM (${QEMU_RAM}MB) may exceed safe limits (available: ${available_ram_mb}MB)"
+        fi
+    else
+        QEMU_RAM=8192
+        [[ $available_ram_mb -lt 16384 ]] && QEMU_RAM=4096
+    fi
 
     log "QEMU config: $QEMU_CORES vCPUs, ${QEMU_RAM}MB RAM"
 

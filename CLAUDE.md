@@ -110,6 +110,19 @@ Post-install configuration runs via SSH into QEMU VM on port 5555:
 - `remote_exec_with_progress "message" 'script' "done_msg"` - Run with spinner
 - `remote_copy "local" "remote"` - SCP file to VM
 
+## CLI Options
+
+| Option | Description |
+|--------|-------------|
+| `-c, --config FILE` | Load configuration from file |
+| `-s, --save-config FILE` | Save configuration to file |
+| `-n, --non-interactive` | Automated mode (requires config) |
+| `-t, --test` | Test mode (TCG emulation, no KVM) |
+| `--validate` | Validate config only, do not install |
+| `--qemu-ram MB` | Override QEMU RAM (default: auto 4096-8192) |
+| `--qemu-cores N` | Override QEMU CPU cores (default: auto, max 16) |
+| `--iso-version FILE` | Use specific Proxmox ISO (e.g., proxmox-ve_8.3-1.iso) |
+
 ## Conventions
 
 - All scripts share global variables (no `local` for exported values)
@@ -117,3 +130,4 @@ Post-install configuration runs via SSH into QEMU VM on port 5555:
 - Menu width is fixed: `MENU_BOX_WIDTH=60`
 - Colors: `CLR_RED`, `CLR_GREEN`, `CLR_YELLOW`, `CLR_BLUE`, `CLR_CYAN`, `CLR_RESET`
 - Status markers: `[OK]`, `[WARN]`, `[ERROR]` - colorized by `colorize_status` function
+- SSH functions use `SSHPASS` env var to avoid password exposure in process list

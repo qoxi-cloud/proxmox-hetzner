@@ -47,7 +47,16 @@ prepare_packages() {
     log "Required packages installed successfully"
 }
 
-# Fetch latest Proxmox VE ISO
+# Fetch available Proxmox VE ISO versions (last N versions)
+# Returns array of ISO filenames, newest first
+get_available_proxmox_isos() {
+    local count="${1:-5}"
+    local base_url="https://enterprise.proxmox.com/iso/"
+
+    curl -s "$base_url" | grep -oE 'proxmox-ve_[0-9]+\.[0-9]+-[0-9]+\.iso' | sort -uV | tail -n "$count" | tac
+}
+
+# Fetch latest Proxmox VE ISO URL
 get_latest_proxmox_ve_iso() {
     local base_url="https://enterprise.proxmox.com/iso/"
     local latest_iso
@@ -61,6 +70,18 @@ get_latest_proxmox_ve_iso() {
     fi
 }
 
+# Get ISO URL by filename
+get_proxmox_iso_url() {
+    local iso_filename="$1"
+    echo "https://enterprise.proxmox.com/iso/${iso_filename}"
+}
+
+# Extract version from ISO filename (e.g., "8.3-1" from "proxmox-ve_8.3-1.iso")
+get_iso_version() {
+    local iso_filename="$1"
+    echo "$iso_filename" | sed -E 's/proxmox-ve_([0-9]+\.[0-9]+-[0-9]+)\.iso/\1/'
+}
+
 download_proxmox_iso() {
     log "Starting Proxmox ISO download"
 
@@ -70,8 +91,15 @@ download_proxmox_iso() {
         return 0
     fi
 
-    log "Fetching latest Proxmox ISO URL"
-    PROXMOX_ISO_URL=$(get_latest_proxmox_ve_iso)
+    # Use selected ISO or fetch latest
+    if [[ -n "$PROXMOX_ISO_VERSION" ]]; then
+        log "Using user-selected ISO: $PROXMOX_ISO_VERSION"
+        PROXMOX_ISO_URL=$(get_proxmox_iso_url "$PROXMOX_ISO_VERSION")
+    else
+        log "Fetching latest Proxmox ISO URL"
+        PROXMOX_ISO_URL=$(get_latest_proxmox_ve_iso)
+    fi
+
     if [[ -z "$PROXMOX_ISO_URL" ]]; then
         log "ERROR: Failed to retrieve Proxmox ISO URL"
         print_error "Failed to retrieve Proxmox ISO URL! Exiting."

@@ -127,6 +127,9 @@ log "=========================================="
 log "TEST_MODE=$TEST_MODE"
 log "NON_INTERACTIVE=$NON_INTERACTIVE"
 log "CONFIG_FILE=$CONFIG_FILE"
+log "VALIDATE_ONLY=$VALIDATE_ONLY"
+log "QEMU_RAM_OVERRIDE=$QEMU_RAM_OVERRIDE"
+log "QEMU_CORES_OVERRIDE=$QEMU_CORES_OVERRIDE"
 
 # Collect system info and display status
 log "Step: collect_system_info"
@@ -135,6 +138,44 @@ log "Step: show_system_status"
 show_system_status
 log "Step: get_system_inputs"
 get_system_inputs
+
+# If validate-only mode, show summary and exit
+if [[ "$VALIDATE_ONLY" == true ]]; then
+    log "Validate-only mode: showing configuration summary"
+    echo ""
+    echo -e "${CLR_GREEN}✓ Configuration validated successfully${CLR_RESET}"
+    echo ""
+    echo "Configuration Summary:"
+    echo "  Hostname:     $HOSTNAME"
+    echo "  FQDN:         $FQDN"
+    echo "  Email:        $EMAIL"
+    echo "  Timezone:     $TIMEZONE"
+    echo "  IPv4:         $MAIN_IPV4_CIDR"
+    echo "  Gateway:      $MAIN_IPV4_GW"
+    echo "  Interface:    $INTERFACE_NAME"
+    echo "  ZFS Mode:     $ZFS_RAID_MODE"
+    echo "  Drives:       ${DRIVES[*]}"
+    echo "  Bridge Mode:  $BRIDGE_MODE"
+    if [[ "$BRIDGE_MODE" != "external" ]]; then
+        echo "  Private Net:  $PRIVATE_SUBNET"
+    fi
+    echo "  Tailscale:    $INSTALL_TAILSCALE"
+    if [[ -n "$PROXMOX_ISO_VERSION" ]]; then
+        echo "  Proxmox ISO:  ${PROXMOX_ISO_VERSION}"
+    else
+        echo "  Proxmox ISO:  latest"
+    fi
+    if [[ -n "$QEMU_RAM_OVERRIDE" ]]; then
+        echo "  QEMU RAM:     ${QEMU_RAM_OVERRIDE}MB (override)"
+    fi
+    if [[ -n "$QEMU_CORES_OVERRIDE" ]]; then
+        echo "  QEMU Cores:   ${QEMU_CORES_OVERRIDE} (override)"
+    fi
+    echo ""
+    echo -e "${CLR_CYAN}Run without --validate to start installation${CLR_RESET}"
+    exit 0
+fi
+
 log "Step: prepare_packages"
 prepare_packages
 log "Step: download_proxmox_iso"

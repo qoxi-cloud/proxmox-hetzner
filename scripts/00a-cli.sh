@@ -14,6 +14,10 @@ Options:
   -s, --save-config FILE  Save configuration to file after input
   -n, --non-interactive   Run without prompts (requires --config)
   -t, --test              Test mode (use TCG emulation, no KVM required)
+  --validate              Validate configuration only, do not install
+  --qemu-ram MB           Set QEMU RAM in MB (default: auto, 4096-8192)
+  --qemu-cores N          Set QEMU CPU cores (default: auto, max 16)
+  --iso-version FILE      Use specific Proxmox ISO (e.g., proxmox-ve_8.3-1.iso)
   -v, --version           Show version
 
 Examples:
@@ -21,6 +25,9 @@ Examples:
   $0 -s proxmox.conf           # Interactive, save config for later
   $0 -c proxmox.conf           # Load config, prompt for missing values
   $0 -c proxmox.conf -n        # Fully automated installation
+  $0 -c proxmox.conf --validate  # Validate config without installing
+  $0 --qemu-ram 16384 --qemu-cores 8  # Custom QEMU resources
+  $0 --iso-version proxmox-ve_8.2-1.iso  # Use specific Proxmox version
 
 EOF
     exit 0
@@ -50,6 +57,46 @@ while [[ $# -gt 0 ]]; do
         -t|--test)
             TEST_MODE=true
             shift
+            ;;
+        --validate)
+            VALIDATE_ONLY=true
+            shift
+            ;;
+        --qemu-ram)
+            if [[ -z "$2" || "$2" =~ ^- ]]; then
+                echo -e "${CLR_RED}Error: --qemu-ram requires a value in MB${CLR_RESET}"
+                exit 1
+            fi
+            if ! [[ "$2" =~ ^[0-9]+$ ]] || [[ "$2" -lt 2048 ]]; then
+                echo -e "${CLR_RED}Error: --qemu-ram must be a number >= 2048 MB${CLR_RESET}"
+                exit 1
+            fi
+            QEMU_RAM_OVERRIDE="$2"
+            shift 2
+            ;;
+        --qemu-cores)
+            if [[ -z "$2" || "$2" =~ ^- ]]; then
+                echo -e "${CLR_RED}Error: --qemu-cores requires a value${CLR_RESET}"
+                exit 1
+            fi
+            if ! [[ "$2" =~ ^[0-9]+$ ]] || [[ "$2" -lt 1 ]]; then
+                echo -e "${CLR_RED}Error: --qemu-cores must be a positive number${CLR_RESET}"
+                exit 1
+            fi
+            QEMU_CORES_OVERRIDE="$2"
+            shift 2
+            ;;
+        --iso-version)
+            if [[ -z "$2" || "$2" =~ ^- ]]; then
+                echo -e "${CLR_RED}Error: --iso-version requires a filename${CLR_RESET}"
+                exit 1
+            fi
+            if ! [[ "$2" =~ ^proxmox-ve_[0-9]+\.[0-9]+-[0-9]+\.iso$ ]]; then
+                echo -e "${CLR_RED}Error: --iso-version must be in format: proxmox-ve_X.Y-Z.iso${CLR_RESET}"
+                exit 1
+            fi
+            PROXMOX_ISO_VERSION="$2"
+            shift 2
             ;;
         *)
             echo "Unknown option: $1"

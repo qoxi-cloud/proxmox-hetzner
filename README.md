@@ -42,6 +42,10 @@ Automated Proxmox VE installer for Hetzner dedicated servers **without console a
 | `-s, --save-config FILE` | Save configuration to file |
 | `-n, --non-interactive` | Automated mode (requires config/env vars) |
 | `-t, --test` | Test mode (no KVM required) |
+| `--validate` | Validate configuration only, do not install |
+| `--qemu-ram MB` | Set QEMU RAM in MB (default: auto 4096-8192) |
+| `--qemu-cores N` | Set QEMU CPU cores (default: auto, max 16) |
+| `--iso-version FILE` | Use specific Proxmox ISO version |
 
 ## Documentation
 

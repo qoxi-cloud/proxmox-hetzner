@@ -87,6 +87,52 @@ get_inputs_interactive() {
     # SECTION 2: Interactive menus
     # =========================================================================
 
+    # --- Proxmox ISO Version ---
+    if [[ -n "$PROXMOX_ISO_VERSION" ]]; then
+        print_success "Proxmox ISO: ${PROXMOX_ISO_VERSION} (from env/cli)"
+    else
+        # Fetch available ISO versions
+        printf "%s⠋ Fetching available Proxmox versions...%s" "${CLR_YELLOW}" "${CLR_RESET}"
+        local iso_list
+        iso_list=$(get_available_proxmox_isos 5)
+        printf "\r\e[K"
+
+        if [[ -z "$iso_list" ]]; then
+            print_warning "Could not fetch ISO list, will use latest"
+            PROXMOX_ISO_VERSION=""
+        else
+            # Convert to array
+            local -a iso_array
+            local -a iso_menu_items
+            local first=true
+            while IFS= read -r iso; do
+                iso_array+=("$iso")
+                local version
+                version=$(get_iso_version "$iso")
+                if [[ "$first" == true ]]; then
+                    iso_menu_items+=("Proxmox VE ${version}|Latest version (recommended)")
+                    first=false
+                else
+                    iso_menu_items+=("Proxmox VE ${version}|")
+                fi
+            done <<< "$iso_list"
+
+            interactive_menu \
+                "Proxmox VE Version (↑/↓ select, Enter confirm)" \
+                "Select which Proxmox VE version to install" \
+                "${iso_menu_items[@]}"
+
+            PROXMOX_ISO_VERSION="${iso_array[$MENU_SELECTED]}"
+            local selected_version
+            selected_version=$(get_iso_version "$PROXMOX_ISO_VERSION")
+            if [[ $MENU_SELECTED -eq 0 ]]; then
+                print_success "Proxmox VE: ${selected_version} (latest)"
+            else
+                print_success "Proxmox VE: ${selected_version}"
+            fi
+        fi
+    fi
+
     # --- Timezone ---
     if [[ -n "$TIMEZONE" ]]; then
         print_success "Timezone: ${TIMEZONE} (from env)"

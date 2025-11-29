@@ -35,6 +35,8 @@ bash <(curl -sSL https://qoxi-cloud.github.io/proxmox-hetzner/pve-install.sh)
 ```
 
 The interactive installer will guide you through:
+
+- **Proxmox VE version selection** (last 5 versions available)
 - Hostname configuration
 - Root password setup (or press Enter to auto-generate)
 - SSH key configuration

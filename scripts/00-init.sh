@@ -26,3 +26,11 @@ NON_INTERACTIVE=false
 CONFIG_FILE=""
 SAVE_CONFIG=""
 TEST_MODE=false
+VALIDATE_ONLY=false
+
+# QEMU resource overrides (empty = auto-detect)
+QEMU_RAM_OVERRIDE=""
+QEMU_CORES_OVERRIDE=""
+
+# Proxmox ISO version (empty = show menu in interactive, use latest in non-interactive)
+PROXMOX_ISO_VERSION=""
