@@ -18,16 +18,31 @@ The installer offers Tailscale as an optional component:
 | Auth Key | Your Tailscale auth key | - |
 | Enable SSH | `yes` / `no` | `yes` |
 | Enable Web UI | `yes` / `no` | `yes` |
-| Disable OpenSSH | `yes` / `no` | `no` |
+| Disable OpenSSH | `yes` / `no` | `yes` when auth key provided, `no` otherwise |
+
+> **Important:** When you provide a Tailscale auth key, security hardening is **automatically enabled**: OpenSSH is disabled and stealth firewall is activated on first boot. Without an auth key, these features are NOT configured - you must set them up manually after installation.
 
 ### Environment Variables
 
+**Full automatic setup (recommended):**
+
 ```bash
 export INSTALL_TAILSCALE="yes"
-export TAILSCALE_AUTH_KEY="tskey-auth-xxxxx"
+export TAILSCALE_AUTH_KEY="tskey-auth-xxxxx"  # Enables automatic security hardening
 export TAILSCALE_SSH="yes"
 export TAILSCALE_WEBUI="yes"
-export TAILSCALE_DISABLE_SSH="no"
+# TAILSCALE_DISABLE_SSH defaults to "yes" when auth key is provided
+bash pve-install.sh
+```
+
+**Manual setup (no automatic security hardening):**
+
+```bash
+export INSTALL_TAILSCALE="yes"
+# No TAILSCALE_AUTH_KEY - requires manual `tailscale up` after install
+export TAILSCALE_SSH="yes"
+export TAILSCALE_WEBUI="yes"
+export TAILSCALE_DISABLE_SSH="no"  # OpenSSH stays enabled for initial access
 bash pve-install.sh
 ```
 
@@ -73,20 +88,34 @@ With Tailscale SSH enabled, you don't need SSH keys - Tailscale handles authenti
 
 ## Manual Setup (Without Auth Key)
 
-If you didn't provide an auth key during installation, complete the setup manually:
+If you didn't provide an auth key during installation, Tailscale is installed but not authenticated. Complete the setup manually:
 
-1. SSH to your server using the public IP
+> **Warning:** Without an auth key, security hardening (stealth firewall, OpenSSH disable) is **NOT configured**. Your server remains accessible via public IP until you manually enable these features.
+
+1. SSH to your server using the public IP:
+   ```bash
+   ssh root@YOUR-SERVER-IP
+   ```
+
 2. Authenticate with Tailscale:
    ```bash
    tailscale up --ssh
    ```
+
 3. Follow the URL to authenticate in your browser
+
 4. Enable the web UI proxy:
    ```bash
    tailscale serve --bg --https=443 https://127.0.0.1:8006
    ```
 
-> **Important:** When you don't provide an auth key during installation, the automatic security hardening features (OpenSSH disable, stealth firewall) are NOT configured. After manual Tailscale authorization, OpenSSH will remain enabled and the server will still be accessible via the public IP.
+5. **Verify Tailscale SSH works** before proceeding:
+   ```bash
+   # From another device on your Tailscale network:
+   ssh root@YOUR-HOSTNAME
+   ```
+
+6. **(Optional but recommended)** Enable security features manually - see next section
 
 ### Enabling Security Features Manually
 
@@ -134,9 +163,18 @@ When enabled (`TAILSCALE_WEBUI=yes`), the Proxmox web interface is served over H
 
 ## Security Hardening
 
-When Tailscale is enabled with an auth key, the installer **automatically** configures security features to protect your server:
+### Automatic vs Manual Setup
 
-- **OpenSSH is disabled** on first boot
+| Feature | With Auth Key | Without Auth Key |
+|---------|---------------|------------------|
+| Tailscale authenticated | Automatic | Manual (`tailscale up`) |
+| Stealth firewall | Enabled automatically | Must enable manually |
+| OpenSSH disabled | Yes, on first boot | No, stays enabled |
+| Public IP accessible | No (blocked) | Yes (open) |
+
+When Tailscale is enabled **with an auth key**, the installer automatically configures security features:
+
+- **OpenSSH is disabled** on first boot (after Tailscale connects)
 - **Stealth firewall mode is enabled** - server is invisible from public internet
 
 ### Stealth Firewall Mode

@@ -295,10 +295,10 @@ ENVEOF
                     log "Downloaded disable-openssh.service, size: $(wc -c < ./templates/disable-openssh.service 2>/dev/null || echo 'failed')"
                     remote_copy "templates/disable-openssh.service" "/etc/systemd/system/disable-openssh.service"
                     log "Copied disable-openssh.service to VM"
-                    remote_exec "systemctl daemon-reload && systemctl enable disable-openssh.service"
+                    remote_exec "systemctl daemon-reload && systemctl enable disable-openssh.service" > /dev/null 2>&1
                     log "Enabled disable-openssh.service"
                 ) &
-                show_progress $! "Configuring OpenSSH disable on boot" "OpenSSH will be disabled after first reboot"
+                show_progress $! "Configuring OpenSSH disable on boot" "OpenSSH disable configured"
             else
                 log "Skipping disable-openssh.service (TAILSCALE_SSH=$TAILSCALE_SSH, TAILSCALE_DISABLE_SSH=$TAILSCALE_DISABLE_SSH)"
             fi
@@ -311,10 +311,10 @@ ENVEOF
                     log "Downloaded stealth-firewall.service, size: $(wc -c < ./templates/stealth-firewall.service 2>/dev/null || echo 'failed')"
                     remote_copy "templates/stealth-firewall.service" "/etc/systemd/system/stealth-firewall.service"
                     log "Copied stealth-firewall.service to VM"
-                    remote_exec "systemctl daemon-reload && systemctl enable stealth-firewall.service"
+                    remote_exec "systemctl daemon-reload && systemctl enable stealth-firewall.service" > /dev/null 2>&1
                     log "Enabled stealth-firewall.service"
                 ) &
-                show_progress $! "Configuring stealth firewall" "Server will be hidden from internet after reboot"
+                show_progress $! "Configuring stealth firewall" "Stealth firewall configured"
             else
                 log "Skipping stealth-firewall.service (STEALTH_MODE=$STEALTH_MODE)"
             fi

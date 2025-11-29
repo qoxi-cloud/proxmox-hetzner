@@ -37,9 +37,6 @@ reboot_to_main_os() {
         summary+="[OK]|Tailscale VPN|installed"$'\n'
         if [[ -n "$TAILSCALE_AUTH_KEY" ]]; then
             summary+="[OK]|Tailscale IP|${TAILSCALE_IP:-pending}"$'\n'
-            if [[ "$TAILSCALE_SSH" == "yes" && "$TAILSCALE_DISABLE_SSH" == "yes" ]]; then
-                summary+="[WARN]|OpenSSH|will be disabled on boot"$'\n'
-            fi
         else
             summary+="[WARN]|Tailscale|needs auth after reboot"$'\n'
         fi
