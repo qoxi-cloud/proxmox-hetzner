@@ -58,13 +58,14 @@ collect_system_info() {
 
     # Check available disk space (need at least 5GB in /root)
     update_progress
-    local free_space_mb
+    local free_space_mb min_space_mb
     free_space_mb=$(df -m /root | awk 'NR==2 {print $4}')
-    if [[ $free_space_mb -ge 5000 ]]; then
+    min_space_mb=5000
+    if [[ $free_space_mb -ge $min_space_mb ]]; then
         PREFLIGHT_DISK="${free_space_mb} MB"
         PREFLIGHT_DISK_STATUS="ok"
     else
-        PREFLIGHT_DISK="${free_space_mb} MB (need 5GB+)"
+        PREFLIGHT_DISK="${free_space_mb} MB (need ${min_space_mb}MB+)"
         PREFLIGHT_DISK_STATUS="error"
         errors=$((errors + 1))
     fi
@@ -72,13 +73,14 @@ collect_system_info() {
 
     # Check RAM (need at least 4GB)
     update_progress
-    local total_ram_mb
+    local total_ram_mb min_ram_mb
     total_ram_mb=$(free -m | awk '/^Mem:/{print $2}')
-    if [[ $total_ram_mb -ge 4000 ]]; then
+    min_ram_mb=4000
+    if [[ $total_ram_mb -ge $min_ram_mb ]]; then
         PREFLIGHT_RAM="${total_ram_mb} MB"
         PREFLIGHT_RAM_STATUS="ok"
     else
-        PREFLIGHT_RAM="${total_ram_mb} MB (need 4GB+)"
+        PREFLIGHT_RAM="${total_ram_mb} MB (need ${min_ram_mb}MB+)"
         PREFLIGHT_RAM_STATUS="error"
         errors=$((errors + 1))
     fi
@@ -115,22 +117,29 @@ collect_system_info() {
     PREFLIGHT_ERRORS=$errors
 }
 
-# Detect NVMe drives
-detect_nvme_drives() {
+# Detect drives (NVMe preferred, falls back to any disk)
+detect_drives() {
     # Find all NVMe drives (excluding partitions)
-    mapfile -t NVME_DRIVES < <(lsblk -d -n -o NAME,TYPE | grep nvme | grep disk | awk '{print "/dev/"$1}' | sort)
-    NVME_COUNT=${#NVME_DRIVES[@]}
+    mapfile -t DRIVES < <(lsblk -d -n -o NAME,TYPE | grep nvme | grep disk | awk '{print "/dev/"$1}' | sort)
+    DRIVE_COUNT=${#DRIVES[@]}
+
+    # Fall back to any available disk if no NVMe found (for budget servers)
+    if [[ $DRIVE_COUNT -eq 0 ]]; then
+        # Find any disk (sda, vda, etc.) excluding loop devices
+        mapfile -t DRIVES < <(lsblk -d -n -o NAME,TYPE | grep disk | grep -v loop | awk '{print "/dev/"$1}' | sort)
+        DRIVE_COUNT=${#DRIVES[@]}
+    fi
 
     # Collect drive info
     DRIVE_NAMES=()
     DRIVE_SIZES=()
     DRIVE_MODELS=()
 
-    for drive in "${NVME_DRIVES[@]}"; do
+    for drive in "${DRIVES[@]}"; do
         local name size model
         name=$(basename "$drive")
         size=$(lsblk -d -n -o SIZE "$drive" | xargs)
-        model=$(lsblk -d -n -o MODEL "$drive" 2>/dev/null | xargs || echo "NVMe")
+        model=$(lsblk -d -n -o MODEL "$drive" 2>/dev/null | xargs || echo "Disk")
         DRIVE_NAMES+=("$name")
         DRIVE_SIZES+=("$size")
         DRIVE_MODELS+=("$model")
@@ -138,25 +147,22 @@ detect_nvme_drives() {
 
     # Set default RAID mode if not already set
     if [[ -z "$ZFS_RAID" ]]; then
-        if [[ $NVME_COUNT -lt 2 ]]; then
+        if [[ $DRIVE_COUNT -lt 2 ]]; then
             ZFS_RAID="single"
         else
             ZFS_RAID="raid1"
         fi
     fi
 
-    # Set drive variables for QEMU
-    NVME_DRIVE_1="${NVME_DRIVES[0]:-}"
-    NVME_DRIVE_2="${NVME_DRIVES[1]:-}"
 }
 
 # Display system status
 show_system_status() {
-    detect_nvme_drives
+    detect_drives
 
-    local nvme_error=0
-    if [[ $NVME_COUNT -eq 0 ]]; then
-        nvme_error=1
+    local no_drives=0
+    if [[ $DRIVE_COUNT -eq 0 ]]; then
+        no_drives=1
     fi
 
     # Build system info rows
@@ -186,8 +192,8 @@ show_system_status() {
 
     # Build storage rows
     local storage_rows=""
-    if [[ $nvme_error -eq 1 ]]; then
-        storage_rows="[ERROR]|No NVMe drives detected!|"
+    if [[ $no_drives -eq 1 ]]; then
+        storage_rows="[ERROR]|No drives detected!|"
     else
         for i in "${!DRIVE_NAMES[@]}"; do
             storage_rows+="[OK]|${DRIVE_NAMES[$i]}|${DRIVE_SIZES[$i]}  ${DRIVE_MODELS[$i]:0:25}"
@@ -218,8 +224,8 @@ show_system_status() {
         exit 1
     fi
 
-    if [[ $nvme_error -eq 1 ]]; then
-        print_error "No NVMe drives detected! Exiting."
+    if [[ $no_drives -eq 1 ]]; then
+        print_error "No drives detected! Exiting."
         exit 1
     fi
 

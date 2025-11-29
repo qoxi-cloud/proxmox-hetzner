@@ -29,22 +29,24 @@ setup_qemu_config() {
     QEMU_RAM=8192
     [[ $available_ram_mb -lt 16384 ]] && QEMU_RAM=4096
 
-    # Drive configuration
-    DRIVE_ARGS="-drive file=$NVME_DRIVE_1,format=raw,media=disk,if=virtio"
-    [[ -n "$NVME_DRIVE_2" ]] && DRIVE_ARGS="$DRIVE_ARGS -drive file=$NVME_DRIVE_2,format=raw,media=disk,if=virtio"
+    # Drive configuration - add all detected drives
+    DRIVE_ARGS=""
+    for drive in "${DRIVES[@]}"; do
+        DRIVE_ARGS="$DRIVE_ARGS -drive file=$drive,format=raw,media=disk,if=virtio"
+    done
 }
 
-# Release NVMe drives from any existing locks
+# Release drives from any existing locks
 release_drives() {
     # Kill any existing QEMU processes
     pkill -9 qemu-system-x86 2>/dev/null || true
 
-    # Stop mdadm arrays that might use NVMe drives
+    # Stop mdadm arrays that might use the drives
     if command -v mdadm &>/dev/null; then
         mdadm --stop --scan 2>/dev/null || true
     fi
 
-    # Deactivate LVM volume groups on NVMe
+    # Deactivate LVM volume groups
     if command -v vgchange &>/dev/null; then
         vgchange -an 2>/dev/null || true
     fi
@@ -67,15 +69,16 @@ install_proxmox() {
     local install_msg="Installing Proxmox VE (${QEMU_CORES} vCPUs, ${QEMU_RAM}MB RAM)"
     printf "${CLR_YELLOW}⠋ %s${CLR_RESET}" "$install_msg"
 
-    # Release any locks on NVMe drives (in background of spinner)
+    # Release any locks on drives before QEMU starts
     release_drives
 
     # Clear the line for fresh progress
     printf "\r\e[K"
 
     # Run QEMU in background with error logging
+    # shellcheck disable=SC2086
     qemu-system-x86_64 -enable-kvm $UEFI_OPTS \
-        -cpu host -smp $QEMU_CORES -m $QEMU_RAM \
+        -cpu host -smp "$QEMU_CORES" -m "$QEMU_RAM" \
         -boot d -cdrom ./pve-autoinstall.iso \
         $DRIVE_ARGS -no-reboot -display none > qemu_install.log 2>&1 &
 
@@ -109,10 +112,11 @@ install_proxmox() {
 boot_proxmox_with_port_forwarding() {
     setup_qemu_config
 
+    # shellcheck disable=SC2086
     nohup qemu-system-x86_64 -enable-kvm $UEFI_OPTS \
         -cpu host -device e1000,netdev=net0 \
         -netdev user,id=net0,hostfwd=tcp::5555-:22 \
-        -smp $QEMU_CORES -m $QEMU_RAM \
+        -smp "$QEMU_CORES" -m "$QEMU_RAM" \
         $DRIVE_ARGS -display none \
         > qemu_output.log 2>&1 &
 

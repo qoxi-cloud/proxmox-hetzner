@@ -116,7 +116,7 @@ get_inputs_non_interactive() {
 
     # ZFS RAID mode
     if [[ -z "$ZFS_RAID" ]]; then
-        if [[ "${NVME_COUNT:-0}" -ge 2 ]]; then
+        if [[ "${DRIVE_COUNT:-0}" -ge 2 ]]; then
             ZFS_RAID="raid1"
         else
             ZFS_RAID="single"
@@ -311,7 +311,7 @@ get_inputs_interactive() {
     fi
 
     # --- ZFS RAID mode ---
-    if [[ "${NVME_COUNT:-0}" -ge 2 ]]; then
+    if [[ "${DRIVE_COUNT:-0}" -ge 2 ]]; then
         if [[ -n "$ZFS_RAID" ]]; then
             print_success "ZFS mode: ${ZFS_RAID} (from env)"
         else
