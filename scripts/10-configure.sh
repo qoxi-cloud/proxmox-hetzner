@@ -17,8 +17,8 @@ make_templates() {
         download_file "./templates/proxmox.sources" "https://github.com/qoxi-cloud/proxmox-hetzner/raw/refs/heads/main/templates/proxmox.sources"
         download_file "./templates/sshd_config" "https://github.com/qoxi-cloud/proxmox-hetzner/raw/refs/heads/main/templates/sshd_config"
         download_file "./templates/zshrc" "https://github.com/qoxi-cloud/proxmox-hetzner/raw/refs/heads/main/templates/zshrc"
+        download_file "./templates/p10k.zsh" "https://github.com/qoxi-cloud/proxmox-hetzner/raw/refs/heads/main/templates/p10k.zsh"
         download_file "./templates/chrony" "https://github.com/qoxi-cloud/proxmox-hetzner/raw/refs/heads/main/templates/chrony"
-        download_file "./templates/motd-dynamic" "https://github.com/qoxi-cloud/proxmox-hetzner/raw/refs/heads/main/templates/motd-dynamic"
         download_file "./templates/50unattended-upgrades" "https://github.com/qoxi-cloud/proxmox-hetzner/raw/refs/heads/main/templates/50unattended-upgrades"
         download_file "./templates/20auto-upgrades" "https://github.com/qoxi-cloud/proxmox-hetzner/raw/refs/heads/main/templates/20auto-upgrades"
         download_file "./templates/interfaces" "https://github.com/qoxi-cloud/proxmox-hetzner/raw/refs/heads/main/templates/${interfaces_template}"
@@ -118,8 +118,8 @@ configure_proxmox_via_ssh() {
     # Install monitoring and system utilities
     remote_exec_with_progress "Installing system utilities" '
         export DEBIAN_FRONTEND=noninteractive
-        apt-get install -yqq btop iotop ncdu tmux pigz smartmontools jq bat zsh zsh-autosuggestions zsh-syntax-highlighting 2>/dev/null || {
-            for pkg in btop iotop ncdu tmux pigz smartmontools jq bat zsh zsh-autosuggestions zsh-syntax-highlighting; do
+        apt-get install -yqq btop iotop ncdu tmux pigz smartmontools jq bat 2>/dev/null || {
+            for pkg in btop iotop ncdu tmux pigz smartmontools jq bat; do
                 apt-get install -yqq "$pkg" 2>/dev/null || true
             done
         }
@@ -158,12 +158,37 @@ LANGUAGE=en_US.UTF-8
 ENVEOF
     ' "UTF-8 locales configured"
 
-    # Configure ZSH as default shell for root
-    (
-        remote_copy "templates/zshrc" "/root/.zshrc"
-        remote_exec "chsh -s /bin/zsh root"
-    ) > /dev/null 2>&1 &
-    show_progress $! "Configuring ZSH" "ZSH configured"
+    # Configure default shell for root
+    if [[ "$DEFAULT_SHELL" == "zsh" ]]; then
+        remote_exec_with_progress "Installing ZSH and Git" '
+            export DEBIAN_FRONTEND=noninteractive
+            apt-get install -yqq zsh git curl
+        ' "ZSH and Git installed"
+
+        remote_exec_with_progress "Installing Oh-My-Zsh" '
+            export RUNZSH=no
+            export CHSH=no
+            sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+        ' "Oh-My-Zsh installed"
+
+        remote_exec_with_progress "Installing Powerlevel10k theme" '
+            git clone --depth=1 https://github.com/romkatv/powerlevel10k.git /root/.oh-my-zsh/custom/themes/powerlevel10k
+        ' "Powerlevel10k theme installed"
+
+        remote_exec_with_progress "Installing ZSH plugins" '
+            git clone --depth=1 https://github.com/zsh-users/zsh-autosuggestions /root/.oh-my-zsh/custom/plugins/zsh-autosuggestions
+            git clone --depth=1 https://github.com/zsh-users/zsh-syntax-highlighting /root/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting
+        ' "ZSH plugins installed"
+
+        (
+            remote_copy "templates/zshrc" "/root/.zshrc"
+            remote_copy "templates/p10k.zsh" "/root/.p10k.zsh"
+            remote_exec "chsh -s /bin/zsh root"
+        ) > /dev/null 2>&1 &
+        show_progress $! "Configuring ZSH" "ZSH with Powerlevel10k configured"
+    else
+        print_success "Bash configured as default shell"
+    fi
 
     # Configure NTP time synchronization with chrony
     remote_exec_with_progress "Installing NTP (chrony)" '
@@ -176,15 +201,6 @@ ENVEOF
         remote_exec "systemctl enable chrony && systemctl start chrony"
     ) > /dev/null 2>&1 &
     show_progress $! "Configuring chrony" "Chrony configured"
-
-    # Configure dynamic MOTD
-    (
-        remote_exec "rm -f /etc/motd"
-        remote_exec "chmod -x /etc/update-motd.d/* 2>/dev/null || true"
-        remote_copy "templates/motd-dynamic" "/etc/update-motd.d/10-proxmox-status"
-        remote_exec "chmod +x /etc/update-motd.d/10-proxmox-status"
-    ) > /dev/null 2>&1 &
-    show_progress $! "Configuring dynamic MOTD" "Dynamic MOTD configured"
 
     # Configure Unattended Upgrades (security updates, kernel excluded)
     remote_exec_with_progress "Installing Unattended Upgrades" '

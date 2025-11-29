@@ -69,6 +69,12 @@ You can pre-configure any setting via environment variables.
 |----------|-------------|---------|
 | `ZFS_RAID` | ZFS mode: `single`, `raid0`, `raid1` | `raid1` (if 2+ disks) |
 
+### Shell Settings
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `DEFAULT_SHELL` | Default shell for root: `zsh`, `bash` | `zsh` |
+
 ### Tailscale Settings
 
 | Variable | Description | Default |
@@ -125,6 +131,7 @@ EMAIL=admin@example.com
 BRIDGE_MODE=internal
 PRIVATE_SUBNET=10.0.0.0/24
 ZFS_RAID=raid1
+DEFAULT_SHELL=zsh
 INSTALL_TAILSCALE=no
 ```
 

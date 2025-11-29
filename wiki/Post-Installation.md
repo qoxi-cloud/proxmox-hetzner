@@ -8,7 +8,7 @@ The installer automatically installs these useful packages:
 
 | Package | Purpose |
 |---------|---------|
-| `zsh` | Modern shell with plugins (autosuggestions, syntax highlighting) |
+| `zsh` | Modern shell with plugins (if selected as default shell) |
 | `btop` | Modern system monitor (CPU, RAM, disk, network) |
 | `iotop` | Disk I/O monitoring |
 | `ncdu` | Interactive disk usage analyzer |
@@ -94,9 +94,19 @@ ntp3.hetzner.net
 
 | Feature | Details |
 |---------|---------|
-| Default shell | ZSH |
-| Plugins | autosuggestions, syntax-highlighting |
-| Dynamic MOTD | System status shown on SSH login |
+| Default shell | ZSH or Bash (user selectable during installation) |
+| ZSH framework | Oh-My-Zsh (if ZSH selected) |
+| ZSH theme | Powerlevel10k with pre-configured prompt |
+| ZSH plugins | autosuggestions, syntax-highlighting, git, sudo, history |
+
+> **Note:** ZSH with Oh-My-Zsh and Powerlevel10k is installed only when selected as the default shell. Selecting Bash results in a lighter installation.
+
+**ZSH features when selected:**
+
+- Powerlevel10k theme with git status, command execution time
+- Auto-suggestions from history (gray text)
+- Syntax highlighting for commands
+- Proxmox-specific aliases (`qml`, `pctl`, `zpl`, `zst`)
 
 ## Proxmox-Specific Changes
 

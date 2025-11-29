@@ -1,9 +1,33 @@
-# Proxmox ZSH Configuration
+# Proxmox ZSH Configuration with Oh-My-Zsh and Powerlevel10k
+
+# Enable Powerlevel10k instant prompt (should stay at the top)
+if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
+  source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
+fi
 
 # UTF-8 Locale (required for btop and other apps)
 export LANG=en_US.UTF-8
 export LC_ALL=en_US.UTF-8
 export LANGUAGE=en_US.UTF-8
+
+# Path to oh-my-zsh installation
+export ZSH="$HOME/.oh-my-zsh"
+
+# Set theme to powerlevel10k
+ZSH_THEME="powerlevel10k/powerlevel10k"
+
+# Oh-My-Zsh plugins
+plugins=(
+    git
+    sudo
+    history
+    dirhistory
+    zsh-autosuggestions
+    zsh-syntax-highlighting
+)
+
+# Load Oh-My-Zsh
+source $ZSH/oh-my-zsh.sh
 
 # History settings
 HISTFILE=~/.zsh_history
@@ -21,21 +45,6 @@ bindkey '^[[B' history-search-forward
 bindkey '^[[H' beginning-of-line
 bindkey '^[[F' end-of-line
 bindkey '^[[3~' delete-char
-
-# Completion
-autoload -Uz compinit && compinit
-zstyle ':completion:*' menu select
-zstyle ':completion:*' matcher-list 'm:{a-zA-Z}={A-Za-z}'
-
-# Colors
-autoload -Uz colors && colors
-
-# Prompt with git branch support
-autoload -Uz vcs_info
-precmd() { vcs_info }
-zstyle ':vcs_info:git:*' formats ' (%b)'
-setopt PROMPT_SUBST
-PROMPT='%F{cyan}%n@%m%f:%F{blue}%~%f%F{yellow}${vcs_info_msg_0_}%f %# '
 
 # Aliases
 alias ll='ls -lah --color=auto'
@@ -61,11 +70,8 @@ command -v bat &>/dev/null && alias cat='bat --paging=never'
 # Use btop instead of top if available
 command -v btop &>/dev/null && alias top='btop'
 
-# Load plugins if available
-[ -f /usr/share/zsh-autosuggestions/zsh-autosuggestions.zsh ] && \
-    source /usr/share/zsh-autosuggestions/zsh-autosuggestions.zsh
-[ -f /usr/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ] && \
-    source /usr/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
-
 # Auto-suggestions color (gray)
 ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=8'
+
+# Load Powerlevel10k config
+[[ -f ~/.p10k.zsh ]] && source ~/.p10k.zsh

@@ -101,6 +101,7 @@ get_inputs_non_interactive() {
     EMAIL="${EMAIL:-admin@qoxi.cloud}"
     BRIDGE_MODE="${BRIDGE_MODE:-internal}"
     PRIVATE_SUBNET="${PRIVATE_SUBNET:-10.0.0.0/24}"
+    DEFAULT_SHELL="${DEFAULT_SHELL:-zsh}"
 
     # Display configuration
     print_success "Network interface: ${INTERFACE_NAME}"
@@ -113,6 +114,7 @@ get_inputs_non_interactive() {
     if [[ "$BRIDGE_MODE" == "internal" || "$BRIDGE_MODE" == "both" ]]; then
         print_success "Private subnet: ${PRIVATE_SUBNET}"
     fi
+    print_success "Default shell: ${DEFAULT_SHELL}"
 
     # ZFS RAID mode
     if [[ -z "$ZFS_RAID" ]]; then
@@ -344,6 +346,24 @@ get_inputs_interactive() {
             ZFS_RAID="single"
             print_success "ZFS mode: single (1 drive detected)"
         fi
+    fi
+
+    # --- Default Shell ---
+    if [[ -n "$DEFAULT_SHELL" ]]; then
+        print_success "Default shell: ${DEFAULT_SHELL} (from env)"
+    else
+        local shell_options=("zsh" "bash")
+        local shell_header="Select the default shell for root user."$'\n'
+        shell_header+="ZSH includes autosuggestions and syntax highlighting."
+
+        interactive_menu \
+            "Default Shell (↑/↓ select, Enter confirm)" \
+            "$shell_header" \
+            "ZSH|Modern shell with plugins (recommended)" \
+            "Bash|Default system shell"
+
+        DEFAULT_SHELL="${shell_options[$MENU_SELECTED]}"
+        print_success "Default shell: ${DEFAULT_SHELL}"
     fi
 
     # --- SSH Public Key ---

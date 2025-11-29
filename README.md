@@ -19,6 +19,7 @@ Automated Proxmox VE installer for Hetzner dedicated servers **without console a
 - Interactive menus with arrow key navigation
 - Network bridge modes: Internal NAT, External bridged, or both
 - ZFS RAID selection: RAID-1, RAID-0, or single drive
+- Default shell selection: ZSH with plugins or Bash
 - SSH hardening with key-only auth
 - Automatic security updates
 - Optional Tailscale VPN integration
