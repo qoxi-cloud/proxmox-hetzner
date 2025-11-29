@@ -1,0 +1,59 @@
+name: Sync Wiki
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'wiki/**'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync-wiki:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Checkout wiki
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository }}.wiki
+          path: .wiki
+          token: ${{ secrets.WIKI_TOKEN }}
+        continue-on-error: true
+
+      - name: Initialize wiki if needed
+        run: |
+          if [ ! -d ".wiki/.git" ]; then
+            echo "Wiki not initialized yet. Creating initial wiki..."
+            mkdir -p .wiki
+            cd .wiki
+            git init
+            git remote add origin "https://x-access-token:${{ secrets.WIKI_TOKEN }}@github.com/${{ github.repository }}.wiki.git"
+          fi
+
+      - name: Sync wiki content
+        run: |
+          # Copy all wiki files
+          cp -r wiki/* .wiki/
+
+          cd .wiki
+
+          # Configure git
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Check for changes
+          git add -A
+          if git diff --staged --quiet; then
+            echo "No changes to sync"
+            exit 0
+          fi
+
+          # Commit and push
+          git commit -m "Sync wiki from main repository"
+          git push origin HEAD:master || git push origin HEAD:main
