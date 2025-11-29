@@ -187,10 +187,11 @@ configure_system_services() {
         fi
     ' "nf_conntrack configured"
 
-    # Configure CPU governor
+    # Configure CPU governor for maximum performance
     remote_exec_with_progress "Configuring CPU governor" '
         apt-get update -qq && apt-get install -yqq cpufrequtils 2>/dev/null || true
         echo "GOVERNOR=\"performance\"" > /etc/default/cpufrequtils
+        systemctl enable cpufrequtils 2>/dev/null || true
         if [ -d /sys/devices/system/cpu/cpu0/cpufreq ]; then
             for cpu in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do
                 [ -f "$cpu" ] && echo "performance" > "$cpu" 2>/dev/null || true
