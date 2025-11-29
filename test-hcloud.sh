@@ -7,7 +7,7 @@ set -e
 #
 # Environment variables:
 #   TAILSCALE_AUTH_KEY - Tailscale auth key (will be passed to installer)
-#   SERVER_TYPE        - Hetzner server type (default: cpx21)
+#   SERVER_TYPE        - Hetzner server type (default: ccx13)
 # =============================================================================
 
 CLR_RED="\033[1;31m"
