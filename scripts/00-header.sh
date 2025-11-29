@@ -13,7 +13,7 @@ CLR_CYAN="\033[1;36m"
 CLR_RESET="\033[m"
 
 # Version
-VERSION="1.2.0"
+VERSION="1.2.3"
 
 # Log file
 LOG_FILE="/root/pve-install-$(date +%Y%m%d-%H%M%S).log"
