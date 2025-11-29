@@ -1,52 +1,9 @@
 # shellcheck shell=bash
 # =============================================================================
-# Post-installation configuration
+# Base system configuration via SSH
 # =============================================================================
 
-make_templates() {
-    log "Starting template preparation"
-    mkdir -p ./templates
-    local interfaces_template="interfaces.${BRIDGE_MODE:-internal}"
-    log "Using interfaces template: $interfaces_template"
-
-    # Download template files in background with progress
-    (
-        download_file "./templates/99-proxmox.conf" "https://github.com/qoxi-cloud/proxmox-hetzner/raw/refs/heads/main/templates/99-proxmox.conf"
-        download_file "./templates/hosts" "https://github.com/qoxi-cloud/proxmox-hetzner/raw/refs/heads/main/templates/hosts"
-        download_file "./templates/debian.sources" "https://github.com/qoxi-cloud/proxmox-hetzner/raw/refs/heads/main/templates/debian.sources"
-        download_file "./templates/proxmox.sources" "https://github.com/qoxi-cloud/proxmox-hetzner/raw/refs/heads/main/templates/proxmox.sources"
-        download_file "./templates/sshd_config" "https://github.com/qoxi-cloud/proxmox-hetzner/raw/refs/heads/main/templates/sshd_config"
-        download_file "./templates/zshrc" "https://github.com/qoxi-cloud/proxmox-hetzner/raw/refs/heads/main/templates/zshrc"
-        download_file "./templates/p10k.zsh" "https://github.com/qoxi-cloud/proxmox-hetzner/raw/refs/heads/main/templates/p10k.zsh"
-        download_file "./templates/chrony" "https://github.com/qoxi-cloud/proxmox-hetzner/raw/refs/heads/main/templates/chrony"
-        download_file "./templates/50unattended-upgrades" "https://github.com/qoxi-cloud/proxmox-hetzner/raw/refs/heads/main/templates/50unattended-upgrades"
-        download_file "./templates/20auto-upgrades" "https://github.com/qoxi-cloud/proxmox-hetzner/raw/refs/heads/main/templates/20auto-upgrades"
-        download_file "./templates/interfaces" "https://github.com/qoxi-cloud/proxmox-hetzner/raw/refs/heads/main/templates/${interfaces_template}"
-    ) > /dev/null 2>&1 &
-    show_progress $! "Downloading template files"
-
-    # Modify template files in background with progress
-    (
-        sed -i "s|{{MAIN_IPV4}}|$MAIN_IPV4|g" ./templates/hosts
-        sed -i "s|{{FQDN}}|$FQDN|g" ./templates/hosts
-        sed -i "s|{{HOSTNAME}}|$PVE_HOSTNAME|g" ./templates/hosts
-        sed -i "s|{{MAIN_IPV6}}|$MAIN_IPV6|g" ./templates/hosts
-        sed -i "s|{{INTERFACE_NAME}}|$INTERFACE_NAME|g" ./templates/interfaces
-        sed -i "s|{{MAIN_IPV4}}|$MAIN_IPV4|g" ./templates/interfaces
-        sed -i "s|{{MAIN_IPV4_GW}}|$MAIN_IPV4_GW|g" ./templates/interfaces
-        sed -i "s|{{MAIN_IPV6}}|$MAIN_IPV6|g" ./templates/interfaces
-        sed -i "s|{{PRIVATE_IP_CIDR}}|$PRIVATE_IP_CIDR|g" ./templates/interfaces
-        sed -i "s|{{PRIVATE_SUBNET}}|$PRIVATE_SUBNET|g" ./templates/interfaces
-        sed -i "s|{{FIRST_IPV6_CIDR}}|$FIRST_IPV6_CIDR|g" ./templates/interfaces
-    ) &
-    show_progress $! "Modifying template files"
-}
-
-# Configure the installed Proxmox via SSH
-configure_proxmox_via_ssh() {
-    log "Starting Proxmox configuration via SSH"
-    make_templates
-
+configure_base_system() {
     # Copy template files to VM
     (
         remote_copy "templates/hosts" "/etc/hosts"
@@ -157,7 +114,9 @@ LC_ALL=en_US.UTF-8
 LANGUAGE=en_US.UTF-8
 ENVEOF
     ' "UTF-8 locales configured"
+}
 
+configure_shell() {
     # Configure default shell for root
     if [[ "$DEFAULT_SHELL" == "zsh" ]]; then
         remote_exec_with_progress "Installing ZSH and Git" '
@@ -189,7 +148,9 @@ ENVEOF
     else
         print_success "Bash configured as default shell"
     fi
+}
 
+configure_system_services() {
     # Configure NTP time synchronization with chrony
     remote_exec_with_progress "Installing NTP (chrony)" '
         export DEBIAN_FRONTEND=noninteractive
@@ -244,102 +205,4 @@ ENVEOF
             systemctl restart pveproxy.service
         fi
     ' "Subscription notice removed"
-
-    # Install Tailscale if requested
-    if [[ "$INSTALL_TAILSCALE" == "yes" ]]; then
-        remote_exec_with_progress "Installing Tailscale VPN" '
-            curl -fsSL https://pkgs.tailscale.com/stable/debian/bookworm.noarmor.gpg | tee /usr/share/keyrings/tailscale-archive-keyring.gpg >/dev/null
-            curl -fsSL https://pkgs.tailscale.com/stable/debian/bookworm.tailscale-keyring.list | tee /etc/apt/sources.list.d/tailscale.list
-            apt-get update -qq
-            apt-get install -yqq tailscale
-            systemctl enable tailscaled
-            systemctl start tailscaled
-        ' "Tailscale VPN installed"
-
-        # Build tailscale up command with selected options
-        TAILSCALE_UP_CMD="tailscale up"
-        if [[ -n "$TAILSCALE_AUTH_KEY" ]]; then
-            TAILSCALE_UP_CMD="$TAILSCALE_UP_CMD --authkey='$TAILSCALE_AUTH_KEY'"
-        fi
-        if [[ "$TAILSCALE_SSH" == "yes" ]]; then
-            TAILSCALE_UP_CMD="$TAILSCALE_UP_CMD --ssh"
-        fi
-
-        # If auth key is provided, authenticate Tailscale
-        if [[ -n "$TAILSCALE_AUTH_KEY" ]]; then
-            (
-                remote_exec "$TAILSCALE_UP_CMD"
-                remote_exec "tailscale ip -4" > /tmp/tailscale_ip.txt 2>/dev/null
-                remote_exec "tailscale status --json | grep -o '\"DNSName\":\"[^\"]*\"' | head -1 | cut -d'\"' -f4 | sed 's/\\.$//' " > /tmp/tailscale_hostname.txt 2>/dev/null
-            ) > /dev/null 2>&1 &
-            show_progress $! "Authenticating Tailscale"
-
-            # Get Tailscale IP and hostname for display
-            TAILSCALE_IP=$(cat /tmp/tailscale_ip.txt 2>/dev/null || echo "pending")
-            TAILSCALE_HOSTNAME=$(cat /tmp/tailscale_hostname.txt 2>/dev/null || echo "")
-            rm -f /tmp/tailscale_ip.txt /tmp/tailscale_hostname.txt
-            # Overwrite completion line with IP
-            printf "\033[1A\r${CLR_GREEN}✓ Tailscale authenticated. IP: ${TAILSCALE_IP}${CLR_RESET}                              \n"
-
-            # Configure Tailscale Serve for Proxmox Web UI
-            if [[ "$TAILSCALE_WEBUI" == "yes" ]]; then
-                remote_exec "tailscale serve --bg --https=443 https://127.0.0.1:8006" > /dev/null 2>&1 &
-                show_progress $! "Configuring Tailscale Serve" "Proxmox Web UI available via Tailscale Serve"
-            fi
-
-            # Deploy OpenSSH disable service if requested
-            if [[ "$TAILSCALE_SSH" == "yes" && "$TAILSCALE_DISABLE_SSH" == "yes" ]]; then
-                log "Deploying disable-openssh.service (TAILSCALE_SSH=$TAILSCALE_SSH, TAILSCALE_DISABLE_SSH=$TAILSCALE_DISABLE_SSH)"
-                (
-                    download_file "./templates/disable-openssh.service" "https://github.com/qoxi-cloud/proxmox-hetzner/raw/refs/heads/main/templates/disable-openssh.service"
-                    log "Downloaded disable-openssh.service, size: $(wc -c < ./templates/disable-openssh.service 2>/dev/null || echo 'failed')"
-                    remote_copy "templates/disable-openssh.service" "/etc/systemd/system/disable-openssh.service"
-                    log "Copied disable-openssh.service to VM"
-                    remote_exec "systemctl daemon-reload && systemctl enable disable-openssh.service" > /dev/null 2>&1
-                    log "Enabled disable-openssh.service"
-                ) &
-                show_progress $! "Configuring OpenSSH disable on boot" "OpenSSH disable configured"
-            else
-                log "Skipping disable-openssh.service (TAILSCALE_SSH=$TAILSCALE_SSH, TAILSCALE_DISABLE_SSH=$TAILSCALE_DISABLE_SSH)"
-            fi
-
-            # Deploy stealth firewall if requested
-            if [[ "$STEALTH_MODE" == "yes" ]]; then
-                log "Deploying stealth-firewall.service (STEALTH_MODE=$STEALTH_MODE)"
-                (
-                    download_file "./templates/stealth-firewall.service" "https://github.com/qoxi-cloud/proxmox-hetzner/raw/refs/heads/main/templates/stealth-firewall.service"
-                    log "Downloaded stealth-firewall.service, size: $(wc -c < ./templates/stealth-firewall.service 2>/dev/null || echo 'failed')"
-                    remote_copy "templates/stealth-firewall.service" "/etc/systemd/system/stealth-firewall.service"
-                    log "Copied stealth-firewall.service to VM"
-                    remote_exec "systemctl daemon-reload && systemctl enable stealth-firewall.service" > /dev/null 2>&1
-                    log "Enabled stealth-firewall.service"
-                ) &
-                show_progress $! "Configuring stealth firewall" "Stealth firewall configured"
-            else
-                log "Skipping stealth-firewall.service (STEALTH_MODE=$STEALTH_MODE)"
-            fi
-        else
-            TAILSCALE_IP="not authenticated"
-            TAILSCALE_HOSTNAME=""
-            print_warning "Tailscale installed but not authenticated."
-            print_info "After reboot, run these commands to enable SSH and Web UI:"
-            print_info "  tailscale up --ssh"
-            print_info "  tailscale serve --bg --https=443 https://127.0.0.1:8006"
-        fi
-    fi
-
-    # Deploy SSH hardening LAST (after all other operations)
-    (
-        remote_exec "mkdir -p /root/.ssh && chmod 700 /root/.ssh"
-        remote_exec "echo '$SSH_PUBLIC_KEY' >> /root/.ssh/authorized_keys && chmod 600 /root/.ssh/authorized_keys"
-        remote_copy "templates/sshd_config" "/etc/ssh/sshd_config"
-    ) > /dev/null 2>&1 &
-    show_progress $! "Deploying SSH hardening" "Security hardening configured"
-
-    # Power off the VM
-    remote_exec "poweroff" > /dev/null 2>&1 &
-    show_progress $! "Powering off the VM"
-
-    # Wait for QEMU to exit
-    wait_with_progress "Waiting for QEMU process to exit" 120 "! kill -0 $QEMU_PID 2>/dev/null" 1 "QEMU process exited"
 }
