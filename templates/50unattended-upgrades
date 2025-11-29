@@ -1,0 +1,65 @@
+// Unattended-Upgrade configuration for Proxmox VE
+// Security updates only, kernel excluded
+
+// Automatically upgrade packages from these origins
+Unattended-Upgrade::Origins-Pattern {
+    // Debian security updates
+    "origin=Debian,codename=${distro_codename}-security,label=Debian-Security";
+
+    // Proxmox VE security updates (no-subscription repo)
+    "origin=Proxmox,codename=${distro_codename},label=Proxmox";
+};
+
+// List of packages to NOT automatically upgrade
+// IMPORTANT: Kernel packages are excluded to prevent unexpected reboots
+Unattended-Upgrade::Package-Blacklist {
+    // Kernel packages - require manual update and reboot planning
+    "linux-image-*";
+    "linux-headers-*";
+    "linux-libc-dev";
+    "pve-kernel-*";
+    "proxmox-kernel-*";
+
+    // ZFS kernel modules - should be updated with kernel
+    "zfs-dkms";
+    "zfs-modules-*";
+
+    // Proxmox VE core components that may require reboot
+    "pve-qemu-kvm";
+    "qemu-server";
+};
+
+// Packages that will always be upgraded (even if blacklisted elsewhere)
+Unattended-Upgrade::Package-Whitelist {
+};
+
+// Send email notification on upgrade
+// Unattended-Upgrade::Mail "root";
+
+// Mail only on errors or problems
+Unattended-Upgrade::MailReport "only-on-error";
+
+// Remove unused automatically installed dependency packages after upgrade
+Unattended-Upgrade::Remove-Unused-Dependencies "true";
+
+// Remove unused kernel packages after upgrade
+Unattended-Upgrade::Remove-Unused-Kernel-Packages "false";
+
+// Automatically reboot if required (DISABLED - manual reboot preferred)
+Unattended-Upgrade::Automatic-Reboot "false";
+
+// Reboot time if automatic reboot is enabled
+// Unattended-Upgrade::Automatic-Reboot-Time "03:00";
+
+// Enable logging
+Unattended-Upgrade::SyslogEnable "true";
+Unattended-Upgrade::SyslogFacility "daemon";
+
+// Download upgradeable packages in the background
+Unattended-Upgrade::MinimalSteps "true";
+
+// Split upgrade process for minimal downtime
+Unattended-Upgrade::InstallOnShutdown "false";
+
+// Verbose logging for debugging (set to false in production)
+// Unattended-Upgrade::Debug "true";

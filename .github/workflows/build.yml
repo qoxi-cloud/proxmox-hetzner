@@ -1,0 +1,54 @@
+name: Build pve-install.sh
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'scripts/*.sh'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build script
+        run: |
+          # Header
+          cat > pve-install.sh << 'HEADER'
+          #!/usr/bin/env bash
+          # =============================================================================
+          # Proxmox VE Auto-Installer for Hetzner Dedicated Servers
+          # =============================================================================
+          HEADER
+
+          # Concatenate all source files in order
+          for f in scripts/*.sh; do
+            echo "" >> pve-install.sh
+            echo "# --- $(basename "$f") ---" >> pve-install.sh
+            # Remove shebang from all files
+            sed '1{/^#!/d}' "$f" >> pve-install.sh
+          done
+
+          chmod +x pve-install.sh
+
+          # Prepare for GitHub Pages
+          mkdir -p _site
+          cp pve-install.sh _site/
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Deploy to GitHub Pages
+        uses: actions/deploy-pages@v4

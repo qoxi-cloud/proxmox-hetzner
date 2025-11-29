@@ -1,0 +1,31 @@
+# Chrony configuration for Proxmox VE
+# NTP time synchronization
+
+# Use Hetzner NTP servers (if on Hetzner)
+server ntp1.hetzner.de iburst
+server ntp2.hetzner.com iburst
+server ntp3.hetzner.net iburst
+
+# Fallback to public NTP pools
+pool 0.debian.pool.ntp.org iburst
+pool 1.debian.pool.ntp.org iburst
+pool 2.debian.pool.ntp.org iburst
+
+# Record the rate at which the system clock gains/losses time
+driftfile /var/lib/chrony/drift
+
+# Allow the system clock to be stepped in the first three updates
+# if its offset is larger than 1 second
+makestep 1.0 3
+
+# Enable kernel synchronization of the real-time clock (RTC)
+rtcsync
+
+# Enable hardware timestamping on all interfaces that support it
+#hwtimestamp *
+
+# Specify directory for log files
+logdir /var/log/chrony
+
+# Select which information is logged
+log measurements statistics tracking

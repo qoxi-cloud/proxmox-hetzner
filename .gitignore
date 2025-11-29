@@ -1,0 +1,22 @@
+# Generated files
+pve-install.sh
+_site/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor files
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+*.sublime-*
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.bak
