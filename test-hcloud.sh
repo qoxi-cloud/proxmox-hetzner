@@ -146,9 +146,16 @@ enable_rescue_mode() {
     output=$(hcloud server enable-rescue "$SERVER_ID" --type linux64 2>&1)
 
     # Parse rescue password from output
-    RESCUE_PASSWORD=$(echo "$output" | grep -i "root password" | awk '{print $NF}')
+    # Format: "Root password: XXXXXX" or similar
+    RESCUE_PASSWORD=$(echo "$output" | grep -i "password" | awk -F': ' '{print $2}' | tr -d ' ')
 
-    log_success "Rescue mode enabled"
+    if [[ -z "$RESCUE_PASSWORD" ]]; then
+        log_error "Failed to parse rescue password from output:"
+        echo "$output"
+        exit 1
+    fi
+
+    log_success "Rescue mode enabled (password captured)"
 
     log_info "Resetting server into rescue mode..."
     hcloud server reset "$SERVER_ID" >/dev/null 2>&1
