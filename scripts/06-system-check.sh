@@ -99,8 +99,14 @@ collect_system_info() {
     fi
     sleep 0.1
 
-    # Check if KVM is available
+    # Check if KVM is available (try to load module if not present)
     update_progress
+    if [[ ! -e /dev/kvm ]]; then
+        # Try to load KVM module (needed in rescue mode)
+        modprobe kvm 2>/dev/null || true
+        modprobe kvm_intel 2>/dev/null || modprobe kvm_amd 2>/dev/null || true
+        sleep 0.5
+    fi
     if [[ -e /dev/kvm ]]; then
         PREFLIGHT_KVM="Available"
         PREFLIGHT_KVM_STATUS="ok"
