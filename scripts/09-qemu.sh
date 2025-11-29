@@ -32,6 +32,25 @@ setup_qemu_config() {
     [[ -n "$NVME_DRIVE_2" ]] && DRIVE_ARGS="$DRIVE_ARGS -drive file=$NVME_DRIVE_2,format=raw,media=disk,if=virtio"
 }
 
+# Release NVMe drives from any existing locks
+release_drives() {
+    # Kill any existing QEMU processes
+    pkill -9 qemu-system-x86 2>/dev/null || true
+
+    # Stop mdadm arrays that might use NVMe drives
+    if command -v mdadm &>/dev/null; then
+        mdadm --stop --scan 2>/dev/null || true
+    fi
+
+    # Deactivate LVM volume groups on NVMe
+    if command -v vgchange &>/dev/null; then
+        vgchange -an 2>/dev/null || true
+    fi
+
+    # Give system time to release locks
+    sleep 2
+}
+
 # Install Proxmox via QEMU
 install_proxmox() {
     setup_qemu_config
@@ -41,6 +60,9 @@ install_proxmox() {
         print_error "Autoinstall ISO not found!"
         exit 1
     fi
+
+    # Release any locks on NVMe drives
+    release_drives
 
     # Run QEMU in background with error logging
     qemu-system-x86_64 -enable-kvm $UEFI_OPTS \
