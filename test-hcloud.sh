@@ -151,7 +151,8 @@ enable_rescue_mode() {
     log_success "Rescue mode enabled"
 
     log_info "Resetting server into rescue mode..."
-    hcloud server reset "$SERVER_ID"
+    hcloud server reset "$SERVER_ID" >/dev/null 2>&1
+    log_success "Server reset initiated"
 
     # Wait for server to come back online in rescue mode
     log_info "Waiting for server to boot into rescue mode..."
@@ -162,6 +163,7 @@ enable_rescue_mode() {
     while [[ $attempt -lt $max_attempts ]]; do
         if sshpass -p "$RESCUE_PASSWORD" ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 \
             -o UserKnownHostsFile=/dev/null root@"$SERVER_IP" "echo ok" &>/dev/null; then
+            echo ""
             log_success "Server is online in rescue mode"
             return 0
         fi
