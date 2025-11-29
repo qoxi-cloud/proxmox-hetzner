@@ -53,10 +53,9 @@ Full documentation available in the **[Wiki](../../wiki)**:
 
 ## Support
 
-If this project saved you time, please consider giving it a star!
-
-[![Star on GitHub](https://img.shields.io/github/stars/qoxi-cloud/proxmox-hetzner?style=social)](https://github.com/qoxi-cloud/proxmox-hetzner)
+If this project saved you time, please consider giving it a star! [![Star on GitHub](https://img.shields.io/github/stars/qoxi-cloud/proxmox-hetzner?style=social)](https://github.com/qoxi-cloud/proxmox-hetzner)
 
 ## License
 
 [MIT License](LICENSE)
+
