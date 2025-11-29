@@ -497,10 +497,10 @@ get_inputs_interactive() {
                 interactive_menu \
                     "Disable OpenSSH on first boot? (↑/↓ select, Enter confirm)" \
                     "$disable_ssh_header" \
-                    "Keep OpenSSH enabled|Access via both public IP and Tailscale" \
-                    "Disable OpenSSH|Access ONLY via Tailscale SSH (more secure)"
+                    "Disable OpenSSH|Access ONLY via Tailscale SSH (more secure)" \
+                    "Keep OpenSSH enabled|Access via both public IP and Tailscale"
 
-                if [[ $MENU_SELECTED -eq 1 ]]; then
+                if [[ $MENU_SELECTED -eq 0 ]]; then
                     TAILSCALE_DISABLE_SSH="yes"
                     STEALTH_MODE="yes"
                     print_success "OpenSSH will be disabled on first boot"
