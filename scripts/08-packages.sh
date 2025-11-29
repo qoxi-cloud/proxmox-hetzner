@@ -144,17 +144,8 @@ EOF
 }
 
 make_autoinstall_iso() {
-    proxmox-auto-install-assistant prepare-iso pve.iso --fetch-from iso --answer-file answer.toml --output pve-autoinstall.iso > /tmp/iso-create.log 2>&1 &
-    local pid=$!
-    show_progress $pid "Creating autoinstall ISO" "Autoinstall ISO created"
-
-    # Verify ISO was created
-    if [[ ! -f "./pve-autoinstall.iso" ]]; then
-        print_error "Failed to create autoinstall ISO!"
-        echo "Log output:"
-        cat /tmp/iso-create.log
-        exit 1
-    fi
+    proxmox-auto-install-assistant prepare-iso pve.iso --fetch-from iso --answer-file answer.toml --output pve-autoinstall.iso > /dev/null 2>&1 &
+    show_progress $! "Creating autoinstall ISO" "Autoinstall ISO created"
 
     # Remove original ISO to save disk space (only autoinstall ISO is needed)
     rm -f pve.iso
