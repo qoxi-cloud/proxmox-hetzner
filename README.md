@@ -53,7 +53,13 @@ Full documentation available in the **[Wiki](../../wiki)**:
 
 ## Support
 
-If this project saved you time, please consider giving it a star! [![Star on GitHub](https://img.shields.io/github/stars/qoxi-cloud/proxmox-hetzner?style=social)](https://github.com/qoxi-cloud/proxmox-hetzner)
+<div align="center">
+
+**If this project saved you time, please consider giving it a star!**
+
+[![Star on GitHub](https://img.shields.io/github/stars/qoxi-cloud/proxmox-hetzner?style=for-the-badge&logo=github)](https://github.com/qoxi-cloud/proxmox-hetzner)
+
+</div>
 
 ## License
 
