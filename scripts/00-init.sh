@@ -28,6 +28,8 @@ INSTALL_COMPLETED=false
 # Error handler - show message when script exits unexpectedly
 error_handler() {
     local exit_code=$?
+    # Debug: always log that handler was called
+    echo "[DEBUG] error_handler called: exit_code=$exit_code, INSTALL_COMPLETED=$INSTALL_COMPLETED" >&2
     if [[ "$INSTALL_COMPLETED" != "true" && $exit_code -ne 0 ]]; then
         echo ""
         local error_content="An error occurred and the installation was aborted."$'\n'
