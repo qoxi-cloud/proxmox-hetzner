@@ -100,7 +100,7 @@ show_progress() {
     local i=0
 
     while kill -0 "$pid" 2>/dev/null; do
-        printf "\r${CLR_YELLOW}${SPINNER_CHARS:i++%${#SPINNER_CHARS}:1} %s${CLR_RESET}" "$message"
+        printf "\r\e[K${CLR_YELLOW}${SPINNER_CHARS:i++%${#SPINNER_CHARS}:1} %s${CLR_RESET}" "$message"
         sleep 0.2
     done
 
@@ -141,7 +141,7 @@ wait_with_progress() {
             return 1
         fi
 
-        printf "\r${CLR_YELLOW}${SPINNER_CHARS:i++%${#SPINNER_CHARS}:1} %s${CLR_RESET}" "$message"
+        printf "\r\e[K${CLR_YELLOW}${SPINNER_CHARS:i++%${#SPINNER_CHARS}:1} %s${CLR_RESET}" "$message"
         sleep "$interval"
     done
 }
