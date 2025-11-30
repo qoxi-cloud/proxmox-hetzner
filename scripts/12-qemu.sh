@@ -73,21 +73,100 @@ setup_qemu_config() {
 
 # Release drives from any existing locks
 release_drives() {
-    # Kill any existing QEMU processes
+    log "Releasing drives from locks..."
+    
+    # More aggressive QEMU cleanup - find all QEMU processes
+    local qemu_pids
+    qemu_pids=$(pgrep -f "qemu-system-x86" 2>/dev/null || true)
+    if [[ -n "$qemu_pids" ]]; then
+        log "Found QEMU processes: $qemu_pids"
+        # Try graceful shutdown first
+        for pid in $qemu_pids; do
+            if kill -0 "$pid" 2>/dev/null; then
+                log "Sending TERM to QEMU process $pid"
+                kill -TERM "$pid" 2>/dev/null || true
+            fi
+        done
+        sleep 3
+        # Force kill if still running
+        for pid in $qemu_pids; do
+            if kill -0 "$pid" 2>/dev/null; then
+                log "Force killing QEMU process $pid"
+                kill -9 "$pid" 2>/dev/null || true
+            fi
+        done
+        sleep 1
+    fi
+    
+    # Also try pkill as fallback
+    pkill -TERM qemu-system-x86 2>/dev/null || true
+    sleep 1
     pkill -9 qemu-system-x86 2>/dev/null || true
-
+    
     # Stop mdadm arrays that might use the drives
     if command -v mdadm &>/dev/null; then
+        log "Stopping mdadm arrays..."
         mdadm --stop --scan 2>/dev/null || true
+        # Stop specific arrays if found
+        for md in /dev/md*; do
+            if [[ -b "$md" ]]; then
+                mdadm --stop "$md" 2>/dev/null || true
+            fi
+        done
     fi
-
-    # Deactivate LVM volume groups
+    
+    # Deactivate LVM volume groups - more thorough approach
     if command -v vgchange &>/dev/null; then
+        log "Deactivating LVM volume groups..."
         vgchange -an 2>/dev/null || true
+        # Deactivate specific VGs by name if vgs is available
+        if command -v vgs &>/dev/null; then
+            vgs --noheadings -o vg_name 2>/dev/null | while read -r vg; do
+                [[ -n "$vg" ]] && vgchange -an "$vg" 2>/dev/null || true
+            done
+        fi
     fi
-
-    # Give system time to release locks
+    
+    # Unmount any filesystems on target drives
+    if [[ -n "${DRIVES[*]}" ]]; then
+        log "Unmounting filesystems on target drives..."
+        for drive in "${DRIVES[@]}"; do
+            local drive_name
+            drive_name=$(basename "$drive")
+            # Find mount points for this drive
+            mount | grep -E "(^|/)$drive_name" | awk '{print $3}' | while read -r mountpoint; do
+                if [[ -n "$mountpoint" ]]; then
+                    log "Unmounting $mountpoint"
+                    umount -f "$mountpoint" 2>/dev/null || true
+                fi
+            done
+        done
+    fi
+    
+    # Additional pause for locks to release
     sleep 2
+    
+    # Check for processes still using drives and kill them
+    if [[ -n "${DRIVES[*]}" ]]; then
+        log "Checking for processes using drives..."
+        for drive in "${DRIVES[@]}"; do
+            # Use lsof if available
+            if command -v lsof &>/dev/null; then
+                lsof "$drive" 2>/dev/null | awk 'NR>1 {print $2}' | sort -u | while read -r pid; do
+                    if [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null; then
+                        log "Killing process $pid using $drive"
+                        kill -9 "$pid" 2>/dev/null || true
+                    fi
+                done
+            fi
+            # Use fuser as alternative
+            if command -v fuser &>/dev/null; then
+                fuser -k "$drive" 2>/dev/null || true
+            fi
+        done
+    fi
+    
+    log "Drives released"
 }
 
 # Install Proxmox via QEMU
@@ -144,6 +223,13 @@ install_proxmox() {
 # Boot installed Proxmox with SSH port forwarding
 boot_proxmox_with_port_forwarding() {
     setup_qemu_config
+    
+    # Check if port is already in use
+    if ! check_port_available "$SSH_PORT"; then
+        print_error "Port $SSH_PORT is already in use"
+        log "ERROR: Port $SSH_PORT is already in use"
+        exit 1
+    fi
 
     # shellcheck disable=SC2086
     nohup qemu-system-x86_64 $KVM_OPTS $UEFI_OPTS \

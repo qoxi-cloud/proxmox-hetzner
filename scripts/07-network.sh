@@ -36,7 +36,9 @@ detect_network_interface() {
         print_success "Detected predictable interface name: ${PREDICTABLE_NAME} (current: ${CURRENT_INTERFACE})"
     else
         DEFAULT_INTERFACE="$CURRENT_INTERFACE"
-        print_warning "Could not detect predictable name, using: ${CURRENT_INTERFACE}"
+        print_warning "Could not detect predictable interface name"
+        print_warning "Using current interface: ${CURRENT_INTERFACE}"
+        print_warning "Proxmox might use different interface name - check after installation"
     fi
 
     # Get all available interfaces and their altnames for display
@@ -50,16 +52,70 @@ detect_network_interface() {
 
 # Get network information from current interface
 collect_network_info() {
-    MAIN_IPV4_CIDR=$(ip address show "$CURRENT_INTERFACE" | grep global | grep "inet " | xargs | cut -d" " -f2)
-    MAIN_IPV4=$(echo "$MAIN_IPV4_CIDR" | cut -d'/' -f1)
-    MAIN_IPV4_GW=$(ip route | grep default | xargs | cut -d" " -f3)
-    MAC_ADDRESS=$(ip link show "$CURRENT_INTERFACE" | awk '/ether/ {print $2}')
-    IPV6_CIDR=$(ip address show "$CURRENT_INTERFACE" | grep global | grep "inet6 " | xargs | cut -d" " -f2)
-    MAIN_IPV6=$(echo "$IPV6_CIDR" | cut -d'/' -f1)
+    # Retry network info collection (network may be unstable in rescue mode)
+    local max_attempts=3
+    local attempt=0
+    
+    while [[ $attempt -lt $max_attempts ]]; do
+        attempt=$((attempt + 1))
+        
+        MAIN_IPV4_CIDR=$(ip address show "$CURRENT_INTERFACE" 2>/dev/null | grep global | grep "inet " | xargs | cut -d" " -f2)
+        MAIN_IPV4="${MAIN_IPV4_CIDR%/*}"
+        MAIN_IPV4_GW=$(ip route 2>/dev/null | grep default | xargs | cut -d" " -f3)
+        
+        if [[ -n "$MAIN_IPV4" ]] && [[ -n "$MAIN_IPV4_GW" ]]; then
+            break
+        fi
+        
+        if [[ $attempt -lt $max_attempts ]]; then
+            log "Network info attempt $attempt failed, retrying in 2 seconds..."
+            sleep 2
+        fi
+    done
+    
+    MAC_ADDRESS=$(ip link show "$CURRENT_INTERFACE" 2>/dev/null | awk '/ether/ {print $2}')
+    IPV6_CIDR=$(ip address show "$CURRENT_INTERFACE" 2>/dev/null | grep global | grep "inet6 " | xargs | cut -d" " -f2)
+    MAIN_IPV6="${IPV6_CIDR%/*}"
+
+    # Validate network configuration with detailed error messages
+    if [[ -z "$MAIN_IPV4" ]] || [[ -z "$MAIN_IPV4_GW" ]]; then
+        print_error "Failed to detect network configuration"
+        print_error "Interface: $CURRENT_INTERFACE"
+        print_error "Available interfaces:"
+        ip link show 2>/dev/null | grep -E "^[0-9]+:" | awk '{print "  " $2}' >&2 || true
+        log "ERROR: MAIN_IPV4=$MAIN_IPV4, MAIN_IPV4_GW=$MAIN_IPV4_GW"
+        exit 1
+    fi
+
+    # Validate IPv4 address format
+    if ! [[ "$MAIN_IPV4" =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
+        print_error "Invalid IPv4 address format: $MAIN_IPV4"
+        log "ERROR: Invalid IPv4 address: $MAIN_IPV4"
+        exit 1
+    fi
+
+    # Validate gateway format
+    if ! [[ "$MAIN_IPV4_GW" =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
+        print_error "Invalid gateway address format: $MAIN_IPV4_GW"
+        log "ERROR: Invalid gateway address: $MAIN_IPV4_GW"
+        exit 1
+    fi
+    
+    # Check gateway reachability (may be normal in rescue mode, so warning only)
+    if ! ping -c 1 -W 2 "$MAIN_IPV4_GW" > /dev/null 2>&1; then
+        print_warning "Gateway $MAIN_IPV4_GW is not reachable (may be normal in rescue mode)"
+        log "WARNING: Gateway $MAIN_IPV4_GW not reachable"
+    fi
 
     # Set a default value for FIRST_IPV6_CIDR
     if [[ -n "$IPV6_CIDR" ]]; then
-        FIRST_IPV6_CIDR="$(echo "$IPV6_CIDR" | cut -d'/' -f1 | cut -d':' -f1-4):1::1/80"
+        # Extract first 4 groups of IPv6 using parameter expansion
+        local ipv6_prefix="${MAIN_IPV6%%:*:*:*:*}"
+        # Fallback: if expansion didn't work as expected, use cut
+        if [[ "$ipv6_prefix" == "$MAIN_IPV6" ]] || [[ -z "$ipv6_prefix" ]]; then
+            ipv6_prefix=$(printf '%s' "$MAIN_IPV6" | cut -d':' -f1-4)
+        fi
+        FIRST_IPV6_CIDR="${ipv6_prefix}:1::1/80"
     else
         FIRST_IPV6_CIDR=""
     fi

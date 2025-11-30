@@ -14,6 +14,17 @@ download_file() {
     while [ "$retry_count" -lt "$max_retries" ]; do
         if wget -q -O "$output_file" "$url"; then
             if [ -s "$output_file" ]; then
+                # Check file integrity - verify it's not corrupted/empty
+                local file_type
+                file_type=$(file "$output_file" 2>/dev/null || echo "")
+
+                # For files detected as "empty" or suspicious "data", verify size
+                if echo "$file_type" | grep -q "empty"; then
+                    print_error "Downloaded file is empty: $output_file"
+                    retry_count=$((retry_count + 1))
+                    continue
+                fi
+
                 return 0
             else
                 print_error "Downloaded file is empty: $output_file"
@@ -95,6 +106,51 @@ download_template() {
     local url="${GITHUB_BASE_URL}/templates/${remote_file}"
 
     download_file "$local_path" "$url"
+    
+    # Verify file is not empty after download
+    if [[ ! -s "$local_path" ]]; then
+        print_error "Template $remote_file is empty or download failed"
+        log "ERROR: Template $remote_file is empty after download"
+        exit 1
+    fi
+    
+    # Validate template integrity based on file type
+    local filename
+    filename=$(basename "$local_path")
+    case "$filename" in
+        answer.toml)
+            if ! grep -q "\[global\]" "$local_path" 2>/dev/null; then
+                print_error "Template $remote_file appears corrupted (missing [global] section)"
+                log "ERROR: Template $remote_file corrupted - missing [global] section"
+                exit 1
+            fi
+            ;;
+        sshd_config)
+            if ! grep -q "PasswordAuthentication" "$local_path" 2>/dev/null; then
+                print_error "Template $remote_file appears corrupted (missing PasswordAuthentication)"
+                log "ERROR: Template $remote_file corrupted - missing PasswordAuthentication"
+                exit 1
+            fi
+            ;;
+        *.sh)
+            # Shell scripts should start with shebang or at least contain some bash syntax
+            if ! head -1 "$local_path" | grep -qE "^#!.*bash|^# shellcheck" && ! grep -qE "(if|then|echo|function)" "$local_path" 2>/dev/null; then
+                print_error "Template $remote_file appears corrupted (invalid shell script)"
+                log "ERROR: Template $remote_file corrupted - invalid shell script"
+                exit 1
+            fi
+            ;;
+        *.conf|*.sources|*.service)
+            # Config files should have some content
+            if [[ $(wc -l < "$local_path" 2>/dev/null || echo 0) -lt 2 ]]; then
+                print_error "Template $remote_file appears corrupted (too short)"
+                log "ERROR: Template $remote_file corrupted - file too short"
+                exit 1
+            fi
+            ;;
+    esac
+    
+    log "Template $remote_file downloaded and validated successfully"
 }
 
 # Generate a secure random password

@@ -24,13 +24,14 @@ validate_email() {
 validate_password() {
     local password="$1"
     # Password must be at least 8 characters (Proxmox requirement)
-    if [[ ${#password} -lt 8 ]]; then
-        return 1
-    fi
-    # Password must contain only ASCII printable characters (no Cyrillic or other non-ASCII)
-    # Allowed: Latin letters, digits, and special characters (ASCII 32-126)
-    # Using LC_ALL=C ensures only ASCII characters match [:print:]
-    LC_ALL=C bash -c '[[ "$1" =~ ^[[:print:]]+$ ]]' _ "$password"
+    [[ ${#password} -ge 8 ]] && is_ascii_printable "$password"
+}
+
+# Check if password contains only ASCII printable characters
+# Usage: is_ascii_printable PASSWORD
+# Returns: 0 if valid, 1 if contains non-ASCII
+is_ascii_printable() {
+    LC_ALL=C bash -c '[[ "$1" =~ ^[[:print:]]+$ ]]' _ "$1"
 }
 
 # Get password validation error message
@@ -42,7 +43,7 @@ get_password_error() {
         echo "Password cannot be empty!"
     elif [[ ${#password} -lt 8 ]]; then
         echo "Password must be at least 8 characters long."
-    elif ! LC_ALL=C bash -c '[[ "$1" =~ ^[[:print:]]+$ ]]' _ "$password"; then
+    elif ! is_ascii_printable "$password"; then
         echo "Password contains invalid characters (Cyrillic or non-ASCII). Only Latin letters, digits, and special characters are allowed."
     fi
 }
@@ -131,15 +132,29 @@ validate_dns_resolution() {
     local expected_ip="$2"
     local resolved_ip=""
 
+    # Determine which DNS tool to use (check once, not in loop)
+    local dns_tool=""
+    if command -v dig &>/dev/null; then
+        dns_tool="dig"
+    elif command -v host &>/dev/null; then
+        dns_tool="host"
+    elif command -v nslookup &>/dev/null; then
+        dns_tool="nslookup"
+    fi
+
     # Try each public DNS server until we get a result (use global DNS_SERVERS)
     for dns_server in "${DNS_SERVERS[@]}"; do
-        if command -v dig &>/dev/null; then
-            resolved_ip=$(dig +short A "$fqdn" "@${dns_server}" 2>/dev/null | grep -E '^[0-9]+\.' | head -1)
-        elif command -v host &>/dev/null; then
-            resolved_ip=$(host -t A "$fqdn" "$dns_server" 2>/dev/null | grep "has address" | head -1 | awk '{print $NF}')
-        elif command -v nslookup &>/dev/null; then
-            resolved_ip=$(nslookup "$fqdn" "$dns_server" 2>/dev/null | awk '/^Address: / {print $2}' | head -1)
-        fi
+        case "$dns_tool" in
+            dig)
+                resolved_ip=$(dig +short A "$fqdn" "@${dns_server}" 2>/dev/null | grep -E '^[0-9]+\.' | head -1)
+                ;;
+            host)
+                resolved_ip=$(host -t A "$fqdn" "$dns_server" 2>/dev/null | grep "has address" | head -1 | awk '{print $NF}')
+                ;;
+            nslookup)
+                resolved_ip=$(nslookup "$fqdn" "$dns_server" 2>/dev/null | awk '/^Address: / {print $2}' | head -1)
+                ;;
+        esac
 
         if [[ -n "$resolved_ip" ]]; then
             break
@@ -148,11 +163,16 @@ validate_dns_resolution() {
 
     # Fallback to system resolver if public DNS fails
     if [[ -z "$resolved_ip" ]]; then
-        if command -v dig &>/dev/null; then
-            resolved_ip=$(dig +short A "$fqdn" 2>/dev/null | grep -E '^[0-9]+\.' | head -1)
-        elif command -v getent &>/dev/null; then
-            resolved_ip=$(getent ahosts "$fqdn" 2>/dev/null | grep STREAM | head -1 | awk '{print $1}')
-        fi
+        case "$dns_tool" in
+            dig)
+                resolved_ip=$(dig +short A "$fqdn" 2>/dev/null | grep -E '^[0-9]+\.' | head -1)
+                ;;
+            *)
+                if command -v getent &>/dev/null; then
+                    resolved_ip=$(getent ahosts "$fqdn" 2>/dev/null | grep STREAM | head -1 | awk '{print $1}')
+                fi
+                ;;
+        esac
     fi
 
     if [[ -z "$resolved_ip" ]]; then

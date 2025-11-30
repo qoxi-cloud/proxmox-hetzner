@@ -28,17 +28,23 @@ configure_tailscale() {
 
     # If auth key is provided, authenticate Tailscale
     if [[ -n "$TAILSCALE_AUTH_KEY" ]]; then
+        # Use unique temporary files to avoid race conditions
+        local tmp_ip
+        local tmp_hostname
+        tmp_ip=$(mktemp)
+        tmp_hostname=$(mktemp)
+        
         (
             remote_exec "$TAILSCALE_UP_CMD"
-            remote_exec "tailscale ip -4" > /tmp/tailscale_ip.txt 2>/dev/null
-            remote_exec "tailscale status --json | grep -o '\"DNSName\":\"[^\"]*\"' | head -1 | cut -d'\"' -f4 | sed 's/\\.$//' " > /tmp/tailscale_hostname.txt 2>/dev/null
+            remote_exec "tailscale ip -4" > "$tmp_ip" 2>/dev/null
+            remote_exec "tailscale status --json | grep -o '\"DNSName\":\"[^\"]*\"' | head -1 | cut -d'\"' -f4 | sed 's/\\.$//'" > "$tmp_hostname" 2>/dev/null
         ) > /dev/null 2>&1 &
         show_progress $! "Authenticating Tailscale"
 
         # Get Tailscale IP and hostname for display
-        TAILSCALE_IP=$(cat /tmp/tailscale_ip.txt 2>/dev/null || echo "pending")
-        TAILSCALE_HOSTNAME=$(cat /tmp/tailscale_hostname.txt 2>/dev/null || echo "")
-        rm -f /tmp/tailscale_ip.txt /tmp/tailscale_hostname.txt
+        TAILSCALE_IP=$(cat "$tmp_ip" 2>/dev/null || echo "pending")
+        TAILSCALE_HOSTNAME=$(cat "$tmp_hostname" 2>/dev/null || echo "")
+        rm -f "$tmp_ip" "$tmp_hostname"
         # Overwrite completion line with IP
         printf "\033[1A\r${CLR_GREEN}✓ Tailscale authenticated. IP: ${TAILSCALE_IP}${CLR_RESET}                              \n"
 

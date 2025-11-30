@@ -80,9 +80,46 @@ LOG_FILE="/root/pve-install-$(date +%Y%m%d-%H%M%S).log"
 # Track if installation completed successfully
 INSTALL_COMPLETED=false
 
+# Cleanup temporary files on exit
+cleanup_temp_files() {
+    # Clean up standard temporary files
+    rm -f /tmp/tailscale_*.txt /tmp/iso_checksum.txt /tmp/*.tmp 2>/dev/null || true
+    
+    # Clean up ISO and installation files (only if installation failed)
+    if [[ "$INSTALL_COMPLETED" != "true" ]]; then
+        rm -f /root/pve.iso /root/pve-autoinstall.iso /root/answer.toml /root/SHA256SUMS 2>/dev/null || true
+        rm -f /root/qemu_*.log 2>/dev/null || true
+    fi
+    
+    # Clean up password files from /dev/shm and /tmp
+    find /dev/shm /tmp -name "pve-passfile.*" -type f -delete 2>/dev/null || true
+    find /dev/shm /tmp -name "*passfile*" -type f -delete 2>/dev/null || true
+}
+
 # Cleanup handler - restore cursor and show error if needed
 cleanup_and_error_handler() {
     local exit_code=$?
+
+    # Stop all background jobs
+    jobs -p | xargs -r kill 2>/dev/null || true
+    sleep 1
+    
+    # Clean up temporary files
+    cleanup_temp_files
+    
+    # Release drives if QEMU is still running
+    if [[ -n "${QEMU_PID:-}" ]] && kill -0 "$QEMU_PID" 2>/dev/null; then
+        log "Cleaning up QEMU process $QEMU_PID"
+        # Source release_drives if available (may not be sourced yet)
+        if type release_drives &>/dev/null; then
+            release_drives
+        else
+            # Fallback cleanup
+            pkill -TERM qemu-system-x86 2>/dev/null || true
+            sleep 2
+            pkill -9 qemu-system-x86 2>/dev/null || true
+        fi
+    fi
 
     # Always restore cursor visibility
     tput cnorm 2>/dev/null || true

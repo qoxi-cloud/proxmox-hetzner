@@ -10,17 +10,22 @@ collect_system_info() {
     local current=0
     local i=0
 
-    # Progress update helper
+    # Progress update helper (optimized: no subprocess spawning)
     update_progress() {
         current=$((current + 1))
         local pct=$((current * 100 / checks))
         local filled=$((pct / 5))
         local empty=$((20 - filled))
-        printf "\r${CLR_YELLOW}${SPINNER_CHARS:i++%${#SPINNER_CHARS}:1} Checking system... [${CLR_GREEN}"
-        printf '█%.0s' $(seq 1 $filled 2>/dev/null) 2>/dev/null || true
-        printf "${CLR_RESET}${CLR_BLUE}"
-        printf '░%.0s' $(seq 1 $empty 2>/dev/null) 2>/dev/null || true
-        printf "${CLR_RESET}${CLR_YELLOW}] %3d%%${CLR_RESET}" "$pct"
+        local bar_filled="" bar_empty=""
+
+        # Build progress bar strings without spawning subprocesses
+        printf -v bar_filled '%*s' "$filled" ''
+        bar_filled="${bar_filled// /█}"
+        printf -v bar_empty '%*s' "$empty" ''
+        bar_empty="${bar_empty// /░}"
+
+        printf "\r${CLR_YELLOW}${SPINNER_CHARS:i++%${#SPINNER_CHARS}:1} Checking system... [${CLR_GREEN}%s${CLR_RESET}${CLR_BLUE}%s${CLR_RESET}${CLR_YELLOW}] %3d%%${CLR_RESET}" \
+            "$bar_filled" "$bar_empty" "$pct"
     }
 
     # Install display utilities (boxes for tables, column for alignment)
@@ -107,7 +112,16 @@ collect_system_info() {
         if [[ ! -e /dev/kvm ]]; then
             # Try to load KVM module (needed in rescue mode)
             modprobe kvm 2>/dev/null || true
-            modprobe kvm_intel 2>/dev/null || modprobe kvm_amd 2>/dev/null || true
+            
+            # Determine CPU type and load appropriate module
+            if grep -q "Intel" /proc/cpuinfo 2>/dev/null; then
+                modprobe kvm_intel 2>/dev/null || true
+            elif grep -q "AMD" /proc/cpuinfo 2>/dev/null; then
+                modprobe kvm_amd 2>/dev/null || true
+            else
+                # Fallback: try both
+                modprobe kvm_intel 2>/dev/null || modprobe kvm_amd 2>/dev/null || true
+            fi
             sleep 0.5
         fi
         if [[ -e /dev/kvm ]]; then

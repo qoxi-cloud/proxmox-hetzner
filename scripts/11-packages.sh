@@ -6,6 +6,14 @@
 prepare_packages() {
     log "Starting package preparation"
 
+    # Check repository availability before proceeding
+    log "Checking Proxmox repository availability"
+    if ! curl -fsSL --max-time 10 "https://enterprise.proxmox.com/debian/proxmox-release-bookworm.gpg" > /dev/null 2>&1; then
+        print_error "Cannot reach Proxmox repository"
+        log "ERROR: Cannot reach Proxmox repository"
+        exit 1
+    fi
+
     log "Adding Proxmox repository"
     echo "deb http://download.proxmox.com/debian/pve bookworm pve-no-subscription" > /etc/apt/sources.list.d/pve.list
 
@@ -14,7 +22,8 @@ prepare_packages() {
     curl -fsSL -o /etc/apt/trusted.gpg.d/proxmox-release-bookworm.gpg https://enterprise.proxmox.com/debian/proxmox-release-bookworm.gpg >> "$LOG_FILE" 2>&1 &
     show_progress $! "Downloading Proxmox GPG key" "Proxmox GPG key downloaded"
     wait $!
-    if [[ $? -ne 0 ]]; then
+    local exit_code=$?
+    if [[ $exit_code -ne 0 ]]; then
         log "ERROR: Failed to download Proxmox GPG key"
         exit 1
     fi
@@ -26,7 +35,8 @@ prepare_packages() {
     apt update >> "$LOG_FILE" 2>&1 &
     show_progress $! "Updating package lists" "Package lists updated"
     wait $!
-    if [[ $? -ne 0 ]]; then
+    exit_code=$?
+    if [[ $exit_code -ne 0 ]]; then
         log "ERROR: Failed to update package lists"
         exit 1
     fi
@@ -37,7 +47,8 @@ prepare_packages() {
     apt install -yq proxmox-auto-install-assistant xorriso ovmf wget sshpass >> "$LOG_FILE" 2>&1 &
     show_progress $! "Installing required packages" "Required packages installed"
     wait $!
-    if [[ $? -ne 0 ]]; then
+    exit_code=$?
+    if [[ $exit_code -ne 0 ]]; then
         log "ERROR: Failed to install required packages"
         exit 1
     fi
@@ -108,7 +119,8 @@ download_proxmox_iso() {
     wget -q -O pve.iso "$PROXMOX_ISO_URL" >> "$LOG_FILE" 2>&1 &
     show_progress $! "Downloading $ISO_FILENAME" "$ISO_FILENAME downloaded"
     wait $!
-    if [[ $? -ne 0 ]]; then
+    local exit_code=$?
+    if [[ $exit_code -ne 0 ]]; then
         log "ERROR: Failed to download Proxmox ISO"
         exit 1
     fi
@@ -132,6 +144,12 @@ download_proxmox_iso() {
             sha256sum pve.iso > /tmp/iso_checksum.txt 2>/dev/null &
             show_progress $! "Verifying ISO checksum" "ISO checksum verified"
             wait $!
+            local exit_code=$?
+            if [[ $exit_code -ne 0 ]]; then
+                log "ERROR: Failed to calculate ISO checksum"
+                rm -f /tmp/iso_checksum.txt SHA256SUMS
+                exit 1
+            fi
             ACTUAL_CHECKSUM=$(cat /tmp/iso_checksum.txt | awk '{print $1}')
             log "Actual checksum: $ACTUAL_CHECKSUM"
             rm -f /tmp/iso_checksum.txt

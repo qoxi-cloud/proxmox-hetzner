@@ -4,16 +4,36 @@
 # =============================================================================
 
 configure_base_system() {
-    # Copy template files to VM
-    (
-        remote_copy "templates/hosts" "/etc/hosts"
-        remote_copy "templates/interfaces" "/etc/network/interfaces"
-        remote_copy "templates/99-proxmox.conf" "/etc/sysctl.d/99-proxmox.conf"
-        remote_copy "templates/debian.sources" "/etc/apt/sources.list.d/debian.sources"
-        remote_copy "templates/proxmox.sources" "/etc/apt/sources.list.d/proxmox.sources"
-        remote_copy "templates/resolv.conf" "/etc/resolv.conf"
-    ) > /dev/null 2>&1 &
-    show_progress $! "Copying configuration files" "Configuration files copied"
+    # Copy template files to VM (parallel for better performance)
+    remote_copy "templates/hosts" "/etc/hosts" > /dev/null 2>&1 &
+    local pid1=$!
+    remote_copy "templates/interfaces" "/etc/network/interfaces" > /dev/null 2>&1 &
+    local pid2=$!
+    remote_copy "templates/99-proxmox.conf" "/etc/sysctl.d/99-proxmox.conf" > /dev/null 2>&1 &
+    local pid3=$!
+    remote_copy "templates/debian.sources" "/etc/apt/sources.list.d/debian.sources" > /dev/null 2>&1 &
+    local pid4=$!
+    remote_copy "templates/proxmox.sources" "/etc/apt/sources.list.d/proxmox.sources" > /dev/null 2>&1 &
+    local pid5=$!
+    remote_copy "templates/resolv.conf" "/etc/resolv.conf" > /dev/null 2>&1 &
+    local pid6=$!
+    
+    # Wait for all copies to complete and check each exit code
+    local exit_code=0
+    wait $pid1 || exit_code=1
+    wait $pid2 || exit_code=1
+    wait $pid3 || exit_code=1
+    wait $pid4 || exit_code=1
+    wait $pid5 || exit_code=1
+    wait $pid6 || exit_code=1
+    
+    if [[ $exit_code -eq 0 ]]; then
+        printf "\r\e[K${CLR_GREEN}✓ Configuration files copied${CLR_RESET}\n"
+    else
+        printf "\r\e[K${CLR_RED}✗ Copying configuration files${CLR_RESET}\n"
+        log "ERROR: Failed to copy some configuration files"
+        exit 1
+    fi
 
     # Basic system configuration
     (
