@@ -66,26 +66,6 @@ run_remote() {
 
     if ! remote_exec_with_progress "$message" "$script" "$done_message"; then
         log "ERROR: $message failed"
-        echo "[DEBUG] run_remote: about to exit 1" >&2
-        echo "[DEBUG] Current trap: $(trap -p EXIT)" >&2
-        echo "[DEBUG] Calling error_handler directly as fallback" >&2
-
-        # Fallback: call error_handler directly since trap seems broken
-        INSTALL_COMPLETED=false
-        error_handler_fallback() {
-            echo ""
-            echo -e "${CLR_RED}*** INSTALLATION FAILED ***${CLR_RESET}"
-            echo ""
-            echo -e "${CLR_YELLOW}An error occurred and the installation was aborted.${CLR_RESET}"
-            echo ""
-            echo -e "${CLR_YELLOW}Please check the log file for details:${CLR_RESET}"
-            echo -e "${CLR_YELLOW}  ${LOG_FILE}${CLR_RESET}"
-            echo ""
-            echo -e "${CLR_YELLOW}View the last 50 lines with:${CLR_RESET}"
-            echo -e "${CLR_YELLOW}  tail -50 ${LOG_FILE}${CLR_RESET}"
-            echo ""
-        }
-        error_handler_fallback
         exit 1
     fi
 }

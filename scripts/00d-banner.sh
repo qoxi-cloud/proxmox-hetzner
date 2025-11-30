@@ -1,11 +1,8 @@
 # shellcheck shell=bash
 # =============================================================================
-# Cursor management - ensure cursor is always visible on exit
+# Banner display
+# Note: cursor cleanup is handled by cleanup_and_error_handler in 00-init.sh
 # =============================================================================
-cleanup_cursor() {
-    tput cnorm 2>/dev/null || true
-}
-trap cleanup_cursor EXIT INT TERM
 
 clear
 
