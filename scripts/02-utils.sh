@@ -134,7 +134,7 @@ download_template() {
             ;;
         *.sh)
             # Shell scripts should start with shebang or at least contain some bash syntax
-            if ! head -1 "$local_path" | grep -qE "^#!.*bash|^# shellcheck" && ! grep -qE "(if|then|echo|function)" "$local_path" 2>/dev/null; then
+            if ! head -1 "$local_path" | grep -qE "^#!.*bash|^# shellcheck|^export " && ! grep -qE "(if|then|echo|function|export)" "$local_path" 2>/dev/null; then
                 print_error "Template $remote_file appears corrupted (invalid shell script)"
                 log "ERROR: Template $remote_file corrupted - invalid shell script"
                 exit 1
