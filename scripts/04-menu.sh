@@ -76,12 +76,17 @@ interactive_menu() {
             elif [[ "$line" =~ ^(\|)(.*)\|$ ]]; then
                 local content="${BASH_REMATCH[2]}"
                 # Apply content colors
-                # Yellow for warnings and key info (apply BEFORE checkbox colors)
+                # Yellow for warnings and info lines (apply BEFORE checkbox colors)
                 if [[ "$content" == *"! "* ]]; then
                     content="${content//! /${CLR_YELLOW}! }"
                     content="${content}${CLR_RESET}"
                 fi
-                content="${content//  - /${CLR_YELLOW}  - ${CLR_RESET}}"
+                # Lines starting with "  - " should be entirely yellow
+                if [[ "$content" =~ ^(.*)\ \ -\ (.*)$ ]]; then
+                    local prefix="${BASH_REMATCH[1]}"
+                    local rest="${BASH_REMATCH[2]}"
+                    content="${prefix}${CLR_YELLOW}  - ${rest}${CLR_RESET}"
+                fi
                 content="${content//Detected key/${CLR_YELLOW}Detected key${CLR_RESET}}"
                 content="${content//Type:/${CLR_YELLOW}Type:${CLR_RESET}}"
                 content="${content//Key:/${CLR_YELLOW}Key:${CLR_RESET}}"
