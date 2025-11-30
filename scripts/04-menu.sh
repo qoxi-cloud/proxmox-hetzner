@@ -65,12 +65,11 @@ interactive_menu() {
     box_lines=$(_draw_menu | wc -l)
 
     # Colorize menu output
-    # - Box frame in cyan (like logo), text white, [●] green, [○] blue
+    # - Box frame and [○] in cyan, [●] green, text white
     # - Lines with "! " and key info are warnings (yellow)
     _colorize_menu() {
         local cyan=$'\033[1;36m'
         local green=$'\033[1;32m'
-        local blue=$'\033[1;34m'
         local yellow=$'\033[1;33m'
         local reset=$'\033[m'
 
@@ -83,7 +82,7 @@ interactive_menu() {
                 local content="${BASH_REMATCH[2]}"
                 # Apply content colors
                 content="${content//\[\*\]/${green}[●]${reset}}"
-                content="${content//\[ \]/${blue}[○]${reset}}"
+                content="${content//\[ \]/${cyan}[○]${reset}}"
                 # Yellow for warnings and key info
                 if [[ "$content" == *"! "* ]]; then
                     content="${content//! /${yellow}! }"
