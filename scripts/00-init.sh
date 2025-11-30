@@ -30,17 +30,25 @@ error_handler() {
     local exit_code=$?
     if [[ "$INSTALL_COMPLETED" != "true" && $exit_code -ne 0 ]]; then
         echo ""
-        echo -e "${CLR_RED}╔════════════════════════════════════════════════════════════╗${CLR_RESET}"
-        echo -e "${CLR_RED}║                    INSTALLATION FAILED                     ║${CLR_RESET}"
-        echo -e "${CLR_RED}╚════════════════════════════════════════════════════════════╝${CLR_RESET}"
-        echo ""
-        echo -e "${CLR_YELLOW}An error occurred and the installation was aborted.${CLR_RESET}"
-        echo -e "${CLR_YELLOW}Please check the log file for details:${CLR_RESET}"
-        echo ""
-        echo -e "  ${CLR_CYAN}${LOG_FILE}${CLR_RESET}"
-        echo ""
-        echo -e "${CLR_YELLOW}You can view the last 50 lines with:${CLR_RESET}"
-        echo -e "  ${CLR_CYAN}tail -50 ${LOG_FILE}${CLR_RESET}"
+        local error_content="An error occurred and the installation was aborted."$'\n'
+        error_content+=$'\n'
+        error_content+="Please check the log file for details:"$'\n'
+        error_content+="  ${LOG_FILE}"$'\n'
+        error_content+=$'\n'
+        error_content+="View the last 50 lines with:"$'\n'
+        error_content+="  tail -50 ${LOG_FILE}"
+
+        if command -v boxes &>/dev/null; then
+            {
+                echo "INSTALLATION FAILED"
+                echo ""
+                echo "$error_content"
+            } | boxes -d stone -p a1 -s 60
+        else
+            echo -e "${CLR_RED}*** INSTALLATION FAILED ***${CLR_RESET}"
+            echo ""
+            echo -e "${CLR_YELLOW}${error_content}${CLR_RESET}"
+        fi
         echo ""
     fi
 }
