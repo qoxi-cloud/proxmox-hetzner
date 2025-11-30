@@ -47,7 +47,7 @@ collect_system_info() {
 
     # Check internet connectivity
     update_progress
-    if ping -c 1 -W 3 1.1.1.1 > /dev/null 2>&1; then
+    if ping -c 1 -W 3 "$DNS_PRIMARY" > /dev/null 2>&1; then
         PREFLIGHT_NET="Available"
         PREFLIGHT_NET_STATUS="ok"
     else
@@ -58,14 +58,13 @@ collect_system_info() {
 
     # Check available disk space (need at least 3GB in /root for ISO)
     update_progress
-    local free_space_mb min_space_mb
+    local free_space_mb
     free_space_mb=$(df -m /root | awk 'NR==2 {print $4}')
-    min_space_mb=3000
-    if [[ $free_space_mb -ge $min_space_mb ]]; then
+    if [[ $free_space_mb -ge $MIN_DISK_SPACE_MB ]]; then
         PREFLIGHT_DISK="${free_space_mb} MB"
         PREFLIGHT_DISK_STATUS="ok"
     else
-        PREFLIGHT_DISK="${free_space_mb} MB (need ${min_space_mb}MB+)"
+        PREFLIGHT_DISK="${free_space_mb} MB (need ${MIN_DISK_SPACE_MB}MB+)"
         PREFLIGHT_DISK_STATUS="error"
         errors=$((errors + 1))
     fi
@@ -73,14 +72,13 @@ collect_system_info() {
 
     # Check RAM (need at least 4GB)
     update_progress
-    local total_ram_mb min_ram_mb
+    local total_ram_mb
     total_ram_mb=$(free -m | awk '/^Mem:/{print $2}')
-    min_ram_mb=4000
-    if [[ $total_ram_mb -ge $min_ram_mb ]]; then
+    if [[ $total_ram_mb -ge $MIN_RAM_MB ]]; then
         PREFLIGHT_RAM="${total_ram_mb} MB"
         PREFLIGHT_RAM_STATUS="ok"
     else
-        PREFLIGHT_RAM="${total_ram_mb} MB (need ${min_ram_mb}MB+)"
+        PREFLIGHT_RAM="${total_ram_mb} MB (need ${MIN_RAM_MB}MB+)"
         PREFLIGHT_RAM_STATUS="error"
         errors=$((errors + 1))
     fi

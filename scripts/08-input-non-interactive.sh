@@ -28,14 +28,14 @@ prompt_or_default() {
 # =============================================================================
 
 get_inputs_non_interactive() {
-    # Use defaults or config values
-    PVE_HOSTNAME="${PVE_HOSTNAME:-pve-qoxi-cloud}"
-    DOMAIN_SUFFIX="${DOMAIN_SUFFIX:-local}"
-    TIMEZONE="${TIMEZONE:-Europe/Kyiv}"
-    EMAIL="${EMAIL:-admin@qoxi.cloud}"
-    BRIDGE_MODE="${BRIDGE_MODE:-internal}"
-    PRIVATE_SUBNET="${PRIVATE_SUBNET:-10.0.0.0/24}"
-    DEFAULT_SHELL="${DEFAULT_SHELL:-zsh}"
+    # Use defaults or config values (referencing global constants)
+    PVE_HOSTNAME="${PVE_HOSTNAME:-$DEFAULT_HOSTNAME}"
+    DOMAIN_SUFFIX="${DOMAIN_SUFFIX:-$DEFAULT_DOMAIN}"
+    TIMEZONE="${TIMEZONE:-$DEFAULT_TIMEZONE}"
+    EMAIL="${EMAIL:-$DEFAULT_EMAIL}"
+    BRIDGE_MODE="${BRIDGE_MODE:-$DEFAULT_BRIDGE_MODE}"
+    PRIVATE_SUBNET="${PRIVATE_SUBNET:-$DEFAULT_SUBNET}"
+    DEFAULT_SHELL="${DEFAULT_SHELL:-$DEFAULT_SHELL}"
 
     # Display configuration
     print_success "Network interface: ${INTERFACE_NAME}"
@@ -66,12 +66,7 @@ get_inputs_non_interactive() {
         PASSWORD_GENERATED="yes"
         print_success "Password: auto-generated (will be shown at the end)"
     else
-        if ! validate_password "$NEW_ROOT_PASSWORD"; then
-            if [[ ${#NEW_ROOT_PASSWORD} -lt 8 ]]; then
-                print_error "Password must be at least 8 characters long."
-            else
-                print_error "Password contains invalid characters (Cyrillic or non-ASCII)."
-            fi
+        if ! validate_password_with_error "$NEW_ROOT_PASSWORD"; then
             exit 1
         fi
         print_success "Password: ******** (from env)"

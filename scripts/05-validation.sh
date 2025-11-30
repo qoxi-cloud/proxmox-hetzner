@@ -33,6 +33,34 @@ validate_password() {
     LC_ALL=C bash -c '[[ "$1" =~ ^[[:print:]]+$ ]]' _ "$password"
 }
 
+# Get password validation error message
+# Usage: get_password_error PASSWORD
+# Returns: error message string, empty if password is valid
+get_password_error() {
+    local password="$1"
+    if [[ -z "$password" ]]; then
+        echo "Password cannot be empty!"
+    elif [[ ${#password} -lt 8 ]]; then
+        echo "Password must be at least 8 characters long."
+    elif ! LC_ALL=C bash -c '[[ "$1" =~ ^[[:print:]]+$ ]]' _ "$password"; then
+        echo "Password contains invalid characters (Cyrillic or non-ASCII). Only Latin letters, digits, and special characters are allowed."
+    fi
+}
+
+# Validate password and print error if invalid
+# Usage: validate_password_with_error PASSWORD
+# Returns: 0 if valid, 1 if invalid (with error printed)
+validate_password_with_error() {
+    local password="$1"
+    local error
+    error=$(get_password_error "$password")
+    if [[ -n "$error" ]]; then
+        print_error "$error"
+        return 1
+    fi
+    return 0
+}
+
 validate_subnet() {
     local subnet="$1"
     # Validate CIDR notation (e.g., 10.0.0.0/24)
@@ -101,13 +129,10 @@ prompt_with_validation() {
 validate_dns_resolution() {
     local fqdn="$1"
     local expected_ip="$2"
-
-    # Public DNS servers to query (bypass local cache)
-    local dns_servers=("1.1.1.1" "8.8.8.8" "9.9.9.9")
     local resolved_ip=""
 
-    # Try each public DNS server until we get a result
-    for dns_server in "${dns_servers[@]}"; do
+    # Try each public DNS server until we get a result (use global DNS_SERVERS)
+    for dns_server in "${DNS_SERVERS[@]}"; do
         if command -v dig &>/dev/null; then
             resolved_ip=$(dig +short A "$fqdn" "@${dns_server}" 2>/dev/null | grep -E '^[0-9]+\.' | head -1)
         elif command -v host &>/dev/null; then

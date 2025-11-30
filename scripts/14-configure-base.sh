@@ -11,41 +11,24 @@ configure_base_system() {
         remote_copy "templates/99-proxmox.conf" "/etc/sysctl.d/99-proxmox.conf"
         remote_copy "templates/debian.sources" "/etc/apt/sources.list.d/debian.sources"
         remote_copy "templates/proxmox.sources" "/etc/apt/sources.list.d/proxmox.sources"
+        remote_copy "templates/resolv.conf" "/etc/resolv.conf"
     ) > /dev/null 2>&1 &
     show_progress $! "Copying configuration files" "Configuration files copied"
 
     # Basic system configuration
     (
         remote_exec "[ -f /etc/apt/sources.list ] && mv /etc/apt/sources.list /etc/apt/sources.list.bak"
-        remote_exec "echo -e 'nameserver 1.1.1.1\nnameserver 1.0.0.1\nnameserver 8.8.8.8\nnameserver 8.8.4.4' > /etc/resolv.conf"
         remote_exec "echo '$PVE_HOSTNAME' > /etc/hostname"
         remote_exec "systemctl disable --now rpcbind rpcbind.socket 2>/dev/null"
     ) > /dev/null 2>&1 &
     show_progress $! "Applying basic system settings" "Basic system settings applied"
 
-    # Configure ZFS ARC memory limits
-    run_remote "Configuring ZFS ARC memory limits" '
-        TOTAL_RAM_KB=$(grep MemTotal /proc/meminfo | awk "{print \$2}")
-        TOTAL_RAM_GB=$((TOTAL_RAM_KB / 1024 / 1024))
-
-        if [ $TOTAL_RAM_GB -ge 128 ]; then
-            ARC_MIN=$((16 * 1024 * 1024 * 1024))
-            ARC_MAX=$((64 * 1024 * 1024 * 1024))
-        elif [ $TOTAL_RAM_GB -ge 64 ]; then
-            ARC_MIN=$((8 * 1024 * 1024 * 1024))
-            ARC_MAX=$((32 * 1024 * 1024 * 1024))
-        elif [ $TOTAL_RAM_GB -ge 32 ]; then
-            ARC_MIN=$((4 * 1024 * 1024 * 1024))
-            ARC_MAX=$((16 * 1024 * 1024 * 1024))
-        else
-            ARC_MIN=$((1 * 1024 * 1024 * 1024))
-            ARC_MAX=$((TOTAL_RAM_KB * 1024 / 2))
-        fi
-
-        mkdir -p /etc/modprobe.d
-        echo "options zfs zfs_arc_min=$ARC_MIN" > /etc/modprobe.d/zfs.conf
-        echo "options zfs zfs_arc_max=$ARC_MAX" >> /etc/modprobe.d/zfs.conf
-    ' "ZFS ARC memory limits configured"
+    # Configure ZFS ARC memory limits using template script
+    (
+        remote_copy "templates/configure-zfs-arc.sh" "/tmp/configure-zfs-arc.sh"
+        remote_exec "chmod +x /tmp/configure-zfs-arc.sh && /tmp/configure-zfs-arc.sh && rm -f /tmp/configure-zfs-arc.sh"
+    ) > /dev/null 2>&1 &
+    show_progress $! "Configuring ZFS ARC memory limits" "ZFS ARC memory limits configured"
 
     # Configure Proxmox repository
     log "configure_base_system: PVE_REPO_TYPE=${PVE_REPO_TYPE:-no-subscription}"
@@ -97,17 +80,18 @@ configure_base_system() {
     ' "System packages updated"
 
     # Install monitoring and system utilities
-    run_remote "Installing system utilities" '
+    # shellcheck disable=SC2086
+    run_remote "Installing system utilities" "
         export DEBIAN_FRONTEND=noninteractive
-        apt-get install -yqq btop iotop ncdu tmux pigz smartmontools jq bat 2>/dev/null || {
-            for pkg in btop iotop ncdu tmux pigz smartmontools jq bat; do
-                apt-get install -yqq "$pkg" 2>/dev/null || true
+        apt-get install -yqq ${SYSTEM_UTILITIES} 2>/dev/null || {
+            for pkg in ${SYSTEM_UTILITIES}; do
+                apt-get install -yqq \"\$pkg\" 2>/dev/null || true
             done
         }
-        apt-get install -yqq libguestfs-tools 2>/dev/null || true
-    ' "System utilities installed"
+        apt-get install -yqq ${OPTIONAL_PACKAGES} 2>/dev/null || true
+    " "System utilities installed"
 
-    # Configure UTF-8 locales (fix for btop and other apps)
+    # Configure UTF-8 locales using template files
     run_remote "Configuring UTF-8 locales" '
         export DEBIAN_FRONTEND=noninteractive
         apt-get install -yqq locales
@@ -115,29 +99,16 @@ configure_base_system() {
         sed -i "s/# ru_RU.UTF-8/ru_RU.UTF-8/" /etc/locale.gen
         locale-gen
         update-locale LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
-
-        # Create locale profile for all shells (fixes btop display issues)
-        cat > /etc/profile.d/locale.sh << "LOCALEEOF"
-export LANG=en_US.UTF-8
-export LC_ALL=en_US.UTF-8
-export LANGUAGE=en_US.UTF-8
-LOCALEEOF
-        chmod +x /etc/profile.d/locale.sh
-
-        # Also set in /etc/default/locale for systemd services
-        cat > /etc/default/locale << "DEFLOCEOF"
-LANG=en_US.UTF-8
-LC_ALL=en_US.UTF-8
-LANGUAGE=en_US.UTF-8
-DEFLOCEOF
-
-        # Set in /etc/environment for PAM (all sessions including non-login)
-        cat > /etc/environment << "ENVEOF"
-LANG=en_US.UTF-8
-LC_ALL=en_US.UTF-8
-LANGUAGE=en_US.UTF-8
-ENVEOF
     ' "UTF-8 locales configured"
+
+    # Copy locale template files
+    (
+        remote_copy "templates/locale.sh" "/etc/profile.d/locale.sh"
+        remote_exec "chmod +x /etc/profile.d/locale.sh"
+        remote_copy "templates/default-locale" "/etc/default/locale"
+        remote_copy "templates/environment" "/etc/environment"
+    ) > /dev/null 2>&1 &
+    show_progress $! "Installing locale configuration files" "Locale files installed"
 }
 
 configure_shell() {
@@ -211,26 +182,29 @@ configure_system_services() {
         fi
     ' "nf_conntrack configured"
 
-    # Configure CPU governor for maximum performance
-    run_remote "Configuring CPU governor" '
-        apt-get update -qq && apt-get install -yqq cpufrequtils 2>/dev/null || true
-        echo "GOVERNOR=\"performance\"" > /etc/default/cpufrequtils
-        systemctl enable cpufrequtils 2>/dev/null || true
-        if [ -d /sys/devices/system/cpu/cpu0/cpufreq ]; then
-            for cpu in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do
-                [ -f "$cpu" ] && echo "performance" > "$cpu" 2>/dev/null || true
-            done
-        fi
-    ' "CPU governor configured"
+    # Configure CPU governor for maximum performance using template
+    (
+        remote_copy "templates/cpufrequtils" "/tmp/cpufrequtils"
+        remote_exec '
+            apt-get update -qq && apt-get install -yqq cpufrequtils 2>/dev/null || true
+            mv /tmp/cpufrequtils /etc/default/cpufrequtils
+            systemctl enable cpufrequtils 2>/dev/null || true
+            if [ -d /sys/devices/system/cpu/cpu0/cpufreq ]; then
+                for cpu in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do
+                    [ -f "$cpu" ] && echo "performance" > "$cpu" 2>/dev/null || true
+                done
+            fi
+        '
+    ) > /dev/null 2>&1 &
+    show_progress $! "Configuring CPU governor" "CPU governor configured"
 
     # Remove Proxmox subscription notice (only for non-enterprise)
     if [[ "${PVE_REPO_TYPE:-no-subscription}" != "enterprise" ]]; then
         log "configure_system_services: removing subscription notice (non-enterprise)"
-        run_remote "Removing Proxmox subscription notice" '
-            if [ -f /usr/share/javascript/proxmox-widget-toolkit/proxmoxlib.js ]; then
-                sed -Ezi.bak "s/(Ext.Msg.show\(\{\s+title: gettext\('"'"'No valid sub)/void\(\{ \/\/\1/g" /usr/share/javascript/proxmox-widget-toolkit/proxmoxlib.js
-                systemctl restart pveproxy.service
-            fi
-        ' "Subscription notice removed"
+        (
+            remote_copy "templates/remove-subscription-nag.sh" "/tmp/remove-subscription-nag.sh"
+            remote_exec "chmod +x /tmp/remove-subscription-nag.sh && /tmp/remove-subscription-nag.sh && rm -f /tmp/remove-subscription-nag.sh"
+        ) > /dev/null 2>&1 &
+        show_progress $! "Removing Proxmox subscription notice" "Subscription notice removed"
     fi
 }
