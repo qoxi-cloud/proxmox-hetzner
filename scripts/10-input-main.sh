@@ -5,6 +5,7 @@
 
 get_system_inputs() {
     detect_network_interface
+    collect_network_info
 
     if [[ "$NON_INTERACTIVE" == true ]]; then
         print_success "Network interface: ${INTERFACE_NAME}"
@@ -12,8 +13,6 @@ get_system_inputs() {
     else
         get_inputs_interactive
     fi
-
-    collect_network_info
 
     # Calculate derived values
     FQDN="${PVE_HOSTNAME}.${DOMAIN_SUFFIX}"
