@@ -107,9 +107,6 @@ install_proxmox() {
     # Release any locks on drives before QEMU starts
     release_drives
 
-    # Clear the line for fresh progress
-    printf "\r\e[K"
-
     # Run QEMU in background with error logging
     # shellcheck disable=SC2086
     qemu-system-x86_64 $KVM_OPTS $UEFI_OPTS \
