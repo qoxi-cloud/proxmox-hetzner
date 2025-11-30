@@ -105,7 +105,7 @@ You can pre-configure any setting via environment variables.
 |----------|-------------|---------|
 | `SSL_TYPE` | SSL certificate type: `self-signed`, `letsencrypt` | `self-signed` |
 
-> **Note:** Let's Encrypt requires your domain (FQDN) to resolve to the server's IP address. The SSL menu is only shown if Tailscale is not enabled (Tailscale provides its own HTTPS via `tailscale serve`).
+> **Note:** Let's Encrypt requires your domain (FQDN) to resolve to the server's IP address. The installer validates DNS using public servers (Cloudflare, Google, Quad9) before proceeding. The SSL menu is only shown if Tailscale is not enabled (Tailscale provides its own HTTPS via `tailscale serve`).
 
 ### Tailscale Settings
 

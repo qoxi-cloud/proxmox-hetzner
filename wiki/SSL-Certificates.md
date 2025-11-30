@@ -38,6 +38,42 @@ Before selecting Let's Encrypt, ensure:
 2. **Port 80 accessible** - HTTP challenge requires port 80 to be open during certificate issuance
 3. **Valid email address** - Required for Let's Encrypt notifications
 
+### DNS Validation
+
+The installer automatically validates DNS configuration before proceeding with Let's Encrypt:
+
+- Queries public DNS servers (Cloudflare 1.1.1.1, Google 8.8.8.8, Quad9 9.9.9.9) to bypass local cache
+- Verifies that your FQDN resolves to the server's public IP address
+
+**Interactive mode:**
+
+If DNS validation fails, the installer retries 3 times with 10-second intervals, then exits with instructions:
+
+```text
+✗ DNS Error: proxmox.example.com does not resolve
+ℹ Required: DNS A record proxmox.example.com → 88.99.12.34
+ℹ Retrying in 10 seconds... (Press Ctrl+C to cancel)
+...
+✗ DNS validation failed after 3 attempts
+✗ Let's Encrypt requires proxmox.example.com to resolve to 88.99.12.34
+
+ℹ To fix this:
+ℹ   1. Go to your DNS provider
+ℹ   2. Create/update A record: proxmox.example.com → 88.99.12.34
+ℹ   3. Wait for DNS propagation (usually 1-5 minutes)
+ℹ   4. Run this installer again
+```
+
+**Non-interactive mode:**
+
+DNS validation fails immediately without retries if the domain doesn't resolve correctly.
+
+**On success:**
+
+```text
+✓ SSL: Let's Encrypt (DNS verified: proxmox.example.com → 88.99.12.34)
+```
+
 ### How It Works
 
 1. **Certificate Issuance**
