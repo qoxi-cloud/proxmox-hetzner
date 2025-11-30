@@ -436,14 +436,19 @@ get_inputs_interactive() {
             print_success "SSL certificate: ${SSL_TYPE} (from env)"
         else
             local ssl_options=("self-signed" "letsencrypt")
+            local le_fqdn="${FQDN:-$PVE_HOSTNAME.$DOMAIN_SUFFIX}"
             local ssl_header="Configure SSL certificate for Proxmox Web UI."$'\n'
-            ssl_header+="Let's Encrypt requires domain to resolve to this server."
+            ssl_header+=$'\n'
+            ssl_header+="! For Let's Encrypt, before continuing ensure:"$'\n'
+            ssl_header+="  - Domain ${le_fqdn} is registered"$'\n'
+            ssl_header+="  - DNS A record points to ${MAIN_IPV4_CIDR%/*}"$'\n'
+            ssl_header+="  - Port 80 is accessible from the internet"
 
             interactive_menu \
                 "SSL Certificate (↑/↓ select, Enter confirm)" \
                 "$ssl_header" \
                 "Self-signed|Default Proxmox certificate (recommended)" \
-                "Let's Encrypt|Free auto-renewing certificate"
+                "Let's Encrypt|Requires domain pointing to this server"
 
             SSL_TYPE="${ssl_options[$MENU_SELECTED]}"
 
