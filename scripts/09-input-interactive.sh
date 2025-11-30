@@ -92,10 +92,11 @@ get_inputs_interactive() {
         print_success "Proxmox ISO: ${PROXMOX_ISO_VERSION} (from env/cli)"
     else
         # Fetch available ISO versions
-        printf "%s⠋ Fetching available Proxmox versions...%s" "${CLR_YELLOW}" "${CLR_RESET}"
         local iso_list
-        iso_list=$(get_available_proxmox_isos 5)
-        printf "\r\e[K"
+        get_available_proxmox_isos 5 > /tmp/iso_list.tmp &
+        show_progress $! "Fetching available Proxmox versions" "Fetched available Proxmox versions"
+        iso_list=$(cat /tmp/iso_list.tmp 2>/dev/null)
+        rm -f /tmp/iso_list.tmp
 
         if [[ -z "$iso_list" ]]; then
             print_warning "Could not fetch ISO list, will use latest"
