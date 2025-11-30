@@ -43,18 +43,30 @@ remote_exec_script() {
     SSHPASS="$NEW_ROOT_PASSWORD" sshpass -e ssh -p "$SSH_PORT" $SSH_OPTS root@localhost 'bash -s'
 }
 
-# Execute remote script with progress indicator (hides output, shows spinner)
+# Execute remote script with progress indicator (logs output to file, shows spinner)
 remote_exec_with_progress() {
     local message="$1"
     local script="$2"
     local done_message="${3:-$message}"
 
+    log "remote_exec_with_progress: $message"
+    log "--- Script start ---"
+    echo "$script" >> "$LOG_FILE"
+    log "--- Script end ---"
+
     # shellcheck disable=SC2086
-    echo "$script" | SSHPASS="$NEW_ROOT_PASSWORD" sshpass -e ssh -p "$SSH_PORT" $SSH_OPTS root@localhost 'bash -s' > /dev/null 2>&1 &
+    echo "$script" | SSHPASS="$NEW_ROOT_PASSWORD" sshpass -e ssh -p "$SSH_PORT" $SSH_OPTS root@localhost 'bash -s' >> "$LOG_FILE" 2>&1 &
     local pid=$!
     show_progress $pid "$message" "$done_message"
-    wait $pid
-    return $?
+    local exit_code=$?
+
+    if [[ $exit_code -ne 0 ]]; then
+        log "remote_exec_with_progress: FAILED with exit code $exit_code"
+    else
+        log "remote_exec_with_progress: completed successfully"
+    fi
+
+    return $exit_code
 }
 
 remote_copy() {
