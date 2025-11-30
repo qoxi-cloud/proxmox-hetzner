@@ -313,7 +313,8 @@ get_inputs_interactive() {
             parse_ssh_key "$DETECTED_SSH_KEY"
 
             local ssh_header="! Password authentication will be DISABLED"$'\n'
-            ssh_header+="Detected key from Rescue System:"$'\n'
+            ssh_header+=$'\n'
+            ssh_header+="  Detected key from Rescue System:"$'\n'
             ssh_header+="  Type:    ${SSH_KEY_TYPE}"$'\n'
             ssh_header+="  Key:     ${SSH_KEY_SHORT}"
             if [[ -n "$SSH_KEY_COMMENT" ]]; then
