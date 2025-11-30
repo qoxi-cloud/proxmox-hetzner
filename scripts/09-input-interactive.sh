@@ -463,10 +463,19 @@ get_inputs_interactive() {
                 local dns_tmp="/tmp/dns_check_$$"
 
                 while [[ $attempt -le $max_attempts ]]; do
-                    # Run DNS check in background, save result to temp file
+                    # Run DNS check in background using dig directly (functions not available in subshell)
                     (
-                        validate_dns_resolution "$le_fqdn" "$expected_ip"
-                        echo "$?:$DNS_RESOLVED_IP" > "$dns_tmp"
+                        resolved_ip=$(dig +short A "$le_fqdn" @1.1.1.1 2>/dev/null | grep -E '^[0-9]+\.' | head -1)
+                        if [[ -z "$resolved_ip" ]]; then
+                            resolved_ip=$(dig +short A "$le_fqdn" @8.8.8.8 2>/dev/null | grep -E '^[0-9]+\.' | head -1)
+                        fi
+                        if [[ -z "$resolved_ip" ]]; then
+                            echo "1:" > "$dns_tmp"
+                        elif [[ "$resolved_ip" == "$expected_ip" ]]; then
+                            echo "0:$resolved_ip" > "$dns_tmp"
+                        else
+                            echo "2:$resolved_ip" > "$dns_tmp"
+                        fi
                     ) &
                     local check_pid=$!
                     show_progress $check_pid "Checking DNS: ${le_fqdn} → ${expected_ip} (attempt ${attempt}/${max_attempts})" --silent
