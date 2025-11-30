@@ -17,15 +17,6 @@ configure_tailscale() {
         systemctl start tailscaled
     ' "Tailscale VPN installed"
 
-    # Build tailscale up command with selected options
-    TAILSCALE_UP_CMD="tailscale up"
-    if [[ -n "$TAILSCALE_AUTH_KEY" ]]; then
-        TAILSCALE_UP_CMD="$TAILSCALE_UP_CMD --authkey='$TAILSCALE_AUTH_KEY'"
-    fi
-    if [[ "$TAILSCALE_SSH" == "yes" ]]; then
-        TAILSCALE_UP_CMD="$TAILSCALE_UP_CMD --ssh"
-    fi
-
     # If auth key is provided, authenticate Tailscale
     if [[ -n "$TAILSCALE_AUTH_KEY" ]]; then
         # Use unique temporary files to avoid race conditions
@@ -34,10 +25,15 @@ configure_tailscale() {
         tmp_ip=$(mktemp)
         tmp_hostname=$(mktemp)
         
+        # Build and execute tailscale up command with proper quoting
         (
-            remote_exec "$TAILSCALE_UP_CMD"
-            remote_exec "tailscale ip -4" > "$tmp_ip" 2>/dev/null
-            remote_exec "tailscale status --json | grep -o '\"DNSName\":\"[^\"]*\"' | head -1 | cut -d'\"' -f4 | sed 's/\\.$//'" > "$tmp_hostname" 2>/dev/null
+            if [[ "$TAILSCALE_SSH" == "yes" ]]; then
+                remote_exec "tailscale up --authkey='$TAILSCALE_AUTH_KEY' --ssh" || exit 1
+            else
+                remote_exec "tailscale up --authkey='$TAILSCALE_AUTH_KEY'" || exit 1
+            fi
+            remote_exec "tailscale ip -4" > "$tmp_ip" 2>/dev/null || true
+            remote_exec "tailscale status --json | grep -o '\"DNSName\":\"[^\"]*\"' | head -1 | cut -d'\"' -f4 | sed 's/\\.$//'" > "$tmp_hostname" 2>/dev/null || true
         ) > /dev/null 2>&1 &
         show_progress $! "Authenticating Tailscale"
 

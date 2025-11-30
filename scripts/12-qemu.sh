@@ -121,9 +121,9 @@ release_drives() {
         vgchange -an 2>/dev/null || true
         # Deactivate specific VGs by name if vgs is available
         if command -v vgs &>/dev/null; then
-            vgs --noheadings -o vg_name 2>/dev/null | while read -r vg; do
+            while IFS= read -r vg; do
                 [[ -n "$vg" ]] && vgchange -an "$vg" 2>/dev/null || true
-            done
+            done < <(vgs --noheadings -o vg_name 2>/dev/null)
         fi
     fi
     
@@ -134,12 +134,11 @@ release_drives() {
             local drive_name
             drive_name=$(basename "$drive")
             # Find mount points for this drive
-            mount | grep -E "(^|/)$drive_name" | awk '{print $3}' | while read -r mountpoint; do
-                if [[ -n "$mountpoint" ]]; then
-                    log "Unmounting $mountpoint"
-                    umount -f "$mountpoint" 2>/dev/null || true
-                fi
-            done
+            while IFS= read -r mountpoint; do
+                [[ -z "$mountpoint" ]] && continue
+                log "Unmounting $mountpoint"
+                umount -f "$mountpoint" 2>/dev/null || true
+            done < <(mount | grep -E "(^|/)$drive_name" | awk '{print $3}')
         done
     fi
     
@@ -152,12 +151,13 @@ release_drives() {
         for drive in "${DRIVES[@]}"; do
             # Use lsof if available
             if command -v lsof &>/dev/null; then
-                lsof "$drive" 2>/dev/null | awk 'NR>1 {print $2}' | sort -u | while read -r pid; do
-                    if [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null; then
+                while IFS= read -r pid; do
+                    [[ -z "$pid" ]] && continue
+                    if kill -0 "$pid" 2>/dev/null; then
                         log "Killing process $pid using $drive"
                         kill -9 "$pid" 2>/dev/null || true
                     fi
-                done
+                done < <(lsof "$drive" 2>/dev/null | awk 'NR>1 {print $2}' | sort -u)
             fi
             # Use fuser as alternative
             if command -v fuser &>/dev/null; then
@@ -208,10 +208,9 @@ install_proxmox() {
     fi
 
     show_progress $qemu_pid "$install_msg" "Proxmox VE installed"
+    local exit_code=$?
 
     # Verify installation completed (QEMU exited cleanly)
-    wait $qemu_pid
-    local exit_code=$?
     if [[ $exit_code -ne 0 ]]; then
         log "ERROR: QEMU installation failed with exit code $exit_code"
         log "QEMU install log:"

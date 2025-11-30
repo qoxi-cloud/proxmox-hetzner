@@ -38,9 +38,9 @@ configure_ssl_certificate() {
         # Install first-boot script
         mv /tmp/letsencrypt-firstboot.sh /usr/local/bin/obtain-letsencrypt-cert.sh
 
-        # Substitute placeholders
-        sed -i 's|{{CERT_DOMAIN}}|${cert_domain}|g' /usr/local/bin/obtain-letsencrypt-cert.sh
-        sed -i 's|{{CERT_EMAIL}}|${EMAIL}|g' /usr/local/bin/obtain-letsencrypt-cert.sh
+        # Substitute placeholders (escape braces to avoid shellcheck warnings)
+        sed -i \"s|\{\{CERT_DOMAIN\}\}|${cert_domain}|g\" /usr/local/bin/obtain-letsencrypt-cert.sh
+        sed -i \"s|\{\{CERT_EMAIL\}\}|${EMAIL}|g\" /usr/local/bin/obtain-letsencrypt-cert.sh
         chmod +x /usr/local/bin/obtain-letsencrypt-cert.sh
 
         # Install and enable systemd service
