@@ -94,7 +94,7 @@ get_inputs_interactive() {
         # Fetch available ISO versions
         local iso_list
         get_available_proxmox_isos 5 > /tmp/iso_list.tmp &
-        show_progress $! "Fetching available Proxmox versions" "Fetched available Proxmox versions"
+        show_progress $! "Fetching available Proxmox versions" --silent
         iso_list=$(cat /tmp/iso_list.tmp 2>/dev/null)
         rm -f /tmp/iso_list.tmp
 

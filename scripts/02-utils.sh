@@ -93,10 +93,15 @@ SPINNER_CHARS='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
 
 # Progress indicator with spinner
 # Waits for process to complete, shows success or failure
+# Usage: show_progress PID "message" ["done_message"] [--silent]
+# --silent: clear line on success instead of showing done message
 show_progress() {
     local pid=$1
     local message="${2:-Processing}"
     local done_message="${3:-$message}"
+    local silent=false
+    [[ "${3:-}" == "--silent" || "${4:-}" == "--silent" ]] && silent=true
+    [[ "${3:-}" == "--silent" ]] && done_message="$message"
     local i=0
 
     while kill -0 "$pid" 2>/dev/null; do
@@ -109,7 +114,11 @@ show_progress() {
     local exit_code=$?
 
     if [[ $exit_code -eq 0 ]]; then
-        printf "\r\e[K${CLR_GREEN}✓ %s${CLR_RESET}\n" "$done_message"
+        if [[ "$silent" == true ]]; then
+            printf "\r\e[K"
+        else
+            printf "\r\e[K${CLR_GREEN}✓ %s${CLR_RESET}\n" "$done_message"
+        fi
     else
         printf "\r\e[K${CLR_RED}✗ %s${CLR_RESET}\n" "$message"
     fi
