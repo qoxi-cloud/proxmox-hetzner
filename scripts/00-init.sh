@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-set -e
-cd /root
+# Note: NOT using set -e because it interferes with trap EXIT handler
+# All error handling is done explicitly with exit 1
+cd /root || exit 1
 
 # Ensure UTF-8 locale for proper Unicode display (spinner characters)
 export LANG=en_US.UTF-8
