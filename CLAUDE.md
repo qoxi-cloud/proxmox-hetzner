@@ -44,7 +44,7 @@ Scripts are numbered and concatenated in order:
 
 #### Initialization (00-00d)
 
-- `00-init.sh` - Shebang, colors, version, default values
+- `00-init.sh` - Shebang, colors, version, configuration constants (see Constants section)
 - `00a-cli.sh` - Command line argument parsing
 - `00b-config.sh` - Config file load/save functions
 - `00c-logging.sh` - Logging functions
@@ -53,10 +53,10 @@ Scripts are numbered and concatenated in order:
 #### UI and Utilities (01-05)
 
 - `01-display.sh` - Box/table display utilities using `boxes` command
-- `02-utils.sh` - Download, password input, progress spinners
+- `02-utils.sh` - Download, password input, progress spinners, template utilities
 - `03-ssh.sh` - SSH helpers for remote execution into QEMU VM
 - `04-menu.sh` - Interactive arrow-key menu system
-- `05-validation.sh` - Input validators (hostname, email, subnet, etc.)
+- `05-validation.sh` - Input validators (hostname, email, subnet, password, etc.)
 
 #### System Detection (06-07)
 
@@ -94,13 +94,49 @@ make_autoinstall_iso → install_proxmox → boot_proxmox_with_port_forwarding �
 configure_proxmox_via_ssh → reboot_to_main_os
 ```
 
+### Configuration Constants
+
+Centralized constants in `00-init.sh` (can be overridden via environment variables):
+
+| Constant Group | Examples |
+|----------------|----------|
+| GitHub URLs | `GITHUB_REPO`, `GITHUB_BRANCH`, `GITHUB_BASE_URL` |
+| Proxmox URLs | `PROXMOX_ISO_BASE_URL`, `PROXMOX_CHECKSUM_URL` |
+| DNS servers | `DNS_SERVERS[]`, `DNS_PRIMARY`, `DNS_SECONDARY`, etc. |
+| Resource limits | `MIN_DISK_SPACE_MB`, `MIN_RAM_MB`, `MIN_CPU_CORES` |
+| QEMU defaults | `DEFAULT_QEMU_RAM`, `MIN_QEMU_RAM`, `MAX_QEMU_CORES` |
+| Default values | `DEFAULT_HOSTNAME`, `DEFAULT_TIMEZONE`, `DEFAULT_SUBNET`, etc. |
+| Packages | `SYSTEM_UTILITIES`, `OPTIONAL_PACKAGES` |
+
 ### Templates
 
-Configuration files in `templates/` are downloaded at runtime from GitHub raw URLs and customized with `sed` placeholders:
+Configuration files in `templates/` are downloaded at runtime from GitHub raw URLs and customized with placeholder substitution:
+
+#### Template Categories
+
+| Category | Files |
+|----------|-------|
+| Network config | `interfaces.internal`, `interfaces.external`, `interfaces.both`, `resolv.conf` |
+| System config | `hosts`, `sshd_config`, `chrony`, `debian.sources`, `proxmox.sources` |
+| Locale | `locale.sh`, `default-locale`, `environment` |
+| Shell | `zshrc`, `p10k.zsh` |
+| Scripts | `configure-zfs-arc.sh`, `remove-subscription-nag.sh` |
+| Services | `cpufrequtils`, `50unattended-upgrades`, `20auto-upgrades` |
+| SSL | `letsencrypt-deploy-hook.sh`, `letsencrypt-firstboot.sh`, `letsencrypt-firstboot.service` |
+| Tailscale | `disable-openssh.service`, `stealth-firewall.service` |
+| Installation | `answer.toml` |
+
+#### Template Placeholders
 
 - `{{MAIN_IPV4}}`, `{{FQDN}}`, `{{HOSTNAME}}` - Network/host values
 - `{{INTERFACE_NAME}}`, `{{PRIVATE_IP_CIDR}}`, `{{PRIVATE_SUBNET}}` - Bridge config
-- Three interface templates: `interfaces.internal`, `interfaces.external`, `interfaces.both`
+- `{{DNS_PRIMARY}}`, `{{DNS_SECONDARY}}`, etc. - DNS servers
+
+#### Template Utility Functions
+
+- `download_template "LOCAL_PATH" ["REMOTE_FILENAME"]` - Download template from GitHub
+- `apply_template_vars "FILE" "VAR1=VALUE1" ...` - Apply variable substitutions
+- `apply_common_template_vars "FILE"` - Apply standard variables (IP, hostname, etc.)
 
 ### Remote Execution Pattern
 
