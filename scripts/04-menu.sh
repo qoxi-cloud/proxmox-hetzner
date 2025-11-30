@@ -8,6 +8,46 @@
 
 MENU_BOX_WIDTH=60
 
+# Wrap text to fit within box width
+# Usage: _wrap_text "text" "prefix" max_width
+# prefix is added to continuation lines
+_wrap_text() {
+    local text="$1"
+    local prefix="$2"
+    local max_width="$3"
+    local result=""
+    local line=""
+    local first_line=true
+
+    # Split text into words
+    for word in $text; do
+        if [[ -z "$line" ]]; then
+            line="$word"
+        elif [[ $((${#line} + 1 + ${#word})) -le $max_width ]]; then
+            line+=" $word"
+        else
+            if [[ "$first_line" == true ]]; then
+                result+="$line"$'\n'
+                first_line=false
+            else
+                result+="${prefix}${line}"$'\n'
+            fi
+            line="$word"
+        fi
+    done
+
+    # Add remaining text
+    if [[ -n "$line" ]]; then
+        if [[ "$first_line" == true ]]; then
+            result+="$line"
+        else
+            result+="${prefix}${line}"
+        fi
+    fi
+
+    echo "$result"
+}
+
 radio_menu() {
     local title="$1"
     local header="$2"
@@ -31,6 +71,10 @@ radio_menu() {
     # Function to draw the menu box with fixed width
     _draw_menu() {
         local content=""
+        # Inner width: box_width - 4 (borders) - 2 (padding) = 54
+        # Description prefix "    └─ " is 7 chars, so max desc width is 47
+        local desc_max_width=47
+        local desc_prefix="       "  # 7 spaces for continuation lines
 
         # Add header content if provided
         if [[ -n "$header" ]]; then
@@ -41,10 +85,18 @@ radio_menu() {
         for i in "${!labels[@]}"; do
             if [ $i -eq $selected ]; then
                 content+="[*] ${labels[$i]}"$'\n'
-                [[ -n "${descriptions[$i]}" ]] && content+="    └─ ${descriptions[$i]}"$'\n'
+                if [[ -n "${descriptions[$i]}" ]]; then
+                    local wrapped_desc
+                    wrapped_desc=$(_wrap_text "${descriptions[$i]}" "$desc_prefix" "$desc_max_width")
+                    content+="    └─ ${wrapped_desc}"$'\n'
+                fi
             else
                 content+="[ ] ${labels[$i]}"$'\n'
-                [[ -n "${descriptions[$i]}" ]] && content+="    └─ ${descriptions[$i]}"$'\n'
+                if [[ -n "${descriptions[$i]}" ]]; then
+                    local wrapped_desc
+                    wrapped_desc=$(_wrap_text "${descriptions[$i]}" "$desc_prefix" "$desc_max_width")
+                    content+="    └─ ${wrapped_desc}"$'\n'
+                fi
             fi
         done
 
@@ -240,6 +292,10 @@ checkbox_menu() {
     # Function to draw the checkbox menu
     _draw_checkbox_menu() {
         local content=""
+        # Inner width: box_width - 4 (borders) - 2 (padding) = 54
+        # Description prefix "       └─ " is 10 chars, so max desc width is 44
+        local desc_max_width=44
+        local desc_prefix="          "  # 10 spaces for continuation lines
 
         # Add header content if provided
         if [[ -n "$header" ]]; then
@@ -260,7 +316,11 @@ checkbox_menu() {
             else
                 content+="  ${checkbox} ${labels[$i]}"$'\n'
             fi
-            [[ -n "${descriptions[$i]}" ]] && content+="       └─ ${descriptions[$i]}"$'\n'
+            if [[ -n "${descriptions[$i]}" ]]; then
+                local wrapped_desc
+                wrapped_desc=$(_wrap_text "${descriptions[$i]}" "$desc_prefix" "$desc_max_width")
+                content+="       └─ ${wrapped_desc}"$'\n'
+            fi
         done
 
         # Add footer hint
