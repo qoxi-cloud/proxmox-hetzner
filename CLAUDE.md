@@ -60,8 +60,8 @@ Scripts are numbered and concatenated in order:
 
 #### System Detection (06-07)
 
-- `06-system-check.sh` - Pre-flight checks (root, RAM, KVM, NVMe detection)
-- `07-network.sh` - Network interface detection
+- `06-system-check.sh` - Pre-flight checks (root, RAM, KVM, NVMe detection), auto-installs required utilities
+- `07-network.sh` - Network interface detection with fallback chain (ip -j | jq → ip | awk → ifconfig/route)
 
 #### Input Collection (08-10)
 
@@ -71,14 +71,14 @@ Scripts are numbered and concatenated in order:
 
 #### Installation (11-12)
 
-- `11-packages.sh` - Package installation, ISO download, answer.toml generation
-- `12-qemu.sh` - QEMU VM management for installation and boot
+- `11-packages.sh` - Package installation, ISO download (aria2c with 8 parallel connections), answer.toml generation
+- `12-qemu.sh` - QEMU VM management for installation and boot, drive release with findmnt
 
 #### Post-Install Configuration (13-16)
 
 - `13-templates.sh` - Template download and preparation
 - `14-configure-base.sh` - Base system configuration (ZFS, packages, shell)
-- `15-configure-tailscale.sh` - Tailscale VPN configuration
+- `15-configure-tailscale.sh` - Tailscale VPN configuration (uses jq for JSON parsing)
 - `16-configure-finalize.sh` - SSH hardening and VM finalization
 
 #### Main Flow (99)
@@ -107,6 +107,23 @@ Centralized constants in `00-init.sh` (can be overridden via environment variabl
 | QEMU defaults | `DEFAULT_QEMU_RAM`, `MIN_QEMU_RAM`, `MAX_QEMU_CORES` |
 | Default values | `DEFAULT_HOSTNAME`, `DEFAULT_TIMEZONE`, `DEFAULT_SUBNET`, etc. |
 | Packages | `SYSTEM_UTILITIES`, `OPTIONAL_PACKAGES` |
+| Timeouts | `DNS_LOOKUP_TIMEOUT` (default: 5s) |
+
+### Auto-Installed Utilities
+
+The installer automatically installs required utilities in `06-system-check.sh`:
+
+| Utility | Package | Purpose |
+|---------|---------|---------|
+| `boxes` | boxes | Box/table display formatting |
+| `column` | bsdmainutils | Column alignment in tables |
+| `ip` | iproute2 | Network interface detection |
+| `udevadm` | udev | Predictable interface name detection |
+| `timeout` | coreutils | Command timeouts |
+| `curl` | curl | HTTP requests |
+| `jq` | jq | JSON parsing (network info, Tailscale status) |
+| `aria2c` | aria2 | Parallel ISO downloads (8 connections) |
+| `findmnt` | util-linux | Efficient mount point detection |
 
 ### Templates
 
@@ -168,3 +185,31 @@ Post-install configuration runs via SSH into QEMU VM on port 5555:
 - Colors: `CLR_RED`, `CLR_GREEN`, `CLR_YELLOW`, `CLR_BLUE`, `CLR_CYAN`, `CLR_RESET`
 - Status markers: `[OK]`, `[WARN]`, `[ERROR]` - colorized by `colorize_status` function
 - SSH functions use `SSHPASS` env var to avoid password exposure in process list
+
+### Fallback Patterns
+
+The installer uses fallback chains for compatibility across different environments:
+
+#### Network Detection (07-network.sh)
+
+```text
+ip -j | jq (JSON) → ip | awk (text) → ifconfig/route (legacy)
+```
+
+#### DNS Resolution (05-validation.sh)
+
+```text
+dig → host → nslookup → getent hosts
+```
+
+All DNS commands use configurable timeout (`DNS_LOOKUP_TIMEOUT`, default: 5s).
+
+#### Mount Detection (12-qemu.sh)
+
+```text
+findmnt (efficient) → mount | grep (fallback)
+```
+
+#### ISO Download (11-packages.sh)
+
+Uses `aria2c` with 8 parallel connections and automatic checksum verification for faster downloads.

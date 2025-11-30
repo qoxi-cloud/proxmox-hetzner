@@ -66,14 +66,15 @@ The interactive installer will guide you through:
 ## Step 3: Wait for Installation
 
 The script will:
-1. Download the latest Proxmox VE ISO
+
+1. Download the latest Proxmox VE ISO (using 8 parallel connections for faster downloads)
 2. Create an auto-installation configuration
 3. Install Proxmox VE using QEMU
 4. Configure networking and security
 5. Apply system optimizations
 6. Reboot into the installed system
 
-Total installation time: approximately 5 minutes depending on server hardware.
+Total installation time: approximately 5 minutes depending on server hardware and network speed.
 
 ## Step 4: Access Proxmox
 

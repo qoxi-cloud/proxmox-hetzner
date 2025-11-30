@@ -125,6 +125,7 @@ You can pre-configure any setting via environment variables.
 | `PROXMOX_ISO_VERSION` | Specific ISO filename | Latest (interactive menu) |
 | `QEMU_RAM_OVERRIDE` | QEMU VM RAM in MB | Auto (4096-8192) |
 | `QEMU_CORES_OVERRIDE` | QEMU VM CPU cores | Auto (half of available, max 16) |
+| `DNS_LOOKUP_TIMEOUT` | DNS resolution timeout in seconds | `5` |
 | `GITHUB_REPO` | GitHub repository for templates | `qoxi-cloud/proxmox-hetzner` |
 | `GITHUB_BRANCH` | GitHub branch for templates | `main` |
 
