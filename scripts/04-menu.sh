@@ -64,13 +64,21 @@ interactive_menu() {
     # Calculate box height
     box_lines=$(_draw_menu | wc -l)
 
-    # Draw initial menu with colors
-    # - [●] selected option (green), [○] unselected (blue)
-    # - Lines starting with "! " are warnings (yellow)
-    _draw_menu | sed -e $'s/\\[\\*\\]/\033[1;32m[●]\033[m/g' \
-                     -e $'s/\\[ \\]/\033[1;34m[○]\033[m/g' \
-                     -e $'s/^| ! /| \033[1;33m! /g' \
-                     -e $'s/^|   - /| \033[1;33m  - /g'
+    # Colorize menu output
+    # - Box frame in blue, [●] selected (green), [○] unselected (blue)
+    # - Lines with "! " are warnings (yellow)
+    _colorize_menu() {
+        sed -e $'s/\\[\\*\\]/\033[1;32m[●]\033[1;34m/g' \
+            -e $'s/\\[ \\]/\033[1;34m[○]\033[1;34m/g' \
+            -e $'s/^\\(+[-+]*+\\)$/\033[1;34m\\1\033[m/g' \
+            -e $'s/^|/\033[1;34m|/g' \
+            -e $'s/|$/|\033[m/g' \
+            -e $'s/! /\033[1;33m! /g' \
+            -e $'s/  - /\033[1;33m  - /g'
+    }
+
+    # Draw initial menu
+    _draw_menu | _colorize_menu
 
     while true; do
         # Read a single keypress
@@ -108,10 +116,7 @@ interactive_menu() {
         tput cuu $box_lines
 
         # Draw the menu with colors
-        _draw_menu | sed -e $'s/\\[\\*\\]/\033[1;32m[●]\033[m/g' \
-                         -e $'s/\\[ \\]/\033[1;34m[○]\033[m/g' \
-                         -e $'s/^| ! /| \033[1;33m! /g' \
-                         -e $'s/^|   - /| \033[1;33m  - /g'
+        _draw_menu | _colorize_menu
     done
 
     # Show cursor again
