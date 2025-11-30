@@ -94,6 +94,55 @@ prompt_with_validation() {
 
 # Prompt for password with validation
 # Usage: prompt_password "prompt" "var_name"
+# Validate that FQDN resolves to expected IP using public DNS servers
+# Usage: validate_dns_resolution "fqdn" "expected_ip"
+# Returns: 0 if matches, 1 if no resolution, 2 if wrong IP
+# Sets: DNS_RESOLVED_IP with the resolved IP (empty if no resolution)
+validate_dns_resolution() {
+    local fqdn="$1"
+    local expected_ip="$2"
+
+    # Public DNS servers to query (bypass local cache)
+    local dns_servers=("1.1.1.1" "8.8.8.8" "9.9.9.9")
+    local resolved_ip=""
+
+    # Try each public DNS server until we get a result
+    for dns_server in "${dns_servers[@]}"; do
+        if command -v dig &>/dev/null; then
+            resolved_ip=$(dig +short A "$fqdn" "@${dns_server}" 2>/dev/null | grep -E '^[0-9]+\.' | head -1)
+        elif command -v host &>/dev/null; then
+            resolved_ip=$(host -t A "$fqdn" "$dns_server" 2>/dev/null | grep "has address" | head -1 | awk '{print $NF}')
+        elif command -v nslookup &>/dev/null; then
+            resolved_ip=$(nslookup "$fqdn" "$dns_server" 2>/dev/null | awk '/^Address: / {print $2}' | head -1)
+        fi
+
+        if [[ -n "$resolved_ip" ]]; then
+            break
+        fi
+    done
+
+    # Fallback to system resolver if public DNS fails
+    if [[ -z "$resolved_ip" ]]; then
+        if command -v dig &>/dev/null; then
+            resolved_ip=$(dig +short A "$fqdn" 2>/dev/null | grep -E '^[0-9]+\.' | head -1)
+        elif command -v getent &>/dev/null; then
+            resolved_ip=$(getent ahosts "$fqdn" 2>/dev/null | grep STREAM | head -1 | awk '{print $1}')
+        fi
+    fi
+
+    if [[ -z "$resolved_ip" ]]; then
+        DNS_RESOLVED_IP=""
+        return 1  # No resolution
+    fi
+
+    DNS_RESOLVED_IP="$resolved_ip"
+    if [[ "$resolved_ip" == "$expected_ip" ]]; then
+        return 0  # Match
+    else
+        return 2  # Wrong IP
+    fi
+}
+
 prompt_password() {
     local prompt="$1"
     local var_name="$2"
