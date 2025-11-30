@@ -28,14 +28,24 @@ collect_system_info() {
             "$bar_filled" "$bar_empty" "$pct"
     }
 
-    # Install display utilities (boxes for tables, column for alignment)
+    # Install required tools and display utilities
+    # boxes: table display, column: alignment, iproute2: ip command
+    # udev: udevadm for interface detection, timeout: command timeouts
+    # jq: JSON parsing for API responses
     update_progress
-    local need_install=false
-    command -v boxes &> /dev/null || need_install=true
-    command -v column &> /dev/null || need_install=true
-    if $need_install; then
+    local packages_to_install=""
+    command -v boxes &> /dev/null || packages_to_install+=" boxes"
+    command -v column &> /dev/null || packages_to_install+=" bsdmainutils"
+    command -v ip &> /dev/null || packages_to_install+=" iproute2"
+    command -v udevadm &> /dev/null || packages_to_install+=" udev"
+    command -v timeout &> /dev/null || packages_to_install+=" coreutils"
+    command -v curl &> /dev/null || packages_to_install+=" curl"
+    command -v jq &> /dev/null || packages_to_install+=" jq"
+
+    if [[ -n "$packages_to_install" ]]; then
         apt-get update -qq > /dev/null 2>&1
-        apt-get install -qq -y boxes bsdmainutils > /dev/null 2>&1
+        # shellcheck disable=SC2086
+        apt-get install -qq -y $packages_to_install > /dev/null 2>&1
     fi
 
     # Check if running as root

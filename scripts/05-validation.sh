@@ -131,6 +131,7 @@ validate_dns_resolution() {
     local fqdn="$1"
     local expected_ip="$2"
     local resolved_ip=""
+    local dns_timeout="${DNS_LOOKUP_TIMEOUT:-5}"  # Default 5 second timeout
 
     # Determine which DNS tool to use (check once, not in loop)
     local dns_tool=""
@@ -142,17 +143,27 @@ validate_dns_resolution() {
         dns_tool="nslookup"
     fi
 
+    # If no DNS tool available, log warning and return no resolution
+    if [[ -z "$dns_tool" ]]; then
+        log "WARNING: No DNS lookup tool available (dig, host, or nslookup)"
+        DNS_RESOLVED_IP=""
+        return 1
+    fi
+
     # Try each public DNS server until we get a result (use global DNS_SERVERS)
     for dns_server in "${DNS_SERVERS[@]}"; do
         case "$dns_tool" in
             dig)
-                resolved_ip=$(dig +short A "$fqdn" "@${dns_server}" 2>/dev/null | grep -E '^[0-9]+\.' | head -1)
+                # dig supports +time for timeout
+                resolved_ip=$(timeout "$dns_timeout" dig +short +time=3 +tries=1 A "$fqdn" "@${dns_server}" 2>/dev/null | grep -E '^[0-9]+\.' | head -1)
                 ;;
             host)
-                resolved_ip=$(host -t A "$fqdn" "$dns_server" 2>/dev/null | grep "has address" | head -1 | awk '{print $NF}')
+                # host supports -W for timeout
+                resolved_ip=$(timeout "$dns_timeout" host -W 3 -t A "$fqdn" "$dns_server" 2>/dev/null | grep "has address" | head -1 | awk '{print $NF}')
                 ;;
             nslookup)
-                resolved_ip=$(nslookup "$fqdn" "$dns_server" 2>/dev/null | awk '/^Address: / {print $2}' | head -1)
+                # nslookup doesn't have timeout option, use timeout command
+                resolved_ip=$(timeout "$dns_timeout" nslookup -timeout=3 "$fqdn" "$dns_server" 2>/dev/null | awk '/^Address: / {print $2}' | head -1)
                 ;;
         esac
 
@@ -165,11 +176,11 @@ validate_dns_resolution() {
     if [[ -z "$resolved_ip" ]]; then
         case "$dns_tool" in
             dig)
-                resolved_ip=$(dig +short A "$fqdn" 2>/dev/null | grep -E '^[0-9]+\.' | head -1)
+                resolved_ip=$(timeout "$dns_timeout" dig +short +time=3 +tries=1 A "$fqdn" 2>/dev/null | grep -E '^[0-9]+\.' | head -1)
                 ;;
             *)
                 if command -v getent &>/dev/null; then
-                    resolved_ip=$(getent ahosts "$fqdn" 2>/dev/null | grep STREAM | head -1 | awk '{print $1}')
+                    resolved_ip=$(timeout "$dns_timeout" getent ahosts "$fqdn" 2>/dev/null | grep STREAM | head -1 | awk '{print $1}')
                 fi
                 ;;
         esac
