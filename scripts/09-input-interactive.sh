@@ -457,41 +457,25 @@ get_inputs_interactive() {
             if [[ "$SSL_TYPE" == "letsencrypt" ]]; then
                 local le_fqdn="${FQDN:-$PVE_HOSTNAME.$DOMAIN_SUFFIX}"
                 local expected_ip="${MAIN_IPV4_CIDR%/*}"
-                local max_retries=3
-                local retry_delay=10
-                local attempt=1
-                local dns_result=1
 
-                while [[ $attempt -le $max_retries ]]; do
-                    printf "  Checking DNS resolution (attempt %d/%d)... " "$attempt" "$max_retries"
-                    validate_dns_resolution "$le_fqdn" "$expected_ip"
-                    dns_result=$?
-
-                    if [[ $dns_result -eq 0 ]]; then
-                        printf "\r\033[K"
-                        print_success "SSL: Let's Encrypt (DNS verified: ${le_fqdn} → ${expected_ip})"
-                        break
-                    fi
-
-                    printf "\r\033[K"
-                    if [[ $dns_result -eq 1 ]]; then
-                        print_error "DNS Error: ${le_fqdn} does not resolve"
-                    else
-                        print_error "DNS Mismatch: ${le_fqdn} → ${DNS_RESOLVED_IP} (expected: ${expected_ip})"
-                    fi
-
-                    if [[ $attempt -lt $max_retries ]]; then
-                        print_info "Required: DNS A record ${le_fqdn} → ${expected_ip}"
-                        print_info "Retrying in ${retry_delay} seconds... (Press Ctrl+C to cancel)"
-                        sleep "$retry_delay"
-                    fi
-                    ((attempt++))
-                done
-
-                if [[ $dns_result -ne 0 ]]; then
+                # Use wait_with_progress: 30 sec timeout, check every 10 sec (3 attempts)
+                if wait_with_progress \
+                    "Checking DNS: ${le_fqdn} → ${expected_ip}" \
+                    30 \
+                    "validate_dns_resolution '$le_fqdn' '$expected_ip'" \
+                    10 \
+                    "SSL: Let's Encrypt (DNS verified: ${le_fqdn} → ${expected_ip})"; then
+                    : # Success - message already printed by wait_with_progress
+                else
+                    # Show detailed error
                     echo ""
-                    print_error "DNS validation failed after ${max_retries} attempts"
-                    print_error "Let's Encrypt requires ${le_fqdn} to resolve to ${expected_ip}"
+                    validate_dns_resolution "$le_fqdn" "$expected_ip"
+                    local dns_result=$?
+                    if [[ $dns_result -eq 1 ]]; then
+                        print_error "${le_fqdn} does not resolve to any IP address"
+                    else
+                        print_error "${le_fqdn} resolves to ${DNS_RESOLVED_IP}, expected ${expected_ip}"
+                    fi
                     echo ""
                     print_info "To fix this:"
                     print_info "  1. Go to your DNS provider"
