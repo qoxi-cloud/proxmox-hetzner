@@ -32,6 +32,8 @@ collect_system_info() {
     # boxes: table display, column: alignment, iproute2: ip command
     # udev: udevadm for interface detection, timeout: command timeouts
     # jq: JSON parsing for API responses
+    # aria2c: parallel multi-connection downloads (faster ISO downloads)
+    # findmnt: efficient mount point queries
     update_progress
     local packages_to_install=""
     command -v boxes &> /dev/null || packages_to_install+=" boxes"
@@ -41,6 +43,8 @@ collect_system_info() {
     command -v timeout &> /dev/null || packages_to_install+=" coreutils"
     command -v curl &> /dev/null || packages_to_install+=" curl"
     command -v jq &> /dev/null || packages_to_install+=" jq"
+    command -v aria2c &> /dev/null || packages_to_install+=" aria2"
+    command -v findmnt &> /dev/null || packages_to_install+=" util-linux"
 
     if [[ -n "$packages_to_install" ]]; then
         apt-get update -qq > /dev/null 2>&1

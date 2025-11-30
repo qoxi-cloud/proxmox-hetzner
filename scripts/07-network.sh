@@ -5,7 +5,10 @@
 
 detect_network_interface() {
     # Get default interface name (the one with default route)
-    if command -v ip &>/dev/null; then
+    # Prefer JSON output with jq for more reliable parsing
+    if command -v ip &>/dev/null && command -v jq &>/dev/null; then
+        CURRENT_INTERFACE=$(ip -j route 2>/dev/null | jq -r '.[] | select(.dst == "default") | .dev' | head -n1)
+    elif command -v ip &>/dev/null; then
         CURRENT_INTERFACE=$(ip route | grep default | awk '{print $5}' | head -n1)
     elif command -v route &>/dev/null; then
         # Fallback to route command (older systems)
@@ -14,7 +17,9 @@ detect_network_interface() {
 
     if [[ -z "$CURRENT_INTERFACE" ]]; then
         # Last resort: try to find first non-loopback interface
-        if command -v ip &>/dev/null; then
+        if command -v ip &>/dev/null && command -v jq &>/dev/null; then
+            CURRENT_INTERFACE=$(ip -j link show 2>/dev/null | jq -r '.[] | select(.ifname != "lo" and .operstate == "UP") | .ifname' | head -n1)
+        elif command -v ip &>/dev/null; then
             CURRENT_INTERFACE=$(ip link show | awk -F': ' '/^[0-9]+:/ && !/lo:/ {print $2; exit}')
         elif command -v ifconfig &>/dev/null; then
             CURRENT_INTERFACE=$(ifconfig -a | awk '/^[a-z]/ && !/^lo/ {print $1; exit}' | tr -d ':')
@@ -75,11 +80,16 @@ collect_network_info() {
     while [[ $attempt -lt $max_attempts ]]; do
         attempt=$((attempt + 1))
 
-        # Try ip command first (preferred), fallback to ifconfig
-        if command -v ip &>/dev/null; then
-            MAIN_IPV4_CIDR=$(ip address show "$CURRENT_INTERFACE" 2>/dev/null | grep global | grep "inet " | xargs | cut -d" " -f2)
+        # Try ip command with JSON output first (most reliable), fallback to text parsing
+        if command -v ip &>/dev/null && command -v jq &>/dev/null; then
+            # Use JSON output for reliable parsing
+            MAIN_IPV4_CIDR=$(ip -j address show "$CURRENT_INTERFACE" 2>/dev/null | jq -r '.[0].addr_info[] | select(.family == "inet" and .scope == "global") | "\(.local)/\(.prefixlen)"' | head -n1)
             MAIN_IPV4="${MAIN_IPV4_CIDR%/*}"
-            MAIN_IPV4_GW=$(ip route 2>/dev/null | grep default | xargs | cut -d" " -f3)
+            MAIN_IPV4_GW=$(ip -j route 2>/dev/null | jq -r '.[] | select(.dst == "default") | .gateway' | head -n1)
+        elif command -v ip &>/dev/null; then
+            MAIN_IPV4_CIDR=$(ip address show "$CURRENT_INTERFACE" 2>/dev/null | grep global | grep "inet " | awk '{print $2}' | head -n1)
+            MAIN_IPV4="${MAIN_IPV4_CIDR%/*}"
+            MAIN_IPV4_GW=$(ip route 2>/dev/null | grep default | awk '{print $3}' | head -n1)
         elif command -v ifconfig &>/dev/null; then
             # Fallback to ifconfig for older systems
             MAIN_IPV4=$(ifconfig "$CURRENT_INTERFACE" 2>/dev/null | awk '/inet / {print $2}' | sed 's/addr://')
@@ -117,9 +127,12 @@ collect_network_info() {
     done
 
     # Get MAC address and IPv6 info
-    if command -v ip &>/dev/null; then
+    if command -v ip &>/dev/null && command -v jq &>/dev/null; then
+        MAC_ADDRESS=$(ip -j link show "$CURRENT_INTERFACE" 2>/dev/null | jq -r '.[0].address // empty')
+        IPV6_CIDR=$(ip -j address show "$CURRENT_INTERFACE" 2>/dev/null | jq -r '.[0].addr_info[] | select(.family == "inet6" and .scope == "global") | "\(.local)/\(.prefixlen)"' | head -n1)
+    elif command -v ip &>/dev/null; then
         MAC_ADDRESS=$(ip link show "$CURRENT_INTERFACE" 2>/dev/null | awk '/ether/ {print $2}')
-        IPV6_CIDR=$(ip address show "$CURRENT_INTERFACE" 2>/dev/null | grep global | grep "inet6 " | xargs | cut -d" " -f2)
+        IPV6_CIDR=$(ip address show "$CURRENT_INTERFACE" 2>/dev/null | grep global | grep "inet6 " | awk '{print $2}' | head -n1)
     elif command -v ifconfig &>/dev/null; then
         MAC_ADDRESS=$(ifconfig "$CURRENT_INTERFACE" 2>/dev/null | awk '/ether/ {print $2}')
         IPV6_CIDR=$(ifconfig "$CURRENT_INTERFACE" 2>/dev/null | awk '/inet6/ && /global/ {print $2}')

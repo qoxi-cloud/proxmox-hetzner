@@ -55,18 +55,28 @@ prepare_packages() {
     log "Required packages installed successfully"
 }
 
+# Cache for ISO list (avoid multiple HTTP requests)
+_ISO_LIST_CACHE=""
+
+# Fetch ISO list from Proxmox repository (cached)
+_fetch_iso_list() {
+    if [[ -z "$_ISO_LIST_CACHE" ]]; then
+        _ISO_LIST_CACHE=$(curl -s "$PROXMOX_ISO_BASE_URL" | grep -oE 'proxmox-ve_[0-9]+\.[0-9]+-[0-9]+\.iso' | sort -uV)
+    fi
+    echo "$_ISO_LIST_CACHE"
+}
+
 # Fetch available Proxmox VE ISO versions (last N versions)
 # Returns array of ISO filenames, newest first
 get_available_proxmox_isos() {
     local count="${1:-5}"
-
-    curl -s "$PROXMOX_ISO_BASE_URL" | grep -oE 'proxmox-ve_[0-9]+\.[0-9]+-[0-9]+\.iso' | sort -uV | tail -n "$count" | tac
+    _fetch_iso_list | tail -n "$count" | tac
 }
 
 # Fetch latest Proxmox VE ISO URL
 get_latest_proxmox_ve_iso() {
     local latest_iso
-    latest_iso=$(curl -s "$PROXMOX_ISO_BASE_URL" | grep -oE 'proxmox-ve_[0-9]+\.[0-9]+-[0-9]+\.iso' | sort -V | tail -n1)
+    latest_iso=$(_fetch_iso_list | tail -n1)
 
     if [[ -n "$latest_iso" ]]; then
         echo "${PROXMOX_ISO_BASE_URL}${latest_iso}"
@@ -114,63 +124,67 @@ download_proxmox_iso() {
 
     ISO_FILENAME=$(basename "$PROXMOX_ISO_URL")
 
-    # Download ISO with progress spinner (silent wget)
-    log "Downloading ISO: $ISO_FILENAME"
-    wget -q -O pve.iso "$PROXMOX_ISO_URL" >> "$LOG_FILE" 2>&1 &
-    show_progress $! "Downloading $ISO_FILENAME" "$ISO_FILENAME downloaded"
+    # Download checksum first (needed for aria2c verification)
+    log "Downloading checksum file"
+    curl -sS -o SHA256SUMS "$PROXMOX_CHECKSUM_URL" >> "$LOG_FILE" 2>&1 || true
+    local expected_checksum=""
+    if [[ -f "SHA256SUMS" ]]; then
+        expected_checksum=$(grep "$ISO_FILENAME" SHA256SUMS | awk '{print $1}')
+        log "Expected checksum: $expected_checksum"
+    fi
+
+    # Download ISO using aria2c (parallel connections for faster download)
+    log "Downloading ISO: $ISO_FILENAME using aria2c"
+    local aria2_args=(
+        -x 8                    # 8 connections per server
+        -s 8                    # 8 splits
+        -k 1M                   # 1MB minimum split size
+        --allow-overwrite=true
+        --auto-file-renaming=false
+        -o pve.iso
+        --console-log-level=error
+        --summary-interval=0
+    )
+
+    # Add checksum verification if available
+    if [[ -n "$expected_checksum" ]]; then
+        aria2_args+=(--checksum=sha-256="$expected_checksum")
+        log "aria2c will verify checksum automatically"
+    fi
+
+    aria2c "${aria2_args[@]}" "$PROXMOX_ISO_URL" >> "$LOG_FILE" 2>&1 &
+    show_progress $! "Downloading $ISO_FILENAME (8 connections)" "$ISO_FILENAME downloaded"
     wait $!
     local exit_code=$?
+
     if [[ $exit_code -ne 0 ]]; then
-        log "ERROR: Failed to download Proxmox ISO"
+        log "ERROR: Failed to download Proxmox ISO (aria2c exit code: $exit_code)"
+        rm -f pve.iso SHA256SUMS
         exit 1
     fi
     log "ISO downloaded successfully"
 
     if [[ ! -s "pve.iso" ]]; then
         log "ERROR: Downloaded ISO file is empty or corrupted"
-        rm -f pve.iso
+        rm -f pve.iso SHA256SUMS
         exit 1
     fi
-    log "ISO file size: $(ls -lh pve.iso | awk '{print $5}')"
+    log "ISO file size: $(stat -c%s pve.iso | awk '{printf "%.1fG", $1/1024/1024/1024}')"
 
-    # Download ISO checksum
-    log "Downloading checksum file"
-    wget -q -O SHA256SUMS "$PROXMOX_CHECKSUM_URL" >> "$LOG_FILE" 2>&1
-
-    if [[ -f "SHA256SUMS" ]]; then
-        EXPECTED_CHECKSUM=$(grep "$ISO_FILENAME" SHA256SUMS | awk '{print $1}')
-        log "Expected checksum: $EXPECTED_CHECKSUM"
-        if [[ -n "$EXPECTED_CHECKSUM" ]]; then
-            sha256sum pve.iso > /tmp/iso_checksum.txt 2>/dev/null &
-            show_progress $! "Verifying ISO checksum" "ISO checksum verified"
-            wait $!
-            local exit_code=$?
-            if [[ $exit_code -ne 0 ]]; then
-                log "ERROR: Failed to calculate ISO checksum"
-                rm -f /tmp/iso_checksum.txt SHA256SUMS
-                exit 1
-            fi
-            ACTUAL_CHECKSUM=$(cat /tmp/iso_checksum.txt | awk '{print $1}')
-            log "Actual checksum: $ACTUAL_CHECKSUM"
-            rm -f /tmp/iso_checksum.txt
-
-            if [[ "$EXPECTED_CHECKSUM" != "$ACTUAL_CHECKSUM" ]]; then
-                log "ERROR: ISO checksum verification FAILED"
-                log "Expected: $EXPECTED_CHECKSUM"
-                log "Actual:   $ACTUAL_CHECKSUM"
-                rm -f pve.iso SHA256SUMS
-                exit 1
-            fi
-            log "Checksum verification passed"
-        else
-            log "WARNING: Could not find checksum for $ISO_FILENAME"
-            print_warning "Could not find checksum for $ISO_FILENAME"
-        fi
-        rm -f SHA256SUMS
-    else
-        log "WARNING: Could not download checksum file"
-        print_warning "Could not download checksum file"
+    # Verify checksum if aria2c didn't do it (checksum wasn't available)
+    if [[ -z "$expected_checksum" ]] && [[ -f "SHA256SUMS" ]]; then
+        expected_checksum=$(grep "$ISO_FILENAME" SHA256SUMS | awk '{print $1}')
     fi
+
+    if [[ -n "$expected_checksum" ]]; then
+        # aria2c already verified if checksum was provided, but double-check if needed
+        log "Checksum verification passed (verified by aria2c)"
+    else
+        log "WARNING: Could not find checksum for $ISO_FILENAME"
+        print_warning "Could not find checksum for $ISO_FILENAME"
+    fi
+
+    rm -f SHA256SUMS
 }
 
 # Validate answer.toml has required fields

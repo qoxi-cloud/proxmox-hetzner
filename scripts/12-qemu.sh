@@ -131,14 +131,23 @@ release_drives() {
     if [[ -n "${DRIVES[*]}" ]]; then
         log "Unmounting filesystems on target drives..."
         for drive in "${DRIVES[@]}"; do
-            local drive_name
-            drive_name=$(basename "$drive")
-            # Find mount points for this drive
-            while IFS= read -r mountpoint; do
-                [[ -z "$mountpoint" ]] && continue
-                log "Unmounting $mountpoint"
-                umount -f "$mountpoint" 2>/dev/null || true
-            done < <(mount | grep -E "(^|/)$drive_name" | awk '{print $3}')
+            # Use findmnt for efficient mount point detection (faster and more reliable)
+            if command -v findmnt &>/dev/null; then
+                while IFS= read -r mountpoint; do
+                    [[ -z "$mountpoint" ]] && continue
+                    log "Unmounting $mountpoint"
+                    umount -f "$mountpoint" 2>/dev/null || true
+                done < <(findmnt -rn -o TARGET "$drive"* 2>/dev/null)
+            else
+                # Fallback to mount | grep
+                local drive_name
+                drive_name=$(basename "$drive")
+                while IFS= read -r mountpoint; do
+                    [[ -z "$mountpoint" ]] && continue
+                    log "Unmounting $mountpoint"
+                    umount -f "$mountpoint" 2>/dev/null || true
+                done < <(mount | grep -E "(^|/)$drive_name" | awk '{print $3}')
+            fi
         done
     fi
     
