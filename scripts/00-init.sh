@@ -22,6 +22,31 @@ VERSION="1.2.3"
 # Log file
 LOG_FILE="/root/pve-install-$(date +%Y%m%d-%H%M%S).log"
 
+# Track if installation completed successfully
+INSTALL_COMPLETED=false
+
+# Error handler - show message when script exits unexpectedly
+error_handler() {
+    local exit_code=$?
+    if [[ "$INSTALL_COMPLETED" != "true" && $exit_code -ne 0 ]]; then
+        echo ""
+        echo -e "${CLR_RED}╔════════════════════════════════════════════════════════════╗${CLR_RESET}"
+        echo -e "${CLR_RED}║                    INSTALLATION FAILED                     ║${CLR_RESET}"
+        echo -e "${CLR_RED}╚════════════════════════════════════════════════════════════╝${CLR_RESET}"
+        echo ""
+        echo -e "${CLR_YELLOW}An error occurred and the installation was aborted.${CLR_RESET}"
+        echo -e "${CLR_YELLOW}Please check the log file for details:${CLR_RESET}"
+        echo ""
+        echo -e "  ${CLR_CYAN}${LOG_FILE}${CLR_RESET}"
+        echo ""
+        echo -e "${CLR_YELLOW}You can view the last 50 lines with:${CLR_RESET}"
+        echo -e "  ${CLR_CYAN}tail -50 ${LOG_FILE}${CLR_RESET}"
+        echo ""
+    fi
+}
+
+trap error_handler EXIT
+
 # Start time for total duration tracking
 INSTALL_START_TIME=$(date +%s)
 

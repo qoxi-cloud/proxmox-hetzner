@@ -231,6 +231,9 @@ boot_proxmox_with_port_forwarding || {
 log "Step: configure_proxmox_via_ssh"
 configure_proxmox_via_ssh
 
+# Mark installation as completed (disables error handler message)
+INSTALL_COMPLETED=true
+
 # Reboot to the main OS
 log "Step: reboot_to_main_os"
 reboot_to_main_os
