@@ -341,12 +341,12 @@ checkbox_menu() {
             # Content line with | borders
             elif [[ "$line" =~ ^(\|)(.*)\|$ ]]; then
                 local content="${BASH_REMATCH[2]}"
-                # Cursor indicator - cyan
-                content="${content//> />${CLR_CYAN} ${CLR_RESET}}"
-                # Checked checkbox - green
-                content="${content//\[x\]/${CLR_CYAN}[✓]${CLR_RESET}}"
+                # Cursor indicator - orange
+                content="${content//> />${CLR_ORANGE} ${CLR_RESET}}"
+                # Checked checkbox - orange (matching radio menu style)
+                content="${content//\[x\]/${CLR_ORANGE}[●]${CLR_RESET}}"
                 # Unchecked checkbox - gray
-                content="${content//\[ \]/${CLR_GRAY}[ ]${CLR_RESET}}"
+                content="${content//\[ \]/${CLR_GRAY}[○]${CLR_RESET}}"
                 # Footer hint - gray
                 if [[ "$content" == *"Space:"* ]]; then
                     content="${CLR_GRAY}${content}${CLR_RESET}"
