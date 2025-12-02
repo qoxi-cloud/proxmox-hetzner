@@ -4,7 +4,7 @@
 # =============================================================================
 
 # Display configuration summary box
-# Usage: display_config_preview
+# display_config_preview builds and prints a boxed, human-readable summary of the current configuration settings for review.
 display_config_preview() {
     local inner_width=$((MENU_BOX_WIDTH - 6))
     local content=""
@@ -143,7 +143,8 @@ display_config_preview() {
     } | boxes -d stone -p a1 -s "$MENU_BOX_WIDTH" | _colorize_preview
 }
 
-# Colorize preview output
+# _colorize_preview applies color styling to box-formatted preview lines read from stdin, highlighting borders, section headers, and the action key hints.
+# It colors top/bottom box borders gray, wraps section header lines containing '---' in cyan, and transforms the bottom "Press" line by replacing ENTER_KEY/E_KEY/Q_KEY placeholders with colored key labels (Enter, e, q), padding the content to the box inner width so the hints align.
 _colorize_preview() {
     local box_width=$MENU_BOX_WIDTH
     local inner_width=$((box_width - 1))  # Width between | borders (boxes adds padding)
@@ -184,7 +185,8 @@ _colorize_preview() {
 }
 
 # Edit configuration menu
-# Returns: 0 to continue to installation, 1 to show preview again
+# edit_configuration presents a dynamic, section-based editor allowing the user to choose and edit configuration sections (e.g., Basic Settings, Network, IPv6, Storage, Proxmox, SSL, Tailscale, Optional, SSH) and invokes the corresponding edit action for the selected section.
+# Returns 0 to continue to installation, 1 to show the preview again.
 edit_configuration() {
     # Build menu dynamically based on current configuration
     local -a edit_sections=()
@@ -248,7 +250,14 @@ edit_configuration() {
 
 # =============================================================================
 # Section edit functions
-# =============================================================================
+# _edit_basic_settings prompts the user to configure core server settings: hostname, domain suffix, email, root password, and timezone.
+# It validates inputs where applicable and updates the corresponding environment variables.
+# - Prompts for hostname and validates format (letters, numbers, hyphens, 1-63 chars); updates `PVE_HOSTNAME`.
+# - Prompts for domain suffix; updates `DOMAIN_SUFFIX`.
+# - Prompts for notification email and validates format; updates `EMAIL`.
+# - Prompts for a new root password (empty to keep current or to auto-generate); validates password strength and, on success, sets `NEW_ROOT_PASSWORD` and `PASSWORD_GENERATED="no"`.
+# - Presents a timezone selection (predefined list or Custom); validates custom input and updates `TIMEZONE`.
+# - Updates derived `FQDN` as `${PVE_HOSTNAME}.${DOMAIN_SUFFIX}` and prints success messages for each changed value.
 
 _edit_basic_settings() {
     # Hostname
@@ -332,6 +341,7 @@ _edit_basic_settings() {
     FQDN="${PVE_HOSTNAME}.${DOMAIN_SUFFIX}"
 }
 
+# _edit_network_settings presents an interactive menu to select the network bridge mode and, when an internal bridge is chosen, configure the private subnet and update derived private network variables.
 _edit_network_settings() {
     # Save previous mode to detect changes
     local prev_bridge_mode="$BRIDGE_MODE"
@@ -537,6 +547,7 @@ _edit_ssl_settings() {
     print_success "SSL:" "$SSL_TYPE"
 }
 
+# _edit_tailscale_settings configures Tailscale VPN installation and related flags, prompts for an optional auth key to enable auto-connect and stealth mode, and if disabling a previously enabled Tailscale instance, invokes SSL configuration.
 _edit_tailscale_settings() {
     local ts_header="Tailscale provides secure remote access."
 
@@ -673,7 +684,7 @@ _edit_ssh_settings() {
 # =============================================================================
 
 # Show configuration preview and handle edit/confirm
-# Returns: 0 to proceed with installation, 1 to exit
+# show_configuration_review displays the configuration preview and reads a single key to either proceed with installation, open the editor, or cancel the process.
 show_configuration_review() {
     while true; do
         # Clear screen for clean display
