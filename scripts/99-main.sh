@@ -208,8 +208,11 @@ show_system_status
 log "Step: get_system_inputs"
 get_system_inputs
 
-# Show configuring progress bar and clear screen
+# Show configuration preview for interactive mode
 if [[ "$NON_INTERACTIVE" != true ]]; then
+    log "Step: show_configuration_review"
+    show_configuration_review
+
     echo ""
     show_timed_progress "Configuring..." 5
 

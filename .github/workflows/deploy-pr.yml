@@ -9,13 +9,21 @@ on:
     workflows: ["CI"]
     types:
       - completed
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: 'CI workflow run ID to deploy'
+        required: true
+        type: string
 
 jobs:
   deploy-pr:
     runs-on: ubuntu-latest
+    # Run on workflow_run from PR, or on manual dispatch
     if: >
-      github.event.workflow_run.event == 'pull_request' &&
-      github.event.workflow_run.conclusion == 'success'
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.event == 'pull_request' &&
+       github.event.workflow_run.conclusion == 'success')
 
     permissions:
       contents: write
@@ -23,12 +31,21 @@ jobs:
       actions: read
 
     steps:
+      - name: Set run ID
+        id: run
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "id=${{ inputs.run_id }}" >> $GITHUB_OUTPUT
+          else
+            echo "id=${{ github.event.workflow_run.id }}" >> $GITHUB_OUTPUT
+          fi
+
       - name: Download PR metadata
         uses: actions/download-artifact@v4
         with:
           name: pr-metadata
           path: /tmp/pr-metadata
-          run-id: ${{ github.event.workflow_run.id }}
+          run-id: ${{ steps.run.outputs.id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Download build artifact
@@ -36,7 +53,7 @@ jobs:
         with:
           name: pve-install
           path: /tmp/build
-          run-id: ${{ github.event.workflow_run.id }}
+          run-id: ${{ steps.run.outputs.id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Read PR metadata
@@ -45,7 +62,7 @@ jobs:
           PR_NUMBER=$(cat /tmp/pr-metadata/pr_number)
           PR_BRANCH=$(cat /tmp/pr-metadata/pr_branch)
           PR_REPO=$(cat /tmp/pr-metadata/pr_repo)
-          VERSION=$(grep -oP 'VERSION="\K[^"]+' /tmp/build/pve-install.sh)
+          VERSION=$(grep '^VERSION=' /tmp/build/pve-install.sh | head -1 | sed 's/VERSION="//;s/"//')
 
           echo "number=${PR_NUMBER}" >> $GITHUB_OUTPUT
           echo "branch=${PR_BRANCH}" >> $GITHUB_OUTPUT

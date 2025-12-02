@@ -126,13 +126,7 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
     permissions:
-      contents: read
-      pages: write
-      id-token: write
-
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      contents: write
 
     steps:
       - name: Download build artifact
@@ -146,14 +140,21 @@ jobs:
           VERSION=$(grep '^VERSION=' pve-install.sh | head -1 | sed 's/VERSION="//;s/"//')
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
 
-      - name: Prepare GitHub Pages
+      - name: Checkout gh-pages
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: gh-pages
+
+      - name: Deploy to gh-pages
         run: |
           VERSION="${{ steps.version.outputs.version }}"
-          mkdir -p _site
-          cp pve-install.sh _site/
+
+          # Copy build artifact
+          cp pve-install.sh gh-pages/
 
           # Generate version.json for shields.io badge
-          cat > _site/version.json << EOF
+          cat > gh-pages/version.json << EOF
           {
             "schemaVersion": 1,
             "label": "version",
@@ -162,11 +163,10 @@ jobs:
           }
           EOF
 
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: _site
-
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+          # Commit and push
+          cd gh-pages
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add pve-install.sh version.json
+          git commit -m "Deploy version ${VERSION}" || echo "No changes to commit"
+          git push origin gh-pages
