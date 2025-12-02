@@ -35,7 +35,7 @@ disable_colors() {
 }
 
 # Version (MAJOR only - MINOR.PATCH added by CI from git tags/commits)
-VERSION="1.17.10-pr.8"
+VERSION="1.17.11-pr.8"
 
 # =============================================================================
 # Configuration constants
@@ -3768,6 +3768,9 @@ display_config_preview() {
 
 # Colorize preview output
 _colorize_preview() {
+    local box_width=$MENU_BOX_WIDTH
+    local inner_width=$((box_width - 2))  # Width between | borders
+
     while IFS= read -r line; do
         # Top/bottom border
         if [[ "$line" =~ ^\+[-+]+\+$ ]]; then
@@ -3775,16 +3778,26 @@ _colorize_preview() {
         # Content line with | borders
         elif [[ "$line" =~ ^(\|)(.*)\|$ ]]; then
             local content="${BASH_REMATCH[2]}"
+            local visible_content="$content"
             # Section headers (lines starting with ---)
             if [[ "$content" == *"---"* ]]; then
                 content="${CLR_CYAN}${content}${CLR_RESET}"
             fi
             # Key bindings at the bottom - highlight keys in cyan
-            if [[ "$content" == *"Press"* ]]; then
+            if [[ "$visible_content" == *"Press"* ]]; then
+                # Calculate visible length (without placeholders, with actual key names)
+                visible_content="${visible_content//ENTER_KEY/Enter}"
+                visible_content="${visible_content//E_KEY/e}"
+                visible_content="${visible_content//Q_KEY/q}"
+                local visible_len=${#visible_content}
+                local padding=$((inner_width - visible_len))
+                # Apply colors
                 content="${content//ENTER_KEY/${CLR_CYAN}Enter${CLR_GRAY}}"
                 content="${content//E_KEY/${CLR_CYAN}e${CLR_GRAY}}"
                 content="${content//Q_KEY/${CLR_CYAN}q${CLR_GRAY}}"
-                content="${CLR_GRAY}${content}${CLR_RESET}"
+                content="${CLR_GRAY}${content}"
+                # Add padding spaces before reset
+                printf -v content "%s%${padding}s${CLR_RESET}" "$content" ""
             fi
             echo "${CLR_GRAY}|${CLR_RESET}${content}${CLR_GRAY}|${CLR_RESET}"
         else
