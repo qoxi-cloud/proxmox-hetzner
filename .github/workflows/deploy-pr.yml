@@ -45,7 +45,7 @@ jobs:
           PR_NUMBER=$(cat /tmp/pr-metadata/pr_number)
           PR_BRANCH=$(cat /tmp/pr-metadata/pr_branch)
           PR_REPO=$(cat /tmp/pr-metadata/pr_repo)
-          VERSION=$(grep -oP 'VERSION="\K[^"]+' /tmp/build/pve-install.sh)
+          VERSION=$(grep '^VERSION=' /tmp/build/pve-install.sh | head -1 | sed 's/VERSION="//;s/"//')
 
           echo "number=${PR_NUMBER}" >> $GITHUB_OUTPUT
           echo "branch=${PR_BRANCH}" >> $GITHUB_OUTPUT
