@@ -70,6 +70,7 @@ One command replaces hours of manual configuration with battle-tested defaults.
 | `--qemu-ram MB` | Set QEMU RAM in MB (default: auto 4096-8192) |
 | `--qemu-cores N` | Set QEMU CPU cores (default: auto, max 16) |
 | `--iso-version FILE` | Use specific Proxmox ISO version |
+| `--no-color` | Disable colored output |
 
 ## Documentation
 
