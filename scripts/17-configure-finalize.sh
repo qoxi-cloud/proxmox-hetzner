@@ -35,6 +35,12 @@ finalize_vm() {
 
     # Wait for QEMU to exit
     wait_with_progress "Waiting for QEMU process to exit" 120 "! kill -0 $QEMU_PID 2>/dev/null" 1 "QEMU process exited"
+    local exit_code=$?
+    if [[ $exit_code -ne 0 ]]; then
+        log "WARNING: QEMU process did not exit cleanly within 120 seconds"
+        # Force kill if still running
+        kill -9 "$QEMU_PID" 2>/dev/null || true
+    fi
 }
 
 # =============================================================================
