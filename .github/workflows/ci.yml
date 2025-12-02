@@ -143,7 +143,7 @@ jobs:
       - name: Calculate version for badge
         id: version
         run: |
-          VERSION=$(grep -oP 'VERSION="\K[^"]+' pve-install.sh)
+          VERSION=$(grep '^VERSION=' pve-install.sh | head -1 | sed 's/VERSION="//;s/"//')
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
 
       - name: Prepare GitHub Pages
