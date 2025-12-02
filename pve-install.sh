@@ -35,7 +35,7 @@ disable_colors() {
 }
 
 # Version (MAJOR only - MINOR.PATCH added by CI from git tags/commits)
-VERSION="1.17.4"
+VERSION="1.17.5"
 
 # =============================================================================
 # Configuration constants
