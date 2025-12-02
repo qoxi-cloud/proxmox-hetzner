@@ -34,9 +34,18 @@ configure_ssl_certificate() {
     fi
 
     # Copy Let's Encrypt templates to VM
-    remote_copy "./templates/letsencrypt-deploy-hook.sh" "/tmp/letsencrypt-deploy-hook.sh"
-    remote_copy "./templates/letsencrypt-firstboot.sh" "/tmp/letsencrypt-firstboot.sh"
-    remote_copy "./templates/letsencrypt-firstboot.service" "/tmp/letsencrypt-firstboot.service"
+    if ! remote_copy "./templates/letsencrypt-deploy-hook.sh" "/tmp/letsencrypt-deploy-hook.sh"; then
+        log "ERROR: Failed to copy letsencrypt-deploy-hook.sh"
+        exit 1
+    fi
+    if ! remote_copy "./templates/letsencrypt-firstboot.sh" "/tmp/letsencrypt-firstboot.sh"; then
+        log "ERROR: Failed to copy letsencrypt-firstboot.sh"
+        exit 1
+    fi
+    if ! remote_copy "./templates/letsencrypt-firstboot.service" "/tmp/letsencrypt-firstboot.service"; then
+        log "ERROR: Failed to copy letsencrypt-firstboot.service"
+        exit 1
+    fi
 
     # Configure first-boot certificate script
     run_remote "Configuring Let's Encrypt templates" '
