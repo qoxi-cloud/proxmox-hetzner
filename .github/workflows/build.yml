@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - 'scripts/*.sh'
+      - '.github/workflows/build.yml'
   workflow_dispatch:
 
 jobs:
