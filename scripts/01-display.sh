@@ -115,5 +115,5 @@ print_warning() {
 
 # Print info message
 print_info() {
-    echo -e "${CLR_GRAY}ℹ${CLR_RESET} $1"
+    echo -e "${CLR_CYAN}ℹ${CLR_RESET} $1"
 }

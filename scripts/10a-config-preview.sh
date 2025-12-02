@@ -137,9 +137,9 @@ display_config_preview() {
             printf "%-${inner_width}s\n" "$line"
         done
         echo ""
-        echo "Press Enter to start installation"
-        echo "Press 'e' to edit configuration"
-        echo "Press 'q' to quit"
+        echo "Press ENTER_KEY to start installation"
+        echo "Press E_KEY to edit configuration"
+        echo "Press Q_KEY to quit"
     } | boxes -d stone -p a1 -s $MENU_BOX_WIDTH | _colorize_preview
 }
 
@@ -156,8 +156,11 @@ _colorize_preview() {
             if [[ "$content" == *"---"* ]]; then
                 content="${CLR_CYAN}${content}${CLR_RESET}"
             fi
-            # Key bindings at the bottom
+            # Key bindings at the bottom - highlight keys in cyan
             if [[ "$content" == *"Press"* ]]; then
+                content="${content//ENTER_KEY/${CLR_CYAN}Enter${CLR_GRAY}}"
+                content="${content//E_KEY/${CLR_CYAN}e${CLR_GRAY}}"
+                content="${content//Q_KEY/${CLR_CYAN}q${CLR_GRAY}}"
                 content="${CLR_GRAY}${content}${CLR_RESET}"
             fi
             echo "${CLR_GRAY}|${CLR_RESET}${content}${CLR_GRAY}|${CLR_RESET}"
