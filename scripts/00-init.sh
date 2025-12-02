@@ -19,6 +19,10 @@ CLR_GRAY=$'\033[38;5;240m'
 CLR_HETZNER=$'\033[38;5;160m'
 CLR_RESET=$'\033[m'
 
+# Spinner characters for progress display (filling circle animation)
+# shellcheck disable=SC2034
+SPINNER_CHARS=('○' '◔' '◑' '◕' '●' '◕' '◑' '◔')
+
 # Disables all color output variables by setting them to empty strings.
 # Called when --no-color flag is used to ensure accessible terminal output.
 disable_colors() {

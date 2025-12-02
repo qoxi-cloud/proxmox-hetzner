@@ -244,9 +244,6 @@ prompt_validated() {
 # Progress indicators
 # =============================================================================
 
-# Spinner characters for progress display (filling circle animation)
-SPINNER_CHARS=('○' '◔' '◑' '◕' '●' '◕' '◑' '◔')
-
 # Shows progress indicator with spinner while process runs.
 # Parameters:
 #   $1 - PID of process to wait for
