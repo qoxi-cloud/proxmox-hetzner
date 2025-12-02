@@ -412,6 +412,11 @@ make_autoinstall_iso() {
     # Run ISO creation with full logging
     proxmox-auto-install-assistant prepare-iso pve.iso --fetch-from iso --answer-file answer.toml --output pve-autoinstall.iso >> "$LOG_FILE" 2>&1 &
     show_progress $! "Creating autoinstall ISO" "Autoinstall ISO created"
+    wait $!
+    local exit_code=$?
+    if [[ $exit_code -ne 0 ]]; then
+        log "WARNING: proxmox-auto-install-assistant exited with code $exit_code"
+    fi
 
     # Verify ISO was created
     if [[ ! -f "./pve-autoinstall.iso" ]]; then
