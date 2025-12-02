@@ -11,7 +11,7 @@ get_inputs_interactive() {
     # Network interface
     print_warning "Use the predictable name (enp*, eno*) for bare metal, not eth0"
     local iface_prompt="Interface name (options: ${AVAILABLE_ALTNAMES}): "
-    read -e -p "$iface_prompt" -i "$INTERFACE_NAME" INTERFACE_NAME
+    read -r -e -p "$iface_prompt" -i "$INTERFACE_NAME" INTERFACE_NAME
     # Clear detection message, warning, and input line (4 lines up), then show success
     printf "\033[4A\033[J"
     print_success "Interface:" "${INTERFACE_NAME}"
@@ -34,7 +34,7 @@ get_inputs_interactive() {
         print_success "Domain:" "${DOMAIN_SUFFIX} (from env)"
     else
         local domain_prompt="Enter domain suffix: "
-        read -e -p "$domain_prompt" -i "local" DOMAIN_SUFFIX
+        read -r -e -p "$domain_prompt" -i "local" DOMAIN_SUFFIX
         printf "\033[A\033[2K"
         print_success "Domain:" "${DOMAIN_SUFFIX}"
     fi

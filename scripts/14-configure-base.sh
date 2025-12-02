@@ -28,9 +28,9 @@ configure_base_system() {
     wait $pid6 || exit_code=1
     
     if [[ $exit_code -eq 0 ]]; then
-        printf "\r\e[K${CLR_CYAN}✓ Configuration files copied${CLR_RESET}\n"
+        printf '\r\e[K%s✓ Configuration files copied%s\n' "${CLR_CYAN}" "${CLR_RESET}"
     else
-        printf "\r\e[K${CLR_RED}✗ Copying configuration files${CLR_RESET}\n"
+        printf '\r\e[K%s✗ Copying configuration files%s\n' "${CLR_RED}" "${CLR_RESET}"
         log "ERROR: Failed to copy some configuration files"
         exit 1
     fi
@@ -55,6 +55,7 @@ configure_base_system() {
     if [[ "${PVE_REPO_TYPE:-no-subscription}" == "enterprise" ]]; then
         log "configure_base_system: configuring enterprise repository"
         # Enterprise: disable default no-subscription repo (template already has enterprise)
+        # shellcheck disable=SC2016 # Single quotes intentional - executed on remote system
         run_remote "Configuring enterprise repository" '
             for repo_file in /etc/apt/sources.list.d/*.list /etc/apt/sources.list.d/*.sources; do
                 [ -f "$repo_file" ] || continue
@@ -74,6 +75,7 @@ configure_base_system() {
     else
         # No-subscription or test: disable enterprise repo
         log "configure_base_system: configuring ${PVE_REPO_TYPE:-no-subscription} repository"
+        # shellcheck disable=SC2016 # Single quotes intentional - executed on remote system
         run_remote "Configuring ${PVE_REPO_TYPE:-no-subscription} repository" '
             for repo_file in /etc/apt/sources.list.d/*.list /etc/apt/sources.list.d/*.sources; do
                 [ -f "$repo_file" ] || continue
@@ -169,6 +171,7 @@ configure_shell() {
             apt-get install -yqq zsh git curl
         ' "ZSH and Git installed"
 
+        # shellcheck disable=SC2016 # Single quotes intentional - executed on remote system
         run_remote "Installing Oh-My-Zsh" '
             export RUNZSH=no
             export CHSH=no

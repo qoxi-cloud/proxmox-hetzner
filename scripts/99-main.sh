@@ -173,7 +173,7 @@ reboot_to_main_os() {
     fi
 
     # Ask user to reboot the system
-    read -e -p "Do you want to reboot the system? (y/n): " -i "y" REBOOT
+    read -r -e -p "Do you want to reboot the system? (y/n): " -i "y" REBOOT
     if [[ "$REBOOT" == "y" ]]; then
         print_info "Rebooting the system..."
         reboot

@@ -18,7 +18,7 @@ prompt_or_default() {
         fi
     else
         local result
-        read -e -p "$prompt" -i "${current_value:-$default}" result
+        read -r -e -p "$prompt" -i "${current_value:-$default}" result
         echo "$result"
     fi
 }

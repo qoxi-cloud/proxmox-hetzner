@@ -238,7 +238,7 @@ prompt_with_validation() {
 
     local result
     while true; do
-        read -e -p "$prompt" -i "$default" result
+        read -r -e -p "$prompt" -i "$default" result
         if $validator "$result"; then
             printf "\033[A\r%s✓%s %s%s%s%s\033[K\n" "${CLR_CYAN}" "${CLR_RESET}" "$confirm_label" "${CLR_CYAN}" "$result" "${CLR_RESET}"
             # Use printf -v for safe variable assignment (avoids eval)

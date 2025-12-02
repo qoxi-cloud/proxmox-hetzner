@@ -372,7 +372,7 @@ make_autoinstall_iso() {
         exit 1
     fi
 
-    log "Autoinstall ISO created successfully: $(ls -lh pve-autoinstall.iso 2>/dev/null | awk '{print $5}')"
+    log "Autoinstall ISO created successfully: $(stat -c%s pve-autoinstall.iso 2>/dev/null | awk '{printf "%.1fM", $1/1024/1024}')"
 
     # Remove original ISO to save disk space (only autoinstall ISO is needed)
     log "Removing original ISO to save disk space"

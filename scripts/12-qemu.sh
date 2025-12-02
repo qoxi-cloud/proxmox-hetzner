@@ -146,7 +146,7 @@ _deactivate_lvm() {
     # Deactivate specific VGs by name if vgs is available
     if command -v vgs &>/dev/null; then
         while IFS= read -r vg; do
-            [[ -n "$vg" ]] && vgchange -an "$vg" 2>/dev/null || true
+            if [[ -n "$vg" ]]; then vgchange -an "$vg" 2>/dev/null || true; fi
         done < <(vgs --noheadings -o vg_name 2>/dev/null)
     fi
 }

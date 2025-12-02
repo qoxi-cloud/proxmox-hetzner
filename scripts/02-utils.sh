@@ -213,7 +213,7 @@ prompt_validated() {
     local result=""
 
     while true; do
-        read -e -p "$prompt" -i "$default" result
+        read -r -e -p "$prompt" -i "$default" result
         if $validator "$result"; then
             echo "$result"
             return 0

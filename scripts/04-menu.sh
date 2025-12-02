@@ -245,7 +245,7 @@ input_box() {
         echo "$content"
     } | boxes -d stone -p a1 -s $MENU_BOX_WIDTH | _colorize_input_box
 
-    read -e -p "$prompt" -i "$default" INPUT_VALUE
+    read -r -e -p "$prompt" -i "$default" INPUT_VALUE
 
     # Clear the input box
     tput cuu $((box_lines + 1))
