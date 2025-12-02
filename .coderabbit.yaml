@@ -4,6 +4,10 @@
 language: "en-US"
 
 reviews:
+  # Skip review for deployment branches
+  base_branches:
+    - "!gh-pages"
+
   # Automatic review on PR open
   auto_review:
     enabled: true
