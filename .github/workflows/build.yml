@@ -73,6 +73,16 @@ jobs:
           mkdir -p _site
           cp pve-install.sh _site/
 
+          # Generate version.json for shields.io badge
+          cat > _site/version.json << EOF
+          {
+            "schemaVersion": 1,
+            "label": "version",
+            "message": "${VERSION}",
+            "color": "blue"
+          }
+          EOF
+
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
