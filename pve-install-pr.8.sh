@@ -35,7 +35,7 @@ disable_colors() {
 }
 
 # Version (MAJOR only - MINOR.PATCH added by CI from git tags/commits)
-VERSION="1.17.8-pr.8"
+VERSION="1.17.9-pr.8"
 
 # =============================================================================
 # Configuration constants
@@ -3943,6 +3943,9 @@ _edit_basic_settings() {
 }
 
 _edit_network_settings() {
+    # Save previous mode to detect changes
+    local prev_bridge_mode="$BRIDGE_MODE"
+
     # Bridge mode
     local bridge_options=("internal" "external" "both")
     local bridge_header="Configure network bridges for VMs"$'\n'
@@ -3961,6 +3964,13 @@ _edit_network_settings() {
 
     # Private subnet (only for internal/both)
     if [[ "$BRIDGE_MODE" == "internal" || "$BRIDGE_MODE" == "both" ]]; then
+        # Show info if switching from external mode
+        if [[ "$prev_bridge_mode" == "external" ]]; then
+            echo ""
+            print_info "Internal bridge enabled - configuring private subnet..."
+            echo ""
+        fi
+
         local subnet_options=("10.0.0.0/24" "192.168.1.0/24" "172.16.0.0/24" "custom")
 
         radio_menu \
@@ -3990,6 +4000,12 @@ _edit_network_settings() {
         PRIVATE_IP="${PRIVATE_CIDR}.1"
         SUBNET_MASK=$(echo "$PRIVATE_SUBNET" | cut -d'/' -f2)
         PRIVATE_IP_CIDR="${PRIVATE_IP}/${SUBNET_MASK}"
+    else
+        # External only - clear private network values
+        PRIVATE_SUBNET=""
+        PRIVATE_CIDR=""
+        PRIVATE_IP=""
+        PRIVATE_IP_CIDR=""
     fi
 }
 
@@ -4161,6 +4177,9 @@ _edit_tailscale_settings() {
             print_warning "Tailscale:" "enabled (manual auth required)"
         fi
     else
+        # Check if Tailscale was previously enabled - need to configure SSL
+        local was_tailscale_enabled="$INSTALL_TAILSCALE"
+
         INSTALL_TAILSCALE="no"
         TAILSCALE_AUTH_KEY=""
         TAILSCALE_SSH="no"
@@ -4168,6 +4187,14 @@ _edit_tailscale_settings() {
         TAILSCALE_DISABLE_SSH="no"
         STEALTH_MODE="no"
         print_success "Tailscale:" "not installed"
+
+        # If Tailscale was enabled before, now need to configure SSL
+        if [[ "$was_tailscale_enabled" == "yes" ]]; then
+            echo ""
+            print_info "Tailscale disabled - configuring SSL certificate..."
+            echo ""
+            _edit_ssl_settings
+        fi
     fi
 }
 
