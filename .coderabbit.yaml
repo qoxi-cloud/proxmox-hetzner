@@ -24,6 +24,9 @@ reviews:
     and shell scripting best practices. Skip praise and pleasantries.
     Provide specific line references and ShellCheck codes when applicable.
 
+    This project uses emoji conventional commits (e.g., "✨ feat:", "🐛 fix:").
+    Do not suggest removing emojis from commit messages or PR titles.
+
   # Path-specific instructions
   path_instructions:
     - path: "scripts/**/*.sh"
