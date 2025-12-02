@@ -117,28 +117,32 @@ jobs:
               ? `\n\n🍴 **Fork PR:** Templates will be loaded from [\`${prRepo}\`](https://github.com/${prRepo}/tree/${prBranch}).`
               : '';
 
+            const tableRows = [
+              '| Property | Value |',
+              '|----------|-------|',
+              `| **Version** | \`${version}\` |`,
+              `| **Branch** | \`${prBranch}\` |`,
+              `| **Source** | ${isFork ? `Fork: \`${prRepo}\`` : 'Same repo'} |`
+            ].join('\n');
+
             const body = `## 🧪 Test Build Available
 
-| Property | Value |
-|----------|-------|
-| **Version** | \`${version}\` |
-| **Branch** | \`${prBranch}\` |
-| **Source** | ${isFork ? `Fork: \`${prRepo}\`` : 'Same repo'} |
+            ${tableRows}
 
-### Quick Install (for testing)
+            ### Quick Install (for testing)
 
-\`\`\`bash
-bash <(curl -sSL ${scriptUrl})
-\`\`\`
+            \`\`\`bash
+            bash <(curl -sSL ${scriptUrl})
+            \`\`\`
 
-### Direct Link
+            ### Direct Link
 
-📥 [${filename}](${scriptUrl})
+            📥 [${filename}](${scriptUrl})
 
----
-⚠️ **Note:** This is a test build. Templates will be loaded from the \`${prBranch}\` branch.${forkNote}
+            ---
+            ⚠️ **Note:** This is a test build. Templates will be loaded from the \`${prBranch}\` branch.${forkNote}
 
-🤖 *This comment is automatically updated on each push to this PR.*`;
+            🤖 *This comment is automatically updated on each push to this PR.*`.replace(/^ +/gm, '');
 
             // Find existing comment
             const { data: comments } = await github.rest.issues.listComments({
