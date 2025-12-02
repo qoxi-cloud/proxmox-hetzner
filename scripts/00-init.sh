@@ -19,9 +19,13 @@ CLR_GRAY=$'\033[38;5;240m'
 CLR_HETZNER=$'\033[38;5;160m'
 CLR_RESET=$'\033[m'
 
-# Spinner characters for progress display (filling circle animation)
+# Menu box width for consistent UI rendering across all scripts
 # shellcheck disable=SC2034
-SPINNER_CHARS=('○' '◔' '◑' '◕' '●' '◕' '◑' '◔')
+MENU_BOX_WIDTH=60
+
+# Spinner characters for progress display (Braille filling animation)
+# shellcheck disable=SC2034
+SPINNER_CHARS=('⠋' '⠙' '⠹' '⠸' '⠼' '⠴' '⠦' '⠧' '⠇' '⠏')
 
 # Disables all color output variables by setting them to empty strings.
 # Called when --no-color flag is used to ensure accessible terminal output.
