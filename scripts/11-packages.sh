@@ -232,6 +232,7 @@ download_proxmox_iso() {
     # Download with fallback chain: aria2c (conservative) -> curl -> wget
     log "Downloading ISO: $ISO_FILENAME"
     local download_success=false
+    local download_method=""
 
     # Try aria2c first with conservative settings (2 connections instead of 8)
     local exit_code
@@ -243,6 +244,7 @@ download_proxmox_iso() {
         exit_code=$?
         if [[ $exit_code -eq 0 ]] && [[ -s "pve.iso" ]]; then
             download_success=true
+            download_method="aria2c"
             log "aria2c download successful"
         else
             log "aria2c failed (exit code: $exit_code), trying curl fallback"
@@ -259,6 +261,7 @@ download_proxmox_iso() {
         exit_code=$?
         if [[ $exit_code -eq 0 ]] && [[ -s "pve.iso" ]]; then
             download_success=true
+            download_method="curl"
             log "curl download successful"
         else
             log "curl failed (exit code: $exit_code), trying wget fallback"
@@ -275,6 +278,7 @@ download_proxmox_iso() {
         exit_code=$?
         if [[ $exit_code -eq 0 ]] && [[ -s "pve.iso" ]]; then
             download_success=true
+            download_method="wget"
             log "wget download successful"
         else
             rm -f pve.iso
@@ -293,15 +297,20 @@ download_proxmox_iso() {
 
     # Verify checksum (if not already verified by aria2c)
     if [[ -n "$expected_checksum" ]]; then
-        log "Verifying ISO checksum"
-        local actual_checksum
-        actual_checksum=$(sha256sum pve.iso | awk '{print $1}')
-        if [[ "$actual_checksum" != "$expected_checksum" ]]; then
-            log "ERROR: Checksum mismatch! Expected: $expected_checksum, Got: $actual_checksum"
-            rm -f pve.iso SHA256SUMS
-            exit 1
+        # Skip manual verification if aria2c already validated
+        if [[ "$download_method" == "aria2c" ]]; then
+            log "Checksum already verified by aria2c"
+        else
+            log "Verifying ISO checksum"
+            local actual_checksum
+            actual_checksum=$(sha256sum pve.iso | awk '{print $1}')
+            if [[ "$actual_checksum" != "$expected_checksum" ]]; then
+                log "ERROR: Checksum mismatch! Expected: $expected_checksum, Got: $actual_checksum"
+                rm -f pve.iso SHA256SUMS
+                exit 1
+            fi
+            log "Checksum verification passed"
         fi
-        log "Checksum verification passed"
     else
         log "WARNING: Could not find checksum for $ISO_FILENAME"
         print_warning "Could not find checksum for $ISO_FILENAME"
