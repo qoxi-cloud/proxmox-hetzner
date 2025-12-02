@@ -1,7 +1,7 @@
 # CodeRabbit AI Code Review Configuration
 # Documentation: https://docs.coderabbit.ai/configuration
 
-language: "en"
+language: "en-US"
 
 reviews:
   # Automatic review on PR open
@@ -15,7 +15,7 @@ reviews:
       - "DO NOT MERGE"
       - "DRAFT"
 
-  # Review profile: chill | assertive | strict
+  # Review profile: chill | assertive
   profile: "assertive"
 
   # Tone instructions
