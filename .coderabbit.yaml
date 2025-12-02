@@ -18,6 +18,12 @@ reviews:
   # Review profile: chill | assertive | strict
   profile: "assertive"
 
+  # Tone instructions
+  tone_instructions: |
+    Be direct and technical. Focus on security issues, error handling,
+    and shell scripting best practices. Skip praise and pleasantries.
+    Provide specific line references and ShellCheck codes when applicable.
+
   # Path-specific instructions
   path_instructions:
     - path: "scripts/**/*.sh"
