@@ -173,36 +173,62 @@ _colorize_preview() {
 # Edit configuration menu
 # Returns: 0 to continue to installation, 1 to show preview again
 edit_configuration() {
-    local edit_sections=(
-        "Basic Settings|Hostname, domain, email, password, timezone"
-        "Network|Bridge mode, private subnet"
-        "IPv6|IPv6 mode and settings"
-        "Storage|ZFS RAID level"
-        "Proxmox|Version and repository"
-        "SSL|Certificate type"
-        "Tailscale|VPN configuration"
-        "Optional|Shell, packages, power profile"
-        "SSH Key|Public key for authentication"
-        "Done|Return to configuration review"
-    )
+    # Build menu dynamically based on current configuration
+    local -a edit_sections=()
+    local -a edit_actions=()
+
+    # Always available sections
+    edit_sections+=("Basic Settings|Hostname, domain, email, password, timezone")
+    edit_actions+=("_edit_basic_settings")
+
+    edit_sections+=("Network|Bridge mode, private subnet")
+    edit_actions+=("_edit_network_settings")
+
+    edit_sections+=("IPv6|IPv6 mode and settings")
+    edit_actions+=("_edit_ipv6_settings")
+
+    # Storage - show RAID options only if multiple drives
+    if [[ "${DRIVE_COUNT:-0}" -ge 2 ]]; then
+        edit_sections+=("Storage|ZFS RAID level (${DRIVE_COUNT} drives)")
+    else
+        edit_sections+=("Storage|Single drive mode")
+    fi
+    edit_actions+=("_edit_storage_settings")
+
+    edit_sections+=("Proxmox|Version and repository")
+    edit_actions+=("_edit_proxmox_settings")
+
+    # SSL - only show if Tailscale is NOT enabled
+    if [[ "$INSTALL_TAILSCALE" != "yes" ]]; then
+        edit_sections+=("SSL|Certificate type")
+        edit_actions+=("_edit_ssl_settings")
+    fi
+
+    edit_sections+=("Tailscale|VPN configuration")
+    edit_actions+=("_edit_tailscale_settings")
+
+    edit_sections+=("Optional|Shell, packages, power profile")
+    edit_actions+=("_edit_optional_settings")
+
+    edit_sections+=("SSH Key|Public key for authentication")
+    edit_actions+=("_edit_ssh_settings")
+
+    # Done option always last
+    edit_sections+=("Done|Return to configuration review")
+    edit_actions+=("return")
 
     radio_menu \
         "Edit Configuration (select section)" \
         "Select which section to edit"$'\n' \
         "${edit_sections[@]}"
 
-    case $MENU_SELECTED in
-        0) _edit_basic_settings ;;
-        1) _edit_network_settings ;;
-        2) _edit_ipv6_settings ;;
-        3) _edit_storage_settings ;;
-        4) _edit_proxmox_settings ;;
-        5) _edit_ssl_settings ;;
-        6) _edit_tailscale_settings ;;
-        7) _edit_optional_settings ;;
-        8) _edit_ssh_settings ;;
-        9) return 0 ;;  # Done - return to preview
-    esac
+    # Execute selected action
+    local action="${edit_actions[$MENU_SELECTED]}"
+    if [[ "$action" == "return" ]]; then
+        return 0
+    else
+        $action
+    fi
 
     return 0
 }
