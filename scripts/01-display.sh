@@ -113,7 +113,7 @@ print_warning() {
     fi
 }
 
-# Print info message
+# print_info prints an informational message prefixed with a cyan info symbol.
 print_info() {
     echo -e "${CLR_CYAN}ℹ${CLR_RESET} $1"
 }
