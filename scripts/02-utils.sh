@@ -3,9 +3,11 @@
 # General utilities
 # =============================================================================
 
-# Download files with retry
+# Downloads file with retry logic and integrity verification.
+# Parameters:
+#   $1 - Output file path
+#   $2 - URL to download from
 # Returns: 0 on success, 1 on failure
-# Note: Caller should handle the error (exit or continue)
 download_file() {
     local output_file="$1"
     local url="$2"
@@ -46,8 +48,11 @@ download_file() {
 # Template processing utilities
 # =============================================================================
 
-# Apply template variable substitutions to a file
-# Usage: apply_template_vars FILE [VAR1=VALUE1] [VAR2=VALUE2] ...
+# Applies template variable substitutions to a file.
+# Parameters:
+#   $1 - File path to modify
+#   $@ - VAR=VALUE pairs for substitution (replaces {{VAR}} with VALUE)
+# Returns: 0 on success, 1 if file not found
 apply_template_vars() {
     local file="$1"
     shift
@@ -78,8 +83,10 @@ apply_template_vars() {
     fi
 }
 
-# Apply common template variables to a file using global variables
-# Usage: apply_common_template_vars FILE
+# Applies common template variables to a file using global variables.
+# Substitutes placeholders for IP, hostname, DNS, network settings.
+# Parameters:
+#   $1 - File path to modify
 apply_common_template_vars() {
     local file="$1"
 
@@ -103,12 +110,12 @@ apply_common_template_vars() {
         "DNS6_SECONDARY=${DNS6_SECONDARY:-2606:4700:4700::1001}"
 }
 
-# Download template from GitHub repository
-# Usage: download_template LOCAL_PATH [REMOTE_FILENAME]
-# REMOTE_FILENAME defaults to basename of LOCAL_PATH
-# All templates have .tmpl extension on GitHub, but are saved locally without it
+# Downloads template from GitHub repository with validation.
+# Parameters:
+#   $1 - Local path to save template
+#   $2 - Optional remote filename (defaults to basename of $1)
 # Returns: 0 on success, 1 on failure
-# Note: Caller should handle the error (exit or continue)
+# Note: Templates have .tmpl extension on GitHub but saved locally without it
 download_template() {
     local local_path="$1"
     local remote_file="${2:-$(basename "$local_path")}"
@@ -166,15 +173,20 @@ download_template() {
     return 0
 }
 
-# Generate a secure random password
-# Usage: generate_password [length]
+# Generates a secure random password.
+# Parameters:
+#   $1 - Password length (default: 16)
+# Returns: Random password via stdout
 generate_password() {
     local length="${1:-16}"
     # Use /dev/urandom with base64, filter to alphanumeric + some special chars
     tr -dc 'A-Za-z0-9!@#$%^&*' < /dev/urandom | head -c "$length"
 }
 
-# Function to read password with asterisks shown for each character
+# Reads password from user with asterisks shown for each character.
+# Parameters:
+#   $1 - Prompt text
+# Returns: Password via stdout
 read_password() {
     local prompt="$1"
     local password=""
@@ -204,7 +216,13 @@ read_password() {
     echo "$password"
 }
 
-# Prompt with validation loop
+# Prompts for input with validation loop until valid value provided.
+# Parameters:
+#   $1 - Prompt text
+#   $2 - Default value
+#   $3 - Validator function name
+#   $4 - Error message for invalid input
+# Returns: Validated input value via stdout
 prompt_validated() {
     local prompt="$1"
     local default="$2"
@@ -229,10 +247,13 @@ prompt_validated() {
 # Spinner characters for progress display (filling circle animation)
 SPINNER_CHARS=('○' '◔' '◑' '◕' '●' '◕' '◑' '◔')
 
-# Progress indicator with spinner
-# Waits for process to complete, shows success or failure
-# Usage: show_progress PID "message" ["done_message"] [--silent]
-# --silent: clear line on success instead of showing done message
+# Shows progress indicator with spinner while process runs.
+# Parameters:
+#   $1 - PID of process to wait for
+#   $2 - Progress message
+#   $3 - Optional done message or "--silent" to clear line on success
+#   $4 - Optional "--silent" flag
+# Returns: Exit code of the waited process
 show_progress() {
     local pid=$1
     local message="${2:-Processing}"
@@ -264,7 +285,14 @@ show_progress() {
     return $exit_code
 }
 
-# Wait for condition with progress
+# Waits for condition to become true within timeout period, showing progress.
+# Parameters:
+#   $1 - Progress message
+#   $2 - Timeout in seconds
+#   $3 - Check command (evaluated)
+#   $4 - Check interval in seconds (default: 5)
+#   $5 - Success message (default: same as $1)
+# Returns: 0 if condition met, 1 on timeout
 wait_with_progress() {
     local message="$1"
     local timeout="$2"
@@ -293,9 +321,10 @@ wait_with_progress() {
     done
 }
 
-# Show timed progress bar
-# Usage: show_timed_progress "message" [duration_seconds]
-# Duration defaults to 5-7 seconds (random for visual effect)
+# Shows timed progress bar with visual animation.
+# Parameters:
+#   $1 - Progress message
+#   $2 - Duration in seconds (default: 5-7 random)
 show_timed_progress() {
     local message="$1"
     local duration="${2:-$((5 + RANDOM % 3))}"  # 5-7 seconds default
@@ -329,7 +358,10 @@ show_timed_progress() {
     printf "\r\e[K"
 }
 
-# Format time duration
+# Formats time duration in seconds to human-readable string.
+# Parameters:
+#   $1 - Duration in seconds
+# Returns: Formatted duration (e.g., "1h 30m 45s") via stdout
 format_duration() {
     local seconds="$1"
     local hours=$((seconds / 3600))

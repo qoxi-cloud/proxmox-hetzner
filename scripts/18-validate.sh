@@ -11,8 +11,11 @@ VALIDATION_WARNINGS=0
 # Store validation results for summary (global array)
 declare -a VALIDATION_RESULTS=()
 
-# Add validation result
-# Usage: _add_validation_result "status" "check_name" "details"
+# Internal: adds validation result to global arrays.
+# Parameters:
+#   $1 - Status (pass/fail/warn)
+#   $2 - Check name
+#   $3 - Details (optional)
 _add_validation_result() {
     local status="$1"
     local check_name="$2"
@@ -34,7 +37,7 @@ _add_validation_result() {
     esac
 }
 
-# Validate SSH configuration
+# Internal: validates SSH configuration (service, keys, auth settings).
 _validate_ssh() {
     # Check SSH service is running
     local ssh_status
@@ -64,7 +67,7 @@ _validate_ssh() {
     fi
 }
 
-# Validate ZFS configuration
+# Internal: validates ZFS pool health and ARC configuration.
 _validate_zfs() {
     # Check rpool health
     local pool_health
@@ -89,7 +92,7 @@ _validate_zfs() {
     fi
 }
 
-# Validate network configuration
+# Internal: validates network connectivity (IPv4, DNS, IPv6).
 _validate_network() {
     # Check IPv4 connectivity (ping gateway)
     local ipv4_ping
@@ -121,7 +124,7 @@ _validate_network() {
     fi
 }
 
-# Validate essential Proxmox services
+# Internal: validates essential Proxmox services.
 _validate_services() {
     # List of critical services to check
     local services=("pve-cluster" "pvedaemon" "pveproxy" "pvestatd")
@@ -150,7 +153,7 @@ _validate_services() {
     fi
 }
 
-# Validate Proxmox-specific configuration
+# Internal: validates Proxmox Web UI and API.
 _validate_proxmox() {
     # Check Proxmox web interface is responding
     local web_check
@@ -171,7 +174,7 @@ _validate_proxmox() {
     fi
 }
 
-# Validate SSL certificate
+# Internal: validates SSL certificate presence and validity.
 _validate_ssl() {
     # Check certificate exists and get expiry
     local cert_info
@@ -186,8 +189,8 @@ _validate_ssl() {
     fi
 }
 
-# Run all validation checks with spinner
-# Sets global VALIDATION_RESULTS array for use in summary
+# Runs all post-installation validation checks.
+# Side effects: Sets VALIDATION_PASSED/FAILED/WARNINGS and VALIDATION_RESULTS globals
 validate_installation() {
     log "Starting post-installation validation..."
 

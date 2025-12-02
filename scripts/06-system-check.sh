@@ -3,7 +3,10 @@
 # System checks and hardware detection
 # =============================================================================
 
-# Collect system info with progress indicator
+# Collects and validates system information with progress indicator.
+# Checks: root access, internet connectivity, disk space, RAM, CPU, KVM.
+# Installs required packages if missing.
+# Side effects: Sets PREFLIGHT_* global variables, may install packages
 collect_system_info() {
     local errors=0
     local checks=7
@@ -154,7 +157,9 @@ collect_system_info() {
     PREFLIGHT_ERRORS=$errors
 }
 
-# Detect drives (NVMe preferred, falls back to any disk)
+# Detects available drives (NVMe preferred, fallback to any disk).
+# Excludes loop devices and partitions.
+# Side effects: Sets DRIVES, DRIVE_COUNT, DRIVE_NAMES, DRIVE_SIZES, DRIVE_MODELS globals
 detect_drives() {
     # Find all NVMe drives (excluding partitions)
     mapfile -t DRIVES < <(lsblk -d -n -o NAME,TYPE | grep nvme | grep disk | awk '{print "/dev/"$1}' | sort)
@@ -187,7 +192,9 @@ detect_drives() {
 
 }
 
-# Display system status
+# Displays system status summary in formatted table.
+# Shows preflight checks and detected storage drives.
+# Exits with error if critical checks failed or no drives detected.
 show_system_status() {
     detect_drives
 

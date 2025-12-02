@@ -4,6 +4,10 @@
 # Protects SSH and Proxmox API from brute-force attacks
 # =============================================================================
 
+# Installs and configures Fail2Ban for brute-force protection.
+# Only installs when Tailscale is not used (Tailscale provides its own security).
+# Configures jails for SSH and Proxmox API protection.
+# Side effects: Sets FAIL2BAN_INSTALLED global, installs fail2ban package
 configure_fail2ban() {
     # Only install Fail2Ban if Tailscale is NOT installed
     # Tailscale provides its own security through authenticated mesh network

@@ -3,6 +3,9 @@
 # Package preparation and ISO download
 # =============================================================================
 
+# Prepares system packages for Proxmox installation.
+# Adds Proxmox repository, downloads GPG key, installs required packages.
+# Side effects: Modifies apt sources, installs packages
 prepare_packages() {
     log "Starting package preparation"
 
@@ -58,7 +61,8 @@ prepare_packages() {
 # Cache for ISO list (avoid multiple HTTP requests)
 _ISO_LIST_CACHE=""
 
-# Fetch ISO list from Proxmox repository (cached)
+# Internal: fetches ISO list from Proxmox repository (cached).
+# Returns: List of ISO filenames via stdout
 _fetch_iso_list() {
     if [[ -z "$_ISO_LIST_CACHE" ]]; then
         _ISO_LIST_CACHE=$(curl -s "$PROXMOX_ISO_BASE_URL" | grep -oE 'proxmox-ve_[0-9]+\.[0-9]+-[0-9]+\.iso' | sort -uV)
@@ -66,14 +70,17 @@ _fetch_iso_list() {
     echo "$_ISO_LIST_CACHE"
 }
 
-# Fetch available Proxmox VE ISO versions (last N versions)
-# Returns array of ISO filenames, newest first
+# Fetches available Proxmox VE ISO versions (last N versions).
+# Parameters:
+#   $1 - Number of versions to return (default: 5)
+# Returns: ISO filenames via stdout, newest first
 get_available_proxmox_isos() {
     local count="${1:-5}"
     _fetch_iso_list | tail -n "$count" | tac
 }
 
-# Fetch latest Proxmox VE ISO URL
+# Fetches URL of latest Proxmox VE ISO.
+# Returns: Full ISO URL via stdout, or error on failure
 get_latest_proxmox_ve_iso() {
     local latest_iso
     latest_iso=$(_fetch_iso_list | tail -n1)
@@ -86,19 +93,29 @@ get_latest_proxmox_ve_iso() {
     fi
 }
 
-# Get ISO URL by filename
+# Constructs full ISO URL from filename.
+# Parameters:
+#   $1 - ISO filename
+# Returns: Full URL via stdout
 get_proxmox_iso_url() {
     local iso_filename="$1"
     echo "${PROXMOX_ISO_BASE_URL}${iso_filename}"
 }
 
-# Extract version from ISO filename (e.g., "8.3-1" from "proxmox-ve_8.3-1.iso")
+# Extracts version from ISO filename.
+# Parameters:
+#   $1 - ISO filename (e.g., "proxmox-ve_8.3-1.iso")
+# Returns: Version string (e.g., "8.3-1") via stdout
 get_iso_version() {
     local iso_filename="$1"
     echo "$iso_filename" | sed -E 's/proxmox-ve_([0-9]+\.[0-9]+-[0-9]+)\.iso/\1/'
 }
 
-# Download ISO using curl with retry support (most stable)
+# Internal: downloads ISO using curl with retry support.
+# Parameters:
+#   $1 - URL to download
+#   $2 - Output filename
+# Returns: Exit code from curl
 _download_iso_curl() {
     local url="$1"
     local output="$2"
@@ -115,7 +132,11 @@ _download_iso_curl() {
         "$url" >> "$LOG_FILE" 2>&1
 }
 
-# Download ISO using wget with retry support
+# Internal: downloads ISO using wget with retry support.
+# Parameters:
+#   $1 - URL to download
+#   $2 - Output filename
+# Returns: Exit code from wget
 _download_iso_wget() {
     local url="$1"
     local output="$2"
@@ -131,7 +152,12 @@ _download_iso_wget() {
         "$url" >> "$LOG_FILE" 2>&1
 }
 
-# Download ISO using aria2c with conservative settings
+# Internal: downloads ISO using aria2c with conservative settings.
+# Parameters:
+#   $1 - URL to download
+#   $2 - Output filename
+#   $3 - Optional SHA256 checksum for verification
+# Returns: Exit code from aria2c
 _download_iso_aria2c() {
     local url="$1"
     local output="$2"
@@ -164,6 +190,10 @@ _download_iso_aria2c() {
     aria2c "${aria2_args[@]}" "$url" >> "$LOG_FILE" 2>&1
 }
 
+# Downloads Proxmox ISO with fallback chain and checksum verification.
+# Uses selected version or fetches latest if not specified.
+# Tries: aria2c → curl → wget
+# Side effects: Creates pve.iso file, exits on failure
 download_proxmox_iso() {
     log "Starting Proxmox ISO download"
 
@@ -278,7 +308,10 @@ download_proxmox_iso() {
     rm -f SHA256SUMS
 }
 
-# Validate answer.toml has required fields
+# Validates answer.toml has all required fields.
+# Parameters:
+#   $1 - Path to answer.toml file
+# Returns: 0 if valid, 1 if missing required fields
 validate_answer_toml() {
     local file="$1"
     local required_fields=("fqdn" "mailto" "timezone" "root_password")
@@ -298,6 +331,9 @@ validate_answer_toml() {
     return 0
 }
 
+# Creates answer.toml for Proxmox autoinstall.
+# Downloads template and applies configuration variables.
+# Side effects: Creates answer.toml file, exits on failure
 make_answer_toml() {
     log "Creating answer.toml for autoinstall"
     log "ZFS_RAID=$ZFS_RAID, DRIVE_COUNT=$DRIVE_COUNT"
@@ -352,6 +388,8 @@ make_answer_toml() {
     cat answer.toml >> "$LOG_FILE"
 }
 
+# Creates autoinstall ISO from Proxmox ISO and answer.toml.
+# Side effects: Creates pve-autoinstall.iso, removes pve.iso
 make_autoinstall_iso() {
     log "Creating autoinstall ISO"
     log "Input: pve.iso exists: $(test -f pve.iso && echo 'yes' || echo 'no')"

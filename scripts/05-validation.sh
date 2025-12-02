@@ -3,40 +3,58 @@
 # Input validation functions
 # =============================================================================
 
+# Validates hostname format (alphanumeric, hyphens, 1-63 chars).
+# Parameters:
+#   $1 - Hostname to validate
+# Returns: 0 if valid, 1 otherwise
 validate_hostname() {
     local hostname="$1"
     # Hostname: alphanumeric and hyphens, 1-63 chars, cannot start/end with hyphen
     [[ "$hostname" =~ ^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$ ]]
 }
 
+# Validates fully qualified domain name format.
+# Parameters:
+#   $1 - FQDN to validate
+# Returns: 0 if valid, 1 otherwise
 validate_fqdn() {
     local fqdn="$1"
     # FQDN: valid hostname labels separated by dots
     [[ "$fqdn" =~ ^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$ ]]
 }
 
+# Validates email address format (basic check).
+# Parameters:
+#   $1 - Email address to validate
+# Returns: 0 if valid, 1 otherwise
 validate_email() {
     local email="$1"
     # Basic email validation
     [[ "$email" =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]]
 }
 
+# Validates password meets minimum requirements (8+ chars, ASCII).
+# Parameters:
+#   $1 - Password to validate
+# Returns: 0 if valid, 1 otherwise
 validate_password() {
     local password="$1"
     # Password must be at least 8 characters (Proxmox requirement)
     [[ ${#password} -ge 8 ]] && is_ascii_printable "$password"
 }
 
-# Check if password contains only ASCII printable characters
-# Usage: is_ascii_printable PASSWORD
-# Returns: 0 if valid, 1 if contains non-ASCII
+# Checks if string contains only ASCII printable characters.
+# Parameters:
+#   $1 - String to check
+# Returns: 0 if all ASCII printable, 1 otherwise
 is_ascii_printable() {
     LC_ALL=C bash -c '[[ "$1" =~ ^[[:print:]]+$ ]]' _ "$1"
 }
 
-# Get password validation error message
-# Usage: get_password_error PASSWORD
-# Returns: error message string, empty if password is valid
+# Returns descriptive error message for invalid password.
+# Parameters:
+#   $1 - Password to check
+# Returns: Error message via stdout, empty if valid
 get_password_error() {
     local password="$1"
     if [[ -z "$password" ]]; then
@@ -48,8 +66,9 @@ get_password_error() {
     fi
 }
 
-# Validate password and print error if invalid
-# Usage: validate_password_with_error PASSWORD
+# Validates password and prints error if invalid.
+# Parameters:
+#   $1 - Password to validate
 # Returns: 0 if valid, 1 if invalid (with error printed)
 validate_password_with_error() {
     local password="$1"
@@ -62,6 +81,10 @@ validate_password_with_error() {
     return 0
 }
 
+# Validates subnet in CIDR notation (e.g., 10.0.0.0/24).
+# Parameters:
+#   $1 - Subnet to validate
+# Returns: 0 if valid, 1 otherwise
 validate_subnet() {
     local subnet="$1"
     # Validate CIDR notation (e.g., 10.0.0.0/24)
@@ -85,9 +108,10 @@ validate_subnet() {
 # IPv6 validation functions
 # =============================================================================
 
-# Validate IPv6 address (without prefix)
-# Supports full, compressed (::), and mixed (::ffff:192.0.2.1) formats
-# Usage: validate_ipv6 "2001:db8::1"
+# Validates IPv6 address (full, compressed, or mixed format).
+# Parameters:
+#   $1 - IPv6 address to validate (without prefix)
+# Returns: 0 if valid, 1 otherwise
 validate_ipv6() {
     local ipv6="$1"
 
@@ -138,8 +162,10 @@ validate_ipv6() {
     return 0
 }
 
-# Validate IPv6 address with CIDR prefix
-# Usage: validate_ipv6_cidr "2001:db8::1/64"
+# Validates IPv6 address with CIDR prefix (e.g., 2001:db8::1/64).
+# Parameters:
+#   $1 - IPv6 with CIDR notation
+# Returns: 0 if valid, 1 otherwise
 validate_ipv6_cidr() {
     local ipv6_cidr="$1"
 
@@ -157,9 +183,10 @@ validate_ipv6_cidr() {
     validate_ipv6 "$ipv6"
 }
 
-# Validate IPv6 gateway address
-# Gateway can be a full IPv6 address or link-local (fe80::)
-# Usage: validate_ipv6_gateway "fe80::1"
+# Validates IPv6 gateway address (accepts empty, "auto", or valid IPv6).
+# Parameters:
+#   $1 - Gateway address to validate
+# Returns: 0 if valid, 1 otherwise
 validate_ipv6_gateway() {
     local gateway="$1"
 
@@ -173,8 +200,10 @@ validate_ipv6_gateway() {
     validate_ipv6 "$gateway"
 }
 
-# Validate IPv6 prefix length (for VM subnet allocation)
-# Usage: validate_ipv6_prefix_length "80"
+# Validates IPv6 prefix length (48-128).
+# Parameters:
+#   $1 - Prefix length to validate
+# Returns: 0 if valid, 1 otherwise
 validate_ipv6_prefix_length() {
     local prefix="$1"
 
@@ -185,27 +214,37 @@ validate_ipv6_prefix_length() {
     return 0
 }
 
-# Check if IPv6 address is link-local (fe80::/10)
-# Usage: is_ipv6_link_local "fe80::1"
+# Checks if IPv6 address is link-local (fe80::/10).
+# Parameters:
+#   $1 - IPv6 address to check
+# Returns: 0 if link-local, 1 otherwise
 is_ipv6_link_local() {
     local ipv6="$1"
     [[ "$ipv6" =~ ^[fF][eE]8[0-9a-fA-F]: ]] || [[ "$ipv6" =~ ^[fF][eE][89aAbB][0-9a-fA-F]: ]]
 }
 
-# Check if IPv6 address is ULA (fc00::/7)
-# Usage: is_ipv6_ula "fd00::1"
+# Checks if IPv6 address is ULA (fc00::/7).
+# Parameters:
+#   $1 - IPv6 address to check
+# Returns: 0 if ULA, 1 otherwise
 is_ipv6_ula() {
     local ipv6="$1"
     [[ "$ipv6" =~ ^[fF][cCdD] ]]
 }
 
-# Check if IPv6 address is global unicast (2000::/3)
-# Usage: is_ipv6_global "2001:db8::1"
+# Checks if IPv6 address is global unicast (2000::/3).
+# Parameters:
+#   $1 - IPv6 address to check
+# Returns: 0 if global unicast, 1 otherwise
 is_ipv6_global() {
     local ipv6="$1"
     [[ "$ipv6" =~ ^[23] ]]
 }
 
+# Validates timezone string format and existence.
+# Parameters:
+#   $1 - Timezone to validate (e.g., Europe/London)
+# Returns: 0 if valid, 1 otherwise
 validate_timezone() {
     local tz="$1"
     # Check if timezone file exists (preferred validation)
@@ -225,9 +264,15 @@ validate_timezone() {
 # Input prompt helpers with validation
 # =============================================================================
 
-# Prompt for input with validation, showing success checkmark when valid
-# Usage: prompt_with_validation "prompt" "default" "validator" "error_msg" "var_name" ["confirm_label"]
-# confirm_label: Optional short label for confirmation (e.g., "Hostname:" instead of full prompt)
+# Prompts for input with validation, showing success checkmark when valid.
+# Parameters:
+#   $1 - Prompt text
+#   $2 - Default value
+#   $3 - Validator function name
+#   $4 - Error message for invalid input
+#   $5 - Variable name to store result
+#   $6 - Optional confirmation label
+# Side effects: Sets variable named by $5
 prompt_with_validation() {
     local prompt="$1"
     local default="$2"
@@ -249,12 +294,12 @@ prompt_with_validation() {
     done
 }
 
-# Prompt for password with validation
-# Usage: prompt_password "prompt" "var_name"
-# Validate that FQDN resolves to expected IP using public DNS servers
-# Usage: validate_dns_resolution "fqdn" "expected_ip"
+# Validates that FQDN resolves to expected IP using public DNS servers.
+# Parameters:
+#   $1 - FQDN to resolve
+#   $2 - Expected IP address
 # Returns: 0 if matches, 1 if no resolution, 2 if wrong IP
-# Sets: DNS_RESOLVED_IP with the resolved IP (empty if no resolution)
+# Side effects: Sets DNS_RESOLVED_IP global
 validate_dns_resolution() {
     local fqdn="$1"
     local expected_ip="$2"
@@ -327,6 +372,11 @@ validate_dns_resolution() {
     fi
 }
 
+# Prompts for password with validation and masked display.
+# Parameters:
+#   $1 - Prompt text
+#   $2 - Variable name to store result
+# Side effects: Sets variable named by $2
 prompt_password() {
     local prompt="$1"
     local var_name="$2"

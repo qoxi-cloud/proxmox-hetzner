@@ -3,6 +3,9 @@
 # SSH hardening and finalization
 # =============================================================================
 
+# Configures SSH hardening with key-based authentication only.
+# Deploys SSH public key and hardens sshd_config.
+# Side effects: Disables password authentication on remote system
 configure_ssh_hardening() {
     # Deploy SSH hardening LAST (after all other operations)
     # CRITICAL: This must succeed - if it fails, system remains with password auth enabled
@@ -24,6 +27,7 @@ configure_ssh_hardening() {
     fi
 }
 
+# Finalizes VM by powering it off and waiting for QEMU to exit.
 finalize_vm() {
     # Power off the VM
     remote_exec "poweroff" > /dev/null 2>&1 &
@@ -37,6 +41,8 @@ finalize_vm() {
 # Main configuration function
 # =============================================================================
 
+# Main entry point for post-install Proxmox configuration via SSH.
+# Orchestrates all configuration steps: templates, base, services, security.
 configure_proxmox_via_ssh() {
     log "Starting Proxmox configuration via SSH"
     make_templates

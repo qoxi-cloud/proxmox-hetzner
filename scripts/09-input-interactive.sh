@@ -3,6 +3,11 @@
 # Interactive input collection
 # =============================================================================
 
+# Collects all inputs through interactive prompts and menus.
+# Handles: hostname, domain, email, password, timezone, network, storage,
+# Proxmox options, SSL, Tailscale, SSH.
+# Validates inputs and provides user-friendly error messages.
+# Side effects: Sets all configuration global variables
 get_inputs_interactive() {
     # =========================================================================
     # SECTION 1: Text inputs

@@ -4,6 +4,10 @@
 # Provides audit trail for security compliance and forensics
 # =============================================================================
 
+# Installs and configures auditd for system audit logging.
+# Deploys custom audit rules for Proxmox administrative actions.
+# Configures log rotation and persistence settings.
+# Side effects: Sets AUDITD_INSTALLED global, installs auditd package
 configure_auditd() {
     # Skip if auditd installation is not requested
     if [[ "$INSTALL_AUDITD" != "yes" ]]; then

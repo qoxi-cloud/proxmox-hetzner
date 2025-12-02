@@ -3,6 +3,9 @@
 # Tailscale VPN configuration
 # =============================================================================
 
+# Configures Tailscale VPN with SSH and Web UI access.
+# Optionally authenticates with auth key and enables stealth mode.
+# Side effects: Installs and configures Tailscale on remote system
 configure_tailscale() {
     if [[ "$INSTALL_TAILSCALE" != "yes" ]]; then
         return 0

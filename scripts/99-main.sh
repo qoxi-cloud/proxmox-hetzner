@@ -3,8 +3,11 @@
 # Finish and reboot
 # =============================================================================
 
-# Truncate string with ellipsis in the middle
-# Usage: truncate_middle "string" max_length
+# Truncates string with ellipsis in the middle.
+# Parameters:
+#   $1 - String to truncate
+#   $2 - Maximum length (default: 25)
+# Returns: Truncated string via stdout
 truncate_middle() {
     local str="$1"
     local max_len="${2:-25}"
@@ -22,7 +25,8 @@ truncate_middle() {
     echo "${str:0:$keep_start}...${str: -$keep_end}"
 }
 
-# Function to reboot into the main OS
+# Displays installation summary and prompts for system reboot.
+# Shows validation results, configuration details, and access methods.
 reboot_to_main_os() {
     local inner_width=$((MENU_BOX_WIDTH - 6))
 

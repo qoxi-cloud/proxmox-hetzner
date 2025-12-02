@@ -3,6 +3,9 @@
 # Template preparation and download
 # =============================================================================
 
+# Downloads and prepares all template files for Proxmox configuration.
+# Selects appropriate templates based on bridge mode and repository type.
+# Side effects: Creates templates directory, downloads and modifies templates
 make_templates() {
     log "Starting template preparation"
     mkdir -p ./templates

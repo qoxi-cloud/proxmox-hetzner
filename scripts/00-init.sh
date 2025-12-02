@@ -19,7 +19,8 @@ CLR_GRAY=$'\033[38;5;240m'
 CLR_HETZNER=$'\033[38;5;160m'
 CLR_RESET=$'\033[m'
 
-# Disable all colors (called when --no-color flag is used)
+# Disables all color output variables by setting them to empty strings.
+# Called when --no-color flag is used to ensure accessible terminal output.
 disable_colors() {
     CLR_RED=''
     CLR_CYAN=''
@@ -125,7 +126,10 @@ LOG_FILE="/root/pve-install-$(date +%Y%m%d-%H%M%S).log"
 # Track if installation completed successfully
 INSTALL_COMPLETED=false
 
-# Cleanup temporary files on exit
+# Cleans up temporary files created during installation.
+# Removes ISO files, password files, logs, and other temporary artifacts.
+# Behavior depends on INSTALL_COMPLETED flag - preserves files if installation succeeded.
+# Uses secure deletion for password files when available.
 cleanup_temp_files() {
     # Clean up standard temporary files
     rm -f /tmp/tailscale_*.txt /tmp/iso_checksum.txt /tmp/*.tmp 2>/dev/null || true
@@ -141,7 +145,10 @@ cleanup_temp_files() {
     find /dev/shm /tmp -name "*passfile*" -type f -delete 2>/dev/null || true
 }
 
-# Cleanup handler - restore cursor and show error if needed
+# Cleanup handler invoked on script exit via trap.
+# Performs graceful shutdown of background processes, drive cleanup, cursor restoration.
+# Displays error message if installation failed (INSTALL_COMPLETED != true).
+# Returns: Exit code from the script
 cleanup_and_error_handler() {
     local exit_code=$?
 

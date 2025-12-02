@@ -3,11 +3,15 @@
 # QEMU installation and boot functions
 # =============================================================================
 
+# Checks if system is booted in UEFI mode.
+# Returns: 0 if UEFI, 1 if legacy BIOS
 is_uefi_mode() {
     [[ -d /sys/firmware/efi ]]
 }
 
-# Configure QEMU settings (shared between install and boot)
+# Configures QEMU settings (shared between install and boot).
+# Detects UEFI/BIOS mode, KVM availability, CPU cores, and RAM.
+# Side effects: Sets UEFI_OPTS, KVM_OPTS, CPU_OPTS, QEMU_CORES, QEMU_RAM, DRIVE_ARGS
 setup_qemu_config() {
     log "Setting up QEMU configuration"
 
@@ -75,8 +79,11 @@ setup_qemu_config() {
 # Drive release helper functions
 # =============================================================================
 
-# Send signal to process if it's running
-# Usage: _signal_process PID SIGNAL LOG_MESSAGE
+# Internal: sends signal to process if running.
+# Parameters:
+#   $1 - Process ID
+#   $2 - Signal name/number
+#   $3 - Log message
 _signal_process() {
     local pid="$1"
     local signal="$2"
@@ -88,8 +95,9 @@ _signal_process() {
     fi
 }
 
-# Kill processes by pattern with graceful then forced termination
-# Usage: _kill_processes_by_pattern PATTERN
+# Internal: kills processes by pattern with graceful then forced termination.
+# Parameters:
+#   $1 - Process pattern to match
 _kill_processes_by_pattern() {
     local pattern="$1"
     local pids
@@ -117,7 +125,7 @@ _kill_processes_by_pattern() {
     pkill -9 "$pattern" 2>/dev/null || true
 }
 
-# Stop mdadm RAID arrays
+# Internal: stops mdadm RAID arrays.
 _stop_mdadm_arrays() {
     if ! command -v mdadm &>/dev/null; then
         return 0
@@ -134,7 +142,7 @@ _stop_mdadm_arrays() {
     done
 }
 
-# Deactivate LVM volume groups
+# Internal: deactivates LVM volume groups.
 _deactivate_lvm() {
     if ! command -v vgchange &>/dev/null; then
         return 0
@@ -151,7 +159,7 @@ _deactivate_lvm() {
     fi
 }
 
-# Unmount filesystems on specified drives
+# Internal: unmounts filesystems on target drives.
 _unmount_drive_filesystems() {
     [[ -z "${DRIVES[*]}" ]] && return 0
 
@@ -177,7 +185,7 @@ _unmount_drive_filesystems() {
     done
 }
 
-# Kill processes holding drives open
+# Internal: kills processes holding drives open.
 _kill_drive_holders() {
     [[ -z "${DRIVES[*]}" ]] && return 0
 
@@ -202,7 +210,8 @@ _kill_drive_holders() {
 # Main drive release function
 # =============================================================================
 
-# Release drives from any existing locks
+# Releases drives from existing locks before QEMU starts.
+# Stops RAID arrays, deactivates LVM, unmounts filesystems, kills holders.
 release_drives() {
     log "Releasing drives from locks..."
 
@@ -227,7 +236,9 @@ release_drives() {
     log "Drives released"
 }
 
-# Install Proxmox via QEMU
+# Installs Proxmox via QEMU with autoinstall ISO.
+# Runs QEMU in background with direct drive access.
+# Side effects: Writes to drives, exits on failure
 install_proxmox() {
     setup_qemu_config
 
@@ -277,7 +288,9 @@ install_proxmox() {
     fi
 }
 
-# Boot installed Proxmox with SSH port forwarding
+# Boots installed Proxmox with SSH port forwarding.
+# Exposes SSH on port 5555 for post-install configuration.
+# Side effects: Starts QEMU, sets QEMU_PID global
 boot_proxmox_with_port_forwarding() {
     setup_qemu_config
     

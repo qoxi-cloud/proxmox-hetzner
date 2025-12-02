@@ -8,7 +8,10 @@
 SSH_OPTS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -o ConnectTimeout=${SSH_CONNECT_TIMEOUT:-10}"
 SSH_PORT="5555"
 
-# Check if port is available before use
+# Checks if specified port is available (not in use).
+# Parameters:
+#   $1 - Port number to check
+# Returns: 0 if available, 1 if in use
 check_port_available() {
     local port="$1"
     if command -v ss &>/dev/null; then
@@ -23,10 +26,11 @@ check_port_available() {
     return 0
 }
 
-# Create secure temporary file for password
-# Uses /dev/shm if available (RAM-based, faster and more secure)
-# Falls back to regular /tmp if /dev/shm is not available
-# Returns: path to temporary file
+# Creates secure temporary file for password storage.
+# Uses /dev/shm if available (RAM-based, faster and more secure).
+# Falls back to regular /tmp if /dev/shm is not available.
+# Returns: Path to temporary file via stdout
+# Side effects: Creates file with NEW_ROOT_PASSWORD content
 create_passfile() {
     local passfile
     # Try /dev/shm first (RAM-based, not on disk)
@@ -42,8 +46,10 @@ create_passfile() {
     echo "$passfile"
 }
 
-# Securely clean up password file
-# Uses shred if available, otherwise overwrites with zeros before deletion
+# Securely cleans up password file.
+# Uses shred if available, otherwise overwrites with zeros before deletion.
+# Parameters:
+#   $1 - Path to password file
 secure_cleanup_passfile() {
     local passfile="$1"
     if [[ -f "$passfile" ]]; then
@@ -62,7 +68,12 @@ secure_cleanup_passfile() {
     fi
 }
 
-# Wait for SSH to be fully ready (not just port open)
+# Waits for SSH service to be fully ready on localhost:SSH_PORT.
+# Performs port check followed by SSH connection test.
+# Parameters:
+#   $1 - Timeout in seconds (default: 120)
+# Returns: 0 if SSH ready, 1 on timeout or failure
+# Side effects: Uses NEW_ROOT_PASSWORD for authentication
 wait_for_ssh_ready() {
     local timeout="${1:-120}"
 
@@ -99,6 +110,11 @@ wait_for_ssh_ready() {
     return $exit_code
 }
 
+# Executes command on remote VM via SSH with retry logic.
+# Parameters:
+#   $* - Command to execute remotely
+# Returns: Exit code from remote command
+# Side effects: Uses SSH_PORT and NEW_ROOT_PASSWORD
 remote_exec() {
     # Use secure temporary file for password
     local passfile
@@ -133,6 +149,9 @@ remote_exec() {
     return $exit_code
 }
 
+# Executes bash script on remote VM via SSH (reads from stdin).
+# Returns: Exit code from remote script
+# Side effects: Uses SSH_PORT and NEW_ROOT_PASSWORD
 remote_exec_script() {
     # Use secure temporary file for password
     local passfile
@@ -146,7 +165,14 @@ remote_exec_script() {
     return $exit_code
 }
 
-# Execute remote script with progress indicator (logs output to file, shows spinner)
+# Executes remote script with progress indicator.
+# Logs output to file, shows spinner to user.
+# Parameters:
+#   $1 - Progress message
+#   $2 - Script content to execute
+#   $3 - Done message (optional, defaults to $1)
+# Returns: Exit code from remote script
+# Side effects: Logs output to LOG_FILE
 remote_exec_with_progress() {
     local message="$1"
     local script="$2"
@@ -192,8 +218,12 @@ remote_exec_with_progress() {
     return $exit_code
 }
 
-# Execute remote script with progress, exit on failure
-# Usage: run_remote "message" 'script' ["done_message"]
+# Executes remote script with progress, exits on failure.
+# Parameters:
+#   $1 - Progress message
+#   $2 - Script content to execute
+#   $3 - Done message (optional, defaults to $1)
+# Side effects: Exits with code 1 on failure
 run_remote() {
     local message="$1"
     local script="$2"
@@ -205,6 +235,12 @@ run_remote() {
     fi
 }
 
+# Copies file to remote VM via SCP.
+# Parameters:
+#   $1 - Source file path (local)
+#   $2 - Destination path (remote)
+# Returns: Exit code from scp
+# Side effects: Uses SSH_PORT and NEW_ROOT_PASSWORD
 remote_copy() {
     local src="$1"
     local dst="$2"
@@ -225,8 +261,11 @@ remote_copy() {
 # SSH key utilities
 # =============================================================================
 
-# Parse SSH public key into components
-# Sets: SSH_KEY_TYPE, SSH_KEY_DATA, SSH_KEY_COMMENT, SSH_KEY_SHORT
+# Parses SSH public key into components.
+# Parameters:
+#   $1 - SSH public key string
+# Returns: 0 on success, 1 if key is empty
+# Side effects: Sets SSH_KEY_TYPE, SSH_KEY_DATA, SSH_KEY_COMMENT, SSH_KEY_SHORT globals
 parse_ssh_key() {
     local key="$1"
 
@@ -255,13 +294,17 @@ parse_ssh_key() {
     return 0
 }
 
-# Validate SSH public key format
+# Validates SSH public key format (rsa, ed25519, ecdsa).
+# Parameters:
+#   $1 - SSH public key string
+# Returns: 0 if valid format, 1 otherwise
 validate_ssh_key() {
     local key="$1"
     [[ "$key" =~ ^ssh-(rsa|ed25519|ecdsa)[[:space:]] ]]
 }
 
-# Get SSH key from rescue system authorized_keys
+# Retrieves SSH public key from rescue system's authorized_keys.
+# Returns: First valid SSH public key via stdout, empty if none found
 get_rescue_ssh_key() {
     if [[ -f /root/.ssh/authorized_keys ]]; then
         grep -E "^ssh-(rsa|ed25519|ecdsa)" /root/.ssh/authorized_keys 2>/dev/null | head -1

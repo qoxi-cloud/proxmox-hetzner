@@ -3,6 +3,9 @@
 # SSL certificate configuration via SSH
 # =============================================================================
 
+# Configures SSL certificates for Proxmox Web UI.
+# For Let's Encrypt, sets up first-boot certificate acquisition.
+# Side effects: Installs certbot, configures systemd service for cert renewal
 configure_ssl_certificate() {
     log "configure_ssl_certificate: SSL_TYPE=$SSL_TYPE"
 

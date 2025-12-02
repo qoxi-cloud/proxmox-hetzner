@@ -3,6 +3,10 @@
 # Main input collection function
 # =============================================================================
 
+# Main entry point for input collection.
+# Detects network, collects inputs (interactive or non-interactive mode),
+# calculates derived values, and optionally saves configuration.
+# Side effects: Sets all configuration globals, may save config file
 get_system_inputs() {
     detect_network_interface
     collect_network_info

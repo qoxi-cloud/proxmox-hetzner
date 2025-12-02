@@ -2,6 +2,9 @@
 # =============================================================================
 # Command line argument parsing
 # =============================================================================
+
+# Displays command-line help message with usage, options, and examples.
+# Prints to stdout and exits with code 0.
 show_help() {
     cat << EOF
 Proxmox VE Automated Installer for Hetzner v${VERSION}

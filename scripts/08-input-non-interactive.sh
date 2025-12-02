@@ -3,7 +3,12 @@
 # Non-interactive input collection
 # =============================================================================
 
-# Helper to prompt or use existing value
+# Helper to return existing value or default based on interactive mode.
+# Parameters:
+#   $1 - Prompt text (unused in non-interactive mode)
+#   $2 - Default value
+#   $3 - Variable name to check
+# Returns: Current value or default via stdout
 prompt_or_default() {
     local prompt="$1"
     local default="$2"
@@ -27,6 +32,10 @@ prompt_or_default() {
 # Input collection - Non-interactive mode
 # =============================================================================
 
+# Collects all inputs from environment/config in non-interactive mode.
+# Uses default values where config values are not provided.
+# Validates required fields (SSH key).
+# Side effects: Sets all configuration global variables
 get_inputs_non_interactive() {
     # Use defaults or config values (referencing global constants)
     PVE_HOSTNAME="${PVE_HOSTNAME:-$DEFAULT_HOSTNAME}"

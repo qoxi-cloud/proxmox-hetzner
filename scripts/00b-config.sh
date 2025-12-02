@@ -3,8 +3,10 @@
 # Config file functions
 # =============================================================================
 
-# Validate required configuration variables for non-interactive mode
-# Returns: 0 if valid, 1 if missing required variables
+# Validates configuration variables for correctness and completeness.
+# Checks format and allowed values for bridge mode, ZFS RAID, repository type, etc.
+# In non-interactive mode, ensures all required variables are set.
+# Returns: 0 if valid, 1 if validation errors found
 validate_config() {
     local has_errors=false
 
@@ -88,6 +90,12 @@ validate_config() {
     return 0
 }
 
+# Loads configuration from specified file and validates it.
+# Sources the config file and runs validation checks.
+# Parameters:
+#   $1 - Path to configuration file
+# Returns: 0 on success, 1 on failure
+# Side effects: Sets global configuration variables
 load_config() {
     local file="$1"
     if [[ -f "$file" ]]; then
@@ -108,6 +116,12 @@ load_config() {
     fi
 }
 
+# Saves current configuration to specified file.
+# Writes all configuration variables to file in bash-compatible format.
+# Sets file permissions to 600 for security.
+# Parameters:
+#   $1 - Path to output configuration file
+# Side effects: Creates/overwrites configuration file
 save_config() {
     local file="$1"
     cat > "$file" << EOF

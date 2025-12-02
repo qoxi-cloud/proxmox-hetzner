@@ -8,9 +8,12 @@
 
 MENU_BOX_WIDTH=60
 
-# Wrap text to fit within box width
-# Usage: _wrap_text "text" "prefix" max_width
-# prefix is added to continuation lines
+# Internal helper: wraps text to fit within box width.
+# Parameters:
+#   $1 - Text to wrap
+#   $2 - Prefix for continuation lines
+#   $3 - Maximum width
+# Returns: Wrapped text via stdout
 _wrap_text() {
     local text="$1"
     local prefix="$2"
@@ -48,6 +51,12 @@ _wrap_text() {
     echo "$result"
 }
 
+# Displays interactive radio menu for single selection.
+# Parameters:
+#   $1 - Menu title
+#   $2 - Header content
+#   $@ - Items in format "label|description"
+# Side effects: Sets MENU_SELECTED global (0-based index)
 radio_menu() {
     local title="$1"
     local header="$2"
@@ -210,8 +219,13 @@ radio_menu() {
     MENU_SELECTED=$selected
 }
 
-# Display an input box and prompt for value
-# Usage: input_box "title" "content" "prompt" "default" -> result in INPUT_VALUE
+# Displays input box and prompts for value.
+# Parameters:
+#   $1 - Box title
+#   $2 - Content/description
+#   $3 - Input prompt text
+#   $4 - Default value
+# Side effects: Sets INPUT_VALUE global
 input_box() {
     local title="$1"
     local content="$2"
@@ -258,11 +272,14 @@ input_box() {
 # =============================================================================
 # Interactive checkbox menu (multi-select)
 # =============================================================================
-# Usage: checkbox_menu "Title" "header_content" "label1|desc1|default1" "label2|desc2|default2" ...
-# - default: 1 = checked, 0 = unchecked
-# - Space toggles selection, Enter confirms
-# Sets: CHECKBOX_RESULTS array (1=selected, 0=not selected for each item)
 
+# Displays interactive checkbox menu for multiple selection.
+# Parameters:
+#   $1 - Menu title
+#   $2 - Header content
+#   $@ - Items in format "label|description|default" (default: 1=checked, 0=unchecked)
+# Navigation: Space toggles selection, Enter confirms
+# Side effects: Sets CHECKBOX_RESULTS array (1=selected, 0=not selected)
 checkbox_menu() {
     local title="$1"
     local header="$2"

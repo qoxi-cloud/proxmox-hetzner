@@ -3,6 +3,11 @@
 # Network interface detection
 # =============================================================================
 
+# Detects network interface name with predictable naming support.
+# Attempts to find predictable name (enp*, eno*) for bare metal servers.
+# Falls back to current interface name if predictable name not found.
+# Side effects: Sets CURRENT_INTERFACE, PREDICTABLE_NAME, DEFAULT_INTERFACE,
+#               AVAILABLE_ALTNAMES, INTERFACE_NAME globals
 detect_network_interface() {
     # Get default interface name (the one with default route)
     # Prefer JSON output with jq for more reliable parsing
@@ -75,9 +80,9 @@ detect_network_interface() {
 # Network info collection helper functions
 # =============================================================================
 
-# Get IPv4 info using ip command with JSON output (most reliable)
+# Internal: gets IPv4 info using ip JSON output (most reliable).
 # Returns: 0 on success, 1 on failure
-# Sets: MAIN_IPV4_CIDR, MAIN_IPV4, MAIN_IPV4_GW
+# Side effects: Sets MAIN_IPV4_CIDR, MAIN_IPV4, MAIN_IPV4_GW globals
 _get_ipv4_via_ip_json() {
     MAIN_IPV4_CIDR=$(ip -j address show "$CURRENT_INTERFACE" 2>/dev/null | jq -r '.[0].addr_info[] | select(.family == "inet" and .scope == "global") | "\(.local)/\(.prefixlen)"' | head -n1)
     MAIN_IPV4="${MAIN_IPV4_CIDR%/*}"
@@ -85,9 +90,9 @@ _get_ipv4_via_ip_json() {
     [[ -n "$MAIN_IPV4" ]] && [[ -n "$MAIN_IPV4_GW" ]]
 }
 
-# Get IPv4 info using ip command with text parsing
+# Internal: gets IPv4 info using ip text parsing.
 # Returns: 0 on success, 1 on failure
-# Sets: MAIN_IPV4_CIDR, MAIN_IPV4, MAIN_IPV4_GW
+# Side effects: Sets MAIN_IPV4_CIDR, MAIN_IPV4, MAIN_IPV4_GW globals
 _get_ipv4_via_ip_text() {
     MAIN_IPV4_CIDR=$(ip address show "$CURRENT_INTERFACE" 2>/dev/null | grep global | grep "inet " | awk '{print $2}' | head -n1)
     MAIN_IPV4="${MAIN_IPV4_CIDR%/*}"
@@ -95,9 +100,9 @@ _get_ipv4_via_ip_text() {
     [[ -n "$MAIN_IPV4" ]] && [[ -n "$MAIN_IPV4_GW" ]]
 }
 
-# Get IPv4 info using legacy ifconfig/route commands
+# Internal: gets IPv4 info using legacy ifconfig/route commands.
 # Returns: 0 on success, 1 on failure
-# Sets: MAIN_IPV4_CIDR, MAIN_IPV4, MAIN_IPV4_GW
+# Side effects: Sets MAIN_IPV4_CIDR, MAIN_IPV4, MAIN_IPV4_GW globals
 _get_ipv4_via_ifconfig() {
     MAIN_IPV4=$(ifconfig "$CURRENT_INTERFACE" 2>/dev/null | awk '/inet / {print $2}' | sed 's/addr://')
     local netmask
@@ -127,8 +132,8 @@ _get_ipv4_via_ifconfig() {
     [[ -n "$MAIN_IPV4" ]] && [[ -n "$MAIN_IPV4_GW" ]]
 }
 
-# Get MAC address and IPv6 info from current interface
-# Sets: MAC_ADDRESS, IPV6_CIDR, MAIN_IPV6
+# Internal: gets MAC address and IPv6 info from current interface.
+# Side effects: Sets MAC_ADDRESS, IPV6_CIDR, MAIN_IPV6 globals
 _get_mac_and_ipv6() {
     if command -v ip &>/dev/null && command -v jq &>/dev/null; then
         MAC_ADDRESS=$(ip -j link show "$CURRENT_INTERFACE" 2>/dev/null | jq -r '.[0].address // empty')
@@ -143,8 +148,10 @@ _get_mac_and_ipv6() {
     MAIN_IPV6="${IPV6_CIDR%/*}"
 }
 
-# Validate network configuration
-# Returns: 0 on success, exits with error message on failure
+# Internal: validates network configuration completeness.
+# Parameters:
+#   $1 - Max attempts count (for error message)
+# Side effects: Exits on validation failure with detailed error message
 _validate_network_config() {
     local max_attempts="$1"
 
@@ -197,11 +204,10 @@ _validate_network_config() {
     fi
 }
 
-# Calculate IPv6 prefix for VM network
-# IPv6 prefix extraction: Get first 4 groups (network portion) for /80 CIDR assignment
-# Example: 2001:db8:85a3:0:8a2e:370:7334:1234 → 2001:db8:85a3:0:1::1/80
-# This allows assigning /80 subnets to VMs within the /64 allocation
-# Sets: FIRST_IPV6_CIDR
+# Internal: calculates IPv6 prefix for VM network allocation.
+# Extracts first 4 groups for /80 CIDR assignment to VMs.
+# Example: 2001:db8:85a3:0:... → 2001:db8:85a3:0:1::1/80
+# Side effects: Sets FIRST_IPV6_CIDR global
 _calculate_ipv6_prefix() {
     if [[ -n "$IPV6_CIDR" ]]; then
         # Extract first 4 groups of IPv6 using parameter expansion
@@ -224,11 +230,10 @@ _calculate_ipv6_prefix() {
 # Main network info collection function
 # =============================================================================
 
-# Get network information from current interface
-# Tries multiple detection methods with fallback chain:
-# 1. ip -j (JSON) + jq - most reliable
-# 2. ip (text parsing) - common fallback
-# 3. ifconfig + route - legacy systems
+# Collects network information from current interface.
+# Uses fallback chain: ip JSON → ip text → ifconfig/route.
+# Side effects: Sets MAIN_IPV4*, MAC_ADDRESS, IPV6* globals
+# Exits on failure to detect valid network configuration.
 collect_network_info() {
     local max_attempts=3
     local attempt=0

@@ -3,6 +3,9 @@
 # Base system configuration via SSH
 # =============================================================================
 
+# Configures base system via SSH into QEMU VM.
+# Copies templates, configures repositories, installs packages.
+# Side effects: Modifies remote system configuration
 configure_base_system() {
     # Copy template files to VM (parallel for better performance)
     remote_copy "templates/hosts" "/etc/hosts" > /dev/null 2>&1 &
@@ -163,6 +166,8 @@ configure_base_system() {
     show_progress $! "Configuring fastfetch" "Fastfetch configured"
 }
 
+# Configures default shell for root user.
+# Optionally installs ZSH with Oh-My-Zsh and Powerlevel10k theme.
 configure_shell() {
     # Configure default shell for root
     if [[ "$DEFAULT_SHELL" == "zsh" ]]; then
@@ -198,6 +203,8 @@ configure_shell() {
     fi
 }
 
+# Configures system services: NTP, unattended upgrades, conntrack, CPU governor.
+# Removes subscription notice for non-enterprise installations.
 configure_system_services() {
     # Configure NTP time synchronization with chrony
     run_remote "Installing NTP (chrony)" '
