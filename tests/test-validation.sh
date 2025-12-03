@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# Unit tests for validation functions (05-validation.sh)
+# Unit tests for validation functions (13-validation.sh)
 # =============================================================================
 
 set -euo pipefail
@@ -19,7 +19,7 @@ TESTS_FAILED=0
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 # shellcheck source=/dev/null
-source "$SCRIPT_DIR/scripts/05-validation.sh"
+source "$SCRIPT_DIR/scripts/13-validation.sh"
 
 # Test helper functions
 assert_true() {
