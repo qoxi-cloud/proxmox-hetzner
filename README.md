@@ -54,7 +54,7 @@ One command replaces hours of manual configuration with battle-tested defaults.
 
 1. Boot server into **Rescue Mode** (Hetzner Robot → Rescue → Linux 64-bit → Reset)
 2. SSH to the rescue system
-3. Run: `bash <(curl -sSL https://qoxi-cloud.github.io/proxmox-hetzner/pve-install.sh)`
+3. Run: `bash <(curl -sSL https://qoxi-cloud.github.io/proxmox-hetzner/pve-install.min.sh)`
 4. Access Proxmox: `https://YOUR-IP:8006`
 
 ## CLI Options
