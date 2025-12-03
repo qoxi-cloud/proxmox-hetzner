@@ -23,7 +23,7 @@ jobs:
       - name: Remove PR script
         run: |
           PR_NUMBER="${{ github.event.pull_request.number }}"
-          FILENAME="pve-install-pr.${PR_NUMBER}.sh"
+          FILENAME="pve-install-pr.${PR_NUMBER}.min.sh"
 
           if [[ -f "${FILENAME}" ]]; then
             git config user.name "github-actions[bot]"

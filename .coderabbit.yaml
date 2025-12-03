@@ -42,6 +42,14 @@ reviews:
         - ShellCheck warnings (SC1091, SC2034, SC2086 are intentionally ignored)
         - Proper quoting of variables
         - Use of safe patterns (printf -v instead of eval)
+
+        IMPORTANT: This project uses a modular shell architecture where all scripts
+        in scripts/ directory (00-init.sh through 99-main.sh) are concatenated in
+        numeric order by GitHub Actions to produce a single pve-install.sh file.
+        Functions defined in earlier scripts (e.g., 06-utils.sh, 08-wizard-core.sh,
+        12-wizard-main.sh) are available in later scripts. Do NOT flag function
+        calls as "undefined" if the function exists in another numbered script file.
+        All scripts share global variables and functions after concatenation.
     - path: "templates/**"
       instructions: |
         Review templates for:

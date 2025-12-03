@@ -48,13 +48,13 @@ One command replaces hours of manual configuration with battle-tested defaults.
 Execute this command in the rescue system terminal:
 
 ```bash
-bash <(curl -sSL https://qoxi-cloud.github.io/proxmox-hetzner/pve-install.sh)
+bash <(curl -sSL https://qoxi-cloud.github.io/proxmox-hetzner/pve-install.min.sh)
 ```
 
 > **Tip:** Use dry-run mode to preview what will happen without making any changes:
 >
 > ```bash
-> bash <(curl -sSL https://qoxi-cloud.github.io/proxmox-hetzner/pve-install.sh) -d
+> bash <(curl -sSL https://qoxi-cloud.github.io/proxmox-hetzner/pve-install.min.sh) -d
 > ```
 
 The interactive installer will guide you through:

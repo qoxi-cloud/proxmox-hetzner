@@ -30,6 +30,11 @@ test_files=(
     "$SCRIPT_DIR/test-utils.sh"
     "$SCRIPT_DIR/test-ssh.sh"
     "$SCRIPT_DIR/test-config.sh"
+    "$SCRIPT_DIR/test-wizard-core.sh"
+    "$SCRIPT_DIR/test-wizard-inputs.sh"
+    "$SCRIPT_DIR/test-wizard-fields.sh"
+    "$SCRIPT_DIR/test-wizard-steps.sh"
+    "$SCRIPT_DIR/test-wizard-main.sh"
     "$SCRIPT_DIR/test-main.sh"
 )
 
@@ -51,11 +56,13 @@ for test_file in "${test_files[@]}"; do
 
     echo "$output"
 
-    # Extract summary from output
-    if echo "$output" | grep -q "Tests run:"; then
-        tests=$(echo "$output" | grep "Tests run:" | tail -1 | grep -oE '[0-9]+' | head -1)
-        passed=$(echo "$output" | grep "Passed:" | tail -1 | grep -oE '[0-9]+' | head -1)
-        failed=$(echo "$output" | grep "Failed:" | tail -1 | grep -oE '[0-9]+' | head -1)
+    # Extract summary from output (strip ANSI codes first for reliable parsing)
+    # shellcheck disable=SC2001
+    stripped_output=$(echo "$output" | sed $'s/\033\\[[0-9;]*m//g')
+    if echo "$stripped_output" | grep -q "Tests run:"; then
+        tests=$(echo "$stripped_output" | grep "Tests run:" | tail -1 | grep -oE '[0-9]+' | head -1)
+        passed=$(echo "$stripped_output" | grep "Passed:" | tail -1 | grep -oE '[0-9]+' | head -1)
+        failed=$(echo "$stripped_output" | grep "Failed:" | tail -1 | grep -oE '[0-9]+' | head -1)
 
         TOTAL_TESTS=$((TOTAL_TESTS + ${tests:-0}))
         TOTAL_PASSED=$((TOTAL_PASSED + ${passed:-0}))

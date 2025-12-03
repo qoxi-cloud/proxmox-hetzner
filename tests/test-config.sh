@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# Unit tests for config functions (00b-config.sh)
+# Unit tests for config functions (02-config.sh)
 # =============================================================================
 
 set -euo pipefail
@@ -27,12 +27,12 @@ CONFIG_FILE=""
 
 # Source validation first (required by config)
 # shellcheck source=/dev/null
-source "$SCRIPT_DIR/scripts/05-validation.sh"
+source "$SCRIPT_DIR/scripts/13-validation.sh"
 
 # Source only the validate_config function (skip auto-load)
-eval "$(sed -n '/^validate_config()/,/^}/p' "$SCRIPT_DIR/scripts/00b-config.sh")"
+eval "$(sed -n '/^validate_config()/,/^}/p' "$SCRIPT_DIR/scripts/02-config.sh")"
 
-# Test helper functions
+# assert_true runs a command, increments TESTS_RUN, prints a colored pass/fail message with the provided description, and updates TESTS_PASSED or TESTS_FAILED accordingly.
 assert_true() {
     local description="$1"
     shift

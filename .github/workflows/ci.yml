@@ -91,6 +91,36 @@ jobs:
 
           chmod +x pve-install.sh
 
+      - name: Install shfmt
+        run: |
+          curl -sS https://webi.sh/shfmt | sh
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Check formatting with shfmt
+        run: |
+          # Check if scripts are properly formatted (2-space indent, simplify)
+          if ! shfmt -i 2 -ci -s -d scripts/*.sh; then
+            echo ""
+            echo "::error::Scripts are not properly formatted. Run: shfmt -i 2 -ci -s -w scripts/*.sh"
+            exit 1
+          fi
+          echo "✓ All scripts are properly formatted"
+
+      - name: Minify script with shfmt
+        run: |
+          # Minify: -mn removes comments and minimizes whitespace
+          shfmt -mn pve-install.sh > pve-install.min.sh
+
+          # Show size reduction
+          ORIGINAL_SIZE=$(wc -c < pve-install.sh)
+          MINIFIED_SIZE=$(wc -c < pve-install.min.sh)
+          REDUCTION=$((100 - (MINIFIED_SIZE * 100 / ORIGINAL_SIZE)))
+          echo "Original: ${ORIGINAL_SIZE} bytes"
+          echo "Minified: ${MINIFIED_SIZE} bytes"
+          echo "Reduction: ${REDUCTION}%"
+
+          chmod +x pve-install.min.sh
+
       - name: Lint with ShellCheck
         run: shellcheck -e SC1091,SC2034,SC2086 scripts/*.sh
 
@@ -103,7 +133,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: pve-install
-          path: pve-install.sh
+          path: |
+            pve-install.sh
+            pve-install.min.sh
 
       - name: Save PR metadata
         if: github.event_name == 'pull_request'
@@ -137,7 +169,7 @@ jobs:
       - name: Calculate version for badge
         id: version
         run: |
-          VERSION=$(grep '^VERSION=' pve-install.sh | head -1 | sed 's/VERSION="//;s/"//')
+          VERSION=$(grep '^VERSION=' pve-install.min.sh | head -1 | sed 's/VERSION="//;s/"//')
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
 
       - name: Checkout gh-pages
@@ -150,7 +182,8 @@ jobs:
         run: |
           VERSION="${{ steps.version.outputs.version }}"
 
-          # Copy build artifact
+          # Copy build artifacts (minified is primary, full for debugging)
+          cp pve-install.min.sh gh-pages/
           cp pve-install.sh gh-pages/
 
           # Generate version.json for shields.io badge
@@ -167,6 +200,6 @@ jobs:
           cd gh-pages
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add pve-install.sh version.json
+          git add pve-install.sh pve-install.min.sh version.json
           git commit -m "Deploy version ${VERSION}" || echo "No changes to commit"
           git push origin gh-pages

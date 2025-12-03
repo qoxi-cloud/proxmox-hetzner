@@ -35,7 +35,7 @@ The project uses **Semantic Versioning** (`MAJOR.MINOR.PATCH`) with automatic ve
 
 1. Source file contains only MAJOR version: `VERSION="1"`
 2. GitHub Actions calculates the full version during build
-3. The final `pve-install.sh` contains the complete version (e.g., `VERSION="1.2.5"`)
+3. The final `pve-install.min.sh` contains the complete version (e.g., `VERSION="1.2.5"`)
 4. Version changes are **NOT** pushed back to the repository
 
 ### Version Examples

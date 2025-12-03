@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# Unit tests for SSH functions (03-ssh.sh)
+# Unit tests for SSH functions (07-ssh.sh)
 # =============================================================================
 
 set -euo pipefail
@@ -19,10 +19,10 @@ TESTS_FAILED=0
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 # Extract only the functions we can test without full environment
-eval "$(sed -n '/^validate_ssh_key()/,/^}/p' "$SCRIPT_DIR/scripts/03-ssh.sh")"
-eval "$(sed -n '/^parse_ssh_key()/,/^}/p' "$SCRIPT_DIR/scripts/03-ssh.sh")"
+eval "$(sed -n '/^validate_ssh_key()/,/^}/p' "$SCRIPT_DIR/scripts/07-ssh.sh")"
+eval "$(sed -n '/^parse_ssh_key()/,/^}/p' "$SCRIPT_DIR/scripts/07-ssh.sh")"
 
-# Test helper functions
+# assert_true executes a command described by DESCRIPTION and records it as a passing test if the command exits with status 0; otherwise records a failure — updates TESTS_RUN and increments TESTS_PASSED or TESTS_FAILED and prints a colorized result.
 assert_true() {
     local description="$1"
     shift

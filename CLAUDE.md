@@ -62,6 +62,52 @@ Changes:
 - Updated network templates with IPv6 placeholders
 ```
 
+## Pull Request Format
+
+When creating pull requests, use the template at `.github/pull_request_template.md`. PR titles must follow the same emoji conventional format as commit messages.
+
+**PR Title Format:**
+
+```text
+<emoji> <type>: <short description>
+```
+
+**Example:**
+
+```text
+✨ feat: add IPv6 dual-stack support for network bridges
+```
+
+**PR Body Structure:**
+
+```markdown
+## Summary
+
+Brief description of what this PR does
+
+## Changes
+
+- List specific changes
+- Each change on its own line
+
+## Type of Change
+
+- [x] New feature (`feat`)
+
+## Testing
+
+- [x] Unit tests pass (`./tests/run-all-tests.sh`)
+- [x] ShellCheck passes (`shellcheck scripts/*.sh`)
+- [x] Manual testing performed
+
+## Checklist
+
+- [x] Code follows project conventions (see CLAUDE.md)
+- [x] All content is in English
+- [x] Commit messages follow emoji conventional format
+- [x] No secrets or credentials included
+```
+
 ## Project Overview
 
 Automated Proxmox VE installer for Hetzner dedicated servers without console access. The installer runs in Hetzner Rescue System and uses QEMU to install Proxmox on NVMe drives.
@@ -84,6 +130,16 @@ shellcheck scripts/*.sh
 # Ignored warnings: SC1091 (sourced files), SC2034 (unused vars), SC2086 (word splitting)
 ```
 
+**Format scripts:**
+
+```bash
+shfmt -i 2 -ci -s -w scripts/*.sh
+# -i 2: 2-space indent
+# -ci: indent switch cases
+# -s: simplify code
+# -w: write in-place
+```
+
 **Run unit tests:**
 
 ```bash
@@ -96,11 +152,11 @@ The project includes comprehensive unit tests in the `tests/` directory:
 
 | Test File | Module | Tests | Description |
 |-----------|--------|-------|-------------|
-| `test-validation.sh` | 05-validation.sh | 103 | Hostname, FQDN, email, password, subnet, IPv6 validation |
-| `test-config.sh` | 00b-config.sh | 42 | Config validation (BRIDGE_MODE, ZFS_RAID, SSL_TYPE, etc.) |
-| `test-ssh.sh` | 03-ssh.sh | 16 | SSH key validation and parsing |
+| `test-validation.sh` | 13-validation.sh | 103 | Hostname, FQDN, email, password, subnet, IPv6 validation |
+| `test-config.sh` | 02-config.sh | 42 | Config validation (BRIDGE_MODE, ZFS_RAID, SSL_TYPE, etc.) |
+| `test-ssh.sh` | 07-ssh.sh | 16 | SSH key validation and parsing |
 | `test-main.sh` | 99-main.sh | 8 | String truncation utilities |
-| `test-utils.sh` | 02-utils.sh | 7 | Duration formatting |
+| `test-utils.sh` | 06-utils.sh | 7 | Duration formatting |
 | `run-all-tests.sh` | - | - | Test runner aggregating all tests |
 
 **Test structure:**
@@ -128,6 +184,26 @@ eval "$(sed -n '/^function_name()/,/^}/p' "$SCRIPT_DIR/scripts/module.sh")"
 - Some functions (e.g., `apply_template_vars` using `sed -i`) are not tested due to platform differences
 - Tests run in CI on Ubuntu runners
 
+**IMPORTANT: Running tests on non-Ubuntu systems (e.g., macOS):**
+
+CI runs on Ubuntu, and there are subtle differences in shell behavior between platforms (e.g., locale handling, `${#var}` for UTF-8 strings). To ensure tests pass in CI, **always run tests in Docker** when developing on macOS or other non-Ubuntu systems:
+
+```bash
+# Run all tests in Ubuntu container (matches CI environment)
+docker run --rm -v "$(pwd)":/workspace -w /workspace ubuntu:latest bash -c "
+    apt-get update && apt-get install -y bash coreutils
+    ./tests/run-all-tests.sh
+"
+
+# Run a specific test file
+docker run --rm -v "$(pwd)":/workspace -w /workspace ubuntu:latest bash -c "
+    apt-get update && apt-get install -y bash coreutils
+    ./tests/test-wizard-core.sh
+"
+```
+
+This prevents false positives where tests pass locally but fail in CI due to platform differences.
+
 ## CI/CD Workflow
 
 The project uses multiple GitHub Actions workflows:
@@ -140,20 +216,22 @@ The project uses multiple GitHub Actions workflows:
 2. Run ShellCheck linting
 3. Run unit tests (`./tests/run-all-tests.sh`)
 4. Concatenate scripts into `pve-install.sh`
-5. Calculate and inject version number
-6. Upload artifact and PR metadata
+5. Check formatting with `shfmt -i 2 -ci -s -d`
+6. Minify with `shfmt -mn` to create `pve-install.min.sh`
+7. Calculate and inject version number
+8. Upload artifacts and PR metadata
 
 **Deploy Job** - Runs only on push to main:
 
-1. Download build artifact
-2. Deploy to GitHub Pages as `pve-install.sh`
+1. Download build artifacts
+2. Deploy to GitHub Pages as `pve-install.min.sh` (minified) and `pve-install.sh` (full)
 
 ### Deploy PR Workflow (`deploy-pr.yml`)
 
 Runs after build completes for PRs (including forks):
 
 1. Download build artifact and PR metadata
-2. Deploy to GitHub Pages as `pve-install-pr.{number}.sh`
+2. Deploy to GitHub Pages as `pve-install-pr.{number}.min.sh`
 3. Post/update comment on PR with test link
 
 Uses `workflow_run` trigger for secure fork PR deployments.
@@ -169,7 +247,7 @@ Uses `workflow_run` trigger for secure fork PR deployments.
 
 Runs when PR is closed (merged or rejected):
 
-1. Remove `pve-install-pr.{number}.sh` from GitHub Pages
+1. Remove `pve-install-pr.{number}.min.sh` from GitHub Pages
 
 Uses `pull_request_target` for secure access to close events from forks.
 
@@ -196,7 +274,7 @@ The project uses **Semantic Versioning** with automatic MINOR and PATCH calculat
 
 1. `00-init.sh` contains only the MAJOR version: `VERSION="1"`
 2. GitHub Actions calculates the full version during build
-3. The final `pve-install.sh` contains the complete version (e.g., `VERSION="1.2.5"`)
+3. The final `pve-install.min.sh` contains the complete version (e.g., `VERSION="1.2.5"`)
 4. Version changes are NOT pushed back to the repository
 
 **Version examples:**
@@ -238,48 +316,54 @@ Edit `VERSION="2"` in `scripts/00-init.sh` — MINOR/PATCH will reset based on `
 
 Scripts are numbered and concatenated in order:
 
-#### Initialization (00-00d)
+#### Initialization (00-04)
 
 - `00-init.sh` - Shebang, colors, version, configuration constants (see Constants section)
-- `00a-cli.sh` - Command line argument parsing
-- `00b-config.sh` - Config file load/save functions
-- `00c-logging.sh` - Logging functions
-- `00d-banner.sh` - ASCII banner and startup display
+- `01-cli.sh` - Command line argument parsing
+- `02-config.sh` - Config file load/save functions
+- `03-logging.sh` - Logging functions
+- `04-banner.sh` - ASCII banner and startup display
 
-#### UI and Utilities (01-05)
+#### UI and Utilities (05-07)
 
-- `01-display.sh` - Box/table display utilities using `boxes` command
-- `02-utils.sh` - Download, password input, progress spinners, template utilities
-- `03-ssh.sh` - SSH helpers for remote execution into QEMU VM
-- `04-menu.sh` - Interactive menu system (radio_menu for single-select, checkbox_menu for multi-select)
-- `05-validation.sh` - Input validators (hostname, email, subnet, password, etc.)
+- `05-display.sh` - Display utilities (print_success, print_error, print_warning, print_info)
+- `06-utils.sh` - Download, password input, progress spinners, template utilities
+- `07-ssh.sh` - SSH helpers for remote execution into QEMU VM
 
-#### System Detection (06-07)
+#### Wizard UI (08-12)
 
-- `06-system-check.sh` - Pre-flight checks (root, RAM, KVM, NVMe detection), auto-installs required utilities
-- `07-network.sh` - Network interface detection with fallback chain (ip -j | jq → ip | awk → ifconfig/route)
+- `08-wizard-core.sh` - Gum-based wizard colors, banner, core display functions
+- `09-wizard-inputs.sh` - Input wrappers (wiz_input, wiz_choose, wiz_confirm, etc.)
+- `10-wizard-fields.sh` - Field management and interactive step handling
+- `11-wizard-steps.sh` - Step implementations (System, Network, Storage, Security, Features, Tailscale)
+- `12-wizard-main.sh` - Configuration preview and main wizard flow
 
-#### Input Collection (08-10)
+#### Validation and System Detection (13-15)
 
-- `08-input-non-interactive.sh` - Non-interactive input collection
-- `09-input-interactive.sh` - Interactive input collection with menus
-- `10-input-main.sh` - Main input orchestration function
+- `13-validation.sh` - Input validators (hostname, email, subnet, password, IPv6, etc.)
+- `14-system-check.sh` - Pre-flight checks (root, RAM, KVM, NVMe detection), auto-installs required utilities
+- `15-network.sh` - Network interface detection with fallback chain (ip -j | jq → ip | awk → ifconfig/route)
 
-#### Installation (11-12)
+#### Input Collection (16-17)
 
-- `11-packages.sh` - Package installation, ISO download (with fallback chain), answer.toml generation
-- `12-qemu.sh` - QEMU VM management for installation and boot, drive release with findmnt
+- `16-input-non-interactive.sh` - Non-interactive input collection
+- `17-input-main.sh` - Main input orchestration function
 
-#### Post-Install Configuration (13-18)
+#### Installation (18-19)
 
-- `13-templates.sh` - Template download and preparation
-- `14-configure-base.sh` - Base system configuration (ZFS, packages, shell)
-- `15-configure-tailscale.sh` - Tailscale VPN configuration (uses jq for JSON parsing)
-- `15a-configure-fail2ban.sh` - Fail2Ban brute-force protection (when Tailscale not used)
-- `15b-configure-auditd.sh` - Auditd audit logging for administrative actions
-- `16-configure-ssl.sh` - SSL certificate configuration (self-signed or Let's Encrypt)
-- `17-configure-finalize.sh` - SSH hardening and VM finalization
-- `18-validate.sh` - Post-installation validation (SSH, ZFS, network, services)
+- `18-packages.sh` - Package installation, ISO download (with fallback chain), answer.toml generation
+- `19-qemu.sh` - QEMU VM management for installation and boot, drive release with findmnt
+
+#### Post-Install Configuration (20-27)
+
+- `20-templates.sh` - Template download and preparation
+- `21-configure-base.sh` - Base system configuration (ZFS, packages, shell)
+- `22-configure-tailscale.sh` - Tailscale VPN configuration (uses jq for JSON parsing)
+- `23-configure-fail2ban.sh` - Fail2Ban brute-force protection (when Tailscale not used)
+- `24-configure-auditd.sh` - Auditd audit logging for administrative actions
+- `25-configure-ssl.sh` - SSL certificate configuration (self-signed or Let's Encrypt)
+- `26-configure-finalize.sh` - SSH hardening and VM finalization
+- `27-validate.sh` - Post-installation validation (SSH, ZFS, network, services)
 
 #### Main Flow (99)
 
@@ -288,7 +372,7 @@ Scripts are numbered and concatenated in order:
 ### Key Flow
 
 ```text
-collect_system_info → show_system_status → get_system_inputs →
+collect_system_info → get_system_inputs →
 prepare_packages → download_proxmox_iso → make_answer_toml →
 make_autoinstall_iso → install_proxmox → boot_proxmox_with_port_forwarding →
 configure_proxmox_via_ssh → reboot_to_main_os
@@ -316,11 +400,10 @@ Centralized constants in `00-init.sh` (can be overridden via environment variabl
 
 ### Auto-Installed Utilities
 
-The installer automatically installs required utilities in `06-system-check.sh`:
+The installer automatically installs required utilities in `14-system-check.sh`:
 
 | Utility | Package | Purpose |
 |---------|---------|---------|
-| `boxes` | boxes | Box/table display formatting |
 | `column` | bsdmainutils | Column alignment in tables |
 | `ip` | iproute2 | Network interface detection |
 | `udevadm` | udev | Predictable interface name detection |
@@ -329,6 +412,7 @@ The installer automatically installs required utilities in `06-system-check.sh`:
 | `jq` | jq | JSON parsing (network info, Tailscale status) |
 | `aria2c` | aria2 | Optional multi-connection downloads (fallback: curl, wget) |
 | `findmnt` | util-linux | Efficient mount point detection |
+| `gum` | gum | Interactive wizard UI (charmbracelet/gum) |
 
 ### Templates
 
@@ -396,20 +480,20 @@ Post-install configuration runs via SSH into QEMU VM on port 5555:
 - Progress indicators use spinner chars: `SPINNER_CHARS=('○' '◔' '◑' '◕' '●' '◕' '◑' '◔')`
 - Menu width is fixed: `MENU_BOX_WIDTH=60`
 - Colors: `CLR_RED`, `CLR_GREEN`, `CLR_YELLOW`, `CLR_ORANGE`, `CLR_GRAY`, `CLR_HETZNER`, `CLR_RESET`
-- Status markers: `[OK]`, `[WARN]`, `[ERROR]` - colorized by `colorize_status` function
+- Display helpers: `print_success`, `print_error`, `print_warning`, `print_info`
 - SSH functions use `SSHPASS` env var to avoid password exposure in process list
 
 ### Fallback Patterns
 
 The installer uses fallback chains for compatibility across different environments:
 
-#### Network Detection (07-network.sh)
+#### Network Detection (15-network.sh)
 
 ```text
 ip -j | jq (JSON) → ip | awk (text) → ifconfig/route (legacy)
 ```
 
-#### DNS Resolution (05-validation.sh)
+#### DNS Resolution (13-validation.sh)
 
 ```text
 dig → host → nslookup → getent hosts
@@ -417,13 +501,13 @@ dig → host → nslookup → getent hosts
 
 All DNS commands use configurable timeout (`DNS_LOOKUP_TIMEOUT`, default: 5s).
 
-#### Mount Detection (12-qemu.sh)
+#### Mount Detection (19-qemu.sh)
 
 ```text
 findmnt (efficient) → mount | grep (fallback)
 ```
 
-#### ISO Download (11-packages.sh)
+#### ISO Download (18-packages.sh)
 
 ```text
 aria2c (2 connections) → curl (single, resume) → wget (single, resume)
@@ -441,7 +525,7 @@ Helper functions:
 
 Large functions are decomposed into smaller helper functions prefixed with `_` for internal use:
 
-#### Network Detection Helpers (07-network.sh)
+#### Network Detection Helpers (15-network.sh)
 
 - `_get_ipv4_via_ip_json()` - IPv4 detection using `ip -j` + `jq`
 - `_get_ipv4_via_ip_text()` - IPv4 detection using `ip` text parsing
@@ -450,7 +534,7 @@ Large functions are decomposed into smaller helper functions prefixed with `_` f
 - `_validate_network_config()` - Network configuration validation
 - `_calculate_ipv6_prefix()` - IPv6 prefix calculation for VM network
 
-#### Drive Release Helpers (12-qemu.sh)
+#### Drive Release Helpers (19-qemu.sh)
 
 - `_signal_process()` - Send signal to process if running
 - `_kill_processes_by_pattern()` - Kill processes with graceful→forced termination
@@ -459,7 +543,7 @@ Large functions are decomposed into smaller helper functions prefixed with `_` f
 - `_unmount_drive_filesystems()` - Unmount filesystems on drives
 - `_kill_drive_holders()` - Kill processes holding drives open
 
-#### Validation Helpers (18-validate.sh)
+#### Validation Helpers (27-validate.sh)
 
 - `_add_validation_result()` - Add result with status (pass/fail/warn)
 - `_validate_ssh()` - Check SSH service, keys, and authentication settings
@@ -473,7 +557,7 @@ Large functions are decomposed into smaller helper functions prefixed with `_` f
 
 ### Error Handling Patterns
 
-#### Download Functions (02-utils.sh)
+#### Download Functions (06-utils.sh)
 
 Download functions return error codes instead of calling `exit`:
 
@@ -497,7 +581,7 @@ if ! show_progress $! "Downloading templates"; then
 fi
 ```
 
-#### SSH Hardening Pattern (17-configure-finalize.sh)
+#### SSH Hardening Pattern (26-configure-finalize.sh)
 
 Critical operations use subshell + `show_progress` pattern with error checking:
 
@@ -518,7 +602,7 @@ configure_ssh_hardening() {
 }
 ```
 
-#### Temporary File Cleanup (15-configure-tailscale.sh)
+#### Temporary File Cleanup (22-configure-tailscale.sh)
 
 Use `trap RETURN` for automatic cleanup:
 
@@ -527,7 +611,7 @@ local tmp_ip=$(mktemp)
 trap "rm -f '$tmp_ip'" RETURN
 ```
 
-### Configuration Validation (00b-config.sh)
+### Configuration Validation (02-config.sh)
 
 The `validate_config()` function validates configuration values:
 
@@ -544,7 +628,7 @@ The `validate_config()` function validates configuration values:
 - `IPV6_GATEWAY` - must be valid IPv6 address or `auto`
 - `IPV6_ADDRESS` - must be valid IPv6 CIDR notation (e.g., `2001:db8::1/64`)
 
-### IPv6 Validation Functions (05-validation.sh)
+### IPv6 Validation Functions (13-validation.sh)
 
 IPv6 validation functions for dual-stack support:
 
@@ -556,32 +640,49 @@ IPv6 validation functions for dual-stack support:
 - `is_ipv6_ula()` - Check if address is ULA (fc00::/7)
 - `is_ipv6_global()` - Check if address is global unicast (2000::/3)
 
-### Interactive Menu Functions (04-menu.sh)
+### Wizard Input Functions (09-wizard-inputs.sh)
 
-Two types of interactive menus are available:
+Gum-based input wrappers for the wizard UI:
 
-#### Radio Menu (single-select)
+#### Single Selection
 
 ```bash
-radio_menu "Title" "header_content" "label1|desc1" "label2|desc2" ...
-# Result: MENU_SELECTED (0-based index)
+wiz_choose "Select option:" "Option 1" "Option 2" "Option 3"
+# Returns: Selected option text via stdout
+# Side effect: Sets WIZ_SELECTED_INDEX (0-based)
 ```
 
-#### Checkbox Menu (multi-select)
+#### Multi Selection
 
 ```bash
-checkbox_menu "Title" "header_content" "label1|desc1|default1" "label2|desc2|default2" ...
-# default: 1 = checked, 0 = unchecked
-# Result: CHECKBOX_RESULTS array (1=selected, 0=not selected)
+wiz_choose_multi "Select options:" "Option 1" "Option 2" "Option 3"
+# Returns: Selected options (newline-separated) via stdout
+# Side effect: Sets WIZ_SELECTED_INDICES array
+```
+
+#### Text Input
+
+```bash
+wiz_input "Prompt:" "default_value" "placeholder" "false"
+# Last arg: "true" for password mode
+```
+
+#### Confirmation
+
+```bash
+wiz_confirm "Are you sure?"
+# Returns: Exit code 0=yes, 1=no
 ```
 
 Navigation:
 
-- ↑/↓ arrows to move cursor
-- Space to toggle selection (checkbox only)
-- Enter to confirm
+- ↑/↓ or j/k to navigate fields
+- Enter to edit/select
+- N to proceed to next step (when all fields filled)
+- B to go back
+- Q to quit
 
-### Password Validation (05-validation.sh)
+### Password Validation (13-validation.sh)
 
 Password validation uses `get_password_error()` for consistent error messages:
 
