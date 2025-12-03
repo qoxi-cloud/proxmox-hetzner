@@ -45,7 +45,7 @@ disable_colors() {
 }
 
 # Version (MAJOR only - MINOR.PATCH added by CI from git tags/commits)
-VERSION="2.0.29-pr.11"
+VERSION="2.0.30-pr.11"
 
 # =============================================================================
 # Configuration constants
@@ -4069,15 +4069,22 @@ get_inputs_non_interactive() {
 # calculates derived values, and optionally saves configuration.
 # get_system_inputs collects and sets configuration globals by detecting the active network interface, gathering inputs (wizard or non-interactive), computing derived values (FQDN and private network fields when applicable), and optionally saving the configuration.
 get_system_inputs() {
+  log "get_system_inputs: starting"
   detect_network_interface
+  log "get_system_inputs: detect_network_interface done"
   collect_network_info
+  log "get_system_inputs: collect_network_info done, NON_INTERACTIVE=$NON_INTERACTIVE"
 
   if [[ $NON_INTERACTIVE == true ]]; then
     print_success "Network interface:" "${INTERFACE_NAME}"
     get_inputs_non_interactive
   else
+    log "get_system_inputs: starting wizard"
+    # Clear screen before starting wizard
+    clear
     # Use the gum-based wizard for interactive mode
     get_inputs_wizard
+    log "get_system_inputs: wizard done"
   fi
 
   # Calculate derived values (also done in wizard, but ensure they're set)
@@ -6024,11 +6031,9 @@ log "QEMU_CORES_OVERRIDE=$QEMU_CORES_OVERRIDE"
 log "PVE_REPO_TYPE=${PVE_REPO_TYPE:-no-subscription}"
 log "SSL_TYPE=${SSL_TYPE:-self-signed}"
 
-# Collect system info and display status
+# Collect system info
 log "Step: collect_system_info"
 collect_system_info
-log "Step: show_system_status"
-show_system_status
 log "Step: get_system_inputs"
 get_system_inputs
 
