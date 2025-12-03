@@ -25,11 +25,101 @@ echo -e "${CYAN}       Running All Unit Tests${NC}"
 echo -e "${CYAN}=================================================${NC}"
 
 # Find all test files
+# Find all test files
 test_files=(
     "$SCRIPT_DIR/test-validation.sh"
     "$SCRIPT_DIR/test-utils.sh"
     "$SCRIPT_DIR/test-ssh.sh"
     "$SCRIPT_DIR/test-config.sh"
+    "$SCRIPT_DIR/test-wizard-core.sh"
+    "$SCRIPT_DIR/test-wizard-inputs.sh"
+    "$SCRIPT_DIR/test-wizard-fields.sh"
+    "$SCRIPT_DIR/test-wizard-steps.sh"
+    "$SCRIPT_DIR/test-wizard-main.sh"
+    "$SCRIPT_DIR/test-main.sh"
+)
+    "$SCRIPT_DIR/test-wizard-inputs.sh"
+    "$SCRIPT_DIR/test-wizard-fields.sh"
+    "$SCRIPT_DIR/test-wizard-steps.sh"
+    "$SCRIPT_DIR/test-wizard-main.sh"
+    "$SCRIPT_DIR/test-main.sh"
+)
+# Find all test files
+test_files=(
+    "$SCRIPT_DIR/test-validation.sh"
+    "$SCRIPT_DIR/test-utils.sh"
+    "$SCRIPT_DIR/test-ssh.sh"
+    "$SCRIPT_DIR/test-config.sh"
+    "$SCRIPT_DIR/test-wizard-core.sh"
+    "$SCRIPT_DIR/test-wizard-inputs.sh"
+    "$SCRIPT_DIR/test-wizard-fields.sh"
+    "$SCRIPT_DIR/test-wizard-steps.sh"
+    "$SCRIPT_DIR/test-wizard-main.sh"
+    "$SCRIPT_DIR/test-main.sh"
+)
+# Find all test files
+test_files=(
+    "$SCRIPT_DIR/test-validation.sh"
+    "$SCRIPT_DIR/test-utils.sh"
+    "$SCRIPT_DIR/test-ssh.sh"
+    "$SCRIPT_DIR/test-config.sh"
+    "$SCRIPT_DIR/test-wizard-core.sh"
+    "$SCRIPT_DIR/test-wizard-inputs.sh"
+    "$SCRIPT_DIR/test-wizard-fields.sh"
+    "$SCRIPT_DIR/test-wizard-steps.sh"
+    "$SCRIPT_DIR/test-wizard-main.sh"
+    "$SCRIPT_DIR/test-main.sh"
+)
+# Find all test files
+test_files=(
+    "$SCRIPT_DIR/test-validation.sh"
+    "$SCRIPT_DIR/test-utils.sh"
+    "$SCRIPT_DIR/test-ssh.sh"
+    "$SCRIPT_DIR/test-config.sh"
+    "$SCRIPT_DIR/test-wizard-core.sh"
+    "$SCRIPT_DIR/test-wizard-inputs.sh"
+    "$SCRIPT_DIR/test-wizard-fields.sh"
+    "$SCRIPT_DIR/test-wizard-steps.sh"
+    "$SCRIPT_DIR/test-wizard-main.sh"
+    "$SCRIPT_DIR/test-main.sh"
+)
+# Find all test files
+test_files=(
+    "$SCRIPT_DIR/test-validation.sh"
+    "$SCRIPT_DIR/test-utils.sh"
+    "$SCRIPT_DIR/test-ssh.sh"
+    "$SCRIPT_DIR/test-config.sh"
+    "$SCRIPT_DIR/test-wizard-core.sh"
+    "$SCRIPT_DIR/test-wizard-inputs.sh"
+    "$SCRIPT_DIR/test-wizard-fields.sh"
+    "$SCRIPT_DIR/test-wizard-steps.sh"
+    "$SCRIPT_DIR/test-wizard-main.sh"
+    "$SCRIPT_DIR/test-main.sh"
+)
+# Find all test files
+test_files=(
+    "$SCRIPT_DIR/test-validation.sh"
+    "$SCRIPT_DIR/test-utils.sh"
+    "$SCRIPT_DIR/test-ssh.sh"
+    "$SCRIPT_DIR/test-config.sh"
+    "$SCRIPT_DIR/test-wizard-core.sh"
+    "$SCRIPT_DIR/test-wizard-inputs.sh"
+    "$SCRIPT_DIR/test-wizard-fields.sh"
+    "$SCRIPT_DIR/test-wizard-steps.sh"
+    "$SCRIPT_DIR/test-wizard-main.sh"
+    "$SCRIPT_DIR/test-main.sh"
+)
+# Find all test files
+test_files=(
+    "$SCRIPT_DIR/test-validation.sh"
+    "$SCRIPT_DIR/test-utils.sh"
+    "$SCRIPT_DIR/test-ssh.sh"
+    "$SCRIPT_DIR/test-config.sh"
+    "$SCRIPT_DIR/test-wizard-core.sh"
+    "$SCRIPT_DIR/test-wizard-inputs.sh"
+    "$SCRIPT_DIR/test-wizard-fields.sh"
+    "$SCRIPT_DIR/test-wizard-steps.sh"
+    "$SCRIPT_DIR/test-wizard-main.sh"
     "$SCRIPT_DIR/test-main.sh"
 )
 
