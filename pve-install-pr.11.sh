@@ -45,7 +45,7 @@ disable_colors() {
 }
 
 # Version (MAJOR only - MINOR.PATCH added by CI from git tags/commits)
-VERSION="2.0.31-pr.11"
+VERSION="2.0.32-pr.11"
 
 # =============================================================================
 # Configuration constants
@@ -678,83 +678,6 @@ show_banner
 # =============================================================================
 # Display utilities
 # =============================================================================
-
-# Displays a boxed section with title using 'boxes' utility.
-# Parameters:
-#   $1 - Title text
-#   $2 - Content text
-#   $3 - Box style (default: stone)
-display_box() {
-  local title="$1"
-  local content="$2"
-  local box_style="${3:-stone}"
-
-  echo -e "${CLR_GRAY}"
-  {
-    echo "$title"
-    echo ""
-    echo "$content"
-  } | boxes -d "$box_style" -p a1
-  echo -e "${CLR_RESET}"
-}
-
-# Displays system info table using boxes and column.
-# Parameters:
-#   $1 - Table title
-#   $@ - Items in format "label|value|status" (status: ok, warn, error)
-display_info_table() {
-  local title="$1"
-  shift
-  local items=("$@")
-
-  local content=""
-  for item in "${items[@]}"; do
-    local label="${item%%|*}"
-    local rest="${item#*|}"
-    local value="${rest%%|*}"
-    local status="${rest#*|}"
-
-    case "$status" in
-      ok) content+="[OK]     $label: $value"$'\n' ;;
-      warn) content+="[WARN]   $label: $value"$'\n' ;;
-      error) content+="[ERROR]  $label: $value"$'\n' ;;
-      *) content+="         $label: $value"$'\n' ;;
-    esac
-  done
-
-  # Remove trailing newline and display
-  content="${content%$'\n'}"
-
-  echo ""
-  {
-    echo "=== $title ==="
-    echo ""
-    echo "$content"
-  } | boxes -d stone -p a1
-  echo ""
-}
-
-# Colorizes the output of boxes (post-process).
-# Adds cyan frame and colors for [OK], [WARN], [ERROR] markers.
-# Reads from stdin, writes to stdout.
-colorize_status() {
-  while IFS= read -r line; do
-    # Top/bottom border
-    if [[ $line =~ ^\+[-+]+\+$ ]]; then
-      echo "${CLR_GRAY}${line}${CLR_RESET}"
-    # Content line with | borders
-    elif [[ $line =~ ^(\|)(.*)\|$ ]]; then
-      local content="${BASH_REMATCH[2]}"
-      # Color status markers
-      content="${content//\[OK\]/${CLR_CYAN}[OK]${CLR_RESET}}"
-      content="${content//\[WARN\]/${CLR_YELLOW}[WARN]${CLR_RESET}}"
-      content="${content//\[ERROR\]/${CLR_RED}[ERROR]${CLR_RESET}}"
-      echo "${CLR_GRAY}|${CLR_RESET}${content}${CLR_GRAY}|${CLR_RESET}"
-    else
-      echo "$line"
-    fi
-  done
-}
 
 # Prints success message with checkmark.
 # Parameters:
@@ -3307,11 +3230,9 @@ prompt_password() {
 # System checks and hardware detection
 # =============================================================================
 
-# Collects and validates system information with progress indicator.
+# Performs preflight checks and installs required packages.
 # Checks: root access, internet connectivity, disk space, RAM, CPU, KVM.
-# Installs required packages if missing.
-# collect_system_info Performs preflight checks (root, network, disk, RAM, CPU, KVM), ensures required utilities are installed, and displays a textual progress bar.
-# Side effects: sets PREFLIGHT_* globals and PREFLIGHT_ERRORS, and may install missing packages (may add Charm's APT repo to install `gum`).
+# Exits with error if critical checks fail. Installs required packages if missing.
 collect_system_info() {
   local errors=0
   local checks=7
@@ -3335,8 +3256,8 @@ collect_system_info() {
       "$bar_filled" "$bar_empty" "$pct"
   }
 
-  # Install required tools and display utilities
-  # boxes: table display, column: alignment, iproute2: ip command
+  # Install required tools
+  # column: alignment, iproute2: ip command
   # udev: udevadm for interface detection, timeout: command timeouts
   # jq: JSON parsing for API responses
   # aria2c: optional multi-connection downloads (fallback: curl, wget)
@@ -3344,7 +3265,6 @@ collect_system_info() {
   # gum: glamorous shell scripts UI (charmbracelet/gum)
   update_progress
   local packages_to_install=""
-  command -v boxes &>/dev/null || packages_to_install+=" boxes"
   command -v column &>/dev/null || packages_to_install+=" bsdmainutils"
   command -v ip &>/dev/null || packages_to_install+=" iproute2"
   command -v udevadm &>/dev/null || packages_to_install+=" udev"
@@ -3373,23 +3293,13 @@ collect_system_info() {
   # Check if running as root
   update_progress
   if [[ $EUID -ne 0 ]]; then
-    PREFLIGHT_ROOT="✗ Not root"
-    PREFLIGHT_ROOT_STATUS="error"
     errors=$((errors + 1))
-  else
-    PREFLIGHT_ROOT="Running as root"
-    PREFLIGHT_ROOT_STATUS="ok"
   fi
   sleep 0.1
 
   # Check internet connectivity
   update_progress
-  if ping -c 1 -W 3 "$DNS_PRIMARY" >/dev/null 2>&1; then
-    PREFLIGHT_NET="Available"
-    PREFLIGHT_NET_STATUS="ok"
-  else
-    PREFLIGHT_NET="No connection"
-    PREFLIGHT_NET_STATUS="error"
+  if ! ping -c 1 -W 3 "$DNS_PRIMARY" >/dev/null 2>&1; then
     errors=$((errors + 1))
   fi
 
@@ -3397,12 +3307,7 @@ collect_system_info() {
   update_progress
   local free_space_mb
   free_space_mb=$(df -m /root | awk 'NR==2 {print $4}')
-  if [[ $free_space_mb -ge $MIN_DISK_SPACE_MB ]]; then
-    PREFLIGHT_DISK="${free_space_mb} MB"
-    PREFLIGHT_DISK_STATUS="ok"
-  else
-    PREFLIGHT_DISK="${free_space_mb} MB (need ${MIN_DISK_SPACE_MB}MB+)"
-    PREFLIGHT_DISK_STATUS="error"
+  if [[ $free_space_mb -lt $MIN_DISK_SPACE_MB ]]; then
     errors=$((errors + 1))
   fi
   sleep 0.1
@@ -3411,36 +3316,18 @@ collect_system_info() {
   update_progress
   local total_ram_mb
   total_ram_mb=$(free -m | awk '/^Mem:/{print $2}')
-  if [[ $total_ram_mb -ge $MIN_RAM_MB ]]; then
-    PREFLIGHT_RAM="${total_ram_mb} MB"
-    PREFLIGHT_RAM_STATUS="ok"
-  else
-    PREFLIGHT_RAM="${total_ram_mb} MB (need ${MIN_RAM_MB}MB+)"
-    PREFLIGHT_RAM_STATUS="error"
+  if [[ $total_ram_mb -lt $MIN_RAM_MB ]]; then
     errors=$((errors + 1))
   fi
   sleep 0.1
 
-  # Check CPU cores
+  # Check CPU cores (warning only, not critical)
   update_progress
-  local cpu_cores
-  cpu_cores=$(nproc)
-  if [[ $cpu_cores -ge 2 ]]; then
-    PREFLIGHT_CPU="${cpu_cores} cores"
-    PREFLIGHT_CPU_STATUS="ok"
-  else
-    PREFLIGHT_CPU="${cpu_cores} core(s)"
-    PREFLIGHT_CPU_STATUS="warn"
-  fi
   sleep 0.1
 
   # Check if KVM is available (try to load module if not present)
   update_progress
-  if [[ $TEST_MODE == true ]]; then
-    # Test mode uses TCG emulation, KVM not required
-    PREFLIGHT_KVM="TCG (test mode)"
-    PREFLIGHT_KVM_STATUS="warn"
-  else
+  if [[ $TEST_MODE != true ]]; then
     if [[ ! -e /dev/kvm ]]; then
       # Try to load KVM module (needed in rescue mode)
       modprobe kvm 2>/dev/null || true
@@ -3456,12 +3343,7 @@ collect_system_info() {
       fi
       sleep 0.5
     fi
-    if [[ -e /dev/kvm ]]; then
-      PREFLIGHT_KVM="Available"
-      PREFLIGHT_KVM_STATUS="ok"
-    else
-      PREFLIGHT_KVM="Not available (use --test for TCG)"
-      PREFLIGHT_KVM_STATUS="error"
+    if [[ ! -e /dev/kvm ]]; then
       errors=$((errors + 1))
     fi
   fi
@@ -3470,7 +3352,18 @@ collect_system_info() {
   # Clear progress line
   printf "\r\033[K"
 
-  PREFLIGHT_ERRORS=$errors
+  # Exit if critical checks failed
+  if [[ $errors -gt 0 ]]; then
+    log "ERROR: Pre-flight checks failed with $errors error(s)"
+    exit 1
+  fi
+
+  # Detect drives
+  detect_drives
+  if [[ $DRIVE_COUNT -eq 0 ]]; then
+    log "ERROR: No drives detected"
+    exit 1
+  fi
 }
 
 # Detects available drives (NVMe preferred, fallback to any disk).
@@ -3506,83 +3399,6 @@ detect_drives() {
   # Note: ZFS_RAID defaults are set in 07-input.sh during input collection
   # Only preserve ZFS_RAID if it was explicitly set by user via environment
 
-}
-
-# Displays system status summary in formatted table.
-# Shows preflight checks and detected storage drives.
-# Exits with error if critical checks failed or no drives detected.
-show_system_status() {
-  detect_drives
-
-  local no_drives=0
-  if [[ $DRIVE_COUNT -eq 0 ]]; then
-    no_drives=1
-  fi
-
-  # Build system info rows
-  local sys_rows=""
-
-  # Helper to add row
-  add_row() {
-    local status="$1"
-    local label="$2"
-    local value="$3"
-    case "$status" in
-      ok) sys_rows+="[OK]|${label}|${value}"$'\n' ;;
-      warn) sys_rows+="[WARN]|${label}|${value}"$'\n' ;;
-      error) sys_rows+="[ERROR]|${label}|${value}"$'\n' ;;
-    esac
-  }
-
-  add_row "ok" "Installer" "v${VERSION}"
-  add_row "$PREFLIGHT_ROOT_STATUS" "Root Access" "$PREFLIGHT_ROOT"
-  add_row "$PREFLIGHT_NET_STATUS" "Internet" "$PREFLIGHT_NET"
-  add_row "$PREFLIGHT_DISK_STATUS" "Temp Space" "$PREFLIGHT_DISK"
-  add_row "$PREFLIGHT_RAM_STATUS" "RAM" "$PREFLIGHT_RAM"
-  add_row "$PREFLIGHT_CPU_STATUS" "CPU" "$PREFLIGHT_CPU"
-  add_row "$PREFLIGHT_KVM_STATUS" "KVM" "$PREFLIGHT_KVM"
-
-  # Remove trailing newline
-  sys_rows="${sys_rows%$'\n'}"
-
-  # Build storage rows
-  local storage_rows=""
-  if [[ $no_drives -eq 1 ]]; then
-    storage_rows="[ERROR]|No drives detected!|"
-  else
-    for i in "${!DRIVE_NAMES[@]}"; do
-      storage_rows+="[OK]|${DRIVE_NAMES[$i]}|${DRIVE_SIZES[$i]}  ${DRIVE_MODELS[$i]:0:25}"
-      if [[ $i -lt $((${#DRIVE_NAMES[@]} - 1)) ]]; then
-        storage_rows+=$'\n'
-      fi
-    done
-  fi
-
-  # Display with boxes and colorize
-  # Inner width = MENU_BOX_WIDTH - 4 (borders) - 2 (padding) = 54
-  local inner_width=$((MENU_BOX_WIDTH - 6))
-  {
-    echo "SYSTEM INFORMATION"
-    {
-      echo "$sys_rows"
-      echo "|--- Storage ---|"
-      echo "$storage_rows"
-    } | column -t -s '|' | while IFS= read -r line; do
-      printf "%-${inner_width}s\n" "$line"
-    done
-  } | boxes -d stone -p a1 -s $MENU_BOX_WIDTH | colorize_status
-  echo ""
-
-  # Check for errors
-  if [[ $PREFLIGHT_ERRORS -gt 0 ]]; then
-    log "ERROR: Pre-flight checks failed with $PREFLIGHT_ERRORS error(s)"
-    exit 1
-  fi
-
-  if [[ $no_drives -eq 1 ]]; then
-    log "ERROR: No drives detected"
-    exit 1
-  fi
 }
 
 # --- 15-network.sh ---
@@ -5867,122 +5683,11 @@ truncate_middle() {
 # Displays installation summary and prompts for system reboot.
 # Shows validation results, configuration details, and access methods.
 reboot_to_main_os() {
-  local inner_width=$((MENU_BOX_WIDTH - 6))
-
-  # Build summary content
-  local summary=""
-
   # Calculate duration
   local end_time total_seconds duration
   end_time=$(date +%s)
   total_seconds=$((end_time - INSTALL_START_TIME))
   duration=$(format_duration $total_seconds)
-
-  summary+="[OK]|Installation time|${duration}"$'\n'
-
-  # Add validation results if available
-  if [[ ${#VALIDATION_RESULTS[@]} -gt 0 ]]; then
-    summary+="|--- System Checks ---|"$'\n'
-    for result in "${VALIDATION_RESULTS[@]}"; do
-      summary+="${result}"$'\n'
-    done
-  fi
-
-  summary+="|--- Configuration ---|"$'\n'
-  summary+="[OK]|CPU governor|${CPU_GOVERNOR:-performance}"$'\n'
-  summary+="[OK]|Kernel params|optimized"$'\n'
-  summary+="[OK]|nf_conntrack|optimized"$'\n'
-  summary+="[OK]|Security updates|unattended"$'\n'
-  summary+="[OK]|Monitoring tools|btop, iotop, ncdu..."$'\n'
-
-  # Repository info
-  case "${PVE_REPO_TYPE:-no-subscription}" in
-    enterprise)
-      summary+="[OK]|Repository|enterprise"$'\n'
-      if [[ -n $PVE_SUBSCRIPTION_KEY ]]; then
-        summary+="[OK]|Subscription|registered"$'\n'
-      else
-        summary+="[WARN]|Subscription|key not provided"$'\n'
-      fi
-      ;;
-    test)
-      summary+="[WARN]|Repository|test (unstable)"$'\n'
-      ;;
-    *)
-      summary+="[OK]|Repository|no-subscription"$'\n'
-      ;;
-  esac
-
-  # SSL certificate info (only if not in validation results)
-  if [[ $SSL_TYPE == "letsencrypt" ]]; then
-    summary+="[OK]|SSL auto-renewal|enabled"$'\n'
-  fi
-
-  # Tailscale status
-  if [[ $INSTALL_TAILSCALE == "yes" ]]; then
-    summary+="[OK]|Tailscale VPN|installed"$'\n'
-    if [[ -z $TAILSCALE_AUTH_KEY ]]; then
-      summary+="[WARN]|Tailscale|needs auth after reboot"$'\n'
-    fi
-  else
-    # Fail2Ban is installed when Tailscale is not used
-    if [[ $FAIL2BAN_INSTALLED == "yes" ]]; then
-      summary+="[OK]|Fail2Ban|SSH + Proxmox protected"$'\n'
-    fi
-  fi
-
-  # Auditd status
-  if [[ $AUDITD_INSTALLED == "yes" ]]; then
-    summary+="[OK]|Audit logging|auditd enabled"$'\n'
-  fi
-
-  summary+="|--- Access ---|"$'\n'
-
-  # Show generated password if applicable
-  if [[ $PASSWORD_GENERATED == "yes" ]]; then
-    summary+="[WARN]|Root password|${NEW_ROOT_PASSWORD}"$'\n'
-  fi
-
-  # Show access methods based on stealth mode and OpenSSH status
-  if [[ $STEALTH_MODE == "yes" ]]; then
-    # Stealth mode: only Tailscale access shown
-    summary+="[WARN]|Public IP|BLOCKED (stealth mode)"$'\n'
-    if [[ $TAILSCALE_DISABLE_SSH == "yes" ]]; then
-      summary+="[WARN]|OpenSSH|DISABLED after first boot"
-    fi
-    if [[ $INSTALL_TAILSCALE == "yes" && -n $TAILSCALE_AUTH_KEY && $TAILSCALE_IP != "pending" && $TAILSCALE_IP != "not authenticated" ]]; then
-      summary+=$'\n'"[OK]|Tailscale SSH|root@${TAILSCALE_IP}"
-      if [[ -n $TAILSCALE_HOSTNAME ]]; then
-        summary+=$'\n'"[OK]|Tailscale Web|$(truncate_middle "$TAILSCALE_HOSTNAME" 25)"
-      else
-        summary+=$'\n'"[OK]|Tailscale Web|${TAILSCALE_IP}:8006"
-      fi
-    fi
-  else
-    # Normal mode: public IP access
-    summary+="[OK]|Web UI|https://${MAIN_IPV4_CIDR%/*}:8006"$'\n'
-    summary+="[OK]|SSH|root@${MAIN_IPV4_CIDR%/*}"
-    if [[ $INSTALL_TAILSCALE == "yes" && -n $TAILSCALE_AUTH_KEY && $TAILSCALE_IP != "pending" && $TAILSCALE_IP != "not authenticated" ]]; then
-      summary+=$'\n'"[OK]|Tailscale SSH|root@${TAILSCALE_IP}"
-      if [[ -n $TAILSCALE_HOSTNAME ]]; then
-        summary+=$'\n'"[OK]|Tailscale Web|$(truncate_middle "$TAILSCALE_HOSTNAME" 25)"
-      else
-        summary+=$'\n'"[OK]|Tailscale Web|${TAILSCALE_IP}:8006"
-      fi
-    fi
-  fi
-
-  # Add validation summary at the end if there were issues
-  if [[ $VALIDATION_FAILED -gt 0 || $VALIDATION_WARNINGS -gt 0 ]]; then
-    summary+=$'\n'"|--- Validation ---|"$'\n'
-    summary+="[OK]|Checks passed|${VALIDATION_PASSED}"$'\n'
-    if [[ $VALIDATION_WARNINGS -gt 0 ]]; then
-      summary+="[WARN]|Warnings|${VALIDATION_WARNINGS}"$'\n'
-    fi
-    if [[ $VALIDATION_FAILED -gt 0 ]]; then
-      summary+="[ERROR]|Failed|${VALIDATION_FAILED}"$'\n'
-    fi
-  fi
 
   # Show summarizing progress bar
   echo ""
@@ -5992,13 +5697,129 @@ reboot_to_main_os() {
   clear
   show_banner --no-info
 
-  # Display with boxes
-  {
-    echo "INSTALLATION SUMMARY"
-    echo "$summary" | column -t -s '|' | while IFS= read -r line; do
-      printf "%-${inner_width}s\n" "$line"
+  # Display installation summary
+  echo ""
+  echo -e "${CLR_CYAN}INSTALLATION SUMMARY${CLR_RESET}"
+  echo ""
+
+  print_success "Installation time" "$duration"
+
+  # Add validation results if available
+  if [[ ${#VALIDATION_RESULTS[@]} -gt 0 ]]; then
+    echo ""
+    echo -e "${CLR_GRAY}--- System Checks ---${CLR_RESET}"
+    for result in "${VALIDATION_RESULTS[@]}"; do
+      local status="${result%%|*}"
+      local rest="${result#*|}"
+      local label="${rest%%|*}"
+      local value="${rest#*|}"
+      case "$status" in
+        "[OK]") print_success "$label" "$value" ;;
+        "[WARN]") print_warning "$label" "$value" ;;
+        "[ERROR]") print_error "$label: $value" ;;
+      esac
     done
-  } | boxes -d stone -p a1 -s $MENU_BOX_WIDTH | colorize_status
+  fi
+
+  echo ""
+  echo -e "${CLR_GRAY}--- Configuration ---${CLR_RESET}"
+  print_success "CPU governor" "${CPU_GOVERNOR:-performance}"
+  print_success "Kernel params" "optimized"
+  print_success "nf_conntrack" "optimized"
+  print_success "Security updates" "unattended"
+  print_success "Monitoring tools" "btop, iotop, ncdu..."
+
+  # Repository info
+  case "${PVE_REPO_TYPE:-no-subscription}" in
+    enterprise)
+      print_success "Repository" "enterprise"
+      if [[ -n $PVE_SUBSCRIPTION_KEY ]]; then
+        print_success "Subscription" "registered"
+      else
+        print_warning "Subscription" "key not provided"
+      fi
+      ;;
+    test)
+      print_warning "Repository" "test (unstable)"
+      ;;
+    *)
+      print_success "Repository" "no-subscription"
+      ;;
+  esac
+
+  # SSL certificate info
+  if [[ $SSL_TYPE == "letsencrypt" ]]; then
+    print_success "SSL auto-renewal" "enabled"
+  fi
+
+  # Tailscale status
+  if [[ $INSTALL_TAILSCALE == "yes" ]]; then
+    print_success "Tailscale VPN" "installed"
+    if [[ -z $TAILSCALE_AUTH_KEY ]]; then
+      print_warning "Tailscale" "needs auth after reboot"
+    fi
+  else
+    # Fail2Ban is installed when Tailscale is not used
+    if [[ $FAIL2BAN_INSTALLED == "yes" ]]; then
+      print_success "Fail2Ban" "SSH + Proxmox protected"
+    fi
+  fi
+
+  # Auditd status
+  if [[ $AUDITD_INSTALLED == "yes" ]]; then
+    print_success "Audit logging" "auditd enabled"
+  fi
+
+  echo ""
+  echo -e "${CLR_GRAY}--- Access ---${CLR_RESET}"
+
+  # Show generated password if applicable
+  if [[ $PASSWORD_GENERATED == "yes" ]]; then
+    print_warning "Root password" "${NEW_ROOT_PASSWORD}"
+  fi
+
+  # Show access methods based on stealth mode and OpenSSH status
+  if [[ $STEALTH_MODE == "yes" ]]; then
+    # Stealth mode: only Tailscale access shown
+    print_warning "Public IP" "BLOCKED (stealth mode)"
+    if [[ $TAILSCALE_DISABLE_SSH == "yes" ]]; then
+      print_warning "OpenSSH" "DISABLED after first boot"
+    fi
+    if [[ $INSTALL_TAILSCALE == "yes" && -n $TAILSCALE_AUTH_KEY && $TAILSCALE_IP != "pending" && $TAILSCALE_IP != "not authenticated" ]]; then
+      print_success "Tailscale SSH" "root@${TAILSCALE_IP}"
+      if [[ -n $TAILSCALE_HOSTNAME ]]; then
+        print_success "Tailscale Web" "$(truncate_middle "$TAILSCALE_HOSTNAME" 25)"
+      else
+        print_success "Tailscale Web" "${TAILSCALE_IP}:8006"
+      fi
+    fi
+  else
+    # Normal mode: public IP access
+    print_success "Web UI" "https://${MAIN_IPV4_CIDR%/*}:8006"
+    print_success "SSH" "root@${MAIN_IPV4_CIDR%/*}"
+    if [[ $INSTALL_TAILSCALE == "yes" && -n $TAILSCALE_AUTH_KEY && $TAILSCALE_IP != "pending" && $TAILSCALE_IP != "not authenticated" ]]; then
+      print_success "Tailscale SSH" "root@${TAILSCALE_IP}"
+      if [[ -n $TAILSCALE_HOSTNAME ]]; then
+        print_success "Tailscale Web" "$(truncate_middle "$TAILSCALE_HOSTNAME" 25)"
+      else
+        print_success "Tailscale Web" "${TAILSCALE_IP}:8006"
+      fi
+    fi
+  fi
+
+  # Add validation summary at the end if there were issues
+  if [[ $VALIDATION_FAILED -gt 0 || $VALIDATION_WARNINGS -gt 0 ]]; then
+    echo ""
+    echo -e "${CLR_GRAY}--- Validation ---${CLR_RESET}"
+    print_success "Checks passed" "${VALIDATION_PASSED}"
+    if [[ $VALIDATION_WARNINGS -gt 0 ]]; then
+      print_warning "Warnings" "${VALIDATION_WARNINGS}"
+    fi
+    if [[ $VALIDATION_FAILED -gt 0 ]]; then
+      print_error "Failed: ${VALIDATION_FAILED}"
+    fi
+  fi
+
   echo ""
 
   # Show warning if validation failed
