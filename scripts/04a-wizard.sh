@@ -615,12 +615,12 @@ wiz_step_interactive() {
             if [[ "$show_back" == "true" ]]; then
                 footer+="${ANSI_MUTED}[B] Back  ${ANSI_RESET}"
             fi
-            footer+="${ANSI_MUTED}[↑/↓] Navigate  ${ANSI_RESET}"
+            footer+="${ANSI_ACCENT}[↑/↓] Navigate  ${ANSI_RESET}"
             footer+="${ANSI_ACCENT}[Enter] Edit  ${ANSI_RESET}"
             if [[ "$all_filled" == "true" ]]; then
                 footer+="${ANSI_ACCENT}[N] Next  ${ANSI_RESET}"
             fi
-            footer+="${ANSI_MUTED}[Q] Quit${ANSI_RESET}"
+            footer+="${ANSI_ACCENT}[Q] Quit${ANSI_RESET}"
         fi
 
         # Build content
