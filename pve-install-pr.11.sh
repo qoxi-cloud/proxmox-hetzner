@@ -45,7 +45,7 @@ disable_colors() {
 }
 
 # Version (MAJOR only - MINOR.PATCH added by CI from git tags/commits)
-VERSION="2.0.33-pr.11"
+VERSION="2.0.34-pr.11"
 
 # =============================================================================
 # Configuration constants
@@ -1609,39 +1609,36 @@ _wiz_draw_box() {
   local footer="$4"
   local do_clear="$5"
 
-  # All output goes directly to terminal (not captured by $())
-  {
-    # Hide cursor during redraw
-    printf '\033[?25l'
+  # Hide cursor during redraw
+  printf '\033[?25l'
 
-    if [[ $do_clear == "true" ]]; then
-      clear
-    else
-      printf '\033[H'
-    fi
-    wiz_banner
+  if [[ $do_clear == "true" ]]; then
+    clear
+  else
+    printf '\033[H'
+  fi
+  wiz_banner
 
-    local header
-    header="${ANSI_PRIMARY}Step ${step}/${WIZARD_TOTAL_STEPS}: ${title}${ANSI_RESET}"
+  local header
+  header="${ANSI_PRIMARY}Step ${step}/${WIZARD_TOTAL_STEPS}: ${title}${ANSI_RESET}"
 
-    local progress
-    progress="${ANSI_MUTED}$(_wiz_progress_bar "$step" "$WIZARD_TOTAL_STEPS" 53)${ANSI_RESET}"
+  local progress
+  progress="${ANSI_MUTED}$(_wiz_progress_bar "$step" "$WIZARD_TOTAL_STEPS" 53)${ANSI_RESET}"
 
-    gum style \
-      --border rounded \
-      --border-foreground "$GUM_BORDER" \
-      --width "$WIZARD_WIDTH" \
-      --padding "0 1" \
-      "$header" \
-      "$progress" \
-      "" \
-      "$content" \
-      "" \
-      "$footer"
+  gum style \
+    --border rounded \
+    --border-foreground "$GUM_BORDER" \
+    --width "$WIZARD_WIDTH" \
+    --padding "0 1" \
+    "$header" \
+    "$progress" \
+    "" \
+    "$content" \
+    "" \
+    "$footer"
 
-    # Clear to end of screen
-    printf '\033[J\033[?25h'
-  } >/dev/tty
+  # Clear to end of screen
+  printf '\033[J\033[?25h'
 }
 
 # =============================================================================
@@ -2134,10 +2131,8 @@ wiz_step_interactive() {
       content=$(_wiz_build_fields_content "$WIZ_CURRENT_FIELD" "-1" "")
     fi
 
-    log "wiz_step_interactive: calling _wiz_draw_box"
     # Draw
     _wiz_draw_box "$step" "$title" "$content" "$footer" "$first_draw"
-    log "wiz_step_interactive: _wiz_draw_box done, waiting for key"
     first_draw=false
 
     # Wait for keypress (read from terminal directly)
@@ -2213,13 +2208,13 @@ wiz_step_interactive() {
         "k") ((WIZ_CURRENT_FIELD > 0)) && ((WIZ_CURRENT_FIELD--)) ;;
         "n" | "N")
           if [[ $all_filled == "true" ]]; then
-            echo "next"
+            WIZ_RESULT="next"
             return
           fi
           ;;
         "b" | "B")
           if [[ $show_back == "true" ]]; then
-            echo "back"
+            WIZ_RESULT="back"
             return
           fi
           ;;
@@ -2310,11 +2305,10 @@ _wiz_step_system() {
   [[ -n $TIMEZONE ]] && WIZ_FIELD_VALUES[4]="$TIMEZONE"
 
   log "_wiz_step_system: calling wiz_step_interactive"
-  local result
-  result=$(wiz_step_interactive 1 "System")
-  log "_wiz_step_system: wiz_step_interactive returned: $result"
+  wiz_step_interactive 1 "System"
+  log "_wiz_step_system: wiz_step_interactive returned: $WIZ_RESULT"
 
-  if [[ $result == "next" ]]; then
+  if [[ $WIZ_RESULT == "next" ]]; then
     PVE_HOSTNAME="${WIZ_FIELD_VALUES[0]}"
     DOMAIN_SUFFIX="${WIZ_FIELD_VALUES[1]}"
     EMAIL="${WIZ_FIELD_VALUES[2]}"
@@ -2327,8 +2321,6 @@ _wiz_step_system() {
       PASSWORD_GENERATED="yes"
     fi
   fi
-
-  echo "$result"
 }
 
 # =============================================================================
@@ -2380,10 +2372,9 @@ _wiz_step_network() {
     done
   fi
 
-  local result
-  result=$(wiz_step_interactive 2 "Network")
+  wiz_step_interactive 2 "Network"
 
-  if [[ $result == "next" ]]; then
+  if [[ $WIZ_RESULT == "next" ]]; then
     INTERFACE_NAME="${WIZ_FIELD_VALUES[0]}"
 
     # Convert bridge label back to mode
@@ -2409,8 +2400,6 @@ _wiz_step_network() {
       IPV6_GATEWAY="${IPV6_GATEWAY:-$DEFAULT_IPV6_GATEWAY}"
     fi
   fi
-
-  echo "$result"
 }
 
 # =============================================================================
@@ -2462,10 +2451,9 @@ _wiz_step_storage() {
   fi
   [[ -n $PROXMOX_ISO_VERSION ]] && WIZ_FIELD_VALUES[2]="$PROXMOX_ISO_VERSION"
 
-  local result
-  result=$(wiz_step_interactive 3 "Storage")
+  wiz_step_interactive 3 "Storage"
 
-  if [[ $result == "next" ]]; then
+  if [[ $WIZ_RESULT == "next" ]]; then
     # Convert ZFS label back to mode
     local zfs_label="${WIZ_FIELD_VALUES[0]}"
     if [[ ${DRIVE_COUNT:-0} -ge 2 ]]; then
@@ -2485,8 +2473,6 @@ _wiz_step_storage() {
     local pve_version="${WIZ_FIELD_VALUES[2]}"
     [[ $pve_version != "latest" ]] && PROXMOX_ISO_VERSION="$pve_version"
   fi
-
-  echo "$result"
 }
 
 # =============================================================================
@@ -2529,10 +2515,9 @@ _wiz_step_security() {
     done
   fi
 
-  local result
-  result=$(wiz_step_interactive 4 "Security")
+  wiz_step_interactive 4 "Security"
 
-  if [[ $result == "next" ]]; then
+  if [[ $WIZ_RESULT == "next" ]]; then
     # Handle SSH key
     local ssh_value="${WIZ_FIELD_VALUES[0]}"
     if [[ $ssh_value == *"(detected)"* || $ssh_value == *"ssh-"* ]]; then
@@ -2547,8 +2532,6 @@ _wiz_step_security() {
       [[ ${WIZ_SSL_LABELS[$i]} == "$ssl_label" ]] && SSL_TYPE="${WIZ_SSL_TYPES[$i]}"
     done
   fi
-
-  echo "$result"
 }
 
 # =============================================================================
@@ -2578,18 +2561,15 @@ _wiz_step_features() {
   WIZ_FIELD_VALUES[3]="${INSTALL_UNATTENDED_UPGRADES:-yes}"
   WIZ_FIELD_VALUES[4]="${INSTALL_AUDITD:-no}"
 
-  local result
-  result=$(wiz_step_interactive 5 "Features")
+  wiz_step_interactive 5 "Features"
 
-  if [[ $result == "next" ]]; then
+  if [[ $WIZ_RESULT == "next" ]]; then
     DEFAULT_SHELL="${WIZ_FIELD_VALUES[0]}"
     CPU_GOVERNOR="${WIZ_FIELD_VALUES[1]}"
     INSTALL_VNSTAT="${WIZ_FIELD_VALUES[2]}"
     INSTALL_UNATTENDED_UPGRADES="${WIZ_FIELD_VALUES[3]}"
     INSTALL_AUDITD="${WIZ_FIELD_VALUES[4]}"
   fi
-
-  echo "$result"
 }
 
 # =============================================================================
@@ -2610,10 +2590,9 @@ _wiz_step_tailscale() {
   WIZ_FIELD_VALUES[2]="${TAILSCALE_SSH:-yes}"
   WIZ_FIELD_VALUES[3]="${TAILSCALE_DISABLE_SSH:-no}"
 
-  local result
-  result=$(wiz_step_interactive 6 "Tailscale VPN")
+  wiz_step_interactive 6 "Tailscale VPN"
 
-  if [[ $result == "next" ]]; then
+  if [[ $WIZ_RESULT == "next" ]]; then
     INSTALL_TAILSCALE="${WIZ_FIELD_VALUES[0]}"
 
     if [[ $INSTALL_TAILSCALE == "yes" ]]; then
@@ -2636,8 +2615,6 @@ _wiz_step_tailscale() {
       STEALTH_MODE="no"
     fi
   fi
-
-  echo "$result"
 }
 
 # --- 12-wizard-main.sh ---
@@ -2741,14 +2718,14 @@ _wiz_show_preview() {
   # Wait for input
   while true; do
     local key
-    read -rsn1 key
+    read -rsn1 key </dev/tty
     case "$key" in
       "" | $'\n')
-        echo "install"
+        WIZ_RESULT="install"
         return
         ;;
       "b" | "B")
-        echo "back"
+        WIZ_RESULT="back"
         return
         ;;
       "q" | "Q")
@@ -2781,24 +2758,24 @@ get_inputs_wizard() {
   log "get_inputs_wizard: WIZARD_TOTAL_STEPS=$WIZARD_TOTAL_STEPS"
 
   while true; do
-    local result=""
+    WIZ_RESULT=""
     log "get_inputs_wizard: current_step=$current_step"
 
     case $current_step in
       1)
         log "get_inputs_wizard: calling _wiz_step_system"
-        result=$(_wiz_step_system)
-        log "get_inputs_wizard: _wiz_step_system returned: $result"
+        _wiz_step_system
+        log "get_inputs_wizard: _wiz_step_system returned: $WIZ_RESULT"
         ;;
-      2) result=$(_wiz_step_network) ;;
-      3) result=$(_wiz_step_storage) ;;
-      4) result=$(_wiz_step_security) ;;
-      5) result=$(_wiz_step_features) ;;
-      6) result=$(_wiz_step_tailscale) ;;
+      2) _wiz_step_network ;;
+      3) _wiz_step_storage ;;
+      4) _wiz_step_security ;;
+      5) _wiz_step_features ;;
+      6) _wiz_step_tailscale ;;
       7)
         # Preview/confirm step
-        result=$(_wiz_show_preview)
-        if [[ $result == "install" ]]; then
+        _wiz_show_preview
+        if [[ $WIZ_RESULT == "install" ]]; then
           # Calculate derived values
           FQDN="${PVE_HOSTNAME}.${DOMAIN_SUFFIX}"
 
@@ -2816,7 +2793,7 @@ get_inputs_wizard() {
         ;;
     esac
 
-    case "$result" in
+    case "$WIZ_RESULT" in
       "next")
         ((current_step++))
         ;;
