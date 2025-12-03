@@ -40,25 +40,32 @@ GUM_WARNING="#FFFF55"
 GUM_ERROR="#FF5555"
 GUM_MUTED="#585858"
 GUM_BORDER="#444444"
-GUM_HETZNER="#D70000"
 
 # =============================================================================
 # Banner display
 # =============================================================================
 
-# Displays the Proxmox ASCII banner using gum styling.
+# Displays the Proxmox ASCII banner using ANSI colors.
+# Uses direct ANSI codes for instant display (no gum subprocess overhead).
 # Side effects: Outputs styled banner to terminal
 wiz_banner() {
-    echo ""
-    gum style --foreground "$GUM_MUTED" '    _____                                             '
-    gum style --foreground "$GUM_MUTED" '   |  __ \                                            '
-    echo "$(gum style --foreground "$GUM_MUTED" '   | |__) | _ __   ___  ')$(gum style --foreground "$GUM_ACCENT" '__  __')$(gum style --foreground "$GUM_MUTED" '  _ __ ___    ___  ')$(gum style --foreground "$GUM_ACCENT" '__  __')"
-    echo "$(gum style --foreground "$GUM_MUTED" '   |  ___/ | '\''__| / _ \ ')$(gum style --foreground "$GUM_ACCENT" '\ \/ /')$(gum style --foreground "$GUM_MUTED" ' | '\''_ ` _ \  / _ \ ')$(gum style --foreground "$GUM_ACCENT" '\ \/ /')"
-    echo "$(gum style --foreground "$GUM_MUTED" '   | |     | |   | (_) |')$(gum style --foreground "$GUM_ACCENT" ' >  <')$(gum style --foreground "$GUM_MUTED" '  | | | | | || (_) |')$(gum style --foreground "$GUM_ACCENT" ' >  <')"
-    echo "$(gum style --foreground "$GUM_MUTED" '   |_|     |_|    \___/ ')$(gum style --foreground "$GUM_ACCENT" '/_/\_\')$(gum style --foreground "$GUM_MUTED" ' |_| |_| |_| \___/ ')$(gum style --foreground "$GUM_ACCENT" '/_/\_\')"
-    echo ""
-    echo "$(gum style --foreground "$GUM_HETZNER" '               Hetzner ')$(gum style --foreground "$GUM_MUTED" 'Automated Installer')"
-    echo ""
+    # ANSI color codes matching our gum colors
+    local gray=$'\033[38;5;240m'
+    local orange=$'\033[38;5;208m'
+    local red=$'\033[38;5;160m'
+    local reset=$'\033[0m'
+
+    printf '%s\n' \
+        "" \
+        "${gray}    _____                                             ${reset}" \
+        "${gray}   |  __ \\                                            ${reset}" \
+        "${gray}   | |__) | _ __   ___  ${orange}__  __${gray}  _ __ ___    ___  ${orange}__  __${reset}" \
+        "${gray}   |  ___/ | '__| / _ \\ ${orange}\\ \\/ /${gray} | '_ \` _ \\  / _ \\ ${orange}\\ \\/ /${reset}" \
+        "${gray}   | |     | |   | (_) |${orange} >  <${gray}  | | | | | || (_) |${orange} >  <${reset}" \
+        "${gray}   |_|     |_|    \\___/ ${orange}/_/\\_\\${gray} |_| |_| |_| \\___/ ${orange}/_/\\_\\${reset}" \
+        "" \
+        "${red}               Hetzner ${gray}Automated Installer${reset}" \
+        ""
 }
 
 # =============================================================================
