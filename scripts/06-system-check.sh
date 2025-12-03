@@ -36,8 +36,10 @@ collect_system_info() {
   # jq: JSON parsing for API responses
   # aria2c: optional multi-connection downloads (fallback: curl, wget)
   # findmnt: efficient mount point queries
+  # gum: glamorous shell scripts UI (charmbracelet/gum)
   update_progress
   local packages_to_install=""
+  local need_charm_repo=false
   command -v column &>/dev/null || packages_to_install+=" bsdmainutils"
   command -v ip &>/dev/null || packages_to_install+=" iproute2"
   command -v udevadm &>/dev/null || packages_to_install+=" udev"
@@ -46,6 +48,14 @@ collect_system_info() {
   command -v jq &>/dev/null || packages_to_install+=" jq"
   command -v aria2c &>/dev/null || packages_to_install+=" aria2"
   command -v findmnt &>/dev/null || packages_to_install+=" util-linux"
+  command -v gum &>/dev/null || { need_charm_repo=true; packages_to_install+=" gum"; }
+
+  # Add Charm repo for gum if needed (not in default Debian repos)
+  if [[ $need_charm_repo == true ]]; then
+    mkdir -p /etc/apt/keyrings
+    curl -fsSL https://repo.charm.sh/apt/gpg.key | gpg --dearmor -o /etc/apt/keyrings/charm.gpg 2>/dev/null
+    echo "deb [signed-by=/etc/apt/keyrings/charm.gpg] https://repo.charm.sh/apt/ * *" >/etc/apt/sources.list.d/charm.list
+  fi
 
   if [[ -n $packages_to_install ]]; then
     apt-get update -qq >/dev/null 2>&1
