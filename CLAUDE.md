@@ -326,7 +326,7 @@ Scripts are numbered and concatenated in order:
 
 #### UI and Utilities (05-07)
 
-- `05-display.sh` - Box/table display utilities using `boxes` command
+- `05-display.sh` - Display utilities (print_success, print_error, print_warning, print_info)
 - `06-utils.sh` - Download, password input, progress spinners, template utilities
 - `07-ssh.sh` - SSH helpers for remote execution into QEMU VM
 
@@ -372,7 +372,7 @@ Scripts are numbered and concatenated in order:
 ### Key Flow
 
 ```text
-collect_system_info → show_system_status → get_system_inputs →
+collect_system_info → get_system_inputs →
 prepare_packages → download_proxmox_iso → make_answer_toml →
 make_autoinstall_iso → install_proxmox → boot_proxmox_with_port_forwarding →
 configure_proxmox_via_ssh → reboot_to_main_os
@@ -404,7 +404,6 @@ The installer automatically installs required utilities in `14-system-check.sh`:
 
 | Utility | Package | Purpose |
 |---------|---------|---------|
-| `boxes` | boxes | Box/table display formatting |
 | `column` | bsdmainutils | Column alignment in tables |
 | `ip` | iproute2 | Network interface detection |
 | `udevadm` | udev | Predictable interface name detection |
@@ -413,6 +412,7 @@ The installer automatically installs required utilities in `14-system-check.sh`:
 | `jq` | jq | JSON parsing (network info, Tailscale status) |
 | `aria2c` | aria2 | Optional multi-connection downloads (fallback: curl, wget) |
 | `findmnt` | util-linux | Efficient mount point detection |
+| `gum` | gum | Interactive wizard UI (charmbracelet/gum) |
 
 ### Templates
 
@@ -480,7 +480,7 @@ Post-install configuration runs via SSH into QEMU VM on port 5555:
 - Progress indicators use spinner chars: `SPINNER_CHARS=('○' '◔' '◑' '◕' '●' '◕' '◑' '◔')`
 - Menu width is fixed: `MENU_BOX_WIDTH=60`
 - Colors: `CLR_RED`, `CLR_GREEN`, `CLR_YELLOW`, `CLR_ORANGE`, `CLR_GRAY`, `CLR_HETZNER`, `CLR_RESET`
-- Status markers: `[OK]`, `[WARN]`, `[ERROR]` - colorized by `colorize_status` function
+- Display helpers: `print_success`, `print_error`, `print_warning`, `print_info`
 - SSH functions use `SSHPASS` env var to avoid password exposure in process list
 
 ### Fallback Patterns

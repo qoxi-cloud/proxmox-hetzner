@@ -28,122 +28,11 @@ truncate_middle() {
 # Displays installation summary and prompts for system reboot.
 # Shows validation results, configuration details, and access methods.
 reboot_to_main_os() {
-  local inner_width=$((MENU_BOX_WIDTH - 6))
-
-  # Build summary content
-  local summary=""
-
   # Calculate duration
   local end_time total_seconds duration
   end_time=$(date +%s)
   total_seconds=$((end_time - INSTALL_START_TIME))
   duration=$(format_duration $total_seconds)
-
-  summary+="[OK]|Installation time|${duration}"$'\n'
-
-  # Add validation results if available
-  if [[ ${#VALIDATION_RESULTS[@]} -gt 0 ]]; then
-    summary+="|--- System Checks ---|"$'\n'
-    for result in "${VALIDATION_RESULTS[@]}"; do
-      summary+="${result}"$'\n'
-    done
-  fi
-
-  summary+="|--- Configuration ---|"$'\n'
-  summary+="[OK]|CPU governor|${CPU_GOVERNOR:-performance}"$'\n'
-  summary+="[OK]|Kernel params|optimized"$'\n'
-  summary+="[OK]|nf_conntrack|optimized"$'\n'
-  summary+="[OK]|Security updates|unattended"$'\n'
-  summary+="[OK]|Monitoring tools|btop, iotop, ncdu..."$'\n'
-
-  # Repository info
-  case "${PVE_REPO_TYPE:-no-subscription}" in
-    enterprise)
-      summary+="[OK]|Repository|enterprise"$'\n'
-      if [[ -n $PVE_SUBSCRIPTION_KEY ]]; then
-        summary+="[OK]|Subscription|registered"$'\n'
-      else
-        summary+="[WARN]|Subscription|key not provided"$'\n'
-      fi
-      ;;
-    test)
-      summary+="[WARN]|Repository|test (unstable)"$'\n'
-      ;;
-    *)
-      summary+="[OK]|Repository|no-subscription"$'\n'
-      ;;
-  esac
-
-  # SSL certificate info (only if not in validation results)
-  if [[ $SSL_TYPE == "letsencrypt" ]]; then
-    summary+="[OK]|SSL auto-renewal|enabled"$'\n'
-  fi
-
-  # Tailscale status
-  if [[ $INSTALL_TAILSCALE == "yes" ]]; then
-    summary+="[OK]|Tailscale VPN|installed"$'\n'
-    if [[ -z $TAILSCALE_AUTH_KEY ]]; then
-      summary+="[WARN]|Tailscale|needs auth after reboot"$'\n'
-    fi
-  else
-    # Fail2Ban is installed when Tailscale is not used
-    if [[ $FAIL2BAN_INSTALLED == "yes" ]]; then
-      summary+="[OK]|Fail2Ban|SSH + Proxmox protected"$'\n'
-    fi
-  fi
-
-  # Auditd status
-  if [[ $AUDITD_INSTALLED == "yes" ]]; then
-    summary+="[OK]|Audit logging|auditd enabled"$'\n'
-  fi
-
-  summary+="|--- Access ---|"$'\n'
-
-  # Show generated password if applicable
-  if [[ $PASSWORD_GENERATED == "yes" ]]; then
-    summary+="[WARN]|Root password|${NEW_ROOT_PASSWORD}"$'\n'
-  fi
-
-  # Show access methods based on stealth mode and OpenSSH status
-  if [[ $STEALTH_MODE == "yes" ]]; then
-    # Stealth mode: only Tailscale access shown
-    summary+="[WARN]|Public IP|BLOCKED (stealth mode)"$'\n'
-    if [[ $TAILSCALE_DISABLE_SSH == "yes" ]]; then
-      summary+="[WARN]|OpenSSH|DISABLED after first boot"
-    fi
-    if [[ $INSTALL_TAILSCALE == "yes" && -n $TAILSCALE_AUTH_KEY && $TAILSCALE_IP != "pending" && $TAILSCALE_IP != "not authenticated" ]]; then
-      summary+=$'\n'"[OK]|Tailscale SSH|root@${TAILSCALE_IP}"
-      if [[ -n $TAILSCALE_HOSTNAME ]]; then
-        summary+=$'\n'"[OK]|Tailscale Web|$(truncate_middle "$TAILSCALE_HOSTNAME" 25)"
-      else
-        summary+=$'\n'"[OK]|Tailscale Web|${TAILSCALE_IP}:8006"
-      fi
-    fi
-  else
-    # Normal mode: public IP access
-    summary+="[OK]|Web UI|https://${MAIN_IPV4_CIDR%/*}:8006"$'\n'
-    summary+="[OK]|SSH|root@${MAIN_IPV4_CIDR%/*}"
-    if [[ $INSTALL_TAILSCALE == "yes" && -n $TAILSCALE_AUTH_KEY && $TAILSCALE_IP != "pending" && $TAILSCALE_IP != "not authenticated" ]]; then
-      summary+=$'\n'"[OK]|Tailscale SSH|root@${TAILSCALE_IP}"
-      if [[ -n $TAILSCALE_HOSTNAME ]]; then
-        summary+=$'\n'"[OK]|Tailscale Web|$(truncate_middle "$TAILSCALE_HOSTNAME" 25)"
-      else
-        summary+=$'\n'"[OK]|Tailscale Web|${TAILSCALE_IP}:8006"
-      fi
-    fi
-  fi
-
-  # Add validation summary at the end if there were issues
-  if [[ $VALIDATION_FAILED -gt 0 || $VALIDATION_WARNINGS -gt 0 ]]; then
-    summary+=$'\n'"|--- Validation ---|"$'\n'
-    summary+="[OK]|Checks passed|${VALIDATION_PASSED}"$'\n'
-    if [[ $VALIDATION_WARNINGS -gt 0 ]]; then
-      summary+="[WARN]|Warnings|${VALIDATION_WARNINGS}"$'\n'
-    fi
-    if [[ $VALIDATION_FAILED -gt 0 ]]; then
-      summary+="[ERROR]|Failed|${VALIDATION_FAILED}"$'\n'
-    fi
-  fi
 
   # Show summarizing progress bar
   echo ""
@@ -153,13 +42,129 @@ reboot_to_main_os() {
   clear
   show_banner --no-info
 
-  # Display with boxes
-  {
-    echo "INSTALLATION SUMMARY"
-    echo "$summary" | column -t -s '|' | while IFS= read -r line; do
-      printf "%-${inner_width}s\n" "$line"
+  # Display installation summary
+  echo ""
+  echo -e "${CLR_CYAN}INSTALLATION SUMMARY${CLR_RESET}"
+  echo ""
+
+  print_success "Installation time" "$duration"
+
+  # Add validation results if available
+  if [[ ${#VALIDATION_RESULTS[@]} -gt 0 ]]; then
+    echo ""
+    echo -e "${CLR_GRAY}--- System Checks ---${CLR_RESET}"
+    for result in "${VALIDATION_RESULTS[@]}"; do
+      local status="${result%%|*}"
+      local rest="${result#*|}"
+      local label="${rest%%|*}"
+      local value="${rest#*|}"
+      case "$status" in
+        "[OK]") print_success "$label" "$value" ;;
+        "[WARN]") print_warning "$label" "$value" ;;
+        "[ERROR]") print_error "$label: $value" ;;
+      esac
     done
-  } | boxes -d stone -p a1 -s $MENU_BOX_WIDTH | colorize_status
+  fi
+
+  echo ""
+  echo -e "${CLR_GRAY}--- Configuration ---${CLR_RESET}"
+  print_success "CPU governor" "${CPU_GOVERNOR:-performance}"
+  print_success "Kernel params" "optimized"
+  print_success "nf_conntrack" "optimized"
+  print_success "Security updates" "unattended"
+  print_success "Monitoring tools" "btop, iotop, ncdu..."
+
+  # Repository info
+  case "${PVE_REPO_TYPE:-no-subscription}" in
+    enterprise)
+      print_success "Repository" "enterprise"
+      if [[ -n $PVE_SUBSCRIPTION_KEY ]]; then
+        print_success "Subscription" "registered"
+      else
+        print_warning "Subscription" "key not provided"
+      fi
+      ;;
+    test)
+      print_warning "Repository" "test (unstable)"
+      ;;
+    *)
+      print_success "Repository" "no-subscription"
+      ;;
+  esac
+
+  # SSL certificate info
+  if [[ $SSL_TYPE == "letsencrypt" ]]; then
+    print_success "SSL auto-renewal" "enabled"
+  fi
+
+  # Tailscale status
+  if [[ $INSTALL_TAILSCALE == "yes" ]]; then
+    print_success "Tailscale VPN" "installed"
+    if [[ -z $TAILSCALE_AUTH_KEY ]]; then
+      print_warning "Tailscale" "needs auth after reboot"
+    fi
+  else
+    # Fail2Ban is installed when Tailscale is not used
+    if [[ $FAIL2BAN_INSTALLED == "yes" ]]; then
+      print_success "Fail2Ban" "SSH + Proxmox protected"
+    fi
+  fi
+
+  # Auditd status
+  if [[ $AUDITD_INSTALLED == "yes" ]]; then
+    print_success "Audit logging" "auditd enabled"
+  fi
+
+  echo ""
+  echo -e "${CLR_GRAY}--- Access ---${CLR_RESET}"
+
+  # Show generated password if applicable
+  if [[ $PASSWORD_GENERATED == "yes" ]]; then
+    print_warning "Root password" "${NEW_ROOT_PASSWORD}"
+  fi
+
+  # Show access methods based on stealth mode and OpenSSH status
+  if [[ $STEALTH_MODE == "yes" ]]; then
+    # Stealth mode: only Tailscale access shown
+    print_warning "Public IP" "BLOCKED (stealth mode)"
+    if [[ $TAILSCALE_DISABLE_SSH == "yes" ]]; then
+      print_warning "OpenSSH" "DISABLED after first boot"
+    fi
+    if [[ $INSTALL_TAILSCALE == "yes" && -n $TAILSCALE_AUTH_KEY && $TAILSCALE_IP != "pending" && $TAILSCALE_IP != "not authenticated" ]]; then
+      print_success "Tailscale SSH" "root@${TAILSCALE_IP}"
+      if [[ -n $TAILSCALE_HOSTNAME ]]; then
+        print_success "Tailscale Web" "$(truncate_middle "$TAILSCALE_HOSTNAME" 25)"
+      else
+        print_success "Tailscale Web" "${TAILSCALE_IP}:8006"
+      fi
+    fi
+  else
+    # Normal mode: public IP access
+    print_success "Web UI" "https://${MAIN_IPV4_CIDR%/*}:8006"
+    print_success "SSH" "root@${MAIN_IPV4_CIDR%/*}"
+    if [[ $INSTALL_TAILSCALE == "yes" && -n $TAILSCALE_AUTH_KEY && $TAILSCALE_IP != "pending" && $TAILSCALE_IP != "not authenticated" ]]; then
+      print_success "Tailscale SSH" "root@${TAILSCALE_IP}"
+      if [[ -n $TAILSCALE_HOSTNAME ]]; then
+        print_success "Tailscale Web" "$(truncate_middle "$TAILSCALE_HOSTNAME" 25)"
+      else
+        print_success "Tailscale Web" "${TAILSCALE_IP}:8006"
+      fi
+    fi
+  fi
+
+  # Add validation summary at the end if there were issues
+  if [[ $VALIDATION_FAILED -gt 0 || $VALIDATION_WARNINGS -gt 0 ]]; then
+    echo ""
+    echo -e "${CLR_GRAY}--- Validation ---${CLR_RESET}"
+    print_success "Checks passed" "${VALIDATION_PASSED}"
+    if [[ $VALIDATION_WARNINGS -gt 0 ]]; then
+      print_warning "Warnings" "${VALIDATION_WARNINGS}"
+    fi
+    if [[ $VALIDATION_FAILED -gt 0 ]]; then
+      print_error "Failed: ${VALIDATION_FAILED}"
+    fi
+  fi
+
   echo ""
 
   # Show warning if validation failed
