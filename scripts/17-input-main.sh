@@ -6,7 +6,7 @@
 # Main entry point for input collection.
 # Detects network, collects inputs (wizard or non-interactive mode),
 # calculates derived values, and optionally saves configuration.
-# Side effects: Sets all configuration globals, may save config file
+# get_system_inputs collects and sets configuration globals by detecting the active network interface, gathering inputs (wizard or non-interactive), computing derived values (FQDN and private network fields when applicable), and optionally saving the configuration.
 get_system_inputs() {
     detect_network_interface
     collect_network_info

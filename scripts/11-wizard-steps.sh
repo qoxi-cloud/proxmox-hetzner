@@ -48,7 +48,8 @@ WIZ_GOVERNORS=("performance" "ondemand" "powersave" "schedutil" "conservative")
 
 # =============================================================================
 # Step 1: System Configuration
-# =============================================================================
+# _wiz_step_system collects and persists core system settings (hostname, domain, email, root password, timezone) using an interactive wizard step.
+# If the root password is left empty it generates one and sets PASSWORD_GENERATED="yes"; the function echoes the interaction result (e.g., "next", "back").
 _wiz_step_system() {
     _wiz_clear_fields
     _wiz_add_field "Hostname" "input" "${PVE_HOSTNAME:-pve}" "validate_hostname"
@@ -86,7 +87,8 @@ _wiz_step_system() {
 
 # =============================================================================
 # Step 2: Network Configuration
-# =============================================================================
+# _wiz_step_network builds and presents the Network wizard step, handling interface, bridge mode, private subnet, and IPv6 choices.
+# It maps between human-readable labels and internal mode codes, updates IPv6-related variables when IPv6 is disabled or defaulted, and echoes the step result string.
 _wiz_step_network() {
     _wiz_clear_fields
 
@@ -167,7 +169,15 @@ _wiz_step_network() {
 
 # =============================================================================
 # Step 3: Storage Configuration
-# =============================================================================
+# _wiz_step_storage collects storage configuration (ZFS mode, repository, Proxmox version) and applies the selected values to the environment.
+# 
+# Prefills fields from ZFS_RAID, PVE_REPO_TYPE, and PROXMOX_ISO_VERSION when available, presents a step to the user, and
+# when the user proceeds updates:
+# - ZFS_RAID to the chosen ZFS mode (or "single" if DRIVE_COUNT < 2),
+# - PVE_REPO_TYPE to the chosen repository type,
+# - PROXMOX_ISO_VERSION when a value other than "latest" is provided.
+# 
+# Echoes the interaction result string (e.g., "next" or other flow outcomes).
 _wiz_step_storage() {
     _wiz_clear_fields
 
@@ -235,7 +245,11 @@ _wiz_step_storage() {
 
 # =============================================================================
 # Step 4: Security Configuration
-# =============================================================================
+# _wiz_step_security Presents the Security step fields (SSH key and SSL certificate) for the interactive wizard and persists the chosen values.
+# 
+# When a detected SSH public key is available it pre-fills the SSH field and stores the raw key as a default; when the user proceeds the chosen SSH key is written to SSH_PUBLIC_KEY and the selected SSL label is mapped back to SSL_TYPE.
+# 
+# Echoes the step navigation result string (for example `next` when the user proceeds).
 _wiz_step_security() {
     _wiz_clear_fields
 
@@ -293,7 +307,8 @@ _wiz_step_security() {
 
 # =============================================================================
 # Step 5: Features Configuration
-# =============================================================================
+# _wiz_step_features builds and displays the "Features" wizard step, prefilling feature-related fields, running the interactive prompt, and persisting chosen settings.
+# It defines fields for default shell, CPU governor, bandwidth monitor, auto-updates, and audit logging; pre-fills them from environment defaults; invokes the interactive step; if the user advances, saves selections into DEFAULT_SHELL, CPU_GOVERNOR, INSTALL_VNSTAT, INSTALL_UNATTENDED_UPGRADES, and INSTALL_AUDITD, and echoes the step result.
 _wiz_step_features() {
     _wiz_clear_fields
 
@@ -333,7 +348,8 @@ _wiz_step_features() {
 
 # =============================================================================
 # Step 6: Tailscale Configuration
-# =============================================================================
+# _wiz_step_tailscale configures Tailscale installation and related SSH/web UI options via an interactive wizard step.
+# It pre-fills fields from environment variables, persists INSTALL_TAILSCALE, TAILSCALE_AUTH_KEY, TAILSCALE_SSH, TAILSCALE_WEBUI, TAILSCALE_DISABLE_SSH and STEALTH_MODE based on the user's choices, and echoes the interaction result.
 _wiz_step_tailscale() {
     _wiz_clear_fields
 

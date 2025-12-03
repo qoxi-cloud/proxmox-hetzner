@@ -26,12 +26,13 @@ LOG_FILE="/tmp/pve-test.log"
 
 # Mock functions
 log() { echo "$*" >> "$LOG_FILE"; }
+# print_error prints an error message prefixed with a red cross symbol using the CLR_RED and CLR_RESET color codes.
 print_error() { echo -e "${CLR_RED}✗${CLR_RESET} $1"; }
 
 # Extract only the functions we need to test (avoid dependencies)
 eval "$(sed -n '/^format_duration()/,/^}/p' "$SCRIPT_DIR/scripts/06-utils.sh")"
 
-# Test helper functions
+# assert_equals compares expected and actual values, prints a colored pass/fail message, and updates TESTS_RUN, TESTS_PASSED, and TESTS_FAILED counters.
 assert_equals() {
     local description="$1"
     local expected="$2"

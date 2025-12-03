@@ -9,7 +9,7 @@
 # =============================================================================
 
 # Displays a summary of all configuration before installation.
-# Returns: "install", "back", or "quit"
+# _wiz_show_preview displays a colorized configuration summary (System, Network, Storage, Security, Features, and optional Tailscale) and prompts for a single-key choice; echoes "install" on Enter, "back" on B, or exits the process after confirming Quit.
 _wiz_show_preview() {
     clear
     wiz_banner
@@ -119,7 +119,9 @@ _wiz_show_preview() {
 
 # Runs the complete wizard flow.
 # Side effects: Sets all configuration global variables
-# Returns: 0 on success (ready to install), 1 on cancel
+# get_inputs_wizard runs an interactive, step-based wizard to collect and set global installation configuration values, ending with a preview/confirm step.
+# It updates WIZARD_TOTAL_STEPS, sets globals (e.g., PVE_HOSTNAME, DOMAIN_SUFFIX, PRIVATE_SUBNET) via step helpers, and computes derived values (FQDN, PRIVATE_IP, PRIVATE_IP_CIDR) when the user confirms installation.
+# Returns: 0 on success (ready to install), 1 on cancel.
 get_inputs_wizard() {
     local current_step=1
     local total_steps=6

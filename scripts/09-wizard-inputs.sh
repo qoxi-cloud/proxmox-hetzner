@@ -15,7 +15,13 @@
 #   $2 - Default/initial value (optional)
 #   $3 - Placeholder text (optional)
 #   $4 - Password mode: "true" or "false" (optional)
-# Returns: User input via stdout
+# wiz_input prompts the user for text input using gum and echoes the entered value to stdout.
+# The first argument is the prompt label. The second optional argument is a default value
+# (used as the initial value and, if the third argument is omitted, as the placeholder).
+# The third optional argument is a placeholder string. The fourth optional argument is
+# "true" to enable password mode (hides input); any other value leaves input visible.
+# Styling and width are derived from WIZARD_WIDTH and global color variables; the function
+# writes the collected input to stdout.
 wiz_input() {
     local prompt="$1"
     local default="${2:-}"
@@ -42,7 +48,8 @@ wiz_input() {
 #   $1 - Header/question text
 #   $@ - Remaining args: list of options
 # Returns: Selected option via stdout
-# Side effects: Sets WIZ_SELECTED_INDEX global (0-based)
+# wiz_choose prompts the user to select one option from the provided list and echoes the selected option.
+# It sets the global WIZ_SELECTED_INDEX variable to the 0-based index of the chosen option.
 wiz_choose() {
     local header="$1"
     shift
@@ -75,7 +82,7 @@ wiz_choose() {
 #   $1 - Header/question text
 #   $@ - Remaining args: list of options
 # Returns: Selected options (newline-separated) via stdout
-# Side effects: Sets WIZ_SELECTED_INDICES array global
+# wiz_choose_multi prompts the user to select multiple options with gum, prints the newline-separated selections to stdout, and sets the global WIZ_SELECTED_INDICES array to the 0-based indices of the chosen options.
 wiz_choose_multi() {
     local header="$1"
     shift
@@ -110,7 +117,8 @@ wiz_choose_multi() {
 # Prompts for yes/no confirmation.
 # Parameters:
 #   $1 - Question text
-# Returns: Exit code 0=yes, 1=no
+# wiz_confirm prompts the user with a yes/no confirmation using gum.
+# Returns exit code 0 if the user confirms (yes), non-zero otherwise.
 wiz_confirm() {
     local question="$1"
 
@@ -127,7 +135,7 @@ wiz_confirm() {
 # Parameters:
 #   $1 - Title/message
 #   $@ - Remaining args: command to run
-# Returns: Exit code of the command
+# wiz_spin displays a styled spinner with the given title while running the provided command and returns the command's exit code.
 wiz_spin() {
     local title="$1"
     shift
@@ -144,7 +152,7 @@ wiz_spin() {
 # Parameters:
 #   $1 - Type: "error", "warning", "success", "info"
 #   $2 - Message text
-# Side effects: Outputs styled message
+# wiz_msg displays a styled message prefixed by an icon determined by `type` ("error", "warning", "success", "info", or default) and prints it with the corresponding color.
 wiz_msg() {
     local type="$1"
     local msg="$2"
@@ -166,7 +174,7 @@ wiz_msg() {
 # =============================================================================
 
 # Waits for navigation keypress.
-# Returns: "next", "back", or "quit" via stdout
+# wiz_wait_nav waits for a navigation keypress and prints one of "next", "back", or "quit" to stdout.
 wiz_wait_nav() {
     local key
     while true; do
@@ -193,7 +201,8 @@ wiz_wait_nav() {
 }
 
 # Handles quit confirmation.
-# Returns: Exit code 0 if user confirms quit, 1 otherwise
+# wiz_handle_quit prompts the user to confirm quitting and handles the response.
+# If the user confirms, clears the screen, prints an error-styled "Installation cancelled." message and exits with status 1; otherwise returns with status 1.
 wiz_handle_quit() {
     echo ""
     if wiz_confirm "Are you sure you want to quit?"; then

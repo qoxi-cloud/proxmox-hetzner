@@ -51,7 +51,7 @@ ANSI_RESET=$'\033[0m'
 
 # Displays the Proxmox ASCII banner using ANSI colors.
 # Uses direct ANSI codes for instant display (no gum subprocess overhead).
-# Side effects: Outputs styled banner to terminal
+# wiz_banner outputs a colored ASCII banner for the Hetzner Automated Installer to stdout using ANSI escape sequences.
 wiz_banner() {
     printf '%s\n' \
         "" \
@@ -75,7 +75,7 @@ wiz_banner() {
 #   $1 - Current step (1-based)
 #   $2 - Total steps
 #   $3 - Bar width (characters)
-# Returns: Progress bar string via stdout
+# _wiz_progress_bar generates a horizontal progress bar reflecting `current` out of `total` using the specified `width` and writes it to stdout.
 _wiz_progress_bar() {
     local current="$1"
     local total="$2"
@@ -95,7 +95,7 @@ _wiz_progress_bar() {
 # Parameters:
 #   $1 - Label text
 #   $2 - Value text
-# Returns: Formatted line via stdout
+# _wiz_field prints a completed field line with a green checkmark, a muted label, and a primary-colored value.
 _wiz_field() {
     local label="$1"
     local value="$2"
@@ -109,7 +109,8 @@ _wiz_field() {
 # Displays a pending field with empty circle.
 # Parameters:
 #   $1 - Label text
-# Returns: Formatted line via stdout
+# _wiz_field_pending outputs a pending field line to stdout showing a muted hollow circle, the given label followed by a colon, and an ellipsis.
+# label is the text used as the field label.
 _wiz_field_pending() {
     local label="$1"
 
@@ -125,7 +126,13 @@ _wiz_field_pending() {
 #   $2 - Step title
 #   $3 - Content (multiline, newline-separated fields)
 #   $4 - Show back button (optional, default: true)
-# Side effects: Clears screen, outputs styled box
+# wiz_box renders a complete wizard step box with header, progress bar, content, and navigation footer.
+# It clears the screen, displays the banner, and outputs a bordered, styled box using gum.
+# Arguments:
+#   step        - current step number (used for header and progress bar)
+#   title       - title text shown in the header
+#   content     - preformatted content block (may be multiline)
+#   show_back   - optional; "true" to include a Back hint when step > 1 (defaults to "true")
 wiz_box() {
     local step="$1"
     local title="$2"
@@ -170,7 +177,7 @@ wiz_box() {
 #   $2 - Step title
 #   $3 - Content (field lines)
 #   $4 - Footer text
-#   $5 - "true" to clear screen, "false" to just move cursor home
+# _wiz_draw_box redraws the wizard UI box with header, progress bar, content, and footer using gum styling and updates the terminal (optionally clearing the screen).
 _wiz_draw_box() {
     local step="$1"
     local title="$2"
@@ -217,7 +224,9 @@ _wiz_draw_box() {
 # Builds wizard content from field array.
 # Parameters:
 #   $@ - Array of "label|value" or "label|" (pending) strings
-# Returns: Formatted content via stdout
+# wiz_build_content builds a formatted content block from fields provided as "label|value" (completed) or "label|" (pending).
+# It converts each "label|value" into a completed field line and each "label|" into a pending field line, then concatenates them.
+# The assembled content is written to stdout without a trailing newline.
 wiz_build_content() {
     local content=""
     for field in "$@"; do
@@ -237,7 +246,7 @@ wiz_build_content() {
 # Builds section header.
 # Parameters:
 #   $1 - Section title
-# Returns: Styled header via stdout
+# wiz_section produces a bold, primary-colored section title using gum and writes it to stdout.
 wiz_section() {
     local title="$1"
     gum style --foreground "$GUM_PRIMARY" --bold "$title"

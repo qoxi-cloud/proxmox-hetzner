@@ -18,7 +18,7 @@ declare -a WIZ_FIELD_DEFAULTS=()
 declare -a WIZ_FIELD_VALIDATORS=() # Validator function names
 WIZ_CURRENT_FIELD=0
 
-# Clears field arrays for a new step.
+# _wiz_clear_fields clears all per-step field definition arrays and resets WIZ_CURRENT_FIELD to 0.
 _wiz_clear_fields() {
     WIZ_FIELD_LABELS=()
     WIZ_FIELD_VALUES=()
@@ -34,7 +34,7 @@ _wiz_clear_fields() {
 #   $1 - Label
 #   $2 - Type: "input", "password", "choose", "multi"
 #   $3 - Default value or options (for choose: "opt1|opt2|opt3")
-#   $4 - Validator function name (optional)
+# _wiz_add_field adds a field definition to the current wizard step by appending the label, an empty value placeholder, the field type, options or default (depending on type), and an optional validator to the corresponding WIZ_* arrays.
 _wiz_add_field() {
     local label="$1"
     local type="$2"
@@ -61,7 +61,10 @@ _wiz_add_field() {
 #   $1 - Current field index (for cursor), -1 for no cursor
 #   $2 - Edit mode field index, -1 for no edit mode
 #   $3 - Current edit buffer (for edit mode)
-# Returns: Formatted content via stdout
+# _wiz_build_fields_content builds a textual representation of all wizard fields for display and prints it to stdout.
+# It accepts three positional arguments: the current cursor index (first arg, -1 for no cursor), the edit-mode field index (second arg, -1 for no edit), and the current edit buffer contents (third arg).
+# Each field is rendered as a single line with visual indicators: edit-mode shows a right-arrow, the label, and an inline input with a caret; the current field shows a cursor and either its value or an ellipsis; completed fields show a checkmark and their value; empty fields show a hollow circle and an ellipsis.
+# Password-type fields are masked in display (asterisks), and when editing a password the edit buffer is shown as asterisks.
 _wiz_build_fields_content() {
     local cursor_idx="${1:--1}"
     local edit_idx="${2:--1}"
@@ -125,7 +128,7 @@ _wiz_build_fields_content() {
 
 # Handles select field editing (choose/multi) using gum.
 # Parameters:
-#   $1 - Field index
+# _wiz_edit_field_select presents a selection UI for a choose/multi field, stores the chosen value in WIZ_FIELD_VALUES, and advances WIZ_CURRENT_FIELD to the next empty field when applicable.
 _wiz_edit_field_select() {
     local idx="$1"
     local label="${WIZ_FIELD_LABELS[$idx]}"
@@ -161,7 +164,7 @@ _wiz_edit_field_select() {
 #   $1 - Step number
 #   $2 - Step title
 # Returns: "next", "back", or "quit"
-# Side effects: Populates WIZ_FIELD_VALUES array
+#wiz_step_interactive runs an interactive wizard step for the given step number and title, presenting WIZ_FIELD_LABELS, handling navigation, inline editing and choose/multi prompts, applying per-field validators, populating the WIZ_FIELD_VALUES array, and emitting "next" or "back" to indicate flow.
 wiz_step_interactive() {
     local step="$1"
     local title="$2"

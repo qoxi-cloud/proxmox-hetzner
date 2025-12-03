@@ -21,7 +21,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # shellcheck source=/dev/null
 source "$SCRIPT_DIR/scripts/13-validation.sh"
 
-# Test helper functions
+# assert_true Increments TESTS_RUN, executes the provided command, prints a green check and increments TESTS_PASSED on success, or prints a red X and increments TESTS_FAILED on failure.
 assert_true() {
     local description="$1"
     shift

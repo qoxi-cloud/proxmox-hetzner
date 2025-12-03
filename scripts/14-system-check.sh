@@ -6,7 +6,8 @@
 # Collects and validates system information with progress indicator.
 # Checks: root access, internet connectivity, disk space, RAM, CPU, KVM.
 # Installs required packages if missing.
-# Side effects: Sets PREFLIGHT_* global variables, may install packages
+# collect_system_info Performs preflight checks (root, network, disk, RAM, CPU, KVM), ensures required utilities are installed, and displays a textual progress bar.
+# Side effects: sets PREFLIGHT_* globals and PREFLIGHT_ERRORS, and may install missing packages (may add Charm's APT repo to install `gum`).
 collect_system_info() {
     local errors=0
     local checks=7
