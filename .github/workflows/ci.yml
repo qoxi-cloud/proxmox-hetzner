@@ -91,12 +91,23 @@ jobs:
 
           chmod +x pve-install.sh
 
+      - name: Install shfmt
+        run: |
+          curl -sS https://webi.sh/shfmt | sh
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Check formatting with shfmt
+        run: |
+          # Check if scripts are properly formatted (2-space indent, simplify)
+          if ! shfmt -i 2 -ci -s -d scripts/*.sh; then
+            echo ""
+            echo "::error::Scripts are not properly formatted. Run: shfmt -i 2 -ci -s -w scripts/*.sh"
+            exit 1
+          fi
+          echo "✓ All scripts are properly formatted"
+
       - name: Minify script with shfmt
         run: |
-          # Install shfmt
-          curl -sS https://webi.sh/shfmt | sh
-          export PATH="$HOME/.local/bin:$PATH"
-
           # Minify: -mn removes comments and minimizes whitespace
           shfmt -mn pve-install.sh > pve-install.min.sh
 

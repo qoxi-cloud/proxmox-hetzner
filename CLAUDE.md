@@ -130,6 +130,16 @@ shellcheck scripts/*.sh
 # Ignored warnings: SC1091 (sourced files), SC2034 (unused vars), SC2086 (word splitting)
 ```
 
+**Format scripts:**
+
+```bash
+shfmt -i 2 -ci -s -w scripts/*.sh
+# -i 2: 2-space indent
+# -ci: indent switch cases
+# -s: simplify code
+# -w: write in-place
+```
+
 **Run unit tests:**
 
 ```bash
@@ -206,9 +216,10 @@ The project uses multiple GitHub Actions workflows:
 2. Run ShellCheck linting
 3. Run unit tests (`./tests/run-all-tests.sh`)
 4. Concatenate scripts into `pve-install.sh`
-5. Minify with `shfmt -mn` to create `pve-install.min.sh`
-6. Calculate and inject version number
-7. Upload artifacts and PR metadata
+5. Check formatting with `shfmt -i 2 -ci -s -d`
+6. Minify with `shfmt -mn` to create `pve-install.min.sh`
+7. Calculate and inject version number
+8. Upload artifacts and PR metadata
 
 **Deploy Job** - Runs only on push to main:
 

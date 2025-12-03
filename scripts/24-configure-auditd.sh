@@ -9,30 +9,30 @@
 # Configures log rotation and persistence settings.
 # Side effects: Sets AUDITD_INSTALLED global, installs auditd package
 configure_auditd() {
-    # Skip if auditd installation is not requested
-    if [[ "$INSTALL_AUDITD" != "yes" ]]; then
-        log "Skipping auditd (not requested)"
-        return 0
-    fi
+  # Skip if auditd installation is not requested
+  if [[ $INSTALL_AUDITD != "yes" ]]; then
+    log "Skipping auditd (not requested)"
+    return 0
+  fi
 
-    log "Installing and configuring auditd"
+  log "Installing and configuring auditd"
 
-    # Install auditd package
-    run_remote "Installing auditd" '
+  # Install auditd package
+  run_remote "Installing auditd" '
         export DEBIAN_FRONTEND=noninteractive
         apt-get update -qq
         apt-get install -yqq auditd audispd-plugins
     ' "Auditd installed"
 
-    # Download and deploy audit rules
-    (
-        download_template "./templates/auditd-rules" || exit 1
+  # Download and deploy audit rules
+  (
+    download_template "./templates/auditd-rules" || exit 1
 
-        # Copy rules to VM
-        remote_copy "templates/auditd-rules" "/etc/audit/rules.d/proxmox.rules" || exit 1
+    # Copy rules to VM
+    remote_copy "templates/auditd-rules" "/etc/audit/rules.d/proxmox.rules" || exit 1
 
-        # Configure auditd for persistent logging
-        remote_exec '
+    # Configure auditd for persistent logging
+    remote_exec '
             # Ensure log directory exists
             mkdir -p /var/log/audit
 
@@ -48,17 +48,17 @@ configure_auditd() {
             systemctl enable auditd
             systemctl restart auditd
         ' || exit 1
-    ) > /dev/null 2>&1 &
-    show_progress $! "Configuring auditd rules" "Auditd configured"
+  ) >/dev/null 2>&1 &
+  show_progress $! "Configuring auditd rules" "Auditd configured"
 
-    local exit_code=$?
-    if [[ $exit_code -ne 0 ]]; then
-        log "WARNING: Auditd configuration failed"
-        print_warning "Auditd configuration failed - continuing without it"
-        return 0  # Non-fatal error
-    fi
+  local exit_code=$?
+  if [[ $exit_code -ne 0 ]]; then
+    log "WARNING: Auditd configuration failed"
+    print_warning "Auditd configuration failed - continuing without it"
+    return 0 # Non-fatal error
+  fi
 
-    # Set flag for summary display
-    # shellcheck disable=SC2034
-    AUDITD_INSTALLED="yes"
+  # Set flag for summary display
+  # shellcheck disable=SC2034
+  AUDITD_INSTALLED="yes"
 }
