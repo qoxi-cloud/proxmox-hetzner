@@ -609,18 +609,18 @@ wiz_step_interactive() {
         done
 
         if [[ "$edit_mode" == "true" ]]; then
-            footer+="${ANSI_ACCENT}[Enter] Save  ${ANSI_RESET}"
-            footer+="${ANSI_MUTED}[Esc] Cancel${ANSI_RESET}"
+            footer+="[${ANSI_ACCENT}Enter${ANSI_RESET}] Save  "
+            footer+="[${ANSI_MUTED}Esc${ANSI_RESET}] Cancel"
         else
             if [[ "$show_back" == "true" ]]; then
-                footer+="${ANSI_MUTED}[B] Back  ${ANSI_RESET}"
+                footer+="[${ANSI_MUTED}B${ANSI_RESET}] Back  "
             fi
-            footer+="${ANSI_ACCENT}[↑/↓] Navigate  ${ANSI_RESET}"
-            footer+="${ANSI_ACCENT}[Enter] Edit  ${ANSI_RESET}"
+            footer+="[${ANSI_ACCENT}↑/↓${ANSI_RESET}] Navigate  "
+            footer+="[${ANSI_ACCENT}Enter${ANSI_RESET}] Edit  "
             if [[ "$all_filled" == "true" ]]; then
-                footer+="${ANSI_ACCENT}[N] Next  ${ANSI_RESET}"
+                footer+="[${ANSI_ACCENT}N${ANSI_RESET}] Next  "
             fi
-            footer+="${ANSI_ACCENT}[Q] Quit${ANSI_RESET}"
+            footer+="[${ANSI_ACCENT}Q${ANSI_RESET}] Quit"
         fi
 
         # Build content
