@@ -40,6 +40,26 @@ GUM_WARNING="#FFFF55"
 GUM_ERROR="#FF5555"
 GUM_MUTED="#585858"
 GUM_BORDER="#444444"
+GUM_HETZNER="#D70000"
+
+# =============================================================================
+# Banner display
+# =============================================================================
+
+# Displays the Proxmox ASCII banner using gum styling.
+# Side effects: Outputs styled banner to terminal
+wiz_banner() {
+    echo ""
+    gum style --foreground "$GUM_MUTED" '    _____                                             '
+    gum style --foreground "$GUM_MUTED" '   |  __ \                                            '
+    echo "$(gum style --foreground "$GUM_MUTED" '   | |__) | _ __   ___  ')$(gum style --foreground "$GUM_ACCENT" '__  __')$(gum style --foreground "$GUM_MUTED" '  _ __ ___    ___  ')$(gum style --foreground "$GUM_ACCENT" '__  __')"
+    echo "$(gum style --foreground "$GUM_MUTED" '   |  ___/ | '\''__| / _ \ ')$(gum style --foreground "$GUM_ACCENT" '\ \/ /')$(gum style --foreground "$GUM_MUTED" ' | '\''_ ` _ \  / _ \ ')$(gum style --foreground "$GUM_ACCENT" '\ \/ /')"
+    echo "$(gum style --foreground "$GUM_MUTED" '   | |     | |   | (_) |')$(gum style --foreground "$GUM_ACCENT" ' >  <')$(gum style --foreground "$GUM_MUTED" '  | | | | | || (_) |')$(gum style --foreground "$GUM_ACCENT" ' >  <')"
+    echo "$(gum style --foreground "$GUM_MUTED" '   |_|     |_|    \___/ ')$(gum style --foreground "$GUM_ACCENT" '/_/\_\')$(gum style --foreground "$GUM_MUTED" ' |_| |_| |_| \___/ ')$(gum style --foreground "$GUM_ACCENT" '/_/\_\')"
+    echo ""
+    echo "$(gum style --foreground "$GUM_HETZNER" '               Hetzner ')$(gum style --foreground "$GUM_MUTED" 'Automated Installer')"
+    echo ""
+}
 
 # =============================================================================
 # Core wizard display functions
@@ -122,8 +142,9 @@ wiz_box() {
     footer+="$(gum style --foreground "$GUM_ACCENT" "[Enter] Next")  "
     footer+="$(gum style --foreground "$GUM_MUTED" "[Q] Quit")"
 
-    # Clear screen and draw box
+    # Clear screen, show banner, and draw box
     clear
+    wiz_banner
 
     gum style \
         --border rounded \
