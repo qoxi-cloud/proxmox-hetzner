@@ -45,7 +45,7 @@ disable_colors() {
 }
 
 # Version (MAJOR only - MINOR.PATCH added by CI from git tags/commits)
-VERSION="2.0.32-pr.11"
+VERSION="2.0.33-pr.11"
 
 # =============================================================================
 # Configuration constants
@@ -1609,36 +1609,39 @@ _wiz_draw_box() {
   local footer="$4"
   local do_clear="$5"
 
-  # Hide cursor during redraw
-  printf '\033[?25l'
+  # All output goes directly to terminal (not captured by $())
+  {
+    # Hide cursor during redraw
+    printf '\033[?25l'
 
-  if [[ $do_clear == "true" ]]; then
-    clear
-  else
-    printf '\033[H'
-  fi
-  wiz_banner
+    if [[ $do_clear == "true" ]]; then
+      clear
+    else
+      printf '\033[H'
+    fi
+    wiz_banner
 
-  local header
-  header="${ANSI_PRIMARY}Step ${step}/${WIZARD_TOTAL_STEPS}: ${title}${ANSI_RESET}"
+    local header
+    header="${ANSI_PRIMARY}Step ${step}/${WIZARD_TOTAL_STEPS}: ${title}${ANSI_RESET}"
 
-  local progress
-  progress="${ANSI_MUTED}$(_wiz_progress_bar "$step" "$WIZARD_TOTAL_STEPS" 53)${ANSI_RESET}"
+    local progress
+    progress="${ANSI_MUTED}$(_wiz_progress_bar "$step" "$WIZARD_TOTAL_STEPS" 53)${ANSI_RESET}"
 
-  gum style \
-    --border rounded \
-    --border-foreground "$GUM_BORDER" \
-    --width "$WIZARD_WIDTH" \
-    --padding "0 1" \
-    "$header" \
-    "$progress" \
-    "" \
-    "$content" \
-    "" \
-    "$footer"
+    gum style \
+      --border rounded \
+      --border-foreground "$GUM_BORDER" \
+      --width "$WIZARD_WIDTH" \
+      --padding "0 1" \
+      "$header" \
+      "$progress" \
+      "" \
+      "$content" \
+      "" \
+      "$footer"
 
-  # Clear to end of screen
-  printf '\033[J\033[?25h'
+    # Clear to end of screen
+    printf '\033[J\033[?25h'
+  } >/dev/tty
 }
 
 # =============================================================================
@@ -1735,6 +1738,7 @@ wiz_choose() {
   local options=("$@")
 
   local result
+  # gum reads from /dev/tty automatically, just need stdin from tty
   result=$(gum choose \
     --header "$header" \
     --cursor "› " \
@@ -1742,7 +1746,7 @@ wiz_choose() {
     --selected.foreground "$GUM_PRIMARY" \
     --header.foreground "$GUM_MUTED" \
     --height 10 \
-    "${options[@]}")
+    "${options[@]}" </dev/tty)
 
   # Find selected index
   WIZ_SELECTED_INDEX=0
@@ -1776,7 +1780,7 @@ wiz_choose_multi() {
     --selected.foreground "$GUM_SUCCESS" \
     --header.foreground "$GUM_MUTED" \
     --height 12 \
-    "${options[@]}")
+    "${options[@]}" </dev/tty)
 
   # Build array of selected indices
   WIZ_SELECTED_INDICES=()
@@ -1807,7 +1811,7 @@ wiz_confirm() {
     --selected.foreground "#000000" \
     --unselected.background "$GUM_MUTED" \
     --unselected.foreground "#FFFFFF" \
-    "$question"
+    "$question" </dev/tty >/dev/tty
 }
 
 # Displays spinner while running a command.
@@ -2049,7 +2053,7 @@ _wiz_edit_field_select() {
 
   IFS='|' read -ra opts <<<"$field_options"
 
-  echo ""
+  echo "" >/dev/tty
   if [[ $type == "choose" ]]; then
     new_value=$(wiz_choose "Select ${label}:" "${opts[@]}")
   else
@@ -2136,9 +2140,9 @@ wiz_step_interactive() {
     log "wiz_step_interactive: _wiz_draw_box done, waiting for key"
     first_draw=false
 
-    # Wait for keypress
+    # Wait for keypress (read from terminal directly)
     local key
-    read -rsn1 key
+    read -rsn1 key </dev/tty
 
     if [[ $edit_mode == "true" ]]; then
       # Edit mode key handling
