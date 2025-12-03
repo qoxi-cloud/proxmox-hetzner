@@ -62,13 +62,13 @@ jobs:
           PR_NUMBER=$(cat /tmp/pr-metadata/pr_number)
           PR_BRANCH=$(cat /tmp/pr-metadata/pr_branch)
           PR_REPO=$(cat /tmp/pr-metadata/pr_repo)
-          VERSION=$(grep '^VERSION=' /tmp/build/pve-install.sh | head -1 | sed 's/VERSION="//;s/"//')
+          VERSION=$(grep '^VERSION=' /tmp/build/pve-install.min.sh | head -1 | sed 's/VERSION="//;s/"//')
 
           echo "number=${PR_NUMBER}" >> $GITHUB_OUTPUT
           echo "branch=${PR_BRANCH}" >> $GITHUB_OUTPUT
           echo "repo=${PR_REPO}" >> $GITHUB_OUTPUT
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
-          echo "filename=pve-install-pr.${PR_NUMBER}.sh" >> $GITHUB_OUTPUT
+          echo "filename=pve-install-pr.${PR_NUMBER}.min.sh" >> $GITHUB_OUTPUT
 
           # Check if this is a fork PR
           if [[ "$PR_REPO" != "${{ github.repository }}" ]]; then
@@ -87,8 +87,8 @@ jobs:
         run: |
           FILENAME="${{ steps.pr.outputs.filename }}"
 
-          # Copy PR script with unique name
-          cp /tmp/build/pve-install.sh "${FILENAME}"
+          # Copy minified PR script with unique name
+          cp /tmp/build/pve-install.min.sh "${FILENAME}"
 
           # Configure git
           git config user.name "github-actions[bot]"

@@ -62,6 +62,52 @@ Changes:
 - Updated network templates with IPv6 placeholders
 ```
 
+## Pull Request Format
+
+When creating pull requests, use the template at `.github/pull_request_template.md`. PR titles must follow the same emoji conventional format as commit messages.
+
+**PR Title Format:**
+
+```text
+<emoji> <type>: <short description>
+```
+
+**Example:**
+
+```text
+✨ feat: add IPv6 dual-stack support for network bridges
+```
+
+**PR Body Structure:**
+
+```markdown
+## Summary
+
+Brief description of what this PR does
+
+## Changes
+
+- List specific changes
+- Each change on its own line
+
+## Type of Change
+
+- [x] New feature (`feat`)
+
+## Testing
+
+- [x] Unit tests pass (`./tests/run-all-tests.sh`)
+- [x] ShellCheck passes (`shellcheck scripts/*.sh`)
+- [x] Manual testing performed
+
+## Checklist
+
+- [x] Code follows project conventions (see CLAUDE.md)
+- [x] All content is in English
+- [x] Commit messages follow emoji conventional format
+- [x] No secrets or credentials included
+```
+
 ## Project Overview
 
 Automated Proxmox VE installer for Hetzner dedicated servers without console access. The installer runs in Hetzner Rescue System and uses QEMU to install Proxmox on NVMe drives.
@@ -82,6 +128,16 @@ chmod +x pve-install.sh
 ```bash
 shellcheck scripts/*.sh
 # Ignored warnings: SC1091 (sourced files), SC2034 (unused vars), SC2086 (word splitting)
+```
+
+**Format scripts:**
+
+```bash
+shfmt -i 2 -ci -s -w scripts/*.sh
+# -i 2: 2-space indent
+# -ci: indent switch cases
+# -s: simplify code
+# -w: write in-place
 ```
 
 **Run unit tests:**
@@ -128,6 +184,26 @@ eval "$(sed -n '/^function_name()/,/^}/p' "$SCRIPT_DIR/scripts/module.sh")"
 - Some functions (e.g., `apply_template_vars` using `sed -i`) are not tested due to platform differences
 - Tests run in CI on Ubuntu runners
 
+**IMPORTANT: Running tests on non-Ubuntu systems (e.g., macOS):**
+
+CI runs on Ubuntu, and there are subtle differences in shell behavior between platforms (e.g., locale handling, `${#var}` for UTF-8 strings). To ensure tests pass in CI, **always run tests in Docker** when developing on macOS or other non-Ubuntu systems:
+
+```bash
+# Run all tests in Ubuntu container (matches CI environment)
+docker run --rm -v "$(pwd)":/workspace -w /workspace ubuntu:latest bash -c "
+    apt-get update && apt-get install -y bash coreutils
+    ./tests/run-all-tests.sh
+"
+
+# Run a specific test file
+docker run --rm -v "$(pwd)":/workspace -w /workspace ubuntu:latest bash -c "
+    apt-get update && apt-get install -y bash coreutils
+    ./tests/test-validation.sh
+"
+```
+
+This prevents false positives where tests pass locally but fail in CI due to platform differences.
+
 ## CI/CD Workflow
 
 The project uses multiple GitHub Actions workflows:
@@ -137,23 +213,25 @@ The project uses multiple GitHub Actions workflows:
 **Build Job** - Runs on every push and pull request:
 
 1. Checkout code (including fork PRs)
-2. Run ShellCheck linting
-3. Run unit tests (`./tests/run-all-tests.sh`)
-4. Concatenate scripts into `pve-install.sh`
-5. Calculate and inject version number
-6. Upload artifact and PR metadata
+2. Concatenate scripts into `pve-install.sh`
+3. Check formatting with `shfmt -i 2 -ci -s -d`
+4. Minify with `shfmt -mn` to create `pve-install.min.sh`
+5. Run ShellCheck linting
+6. Run unit tests (`./tests/run-all-tests.sh`)
+7. Calculate and inject version number
+8. Upload artifacts and PR metadata
 
 **Deploy Job** - Runs only on push to main:
 
-1. Download build artifact
-2. Deploy to GitHub Pages as `pve-install.sh`
+1. Download build artifacts
+2. Deploy to GitHub Pages as `pve-install.min.sh` (minified) and `pve-install.sh` (full)
 
 ### Deploy PR Workflow (`deploy-pr.yml`)
 
 Runs after build completes for PRs (including forks):
 
 1. Download build artifact and PR metadata
-2. Deploy to GitHub Pages as `pve-install-pr.{number}.sh`
+2. Deploy to GitHub Pages as `pve-install-pr.{number}.min.sh`
 3. Post/update comment on PR with test link
 
 Uses `workflow_run` trigger for secure fork PR deployments.
@@ -169,7 +247,7 @@ Uses `workflow_run` trigger for secure fork PR deployments.
 
 Runs when PR is closed (merged or rejected):
 
-1. Remove `pve-install-pr.{number}.sh` from GitHub Pages
+1. Remove `pve-install-pr.{number}.min.sh` from GitHub Pages
 
 Uses `pull_request_target` for secure access to close events from forks.
 
@@ -196,7 +274,7 @@ The project uses **Semantic Versioning** with automatic MINOR and PATCH calculat
 
 1. `00-init.sh` contains only the MAJOR version: `VERSION="1"`
 2. GitHub Actions calculates the full version during build
-3. The final `pve-install.sh` contains the complete version (e.g., `VERSION="1.2.5"`)
+3. The final `pve-install.min.sh` contains the complete version (e.g., `VERSION="1.2.5"`)
 4. Version changes are NOT pushed back to the repository
 
 **Version examples:**
