@@ -30,15 +30,14 @@ collect_system_info() {
       "$bar_filled" "$bar_empty" "$pct"
   }
 
-  # Install required tools and display utilities
-  # boxes: table display, column: alignment, iproute2: ip command
+  # Install required tools
+  # column: alignment, iproute2: ip command
   # udev: udevadm for interface detection, timeout: command timeouts
   # jq: JSON parsing for API responses
   # aria2c: optional multi-connection downloads (fallback: curl, wget)
   # findmnt: efficient mount point queries
   update_progress
   local packages_to_install=""
-  command -v boxes &>/dev/null || packages_to_install+=" boxes"
   command -v column &>/dev/null || packages_to_install+=" bsdmainutils"
   command -v ip &>/dev/null || packages_to_install+=" iproute2"
   command -v udevadm &>/dev/null || packages_to_install+=" udev"

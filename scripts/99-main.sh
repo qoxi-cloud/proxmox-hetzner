@@ -28,8 +28,6 @@ truncate_middle() {
 # Displays installation summary and prompts for system reboot.
 # Shows validation results, configuration details, and access methods.
 reboot_to_main_os() {
-  local inner_width=$((MENU_BOX_WIDTH - 6))
-
   # Build summary content
   local summary=""
 
@@ -153,13 +151,16 @@ reboot_to_main_os() {
   clear
   show_banner --no-info
 
-  # Display with boxes
-  {
-    echo "INSTALLATION SUMMARY"
-    echo "$summary" | column -t -s '|' | while IFS= read -r line; do
-      printf "%-${inner_width}s\n" "$line"
-    done
-  } | boxes -d stone -p a1 -s $MENU_BOX_WIDTH | colorize_status
+  # Display summary
+  echo -e "${CLR_CYAN}INSTALLATION SUMMARY${CLR_RESET}"
+  echo ""
+  echo "$summary" | column -t -s '|' | while IFS= read -r line; do
+    # Color status markers
+    line="${line//\[OK\]/${CLR_CYAN}[OK]${CLR_RESET}}"
+    line="${line//\[WARN\]/${CLR_YELLOW}[WARN]${CLR_RESET}}"
+    line="${line//\[ERROR\]/${CLR_RED}[ERROR]${CLR_RESET}}"
+    echo -e "  $line"
+  done
   echo ""
 
   # Show warning if validation failed
