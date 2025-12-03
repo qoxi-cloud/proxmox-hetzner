@@ -45,7 +45,7 @@ disable_colors() {
 }
 
 # Version (MAJOR only - MINOR.PATCH added by CI from git tags/commits)
-VERSION="2.0.34-pr.11"
+VERSION="2.0.35-pr.11"
 
 # =============================================================================
 # Configuration constants
@@ -3893,7 +3893,11 @@ get_system_inputs() {
     get_inputs_non_interactive
   else
     log "get_system_inputs: starting wizard"
-    # Clear screen before starting wizard
+    # Flush any pending terminal responses from stdin
+    # shellcheck disable=SC2034
+    read -rt 0.1 -n 10000 _discard </dev/tty 2>/dev/null || true
+    # Reset terminal state and clear screen
+    printf '\033[0m\033[?25h' >/dev/tty
     clear
     # Use the gum-based wizard for interactive mode
     get_inputs_wizard
