@@ -45,7 +45,7 @@ disable_colors() {
 }
 
 # Version (MAJOR only - MINOR.PATCH added by CI from git tags/commits)
-VERSION="2.0.30-pr.11"
+VERSION="2.0.31-pr.11"
 
 # =============================================================================
 # Configuration constants
@@ -2153,11 +2153,13 @@ _wiz_edit_field_select() {
 # Returns: "next", "back", or "quit"
 #wiz_step_interactive runs an interactive wizard step for the given step number and title, presenting WIZ_FIELD_LABELS, handling navigation, inline editing and choose/multi prompts, applying per-field validators, populating the WIZ_FIELD_VALUES array, and emitting "next" or "back" to indicate flow.
 wiz_step_interactive() {
+  log "wiz_step_interactive: entering step=$1 title=$2"
   local step="$1"
   local title="$2"
   local num_fields=${#WIZ_FIELD_LABELS[@]}
   local show_back="true"
   [[ $step -eq 1 ]] && show_back="false"
+  log "wiz_step_interactive: num_fields=$num_fields"
 
   # Find first empty field to start with
   WIZ_CURRENT_FIELD=0
@@ -2173,6 +2175,7 @@ wiz_step_interactive() {
   local edit_buffer=""
   local first_draw=true
 
+  log "wiz_step_interactive: entering main loop"
   while true; do
     # Build footer based on state
     local footer=""
@@ -2204,8 +2207,10 @@ wiz_step_interactive() {
       content=$(_wiz_build_fields_content "$WIZ_CURRENT_FIELD" "-1" "")
     fi
 
+    log "wiz_step_interactive: calling _wiz_draw_box"
     # Draw
     _wiz_draw_box "$step" "$title" "$content" "$footer" "$first_draw"
+    log "wiz_step_interactive: _wiz_draw_box done, waiting for key"
     first_draw=false
 
     # Wait for keypress
@@ -2358,6 +2363,7 @@ WIZ_GOVERNORS=("performance" "ondemand" "powersave" "schedutil" "conservative")
 # _wiz_step_system collects and persists core system settings (hostname, domain, email, root password, timezone) using an interactive wizard step.
 # If the root password is left empty it generates one and sets PASSWORD_GENERATED="yes"; the function echoes the interaction result (e.g., "next", "back").
 _wiz_step_system() {
+  log "_wiz_step_system: entering"
   _wiz_clear_fields
   _wiz_add_field "Hostname" "input" "${PVE_HOSTNAME:-pve}" "validate_hostname"
   _wiz_add_field "Domain" "input" "${DOMAIN_SUFFIX:-local}"
@@ -2367,6 +2373,7 @@ _wiz_step_system() {
     IFS='|'
     echo "${WIZ_TIMEZONES[*]}"
   )"
+  log "_wiz_step_system: fields added, count=${#WIZ_FIELD_LABELS[@]}"
 
   # Pre-fill values if already set
   [[ -n $PVE_HOSTNAME ]] && WIZ_FIELD_VALUES[0]="$PVE_HOSTNAME"
@@ -2375,8 +2382,10 @@ _wiz_step_system() {
   [[ -n $NEW_ROOT_PASSWORD ]] && WIZ_FIELD_VALUES[3]="$NEW_ROOT_PASSWORD"
   [[ -n $TIMEZONE ]] && WIZ_FIELD_VALUES[4]="$TIMEZONE"
 
+  log "_wiz_step_system: calling wiz_step_interactive"
   local result
   result=$(wiz_step_interactive 1 "System")
+  log "_wiz_step_system: wiz_step_interactive returned: $result"
 
   if [[ $result == "next" ]]; then
     PVE_HOSTNAME="${WIZ_FIELD_VALUES[0]}"
@@ -2836,17 +2845,24 @@ _wiz_show_preview() {
 # It updates WIZARD_TOTAL_STEPS, sets globals (e.g., PVE_HOSTNAME, DOMAIN_SUFFIX, PRIVATE_SUBNET) via step helpers, and computes derived values (FQDN, PRIVATE_IP, PRIVATE_IP_CIDR) when the user confirms installation.
 # Returns: 0 on success (ready to install), 1 on cancel.
 get_inputs_wizard() {
+  log "get_inputs_wizard: entering function"
   local current_step=1
   local total_steps=6
 
   # Update wizard total steps
   WIZARD_TOTAL_STEPS=$((total_steps + 1)) # +1 for preview
+  log "get_inputs_wizard: WIZARD_TOTAL_STEPS=$WIZARD_TOTAL_STEPS"
 
   while true; do
     local result=""
+    log "get_inputs_wizard: current_step=$current_step"
 
     case $current_step in
-      1) result=$(_wiz_step_system) ;;
+      1)
+        log "get_inputs_wizard: calling _wiz_step_system"
+        result=$(_wiz_step_system)
+        log "get_inputs_wizard: _wiz_step_system returned: $result"
+        ;;
       2) result=$(_wiz_step_network) ;;
       3) result=$(_wiz_step_storage) ;;
       4) result=$(_wiz_step_security) ;;
