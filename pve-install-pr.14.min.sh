@@ -11,7 +11,7 @@ CLR_HETZNER=$'\033[38;5;160m'
 CLR_RESET=$'\033[m'
 MENU_BOX_WIDTH=60
 SPINNER_CHARS=('○' '◔' '◑' '◕' '●' '◕' '◑' '◔')
-VERSION="1.18.17-pr.14"
+VERSION="1.18.18-pr.14"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feature/wizard}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -1304,7 +1304,11 @@ for val in "${WIZ_FIELD_VALUES[@]}";do
 [[ -z $val ]]&&all_filled=false&&break
 done
 if [[ $edit_mode == "true" ]];then
+local current_type="${WIZ_FIELD_TYPES[$WIZ_CURRENT_FIELD]}"
 footer+="$ANSI_MUTED[$ANSI_ACCENT←/→$ANSI_MUTED] Move$ANSI_RESET  "
+if [[ $current_type == "password" ]];then
+footer+="$ANSI_ACCENT[G] Generate$ANSI_RESET  "
+fi
 footer+="$ANSI_ACCENT[Enter] Save$ANSI_RESET  "
 footer+="$ANSI_MUTED[Esc] Cancel$ANSI_RESET"
 else
@@ -1379,6 +1383,15 @@ $'\x7f'|$'\b')if
 then
 edit_buffer="${edit_buffer:0:edit_cursor-1}${edit_buffer:edit_cursor}"
 ((edit_cursor--))
+fi
+;;
+"g"|"G")local current_type="${WIZ_FIELD_TYPES[$WIZ_CURRENT_FIELD]}"
+if [[ $current_type == "password" ]];then
+edit_buffer=$(generate_password 16)
+edit_cursor=${#edit_buffer}
+else
+edit_buffer="${edit_buffer:0:edit_cursor}$key${edit_buffer:edit_cursor}"
+((edit_cursor++))
 fi
 ;;
 *)if
