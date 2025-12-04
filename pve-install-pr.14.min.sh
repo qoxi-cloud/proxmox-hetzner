@@ -11,7 +11,7 @@ CLR_HETZNER=$'\033[38;5;160m'
 CLR_RESET=$'\033[m'
 MENU_BOX_WIDTH=60
 SPINNER_CHARS=('○' '◔' '◑' '◕' '●' '◕' '◑' '◔')
-VERSION="1.18.21-pr.14"
+VERSION="1.18.22-pr.14"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feature/wizard}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -1111,6 +1111,11 @@ icon="•"
 esac
 gum style --foreground "$color" "$icon $msg"
 }
+wiz_get_timezones(){
+cat <<'TIMEZONES'
+Europe/Kyiv|Europe/London|Europe/Paris|Europe/Berlin|Europe/Amsterdam|Europe/Brussels|Europe/Vienna|Europe/Warsaw|Europe/Prague|Europe/Budapest|Europe/Rome|Europe/Madrid|Europe/Lisbon|Europe/Athens|Europe/Helsinki|Europe/Stockholm|Europe/Oslo|Europe/Copenhagen|Europe/Dublin|Europe/Zurich|Europe/Moscow|Europe/Istanbul|America/New_York|America/Chicago|America/Denver|America/Los_Angeles|America/Toronto|America/Vancouver|America/Mexico_City|America/Sao_Paulo|America/Buenos_Aires|America/Lima|America/Bogota|America/Santiago|Asia/Tokyo|Asia/Shanghai|Asia/Hong_Kong|Asia/Singapore|Asia/Seoul|Asia/Taipei|Asia/Bangkok|Asia/Jakarta|Asia/Manila|Asia/Kolkata|Asia/Mumbai|Asia/Dubai|Asia/Jerusalem|Asia/Riyadh|Australia/Sydney|Australia/Melbourne|Australia/Brisbane|Australia/Perth|Pacific/Auckland|Pacific/Fiji|Pacific/Honolulu|Africa/Cairo|Africa/Johannesburg|Africa/Lagos|Africa/Nairobi|UTC
+TIMEZONES
+}
 wiz_wait_nav(){
 local key
 while true;do
@@ -1468,7 +1473,36 @@ case "$key" in
 esac
 ;;
 ""|$'\n')local field_type="${WIZ_FIELD_TYPES[$WIZ_CURRENT_FIELD]}"
-if [[ $field_type == "choose" || $field_type == "multi" ]];then
+if [[ $field_type == "filter" ]];then
+local field_options="${WIZ_FIELD_OPTIONS[$WIZ_CURRENT_FIELD]}"
+local label="${WIZ_FIELD_LABELS[$WIZ_CURRENT_FIELD]}"
+local current_val="${WIZ_FIELD_VALUES[$WIZ_CURRENT_FIELD]}"
+local new_value
+printf '%s' "$ANSI_CURSOR_SHOW"
+new_value=$(echo "$field_options"|tr '|' '\n'|gum filter \
+--height 8 \
+--header "Select $label:" \
+--header.foreground "$GUM_MUTED" \
+--indicator "› " \
+--indicator.foreground "$GUM_ACCENT" \
+--match.foreground "$GUM_PRIMARY" \
+--prompt "Search: " \
+--prompt.foreground "$GUM_ACCENT" \
+--cursor-text.foreground "$GUM_PRIMARY" \
+--placeholder "Type to filter..." \
+--value "$current_val" 2> \
+/dev/null)||true
+printf '%s' "$ANSI_CURSOR_HIDE"
+if [[ -n $new_value ]];then
+WIZ_FIELD_VALUES[WIZ_CURRENT_FIELD]="$new_value"
+for ((i=WIZ_CURRENT_FIELD+1; i<num_fields; i++));do
+if [[ -z ${WIZ_FIELD_VALUES[$i]} ]];then
+WIZ_CURRENT_FIELD=$i
+break
+fi
+done
+fi
+elif [[ $field_type == "choose" || $field_type == "multi" ]];then
 select_mode=true
 select_cursor=0
 local field_options="${WIZ_FIELD_OPTIONS[$WIZ_CURRENT_FIELD]}"
@@ -3438,7 +3472,7 @@ _wiz_add_field "Hostname" "input" "pve"
 _wiz_add_field "Domain" "input" "local"
 _wiz_add_field "Email" "input" "admin@example.com"
 _wiz_add_field "Password" "password" ""
-_wiz_add_field "Timezone" "choose" "Europe/Kyiv|Europe/London|America/New_York|UTC"
+_wiz_add_field "Timezone" "filter" "$(wiz_get_timezones)"
 wiz_step_interactive 1 "System"
 wiz_cursor_show
 clear
