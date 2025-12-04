@@ -11,7 +11,7 @@ CLR_HETZNER=$'\033[38;5;160m'
 CLR_RESET=$'\033[m'
 MENU_BOX_WIDTH=60
 SPINNER_CHARS=('○' '◔' '◑' '◕' '●' '◕' '◑' '◔')
-VERSION="1.18.22-pr.14"
+VERSION="1.18.23-pr.14"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feature/wizard}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -1479,8 +1479,11 @@ local label="${WIZ_FIELD_LABELS[$WIZ_CURRENT_FIELD]}"
 local current_val="${WIZ_FIELD_VALUES[$WIZ_CURRENT_FIELD]}"
 local new_value
 printf '%s' "$ANSI_CURSOR_SHOW"
-new_value=$(echo "$field_options"|tr '|' '\n'|gum filter \
---height 8 \
+clear
+wiz_banner
+local opts_newline="${field_options//|/$'\n'}"
+new_value=$(gum filter \
+--height 10 \
 --header "Select $label:" \
 --header.foreground "$GUM_MUTED" \
 --indicator "› " \
@@ -1488,10 +1491,8 @@ new_value=$(echo "$field_options"|tr '|' '\n'|gum filter \
 --match.foreground "$GUM_PRIMARY" \
 --prompt "Search: " \
 --prompt.foreground "$GUM_ACCENT" \
---cursor-text.foreground "$GUM_PRIMARY" \
---placeholder "Type to filter..." \
---value "$current_val" 2> \
-/dev/null)||true
+--placeholder "Type to filter..." <<< \
+"$opts_newline" 2>/dev/null)||true
 printf '%s' "$ANSI_CURSOR_HIDE"
 if [[ -n $new_value ]];then
 WIZ_FIELD_VALUES[WIZ_CURRENT_FIELD]="$new_value"
