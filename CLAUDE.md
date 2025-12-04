@@ -2,6 +2,22 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Code Review with CodeRabbit
+
+**After making code changes, run CodeRabbit to check for issues:**
+
+```bash
+coderabbit --type uncommitted --prompt-only
+```
+
+This will analyze uncommitted changes and report any problems. Fix issues before committing.
+
+**When to run:**
+
+- After completing a feature or bug fix
+- Before creating a commit
+- When you want to validate code quality
+
 ## Language Requirements
 
 **All content in this repository MUST be in English only.** This includes:

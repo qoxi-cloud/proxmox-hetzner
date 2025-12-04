@@ -42,6 +42,11 @@ reviews:
         - ShellCheck warnings (SC1091, SC2034, SC2086 are intentionally ignored)
         - Proper quoting of variables
         - Use of safe patterns (printf -v instead of eval)
+
+        IMPORTANT: Scripts in scripts/ directory are concatenated into a single
+        pve-install.sh by GitHub Actions. DO NOT suggest adding shebangs to
+        individual scripts - only 00-init.sh has the shebang which becomes
+        the first line of the final concatenated script.
     - path: "templates/**"
       instructions: |
         Review templates for:

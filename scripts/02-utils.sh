@@ -183,63 +183,6 @@ generate_password() {
   tr -dc 'A-Za-z0-9!@#$%^&*' </dev/urandom | head -c "$length"
 }
 
-# Reads password from user with asterisks shown for each character.
-# Parameters:
-#   $1 - Prompt text
-# Returns: Password via stdout
-read_password() {
-  local prompt="$1"
-  local password=""
-  local char=""
-
-  # Output prompt to stderr so it's visible when stdout is captured
-  echo -n "$prompt" >&2
-
-  while IFS= read -r -s -n1 char; do
-    if [[ -z $char ]]; then
-      break
-    fi
-    if [[ $char == $'\x7f' || $char == $'\x08' ]]; then
-      if [[ -n $password ]]; then
-        password="${password%?}"
-        echo -ne "\b \b" >&2
-      fi
-    else
-      password+="$char"
-      echo -n "*" >&2
-    fi
-  done
-
-  # Newline to stderr for display
-  echo "" >&2
-  # Password to stdout for capture
-  echo "$password"
-}
-
-# Prompts for input with validation loop until valid value provided.
-# Parameters:
-#   $1 - Prompt text
-#   $2 - Default value
-#   $3 - Validator function name
-#   $4 - Error message for invalid input
-# Returns: Validated input value via stdout
-prompt_validated() {
-  local prompt="$1"
-  local default="$2"
-  local validator="$3"
-  local error_msg="$4"
-  local result=""
-
-  while true; do
-    read -r -e -p "$prompt" -i "$default" result
-    if $validator "$result"; then
-      echo "$result"
-      return 0
-    fi
-    print_error "$error_msg"
-  done
-}
-
 # =============================================================================
 # Progress indicators
 # =============================================================================
