@@ -11,7 +11,7 @@ CLR_HETZNER=$'\033[38;5;160m'
 CLR_RESET=$'\033[m'
 MENU_BOX_WIDTH=60
 SPINNER_CHARS=('○' '◔' '◑' '◕' '●' '◕' '◑' '◔')
-VERSION="1.18.18-pr.14"
+VERSION="1.18.19-pr.14"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feature/wizard}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -1338,8 +1338,8 @@ local key
 IFS= read -rsn1 key
 if [[ $edit_mode == "true" ]];then
 case "$key" in
-$'\e')local seq
-read -rsn2 seq
+$'\e')local seq=""
+read -rsn2 -t 0.1 seq||true
 case "$seq" in
 '[D')((edit_cursor>0))&&((edit_cursor--))
 ;;
@@ -1359,6 +1359,10 @@ edit_cursor=0
 ;;
 '[4')read -rsn1 _
 edit_cursor=${#edit_buffer}
+;;
+'')edit_mode=false
+edit_buffer=""
+edit_cursor=0
 esac
 ;;
 "")local validator="${WIZ_FIELD_VALIDATORS[$WIZ_CURRENT_FIELD]}"
