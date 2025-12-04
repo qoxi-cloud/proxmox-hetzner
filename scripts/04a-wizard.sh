@@ -1150,7 +1150,8 @@ wiz_step_interactive() {
             clear
             wiz_banner
             # Convert pipe-separated options to newline-separated for gum filter
-            local opts_newline="${field_options//|/$'\n'}"
+            local opts_newline
+            opts_newline=$(printf '%s' "$field_options" | tr '|' '\n')
             new_value=$(gum filter \
               --height 10 \
               --header "Select ${label}:" \
