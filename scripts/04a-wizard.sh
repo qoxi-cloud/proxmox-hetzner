@@ -952,9 +952,9 @@ wiz_step_interactive() {
         $'\e')
           # Escape key pressed - check for escape sequence
           # Arrow keys send: ESC [ A/B/C/D
-          # Read 2 more chars immediately (escape sequences arrive together)
-          local seq
-          read -rsn2 seq
+          # Read with timeout to distinguish bare Escape from sequences
+          local seq=""
+          read -rsn2 -t 0.1 seq || true
           case "$seq" in
             '[D') # Left arrow
               ((edit_cursor > 0)) && ((edit_cursor--))
@@ -984,6 +984,12 @@ wiz_step_interactive() {
               # End (alternate) - consume the trailing ~
               read -rsn1 _
               edit_cursor=${#edit_buffer}
+              ;;
+            '')
+              # Bare Escape - cancel edit mode
+              edit_mode=false
+              edit_buffer=""
+              edit_cursor=0
               ;;
           esac
           ;;
