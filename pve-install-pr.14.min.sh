@@ -11,7 +11,7 @@ CLR_HETZNER=$'\033[38;5;160m'
 CLR_RESET=$'\033[m'
 MENU_BOX_WIDTH=60
 SPINNER_CHARS=('○' '◔' '◑' '◕' '●' '◕' '◑' '◔')
-VERSION="1.18.20-pr.14"
+VERSION="1.18.21-pr.14"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feature/wizard}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -1218,9 +1218,9 @@ IFS='|' read -ra opts <<<"$field_options"
 local opt_idx=0
 for opt in "${opts[@]}";do
 if [[ $opt_idx -eq $select_cursor ]];then
-content+="    $ANSI_ACCENT› $ANSI_PRIMARY$opt$ANSI_RESET"
+content+="$ANSI_ACCENT› $ANSI_PRIMARY$opt$ANSI_RESET"
 else
-content+="      $ANSI_MUTED$opt$ANSI_RESET"
+content+="  $ANSI_MUTED$opt$ANSI_RESET"
 fi
 content+=$'\n'
 ((opt_idx++))
