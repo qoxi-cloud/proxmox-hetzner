@@ -744,12 +744,16 @@ _wiz_add_field() {
 #   $2 - Edit mode field index, -1 for no edit mode
 #   $3 - Current edit buffer (for edit mode)
 #   $4 - Cursor position in edit buffer (for edit mode)
+#   $5 - Select mode field index, -1 for no select mode
+#   $6 - Select cursor position (for select mode)
 # Returns: Formatted content via stdout
 _wiz_build_fields_content() {
   local cursor_idx="${1:--1}"
   local edit_idx="${2:--1}"
   local edit_buffer="${3:-}"
   local edit_cursor="${4:-0}"
+  local select_idx="${5:--1}"
+  local select_cursor="${6:-0}"
   local content=""
   local i
 
@@ -765,7 +769,28 @@ _wiz_build_fields_content() {
     fi
 
     # Build field line
-    if [[ $i -eq $edit_idx ]]; then
+    if [[ $i -eq $select_idx ]]; then
+      # Select mode - show label and options below
+      content+="${ANSI_ACCENT}› ${ANSI_RESET}"
+      content+="${ANSI_PRIMARY}${label}:${ANSI_RESET}"
+      content+=$'\n'
+      # Show options
+      local field_options="${WIZ_FIELD_OPTIONS[$i]}"
+      local -a opts
+      IFS='|' read -ra opts <<<"$field_options"
+      local opt_idx=0
+      for opt in "${opts[@]}"; do
+        if [[ $opt_idx -eq $select_cursor ]]; then
+          content+="    ${ANSI_ACCENT}› ${ANSI_PRIMARY}${opt}${ANSI_RESET}"
+        else
+          content+="      ${ANSI_MUTED}${opt}${ANSI_RESET}"
+        fi
+        content+=$'\n'
+        ((opt_idx++))
+      done
+      # Remove last newline since main loop adds one
+      content="${content%$'\n'}"
+    elif [[ $i -eq $edit_idx ]]; then
       # Edit mode - show input field with cursor at position
       content+="${ANSI_ACCENT}› ${ANSI_RESET}"
       content+="${ANSI_PRIMARY}${label}: ${ANSI_RESET}"
@@ -897,6 +922,11 @@ wiz_step_interactive() {
   local edit_buffer=""
   local edit_cursor=0
 
+  # Select mode state (for choose fields)
+  local select_mode=false
+  local select_cursor=0
+  local select_opts_count=0
+
   while true; do
     # Build footer based on state
     local footer=""
@@ -905,7 +935,11 @@ wiz_step_interactive() {
       [[ -z $val ]] && all_filled=false && break
     done
 
-    if [[ $edit_mode == "true" ]]; then
+    if [[ $select_mode == "true" ]]; then
+      footer+="${ANSI_MUTED}[${ANSI_ACCENT}↑/↓${ANSI_MUTED}] Select${ANSI_RESET}  "
+      footer+="${ANSI_ACCENT}[Enter] Confirm${ANSI_RESET}  "
+      footer+="${ANSI_MUTED}[Esc] Cancel${ANSI_RESET}"
+    elif [[ $edit_mode == "true" ]]; then
       local current_type="${WIZ_FIELD_TYPES[$WIZ_CURRENT_FIELD]}"
       footer+="${ANSI_MUTED}[${ANSI_ACCENT}←/→${ANSI_MUTED}] Move${ANSI_RESET}  "
       if [[ $current_type == "password" ]]; then
@@ -927,26 +961,64 @@ wiz_step_interactive() {
 
     # Build content
     local content
-    if [[ $edit_mode == "true" ]]; then
-      content=$(_wiz_build_fields_content "-1" "$WIZ_CURRENT_FIELD" "$edit_buffer" "$edit_cursor")
+    if [[ $select_mode == "true" ]]; then
+      content=$(_wiz_build_fields_content "-1" "-1" "" "0" "$WIZ_CURRENT_FIELD" "$select_cursor")
+    elif [[ $edit_mode == "true" ]]; then
+      content=$(_wiz_build_fields_content "-1" "$WIZ_CURRENT_FIELD" "$edit_buffer" "$edit_cursor" "-1" "0")
     else
-      content=$(_wiz_build_fields_content "$WIZ_CURRENT_FIELD" "-1" "" "0")
+      content=$(_wiz_build_fields_content "$WIZ_CURRENT_FIELD" "-1" "" "0" "-1" "0")
     fi
 
-    # Draw and manage cursor visibility based on edit mode
+    # Draw and hide cursor (we don't need visible cursor in wizard)
     _wiz_draw_box "$step" "$title" "$content" "$footer"
-    if [[ $edit_mode == "true" ]]; then
-      printf '%s' "$ANSI_CURSOR_SHOW"
-    else
-      printf '%s' "$ANSI_CURSOR_HIDE"
-    fi
+    printf '%s' "$ANSI_CURSOR_HIDE"
 
     # Wait for keypress
     # Use IFS= to preserve space character (otherwise read strips it)
     local key
     IFS= read -rsn1 key
 
-    if [[ $edit_mode == "true" ]]; then
+    if [[ $select_mode == "true" ]]; then
+      # Select mode key handling (for choose fields)
+      case "$key" in
+        $'\e')
+          # Escape key - check for sequence or bare escape
+          local seq=""
+          read -rsn2 -t 0.1 seq || true
+          case "$seq" in
+            '[A') # Up arrow
+              ((select_cursor > 0)) && ((select_cursor--))
+              ;;
+            '[B') # Down arrow
+              ((select_cursor < select_opts_count - 1)) && ((select_cursor++))
+              ;;
+            '')
+              # Bare Escape - cancel select mode
+              select_mode=false
+              select_cursor=0
+              ;;
+          esac
+          ;;
+        "")
+          # Enter - confirm selection
+          local field_options="${WIZ_FIELD_OPTIONS[$WIZ_CURRENT_FIELD]}"
+          local -a opts
+          IFS='|' read -ra opts <<<"$field_options"
+          WIZ_FIELD_VALUES[WIZ_CURRENT_FIELD]="${opts[$select_cursor]}"
+          select_mode=false
+          select_cursor=0
+          # Move to next empty field
+          for ((i = WIZ_CURRENT_FIELD + 1; i < num_fields; i++)); do
+            if [[ -z ${WIZ_FIELD_VALUES[$i]} ]]; then
+              WIZ_CURRENT_FIELD=$i
+              break
+            fi
+          done
+          ;;
+        "j") ((select_cursor < select_opts_count - 1)) && ((select_cursor++)) ;;
+        "k") ((select_cursor > 0)) && ((select_cursor--)) ;;
+      esac
+    elif [[ $edit_mode == "true" ]]; then
       # Edit mode key handling
       case "$key" in
         $'\e')
@@ -1046,7 +1118,7 @@ wiz_step_interactive() {
       case "$key" in
         $'\e')
           # Escape sequence (arrows)
-          read -rsn2 -t1 key 2>/dev/null || read -rsn2 key
+          read -rsn2 -t 0.1 key 2>/dev/null || true
           case "$key" in
             '[A') ((WIZ_CURRENT_FIELD > 0)) && ((WIZ_CURRENT_FIELD--)) ;;
             '[B') ((WIZ_CURRENT_FIELD < num_fields - 1)) && ((WIZ_CURRENT_FIELD++)) ;;
@@ -1056,8 +1128,23 @@ wiz_step_interactive() {
           # Enter - start editing
           local field_type="${WIZ_FIELD_TYPES[$WIZ_CURRENT_FIELD]}"
           if [[ $field_type == "choose" || $field_type == "multi" ]]; then
-            # For choose/multi, use gum choose
-            _wiz_edit_field_select "$WIZ_CURRENT_FIELD"
+            # For choose/multi, use inline select mode
+            select_mode=true
+            select_cursor=0
+            local field_options="${WIZ_FIELD_OPTIONS[$WIZ_CURRENT_FIELD]}"
+            local -a opts
+            IFS='|' read -ra opts <<<"$field_options"
+            select_opts_count=${#opts[@]}
+            # Set cursor to current value if exists
+            local current_val="${WIZ_FIELD_VALUES[$WIZ_CURRENT_FIELD]}"
+            if [[ -n $current_val ]]; then
+              for idx in "${!opts[@]}"; do
+                if [[ ${opts[$idx]} == "$current_val" ]]; then
+                  select_cursor=$idx
+                  break
+                fi
+              done
+            fi
           else
             # For input/password, use inline edit
             edit_mode=true
@@ -1092,39 +1179,6 @@ wiz_step_interactive() {
       esac
     fi
   done
-}
-
-# Handles select field editing (choose/multi) using gum.
-# Parameters:
-#   $1 - Field index
-_wiz_edit_field_select() {
-  local idx="$1"
-  local label="${WIZ_FIELD_LABELS[$idx]}"
-  local type="${WIZ_FIELD_TYPES[$idx]}"
-  local field_options="${WIZ_FIELD_OPTIONS[$idx]}"
-  local -a opts
-  local new_value=""
-
-  IFS='|' read -ra opts <<<"$field_options"
-
-  echo ""
-  if [[ $type == "choose" ]]; then
-    new_value=$(wiz_choose "Select ${label}:" "${opts[@]}")
-  else
-    new_value=$(wiz_choose_multi "Select ${label}:" "${opts[@]}")
-  fi
-
-  if [[ -n $new_value ]]; then
-    WIZ_FIELD_VALUES[idx]="$new_value"
-    # Move to next empty field
-    local num_fields=${#WIZ_FIELD_LABELS[@]}
-    for ((i = idx + 1; i < num_fields; i++)); do
-      if [[ -z ${WIZ_FIELD_VALUES[$i]} ]]; then
-        WIZ_CURRENT_FIELD=$i
-        return
-      fi
-    done
-  fi
 }
 
 # =============================================================================
