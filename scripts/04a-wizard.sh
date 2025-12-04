@@ -297,7 +297,7 @@ wiz_banner_animated_start() {
 # Does NOT show static banner - wizard will show it when ready.
 # Side effects: Kills background process, clears WIZ_BANNER_PID, clears screen
 wiz_banner_animated_stop() {
-  if [[ -n "$WIZ_BANNER_PID" ]]; then
+  if [[ -n $WIZ_BANNER_PID ]]; then
     # Kill the background process
     kill "$WIZ_BANNER_PID" 2>/dev/null
     wait "$WIZ_BANNER_PID" 2>/dev/null

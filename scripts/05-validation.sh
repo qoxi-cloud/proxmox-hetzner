@@ -337,4 +337,3 @@ validate_dns_resolution() {
     return 2 # Wrong IP
   fi
 }
-
