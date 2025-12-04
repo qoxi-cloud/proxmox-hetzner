@@ -11,7 +11,7 @@ CLR_HETZNER=$'\033[38;5;160m'
 CLR_RESET=$'\033[m'
 MENU_BOX_WIDTH=60
 SPINNER_CHARS=('○' '◔' '◑' '◕' '●' '◕' '◑' '◔')
-VERSION="1.18.24-pr.14"
+VERSION="1.18.25-pr.14"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feature/wizard}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -1196,6 +1196,24 @@ WIZ_FIELD_DEFAULTS+=("$default_or_options")
 fi
 WIZ_FIELD_VALIDATORS+=("$validator")
 }
+_wiz_filter_options(){
+local query="$1"
+local options_str="$2"
+local -a result=()
+local -a opts
+IFS='|' read -ra opts <<<"$options_str"
+local query_lower
+query_lower=$(printf '%s' "$query"|tr '[:upper:]' '[:lower:]')
+for opt in "${opts[@]}";do
+local opt_lower
+opt_lower=$(printf '%s' "$opt"|tr '[:upper:]' '[:lower:]')
+if [[ -z $query || $opt_lower == *"$query_lower"* ]];then
+result+=("$opt")
+fi
+done
+local IFS='|'
+printf '%s' "${result[*]}"
+}
 _wiz_build_fields_content(){
 local cursor_idx="${1:--1}"
 local edit_idx="${2:--1}"
@@ -1203,6 +1221,12 @@ local edit_buffer="${3:-}"
 local edit_cursor="${4:-0}"
 local select_idx="${5:--1}"
 local select_cursor="${6:-0}"
+local filter_idx="${7:--1}"
+local filter_query="${8:-}"
+local filter_cursor="${9:-0}"
+local filter_scroll="${10:-0}"
+local filter_results="${11:-}"
+local filter_max_visible="${12:-5}"
 local content=""
 local i
 for i in "${!WIZ_FIELD_LABELS[@]}";do
@@ -1213,7 +1237,41 @@ local display_value="$value"
 if [[ $type == "password" && -n $value ]];then
 display_value="********"
 fi
-if [[ $i -eq $select_idx ]];then
+if [[ $i -eq $filter_idx ]];then
+content+="$ANSI_ACCENT› $ANSI_RESET"
+content+="$ANSI_PRIMARY$label: $ANSI_RESET"
+content+="$ANSI_SUCCESS$filter_query$ANSI_ACCENT│$ANSI_RESET"
+content+=$'\n'
+local -a results
+if [[ -n $filter_results ]];then
+IFS='|' read -ra results <<<"$filter_results"
+fi
+local total_results=${#results[@]}
+if [[ $total_results -eq 0 ]];then
+content+="  $ANSI_MUTED(no matches)$ANSI_RESET"
+else
+local visible_start=$filter_scroll
+local visible_end=$((filter_scroll+filter_max_visible))
+[[ $visible_end -gt $total_results ]]&&visible_end=$total_results
+if [[ $visible_start -gt 0 ]];then
+content+="  $ANSI_MUTED↑ more...$ANSI_RESET"
+content+=$'\n'
+fi
+for ((j=visible_start; j<visible_end; j++));do
+if [[ $j -eq $filter_cursor ]];then
+content+="$ANSI_ACCENT› $ANSI_PRIMARY${results[$j]}$ANSI_RESET"
+else
+content+="  $ANSI_MUTED${results[$j]}$ANSI_RESET"
+fi
+content+=$'\n'
+done
+if [[ $visible_end -lt $total_results ]];then
+content+="  $ANSI_MUTED↓ more...$ANSI_RESET"
+content+=$'\n'
+fi
+content="${content%$'\n'}"
+fi
+elif [[ $i -eq $select_idx ]];then
 content+="$ANSI_ACCENT› $ANSI_RESET"
 content+="$ANSI_PRIMARY$label:$ANSI_RESET"
 content+=$'\n'
@@ -1325,13 +1383,25 @@ local edit_cursor=0
 local select_mode=false
 local select_cursor=0
 local select_opts_count=0
+local filter_mode=false
+local filter_query=""
+local filter_cursor=0
+local filter_scroll=0
+local -a filter_results=()
+local -a filter_all_opts=()
+local filter_max_visible=5
 while true;do
 local footer=""
 local all_filled=true
 for val in "${WIZ_FIELD_VALUES[@]}";do
 [[ -z $val ]]&&all_filled=false&&break
 done
-if [[ $select_mode == "true" ]];then
+if [[ $filter_mode == "true" ]];then
+footer+="${ANSI_MUTED}Type to search$ANSI_RESET  "
+footer+="$ANSI_MUTED[$ANSI_ACCENT↑/↓$ANSI_MUTED] Select$ANSI_RESET  "
+footer+="$ANSI_ACCENT[Enter] Confirm$ANSI_RESET  "
+footer+="$ANSI_MUTED[Esc] Cancel$ANSI_RESET"
+elif [[ $select_mode == "true" ]];then
 footer+="$ANSI_MUTED[$ANSI_ACCENT↑/↓$ANSI_MUTED] Select$ANSI_RESET  "
 footer+="$ANSI_ACCENT[Enter] Confirm$ANSI_RESET  "
 footer+="$ANSI_MUTED[Esc] Cancel$ANSI_RESET"
@@ -1355,18 +1425,101 @@ fi
 footer+="$ANSI_MUTED[${ANSI_ACCENT}Q$ANSI_MUTED] Quit$ANSI_RESET"
 fi
 local content
-if [[ $select_mode == "true" ]];then
-content=$(_wiz_build_fields_content "-1" "-1" "" "0" "$WIZ_CURRENT_FIELD" "$select_cursor")
+if [[ $filter_mode == "true" ]];then
+local filter_results_str=""
+local IFS='|'
+filter_results_str="${filter_results[*]}"
+content=$(_wiz_build_fields_content "-1" "-1" "" "0" "-1" "0" "$WIZ_CURRENT_FIELD" "$filter_query" "$filter_cursor" "$filter_scroll" "$filter_results_str" "$filter_max_visible")
+elif [[ $select_mode == "true" ]];then
+content=$(_wiz_build_fields_content "-1" "-1" "" "0" "$WIZ_CURRENT_FIELD" "$select_cursor" "-1" "" "0" "0" "" "5")
 elif [[ $edit_mode == "true" ]];then
-content=$(_wiz_build_fields_content "-1" "$WIZ_CURRENT_FIELD" "$edit_buffer" "$edit_cursor" "-1" "0")
+content=$(_wiz_build_fields_content "-1" "$WIZ_CURRENT_FIELD" "$edit_buffer" "$edit_cursor" "-1" "0" "-1" "" "0" "0" "" "5")
 else
-content=$(_wiz_build_fields_content "$WIZ_CURRENT_FIELD" "-1" "" "0" "-1" "0")
+content=$(_wiz_build_fields_content "$WIZ_CURRENT_FIELD" "-1" "" "0" "-1" "0" "-1" "" "0" "0" "" "5")
 fi
 _wiz_draw_box "$step" "$title" "$content" "$footer"
 printf '%s' "$ANSI_CURSOR_HIDE"
 local key
 IFS= read -rsn1 key
-if [[ $select_mode == "true" ]];then
+if [[ $filter_mode == "true" ]];then
+local filter_results_count=${#filter_results[@]}
+case "$key" in
+$'\e')local seq=""
+read -rsn2 -t 0.1 seq||true
+case "$seq" in
+'[A')if
+[[ $filter_cursor -gt 0 ]]
+then
+((filter_cursor--))
+if [[ $filter_cursor -lt $filter_scroll ]];then
+filter_scroll=$filter_cursor
+fi
+fi
+;;
+'[B')if
+[[ $filter_cursor -lt $((filter_results_count-1)) ]]
+then
+((filter_cursor++))
+if [[ $filter_cursor -ge $((filter_scroll+filter_max_visible)) ]];then
+filter_scroll=$((filter_cursor-filter_max_visible+1))
+fi
+fi
+;;
+'')filter_mode=false
+filter_query=""
+filter_cursor=0
+filter_scroll=0
+filter_results=()
+esac
+;;
+"")if
+[[ $filter_results_count -gt 0 ]]
+then
+WIZ_FIELD_VALUES[WIZ_CURRENT_FIELD]="${filter_results[$filter_cursor]}"
+filter_mode=false
+filter_query=""
+filter_cursor=0
+filter_scroll=0
+filter_results=()
+for ((i=WIZ_CURRENT_FIELD+1; i<num_fields; i++));do
+if [[ -z ${WIZ_FIELD_VALUES[$i]} ]];then
+WIZ_CURRENT_FIELD=$i
+break
+fi
+done
+fi
+;;
+$'\x7f'|$'\b')if
+[[ ${#filter_query} -gt 0 ]]
+then
+filter_query="${filter_query%?}"
+local field_options="${WIZ_FIELD_OPTIONS[$WIZ_CURRENT_FIELD]}"
+local filtered
+filtered=$(_wiz_filter_options "$filter_query" "$field_options")
+filter_results=()
+if [[ -n $filtered ]];then
+IFS='|' read -ra filter_results <<<"$filtered"
+fi
+filter_cursor=0
+filter_scroll=0
+fi
+;;
+*)if
+[[ $key =~ ^[[:print:]]$ || $key == " " ]]
+then
+filter_query+="$key"
+local field_options="${WIZ_FIELD_OPTIONS[$WIZ_CURRENT_FIELD]}"
+local filtered
+filtered=$(_wiz_filter_options "$filter_query" "$field_options")
+filter_results=()
+if [[ -n $filtered ]];then
+IFS='|' read -ra filter_results <<<"$filtered"
+fi
+filter_cursor=0
+filter_scroll=0
+fi
+esac
+elif [[ $select_mode == "true" ]];then
 case "$key" in
 $'\e')local seq=""
 read -rsn2 -t 0.1 seq||true
@@ -1474,32 +1627,23 @@ esac
 ;;
 ""|$'\n')local field_type="${WIZ_FIELD_TYPES[$WIZ_CURRENT_FIELD]}"
 if [[ $field_type == "filter" ]];then
+filter_mode=true
+filter_query=""
+filter_cursor=0
+filter_scroll=0
 local field_options="${WIZ_FIELD_OPTIONS[$WIZ_CURRENT_FIELD]}"
-local label="${WIZ_FIELD_LABELS[$WIZ_CURRENT_FIELD]}"
+filter_results=()
+if [[ -n $field_options ]];then
+IFS='|' read -ra filter_results <<<"$field_options"
+fi
 local current_val="${WIZ_FIELD_VALUES[$WIZ_CURRENT_FIELD]}"
-local new_value
-printf '%s' "$ANSI_CURSOR_SHOW"
-clear
-wiz_banner
-local opts_newline
-opts_newline=$(printf '%s' "$field_options"|tr '|' '\n')
-new_value=$(gum filter \
---height 10 \
---header "Select $label:" \
---header.foreground "$GUM_MUTED" \
---indicator "› " \
---indicator.foreground "$GUM_ACCENT" \
---match.foreground "$GUM_PRIMARY" \
---prompt "Search: " \
---prompt.foreground "$GUM_ACCENT" \
---placeholder "Type to filter..." <<< \
-"$opts_newline" 2>/dev/null)||true
-printf '%s' "$ANSI_CURSOR_HIDE"
-if [[ -n $new_value ]];then
-WIZ_FIELD_VALUES[WIZ_CURRENT_FIELD]="$new_value"
-for ((i=WIZ_CURRENT_FIELD+1; i<num_fields; i++));do
-if [[ -z ${WIZ_FIELD_VALUES[$i]} ]];then
-WIZ_CURRENT_FIELD=$i
+if [[ -n $current_val ]];then
+for idx in "${!filter_results[@]}";do
+if [[ ${filter_results[$idx]} == "$current_val" ]];then
+filter_cursor=$idx
+if [[ $filter_cursor -ge $filter_max_visible ]];then
+filter_scroll=$((filter_cursor-filter_max_visible/2))
+fi
 break
 fi
 done
