@@ -526,11 +526,13 @@ _wiz_add_field() {
 #   $1 - Current field index (for cursor), -1 for no cursor
 #   $2 - Edit mode field index, -1 for no edit mode
 #   $3 - Current edit buffer (for edit mode)
+#   $4 - Cursor position in edit buffer (for edit mode)
 # Returns: Formatted content via stdout
 _wiz_build_fields_content() {
   local cursor_idx="${1:--1}"
   local edit_idx="${2:--1}"
   local edit_buffer="${3:-}"
+  local edit_cursor="${4:-0}"
   local content=""
   local i
 
@@ -547,16 +549,20 @@ _wiz_build_fields_content() {
 
     # Build field line
     if [[ $i -eq $edit_idx ]]; then
-      # Edit mode - show input field with cursor
+      # Edit mode - show input field with cursor at position
       content+="${ANSI_ACCENT}› ${ANSI_RESET}"
       content+="${ANSI_PRIMARY}${label}: ${ANSI_RESET}"
       if [[ $type == "password" ]]; then
-        # Show asterisks for password
-        local masked=""
-        for ((j = 0; j < ${#edit_buffer}; j++)); do masked+="*"; done
-        content+="${ANSI_SUCCESS}${masked}${ANSI_ACCENT}▌${ANSI_RESET}"
+        # Show asterisks for password with cursor
+        local before_cursor="" after_cursor=""
+        for ((j = 0; j < edit_cursor; j++)); do before_cursor+="*"; done
+        for ((j = edit_cursor; j < ${#edit_buffer}; j++)); do after_cursor+="*"; done
+        content+="${ANSI_SUCCESS}${before_cursor}${ANSI_ACCENT}▌${ANSI_SUCCESS}${after_cursor}${ANSI_RESET}"
       else
-        content+="${ANSI_SUCCESS}${edit_buffer}${ANSI_ACCENT}▌${ANSI_RESET}"
+        # Show text with cursor at position
+        local before_cursor="${edit_buffer:0:edit_cursor}"
+        local after_cursor="${edit_buffer:edit_cursor}"
+        content+="${ANSI_SUCCESS}${before_cursor}${ANSI_ACCENT}▌${ANSI_SUCCESS}${after_cursor}${ANSI_RESET}"
       fi
     elif [[ $i -eq $cursor_idx ]]; then
       # Current field - show cursor
@@ -672,6 +678,7 @@ wiz_step_interactive() {
   # Edit mode state
   local edit_mode=false
   local edit_buffer=""
+  local edit_cursor=0
 
   while true; do
     # Build footer based on state
@@ -682,6 +689,7 @@ wiz_step_interactive() {
     done
 
     if [[ $edit_mode == "true" ]]; then
+      footer+="${ANSI_MUTED}[${ANSI_ACCENT}←/→${ANSI_MUTED}] Move${ANSI_RESET}  "
       footer+="${ANSI_ACCENT}[Enter] Save${ANSI_RESET}  "
       footer+="${ANSI_MUTED}[Esc] Cancel${ANSI_RESET}"
     else
@@ -699,9 +707,9 @@ wiz_step_interactive() {
     # Build content
     local content
     if [[ $edit_mode == "true" ]]; then
-      content=$(_wiz_build_fields_content "-1" "$WIZ_CURRENT_FIELD" "$edit_buffer")
+      content=$(_wiz_build_fields_content "-1" "$WIZ_CURRENT_FIELD" "$edit_buffer" "$edit_cursor")
     else
-      content=$(_wiz_build_fields_content "$WIZ_CURRENT_FIELD" "-1" "")
+      content=$(_wiz_build_fields_content "$WIZ_CURRENT_FIELD" "-1" "" "0")
     fi
 
     # Draw and manage cursor visibility based on edit mode
@@ -720,9 +728,33 @@ wiz_step_interactive() {
       # Edit mode key handling
       case "$key" in
         $'\e')
-          # Escape - cancel edit
-          edit_mode=false
-          edit_buffer=""
+          # Check for escape sequence (arrows) or plain Escape
+          read -rsn2 -t 0.1 seq || seq=""
+          case "$seq" in
+            '[D') # Left arrow - move cursor left
+              ((edit_cursor > 0)) && ((edit_cursor--))
+              ;;
+            '[C') # Right arrow - move cursor right
+              ((edit_cursor < ${#edit_buffer})) && ((edit_cursor++))
+              ;;
+            '[H' | '[1~') # Home - move to start
+              edit_cursor=0
+              ;;
+            '[F' | '[4~') # End - move to end
+              edit_cursor=${#edit_buffer}
+              ;;
+            '[3~') # Delete - delete char at cursor
+              if [[ $edit_cursor -lt ${#edit_buffer} ]]; then
+                edit_buffer="${edit_buffer:0:edit_cursor}${edit_buffer:edit_cursor+1}"
+              fi
+              ;;
+            *)
+              # Plain Escape - cancel edit
+              edit_mode=false
+              edit_buffer=""
+              edit_cursor=0
+              ;;
+          esac
           ;;
         "" | $'\n')
           # Enter - save value
@@ -736,6 +768,7 @@ wiz_step_interactive() {
           WIZ_FIELD_VALUES[WIZ_CURRENT_FIELD]="$edit_buffer"
           edit_mode=false
           edit_buffer=""
+          edit_cursor=0
           # Move to next empty field
           for ((i = WIZ_CURRENT_FIELD + 1; i < num_fields; i++)); do
             if [[ -z ${WIZ_FIELD_VALUES[$i]} ]]; then
@@ -745,15 +778,17 @@ wiz_step_interactive() {
           done
           ;;
         $'\x7f' | $'\b')
-          # Backspace - delete last char
-          if [[ -n $edit_buffer ]]; then
-            edit_buffer="${edit_buffer%?}"
+          # Backspace - delete char before cursor
+          if [[ $edit_cursor -gt 0 ]]; then
+            edit_buffer="${edit_buffer:0:edit_cursor-1}${edit_buffer:edit_cursor}"
+            ((edit_cursor--))
           fi
           ;;
         *)
-          # Regular character - append to buffer
+          # Regular character - insert at cursor position
           if [[ $key =~ ^[[:print:]]$ ]]; then
-            edit_buffer+="$key"
+            edit_buffer="${edit_buffer:0:edit_cursor}${key}${edit_buffer:edit_cursor}"
+            ((edit_cursor++))
           fi
           ;;
       esac
@@ -778,6 +813,7 @@ wiz_step_interactive() {
             # For input/password, use inline edit
             edit_mode=true
             edit_buffer="${WIZ_FIELD_VALUES[$WIZ_CURRENT_FIELD]:-${WIZ_FIELD_DEFAULTS[$WIZ_CURRENT_FIELD]}}"
+            edit_cursor=${#edit_buffer}  # Start with cursor at end
           fi
           ;;
         "j") ((WIZ_CURRENT_FIELD < num_fields - 1)) && ((WIZ_CURRENT_FIELD++)) ;;
