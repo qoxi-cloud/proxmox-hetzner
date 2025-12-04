@@ -120,7 +120,7 @@ _wiz_banner_frame() {
 
   # Line 2: |  __ \
   local line2="${M}   "
-  [[ $h -eq 0 ]] && line2+="${A}|  __ \\${M}" || line2+="|  __ \\"
+  [[ $h -eq 0 ]] && line2+="${A}|  __ \\${M}" || line2+='|  __ \'
   line2+="                                            ${R}"
 
   # Line 3: | |__) | _ __   ___  __  __  _ __ ___    ___  __  __
@@ -234,6 +234,78 @@ wiz_banner_animated() {
   # Show static banner at the end
   clear
   wiz_banner
+
+  # Restore cursor
+  printf '%s' "$ANSI_CURSOR_SHOW"
+}
+
+# =============================================================================
+# Background animation control
+# =============================================================================
+
+# PID of background animation process
+WIZ_BANNER_PID=""
+
+# Starts animated banner in background.
+# The animation runs until stopped with wiz_banner_animated_stop().
+# Side effects: Sets WIZ_BANNER_PID, clears screen, starts background animation
+wiz_banner_animated_start() {
+  local frame_delay="${1:-0.1}"
+
+  # Kill any existing animation
+  wiz_banner_animated_stop 2>/dev/null
+
+  # Hide cursor
+  printf '%s' "$ANSI_CURSOR_HIDE"
+
+  # Clear screen once
+  clear
+
+  # Start animation in background subshell
+  (
+    local direction=1
+    local current_letter=0
+
+    # Trap to ensure clean exit
+    trap 'exit 0' TERM INT
+
+    while true; do
+      _wiz_banner_frame "$current_letter"
+      sleep "$frame_delay"
+
+      # Move to next letter
+      if [[ $direction -eq 1 ]]; then
+        ((current_letter++))
+        if [[ $current_letter -ge $BANNER_LETTER_COUNT ]]; then
+          current_letter=$((BANNER_LETTER_COUNT - 2))
+          direction=-1
+        fi
+      else
+        ((current_letter--))
+        if [[ $current_letter -lt 0 ]]; then
+          current_letter=1
+          direction=1
+        fi
+      fi
+    done
+  ) &
+
+  WIZ_BANNER_PID=$!
+}
+
+# Stops background animated banner.
+# Does NOT show static banner - wizard will show it when ready.
+# Side effects: Kills background process, clears WIZ_BANNER_PID, clears screen
+wiz_banner_animated_stop() {
+  if [[ -n "$WIZ_BANNER_PID" ]]; then
+    # Kill the background process
+    kill "$WIZ_BANNER_PID" 2>/dev/null
+    wait "$WIZ_BANNER_PID" 2>/dev/null
+    WIZ_BANNER_PID=""
+  fi
+
+  # Clear screen but don't show banner - wizard will show it
+  clear
 
   # Restore cursor
   printf '%s' "$ANSI_CURSOR_SHOW"

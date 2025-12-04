@@ -3,32 +3,15 @@
 # System checks and hardware detection
 # =============================================================================
 
-# Collects and validates system information with progress indicator.
+# Collects and validates system information with animated banner.
 # Checks: root access, internet connectivity, disk space, RAM, CPU, KVM.
 # Installs required packages if missing.
 # Exits with error if critical checks fail.
 collect_system_info() {
   local errors=0
-  local checks=7
-  local current=0
 
-  # Progress update helper (optimized: no subprocess spawning)
-  update_progress() {
-    current=$((current + 1))
-    local pct=$((current * 100 / checks))
-    local filled=$((pct / 5))
-    local empty=$((20 - filled))
-    local bar_filled="" bar_empty=""
-
-    # Build progress bar strings without spawning subprocesses
-    printf -v bar_filled '%*s' "$filled" ''
-    bar_filled="${bar_filled// /█}"
-    printf -v bar_empty '%*s' "$empty" ''
-    bar_empty="${bar_empty// /░}"
-
-    printf "\r${CLR_ORANGE}Checking system... [${CLR_ORANGE}%s${CLR_RESET}${CLR_GRAY}%s${CLR_RESET}${CLR_ORANGE}] %3d%%${CLR_RESET}" \
-      "$bar_filled" "$bar_empty" "$pct"
-  }
+  # Start animated banner in background while we do system checks
+  wiz_banner_animated_start 0.1
 
   # Install required tools
   # column: alignment, iproute2: ip command
@@ -37,7 +20,6 @@ collect_system_info() {
   # aria2c: optional multi-connection downloads (fallback: curl, wget)
   # findmnt: efficient mount point queries
   # gum: glamorous shell scripts UI (charmbracelet/gum)
-  update_progress
   local packages_to_install=""
   local need_charm_repo=false
   command -v column &>/dev/null || packages_to_install+=" bsdmainutils"
@@ -48,7 +30,10 @@ collect_system_info() {
   command -v jq &>/dev/null || packages_to_install+=" jq"
   command -v aria2c &>/dev/null || packages_to_install+=" aria2"
   command -v findmnt &>/dev/null || packages_to_install+=" util-linux"
-  command -v gum &>/dev/null || { need_charm_repo=true; packages_to_install+=" gum"; }
+  command -v gum &>/dev/null || {
+    need_charm_repo=true
+    packages_to_install+=" gum"
+  }
 
   # Add Charm repo for gum if needed (not in default Debian repos)
   if [[ $need_charm_repo == true ]]; then
@@ -64,42 +49,30 @@ collect_system_info() {
   fi
 
   # Check if running as root
-  update_progress
   if [[ $EUID -ne 0 ]]; then
     errors=$((errors + 1))
   fi
-  sleep 0.1
 
   # Check internet connectivity
-  update_progress
   if ! ping -c 1 -W 3 "$DNS_PRIMARY" >/dev/null 2>&1; then
     errors=$((errors + 1))
   fi
 
   # Check available disk space (need at least 3GB in /root for ISO)
-  update_progress
   local free_space_mb
   free_space_mb=$(df -m /root | awk 'NR==2 {print $4}')
   if [[ $free_space_mb -lt $MIN_DISK_SPACE_MB ]]; then
     errors=$((errors + 1))
   fi
-  sleep 0.1
 
   # Check RAM (need at least 4GB)
-  update_progress
   local total_ram_mb
   total_ram_mb=$(free -m | awk '/^Mem:/{print $2}')
   if [[ $total_ram_mb -lt $MIN_RAM_MB ]]; then
     errors=$((errors + 1))
   fi
-  sleep 0.1
-
-  # Check CPU cores (warning only, not critical)
-  update_progress
-  sleep 0.1
 
   # Check if KVM is available (try to load module if not present)
-  update_progress
   if [[ ! -e /dev/kvm ]]; then
     # Try to load KVM module (needed in rescue mode)
     modprobe kvm 2>/dev/null || true
@@ -118,13 +91,12 @@ collect_system_info() {
   if [[ ! -e /dev/kvm ]]; then
     errors=$((errors + 1))
   fi
-  sleep 0.1
-
-  # Clear progress line
-  printf "\r\033[K"
 
   # Detect drives
   detect_drives
+
+  # Stop animated banner and show static wizard banner
+  wiz_banner_animated_stop
 
   # Check for errors
   if [[ $errors -gt 0 ]]; then
@@ -172,4 +144,3 @@ detect_drives() {
   # Only preserve ZFS_RAID if it was explicitly set by user via environment
 
 }
-

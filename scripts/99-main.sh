@@ -147,9 +147,9 @@ reboot_to_main_os() {
   echo ""
   show_timed_progress "Summarizing..." 5
 
-  # Clear screen and show main banner (without version info)
+  # Clear screen and show main banner
   clear
-  show_banner --no-info
+  wiz_banner
 
   # Display summary
   echo -e "${CLR_CYAN}INSTALLATION SUMMARY${CLR_RESET}"
