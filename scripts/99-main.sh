@@ -209,8 +209,10 @@ log "Step: collect_system_info"
 # Start animated banner in background
 show_banner_animated_start 0.1
 
-# Run system checks silently
+# Run system checks and prefetch Proxmox ISO info in parallel
 collect_system_info
+log "Step: prefetch_proxmox_iso_info"
+prefetch_proxmox_iso_info
 
 # Stop animation and show static banner with system info
 show_banner_animated_stop

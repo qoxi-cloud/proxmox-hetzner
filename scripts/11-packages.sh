@@ -61,6 +61,9 @@ prepare_packages() {
 # Cache for ISO list (avoid multiple HTTP requests)
 _ISO_LIST_CACHE=""
 
+# Cache for SHA256SUMS content
+_CHECKSUM_CACHE=""
+
 # Internal: fetches ISO list from Proxmox repository (cached).
 # Returns: List of ISO filenames via stdout
 _fetch_iso_list() {
@@ -68,6 +71,17 @@ _fetch_iso_list() {
     _ISO_LIST_CACHE=$(curl -s "$PROXMOX_ISO_BASE_URL" | grep -oE 'proxmox-ve_[0-9]+\.[0-9]+-[0-9]+\.iso' | sort -uV)
   fi
   echo "$_ISO_LIST_CACHE"
+}
+
+# Prefetches ISO list and checksums in background.
+# Call this early to cache data for later use.
+# Side effects: Populates _ISO_LIST_CACHE and _CHECKSUM_CACHE
+prefetch_proxmox_iso_info() {
+  # Fetch ISO list
+  _ISO_LIST_CACHE=$(curl -s "$PROXMOX_ISO_BASE_URL" 2>/dev/null | grep -oE 'proxmox-ve_[0-9]+\.[0-9]+-[0-9]+\.iso' | sort -uV) || true
+
+  # Fetch checksums
+  _CHECKSUM_CACHE=$(curl -s "$PROXMOX_CHECKSUM_URL" 2>/dev/null) || true
 }
 
 # Fetches available Proxmox VE ISO versions (last N versions).
@@ -220,14 +234,19 @@ download_proxmox_iso() {
 
   ISO_FILENAME=$(basename "$PROXMOX_ISO_URL")
 
-  # Download checksum first
-  log "Downloading checksum file"
-  curl -sS -o SHA256SUMS "$PROXMOX_CHECKSUM_URL" >>"$LOG_FILE" 2>&1 || true
+  # Get checksum from cache or download
   local expected_checksum=""
-  if [[ -f "SHA256SUMS" ]]; then
-    expected_checksum=$(grep "$ISO_FILENAME" SHA256SUMS | awk '{print $1}')
-    log "Expected checksum: $expected_checksum"
+  if [[ -n $_CHECKSUM_CACHE ]]; then
+    log "Using cached checksum data"
+    expected_checksum=$(echo "$_CHECKSUM_CACHE" | grep "$ISO_FILENAME" | awk '{print $1}')
+  else
+    log "Downloading checksum file"
+    curl -sS -o SHA256SUMS "$PROXMOX_CHECKSUM_URL" >>"$LOG_FILE" 2>&1 || true
+    if [[ -f "SHA256SUMS" ]]; then
+      expected_checksum=$(grep "$ISO_FILENAME" SHA256SUMS | awk '{print $1}')
+    fi
   fi
+  log "Expected checksum: $expected_checksum"
 
   # Download with fallback chain: aria2c (conservative) -> curl -> wget
   log "Downloading ISO: $ISO_FILENAME"
