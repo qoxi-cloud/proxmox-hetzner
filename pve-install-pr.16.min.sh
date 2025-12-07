@@ -11,7 +11,7 @@ CLR_HETZNER=$'\033[38;5;160m'
 CLR_RESET=$'\033[m'
 MENU_BOX_WIDTH=60
 SPINNER_CHARS=('○' '◔' '◑' '◕' '●' '◕' '◑' '◔')
-VERSION="1.18.10-pr.16"
+VERSION="1.18.11-pr.16"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feature/animated-banner}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -1326,6 +1326,7 @@ printf -v "$var_name" '%s' "$password"
 collect_system_info(){
 local errors=0
 local packages_to_install=""
+local need_charm_repo=false
 command -v boxes &>/dev/null||packages_to_install+=" boxes"
 command -v column &>/dev/null||packages_to_install+=" bsdmainutils"
 command -v ip &>/dev/null||packages_to_install+=" iproute2"
@@ -1335,6 +1336,15 @@ command -v curl &>/dev/null||packages_to_install+=" curl"
 command -v jq &>/dev/null||packages_to_install+=" jq"
 command -v aria2c &>/dev/null||packages_to_install+=" aria2"
 command -v findmnt &>/dev/null||packages_to_install+=" util-linux"
+command -v gum &>/dev/null||{
+need_charm_repo=true
+packages_to_install+=" gum"
+}
+if [[ $need_charm_repo == true ]];then
+mkdir -p /etc/apt/keyrings
+curl -fsSL https://repo.charm.sh/apt/gpg.key|gpg --dearmor -o /etc/apt/keyrings/charm.gpg 2>/dev/null
+echo "deb [signed-by=/etc/apt/keyrings/charm.gpg] https://repo.charm.sh/apt/ * *" >/etc/apt/sources.list.d/charm.list
+fi
 if [[ -n $packages_to_install ]];then
 apt-get update -qq >/dev/null 2>&1
 apt-get install -qq -y $packages_to_install >/dev/null 2>&1
