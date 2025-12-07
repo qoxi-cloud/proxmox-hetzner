@@ -32,20 +32,8 @@ MENU_BOX_WIDTH=60
 # shellcheck disable=SC2034
 SPINNER_CHARS=('○' '◔' '◑' '◕' '●' '◕' '◑' '◔')
 
-# Disables all color output variables by setting them to empty strings.
-# Called when --no-color flag is used to ensure accessible terminal output.
-disable_colors() {
-  CLR_RED=''
-  CLR_CYAN=''
-  CLR_YELLOW=''
-  CLR_ORANGE=''
-  CLR_GRAY=''
-  CLR_HETZNER=''
-  CLR_RESET=''
-}
-
 # Version (MAJOR only - MINOR.PATCH added by CI from git tags/commits)
-VERSION="1.18.1"
+VERSION="1.18.2"
 
 # =============================================================================
 # Configuration constants
@@ -207,19 +195,11 @@ trap cleanup_and_error_handler EXIT
 # Start time for total duration tracking
 INSTALL_START_TIME=$(date +%s)
 
-# Default values
-NON_INTERACTIVE=false
-CONFIG_FILE=""
-SAVE_CONFIG=""
-TEST_MODE=false
-VALIDATE_ONLY=false
-DRY_RUN=false
-
 # QEMU resource overrides (empty = auto-detect)
 QEMU_RAM_OVERRIDE=""
 QEMU_CORES_OVERRIDE=""
 
-# Proxmox ISO version (empty = show menu in interactive, use latest in non-interactive)
+# Proxmox ISO version (empty = show menu in interactive mode)
 PROXMOX_ISO_VERSION=""
 
 # Proxmox repository type (no-subscription, enterprise, test)
@@ -269,25 +249,13 @@ Usage: $0 [OPTIONS]
 
 Options:
   -h, --help              Show this help message
-  -c, --config FILE       Load configuration from file
-  -s, --save-config FILE  Save configuration to file after input
-  -n, --non-interactive   Run without prompts (requires --config)
-  -t, --test              Test mode (use TCG emulation, no KVM required)
-  -d, --dry-run           Dry-run mode (simulate without actual installation)
-  --validate              Validate configuration only, do not install
   --qemu-ram MB           Set QEMU RAM in MB (default: auto, 4096-8192)
   --qemu-cores N          Set QEMU CPU cores (default: auto, max 16)
   --iso-version FILE      Use specific Proxmox ISO (e.g., proxmox-ve_8.3-1.iso)
-  --no-color              Disable colored output
   -v, --version           Show version
 
 Examples:
   $0                           # Interactive installation
-  $0 -s proxmox.conf           # Interactive, save config for later
-  $0 -c proxmox.conf           # Load config, prompt for missing values
-  $0 -c proxmox.conf -n        # Fully automated installation
-  $0 -c proxmox.conf --validate  # Validate config without installing
-  $0 -d                        # Dry-run mode (simulate installation)
   $0 --qemu-ram 16384 --qemu-cores 8  # Custom QEMU resources
   $0 --iso-version proxmox-ve_8.2-1.iso  # Use specific Proxmox version
 
@@ -303,30 +271,6 @@ while [[ $# -gt 0 ]]; do
     -v | --version)
       echo "Proxmox Installer v${VERSION}"
       exit 0
-      ;;
-    -c | --config)
-      CONFIG_FILE="$2"
-      shift 2
-      ;;
-    -s | --save-config)
-      SAVE_CONFIG="$2"
-      shift 2
-      ;;
-    -n | --non-interactive)
-      NON_INTERACTIVE=true
-      shift
-      ;;
-    -t | --test)
-      TEST_MODE=true
-      shift
-      ;;
-    -d | --dry-run)
-      DRY_RUN=true
-      shift
-      ;;
-    --validate)
-      VALIDATE_ONLY=true
-      shift
       ;;
     --qemu-ram)
       if [[ -z $2 || $2 =~ ^- ]]; then
@@ -372,10 +316,6 @@ while [[ $# -gt 0 ]]; do
       PROXMOX_ISO_VERSION="$2"
       shift 2
       ;;
-    --no-color)
-      disable_colors
-      shift
-      ;;
     *)
       echo "Unknown option: $1"
       echo "Use --help for usage information"
@@ -383,203 +323,6 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
-
-# Validate non-interactive mode requires config
-if [[ $NON_INTERACTIVE == true && -z $CONFIG_FILE ]]; then
-  echo -e "${CLR_RED}Error: --non-interactive requires --config FILE${CLR_RESET}"
-  exit 1
-fi
-
-# --- 00b-config.sh ---
-# shellcheck shell=bash
-# =============================================================================
-# Config file functions
-# =============================================================================
-
-# Validates configuration variables for correctness and completeness.
-# Checks format and allowed values for bridge mode, ZFS RAID, repository type, etc.
-# In non-interactive mode, ensures all required variables are set.
-# Returns: 0 if valid, 1 if validation errors found
-validate_config() {
-  local has_errors=false
-
-  # Required for non-interactive mode
-  if [[ $NON_INTERACTIVE == true ]]; then
-    # SSH key is critical - must be set
-    if [[ -z $SSH_PUBLIC_KEY ]]; then
-      # Will try to detect from rescue system later, but warn here
-      log "WARNING: SSH_PUBLIC_KEY not set in config, will attempt auto-detection"
-    fi
-  fi
-
-  # Validate values if set
-  if [[ -n $BRIDGE_MODE ]] && [[ ! $BRIDGE_MODE =~ ^(internal|external|both)$ ]]; then
-    echo -e "${CLR_RED}Invalid BRIDGE_MODE: $BRIDGE_MODE (must be: internal, external, or both)${CLR_RESET}"
-    has_errors=true
-  fi
-
-  if [[ -n $ZFS_RAID ]] && [[ ! $ZFS_RAID =~ ^(single|raid0|raid1)$ ]]; then
-    echo -e "${CLR_RED}Invalid ZFS_RAID: $ZFS_RAID (must be: single, raid0, or raid1)${CLR_RESET}"
-    has_errors=true
-  fi
-
-  if [[ -n $PVE_REPO_TYPE ]] && [[ ! $PVE_REPO_TYPE =~ ^(no-subscription|enterprise|test)$ ]]; then
-    echo -e "${CLR_RED}Invalid PVE_REPO_TYPE: $PVE_REPO_TYPE (must be: no-subscription, enterprise, or test)${CLR_RESET}"
-    has_errors=true
-  fi
-
-  if [[ -n $SSL_TYPE ]] && [[ ! $SSL_TYPE =~ ^(self-signed|letsencrypt)$ ]]; then
-    echo -e "${CLR_RED}Invalid SSL_TYPE: $SSL_TYPE (must be: self-signed or letsencrypt)${CLR_RESET}"
-    has_errors=true
-  fi
-
-  if [[ -n $DEFAULT_SHELL ]] && [[ ! $DEFAULT_SHELL =~ ^(bash|zsh)$ ]]; then
-    echo -e "${CLR_RED}Invalid DEFAULT_SHELL: $DEFAULT_SHELL (must be: bash or zsh)${CLR_RESET}"
-    has_errors=true
-  fi
-
-  if [[ -n $INSTALL_AUDITD ]] && [[ ! $INSTALL_AUDITD =~ ^(yes|no)$ ]]; then
-    echo -e "${CLR_RED}Invalid INSTALL_AUDITD: $INSTALL_AUDITD (must be: yes or no)${CLR_RESET}"
-    has_errors=true
-  fi
-
-  if [[ -n $INSTALL_VNSTAT ]] && [[ ! $INSTALL_VNSTAT =~ ^(yes|no)$ ]]; then
-    echo -e "${CLR_RED}Invalid INSTALL_VNSTAT: $INSTALL_VNSTAT (must be: yes or no)${CLR_RESET}"
-    has_errors=true
-  fi
-
-  if [[ -n $INSTALL_UNATTENDED_UPGRADES ]] && [[ ! $INSTALL_UNATTENDED_UPGRADES =~ ^(yes|no)$ ]]; then
-    echo -e "${CLR_RED}Invalid INSTALL_UNATTENDED_UPGRADES: $INSTALL_UNATTENDED_UPGRADES (must be: yes or no)${CLR_RESET}"
-    has_errors=true
-  fi
-
-  if [[ -n $CPU_GOVERNOR ]] && [[ ! $CPU_GOVERNOR =~ ^(performance|ondemand|powersave|schedutil|conservative)$ ]]; then
-    echo -e "${CLR_RED}Invalid CPU_GOVERNOR: $CPU_GOVERNOR (must be: performance, ondemand, powersave, schedutil, or conservative)${CLR_RESET}"
-    has_errors=true
-  fi
-
-  # IPv6 configuration validation
-  if [[ -n $IPV6_MODE ]] && [[ ! $IPV6_MODE =~ ^(auto|manual|disabled)$ ]]; then
-    echo -e "${CLR_RED}Invalid IPV6_MODE: $IPV6_MODE (must be: auto, manual, or disabled)${CLR_RESET}"
-    has_errors=true
-  fi
-
-  if [[ -n $IPV6_GATEWAY ]] && [[ $IPV6_GATEWAY != "auto" ]]; then
-    if ! validate_ipv6_gateway "$IPV6_GATEWAY"; then
-      echo -e "${CLR_RED}Invalid IPV6_GATEWAY: $IPV6_GATEWAY (must be a valid IPv6 address or 'auto')${CLR_RESET}"
-      has_errors=true
-    fi
-  fi
-
-  if [[ -n $IPV6_ADDRESS ]] && ! validate_ipv6_cidr "$IPV6_ADDRESS"; then
-    echo -e "${CLR_RED}Invalid IPV6_ADDRESS: $IPV6_ADDRESS (must be valid IPv6 CIDR notation)${CLR_RESET}"
-    has_errors=true
-  fi
-
-  if [[ $has_errors == true ]]; then
-    return 1
-  fi
-
-  return 0
-}
-
-# Loads configuration from specified file and validates it.
-# Sources the config file and runs validation checks.
-# Parameters:
-#   $1 - Path to configuration file
-# Returns: 0 on success, 1 on failure
-# Side effects: Sets global configuration variables
-load_config() {
-  local file="$1"
-  if [[ -f $file ]]; then
-    echo -e "${CLR_CYAN}✓ Loading configuration from: $file${CLR_RESET}"
-    # shellcheck source=/dev/null
-    source "$file"
-
-    # Validate loaded config
-    if ! validate_config; then
-      echo -e "${CLR_RED}Configuration validation failed${CLR_RESET}"
-      return 1
-    fi
-
-    return 0
-  else
-    echo -e "${CLR_RED}Config file not found: $file${CLR_RESET}"
-    return 1
-  fi
-}
-
-# Saves current configuration to specified file.
-# Writes all configuration variables to file in bash-compatible format.
-# Sets file permissions to 600 for security.
-# Parameters:
-#   $1 - Path to output configuration file
-# Side effects: Creates/overwrites configuration file
-save_config() {
-  local file="$1"
-  cat >"$file" <<EOF
-# Proxmox Installer Configuration
-# Generated: $(date)
-
-# Network
-INTERFACE_NAME="${INTERFACE_NAME}"
-
-# System
-PVE_HOSTNAME="${PVE_HOSTNAME}"
-DOMAIN_SUFFIX="${DOMAIN_SUFFIX}"
-TIMEZONE="${TIMEZONE}"
-EMAIL="${EMAIL}"
-BRIDGE_MODE="${BRIDGE_MODE}"
-PRIVATE_SUBNET="${PRIVATE_SUBNET}"
-
-# Password (consider using environment variable instead)
-NEW_ROOT_PASSWORD="${NEW_ROOT_PASSWORD}"
-PASSWORD_GENERATED="no"  # Track if password was auto-generated
-
-# SSH
-SSH_PUBLIC_KEY="${SSH_PUBLIC_KEY}"
-
-# Tailscale
-INSTALL_TAILSCALE="${INSTALL_TAILSCALE}"
-TAILSCALE_AUTH_KEY="${TAILSCALE_AUTH_KEY}"
-TAILSCALE_SSH="${TAILSCALE_SSH}"
-TAILSCALE_WEBUI="${TAILSCALE_WEBUI}"
-
-# ZFS RAID mode (single, raid0, raid1)
-ZFS_RAID="${ZFS_RAID}"
-
-# Proxmox repository (no-subscription, enterprise, test)
-PVE_REPO_TYPE="${PVE_REPO_TYPE}"
-PVE_SUBSCRIPTION_KEY="${PVE_SUBSCRIPTION_KEY}"
-
-# SSL certificate (self-signed, letsencrypt)
-SSL_TYPE="${SSL_TYPE}"
-
-# Audit logging (yes, no)
-INSTALL_AUDITD="${INSTALL_AUDITD}"
-
-# Bandwidth monitoring with vnstat (yes, no)
-INSTALL_VNSTAT="${INSTALL_VNSTAT}"
-
-# Unattended upgrades for automatic security updates (yes, no)
-INSTALL_UNATTENDED_UPGRADES="${INSTALL_UNATTENDED_UPGRADES}"
-
-# CPU governor / power profile (performance, ondemand, powersave, schedutil, conservative)
-CPU_GOVERNOR="${CPU_GOVERNOR:-performance}"
-
-# IPv6 configuration (auto, manual, disabled)
-IPV6_MODE="${IPV6_MODE:-auto}"
-IPV6_GATEWAY="${IPV6_GATEWAY}"
-IPV6_ADDRESS="${IPV6_ADDRESS}"
-EOF
-  chmod 600 "$file"
-  echo -e "${CLR_CYAN}✓ Configuration saved to: $file${CLR_RESET}"
-}
-
-# Load config if specified
-if [[ -n $CONFIG_FILE ]]; then
-  load_config "$CONFIG_FILE" || exit 1
-fi
 
 # --- 00c-logging.sh ---
 # shellcheck shell=bash
@@ -637,12 +380,8 @@ run_logged() {
 # =============================================================================
 
 # Display main ASCII banner
-# Usage: show_banner [--no-info]
-# shellcheck disable=SC2120
+# Usage: show_banner
 show_banner() {
-  local show_info=true
-  [[ $1 == "--no-info" ]] && show_info=false
-
   echo -e "${CLR_GRAY}    _____                                              ${CLR_RESET}"
   echo -e "${CLR_GRAY}   |  __ \\                                             ${CLR_RESET}"
   echo -e "${CLR_GRAY}   | |__) | _ __   ___  ${CLR_ORANGE}__  __${CLR_GRAY}  _ __ ___    ___  ${CLR_ORANGE}__  __${CLR_RESET}"
@@ -651,19 +390,6 @@ show_banner() {
   echo -e "${CLR_GRAY}   |_|     |_|    \\___/ ${CLR_ORANGE}/_/\\_\\${CLR_GRAY} |_| |_| |_| \\___/ ${CLR_ORANGE}/_/\\_\\${CLR_RESET}"
   echo -e ""
   echo -e "${CLR_HETZNER}               Hetzner ${CLR_GRAY}Automated Installer${CLR_RESET}"
-  echo -e ""
-
-  if [[ $show_info == true ]]; then
-    if [[ -n $CONFIG_FILE ]]; then
-      echo -e "${CLR_YELLOW}Config: ${CONFIG_FILE}${CLR_RESET}"
-    fi
-    if [[ $NON_INTERACTIVE == true ]]; then
-      echo -e "${CLR_YELLOW}Mode: Non-interactive${CLR_RESET}"
-    fi
-    if [[ $TEST_MODE == true ]]; then
-      echo -e "${CLR_YELLOW}Mode: Test (TCG emulation, no KVM)${CLR_RESET}"
-    fi
-  fi
   echo ""
 }
 
@@ -2457,34 +2183,28 @@ collect_system_info() {
 
   # Check if KVM is available (try to load module if not present)
   update_progress
-  if [[ $TEST_MODE == true ]]; then
-    # Test mode uses TCG emulation, KVM not required
-    PREFLIGHT_KVM="TCG (test mode)"
-    PREFLIGHT_KVM_STATUS="warn"
-  else
-    if [[ ! -e /dev/kvm ]]; then
-      # Try to load KVM module (needed in rescue mode)
-      modprobe kvm 2>/dev/null || true
+  if [[ ! -e /dev/kvm ]]; then
+    # Try to load KVM module (needed in rescue mode)
+    modprobe kvm 2>/dev/null || true
 
-      # Determine CPU type and load appropriate module
-      if grep -q "Intel" /proc/cpuinfo 2>/dev/null; then
-        modprobe kvm_intel 2>/dev/null || true
-      elif grep -q "AMD" /proc/cpuinfo 2>/dev/null; then
-        modprobe kvm_amd 2>/dev/null || true
-      else
-        # Fallback: try both
-        modprobe kvm_intel 2>/dev/null || modprobe kvm_amd 2>/dev/null || true
-      fi
-      sleep 0.5
-    fi
-    if [[ -e /dev/kvm ]]; then
-      PREFLIGHT_KVM="Available"
-      PREFLIGHT_KVM_STATUS="ok"
+    # Determine CPU type and load appropriate module
+    if grep -q "Intel" /proc/cpuinfo 2>/dev/null; then
+      modprobe kvm_intel 2>/dev/null || true
+    elif grep -q "AMD" /proc/cpuinfo 2>/dev/null; then
+      modprobe kvm_amd 2>/dev/null || true
     else
-      PREFLIGHT_KVM="Not available (use --test for TCG)"
-      PREFLIGHT_KVM_STATUS="error"
-      errors=$((errors + 1))
+      # Fallback: try both
+      modprobe kvm_intel 2>/dev/null || modprobe kvm_amd 2>/dev/null || true
     fi
+    sleep 0.5
+  fi
+  if [[ -e /dev/kvm ]]; then
+    PREFLIGHT_KVM="Available"
+    PREFLIGHT_KVM_STATUS="ok"
+  else
+    PREFLIGHT_KVM="Not available"
+    PREFLIGHT_KVM_STATUS="error"
+    errors=$((errors + 1))
   fi
   sleep 0.1
 
@@ -2874,225 +2594,6 @@ collect_network_info() {
 
   # Calculate IPv6 prefix for VM network
   _calculate_ipv6_prefix
-}
-
-# --- 08-input-non-interactive.sh ---
-# shellcheck shell=bash
-# =============================================================================
-# Non-interactive input collection
-# =============================================================================
-
-# Helper to return existing value or default based on interactive mode.
-# Parameters:
-#   $1 - Prompt text (unused in non-interactive mode)
-#   $2 - Default value
-#   $3 - Variable name to check
-# Returns: Current value or default via stdout
-prompt_or_default() {
-  local prompt="$1"
-  local default="$2"
-  local var_name="$3"
-  local current_value="${!var_name}"
-
-  if [[ $NON_INTERACTIVE == true ]]; then
-    if [[ -n $current_value ]]; then
-      echo "$current_value"
-    else
-      echo "$default"
-    fi
-  else
-    local result
-    read -r -e -p "$prompt" -i "${current_value:-$default}" result
-    echo "$result"
-  fi
-}
-
-# =============================================================================
-# Input collection - Non-interactive mode
-# =============================================================================
-
-# Collects all inputs from environment/config in non-interactive mode.
-# Uses default values where config values are not provided.
-# Validates required fields (SSH key).
-# Side effects: Sets all configuration global variables
-get_inputs_non_interactive() {
-  # Use defaults or config values (referencing global constants)
-  PVE_HOSTNAME="${PVE_HOSTNAME:-$DEFAULT_HOSTNAME}"
-  DOMAIN_SUFFIX="${DOMAIN_SUFFIX:-$DEFAULT_DOMAIN}"
-  TIMEZONE="${TIMEZONE:-$DEFAULT_TIMEZONE}"
-  EMAIL="${EMAIL:-$DEFAULT_EMAIL}"
-  BRIDGE_MODE="${BRIDGE_MODE:-$DEFAULT_BRIDGE_MODE}"
-  PRIVATE_SUBNET="${PRIVATE_SUBNET:-$DEFAULT_SUBNET}"
-  DEFAULT_SHELL="${DEFAULT_SHELL:-zsh}"
-  CPU_GOVERNOR="${CPU_GOVERNOR:-$DEFAULT_CPU_GOVERNOR}"
-
-  # IPv6 configuration
-  IPV6_MODE="${IPV6_MODE:-$DEFAULT_IPV6_MODE}"
-  if [[ $IPV6_MODE == "disabled" ]]; then
-    # Clear IPv6 settings when disabled
-    MAIN_IPV6=""
-    IPV6_GATEWAY=""
-    FIRST_IPV6_CIDR=""
-  elif [[ $IPV6_MODE == "manual" ]]; then
-    # Use manually specified values
-    IPV6_GATEWAY="${IPV6_GATEWAY:-$DEFAULT_IPV6_GATEWAY}"
-    if [[ -n $IPV6_ADDRESS ]]; then
-      MAIN_IPV6="${IPV6_ADDRESS%/*}"
-    fi
-  else
-    # auto mode: use detected values, set gateway to default if not specified
-    IPV6_GATEWAY="${IPV6_GATEWAY:-$DEFAULT_IPV6_GATEWAY}"
-  fi
-
-  # Display configuration
-  print_success "Network interface:" "${INTERFACE_NAME}"
-  print_success "Hostname:" "${PVE_HOSTNAME}"
-  print_success "Domain:" "${DOMAIN_SUFFIX}"
-  print_success "Timezone:" "${TIMEZONE}"
-  print_success "Email:" "${EMAIL}"
-  print_success "Bridge mode:" "${BRIDGE_MODE}"
-
-  if [[ $BRIDGE_MODE == "internal" || $BRIDGE_MODE == "both" ]]; then
-    print_success "Private subnet:" "${PRIVATE_SUBNET}"
-  fi
-  print_success "Default shell:" "${DEFAULT_SHELL}"
-  print_success "Power profile:" "${CPU_GOVERNOR}"
-
-  # Display IPv6 configuration
-  if [[ $IPV6_MODE == "disabled" ]]; then
-    print_success "IPv6:" "disabled"
-  elif [[ -n $MAIN_IPV6 ]]; then
-    print_success "IPv6:" "${MAIN_IPV6} (gateway: ${IPV6_GATEWAY})"
-  else
-    print_warning "IPv6: not detected"
-  fi
-
-  # ZFS RAID mode
-  if [[ -z $ZFS_RAID ]]; then
-    if [[ ${DRIVE_COUNT:-0} -ge 2 ]]; then
-      ZFS_RAID="raid1"
-    else
-      ZFS_RAID="single"
-    fi
-  fi
-  print_success "ZFS mode:" "${ZFS_RAID}"
-
-  # Password - generate if not provided
-  if [[ -z $NEW_ROOT_PASSWORD ]]; then
-    NEW_ROOT_PASSWORD=$(generate_password 16)
-    PASSWORD_GENERATED="yes"
-    print_success "Password:" "auto-generated (will be shown at the end)"
-  else
-    if ! validate_password_with_error "$NEW_ROOT_PASSWORD"; then
-      exit 1
-    fi
-    print_success "Password:" "******** (from env)"
-  fi
-
-  # SSH Public Key
-  if [[ -z $SSH_PUBLIC_KEY ]]; then
-    SSH_PUBLIC_KEY=$(get_rescue_ssh_key)
-  fi
-  if [[ -z $SSH_PUBLIC_KEY ]]; then
-    print_error "SSH_PUBLIC_KEY required in non-interactive mode"
-    exit 1
-  fi
-  parse_ssh_key "$SSH_PUBLIC_KEY"
-  print_success "SSH key:" "configured (${SSH_KEY_TYPE})"
-
-  # Proxmox repository
-  PVE_REPO_TYPE="${PVE_REPO_TYPE:-no-subscription}"
-  print_success "Repository:" "${PVE_REPO_TYPE}"
-  if [[ $PVE_REPO_TYPE == "enterprise" && -n $PVE_SUBSCRIPTION_KEY ]]; then
-    print_success "Subscription key:" "configured"
-  fi
-
-  # SSL certificate
-  SSL_TYPE="${SSL_TYPE:-self-signed}"
-  if [[ $SSL_TYPE == "letsencrypt" ]]; then
-    local le_fqdn="${FQDN:-$PVE_HOSTNAME.$DOMAIN_SUFFIX}"
-    local expected_ip="${MAIN_IPV4_CIDR%/*}"
-
-    validate_dns_resolution "$le_fqdn" "$expected_ip"
-    local dns_result=$?
-
-    case $dns_result in
-      0)
-        print_success "SSL certificate:" "letsencrypt (DNS verified: ${le_fqdn} → ${expected_ip})"
-        ;;
-      1)
-        log "ERROR: DNS validation failed - ${le_fqdn} does not resolve"
-        print_error "SSL certificate: letsencrypt (DNS FAILED)"
-        print_error "${le_fqdn} does not resolve"
-        echo ""
-        print_info "Let's Encrypt requires valid DNS configuration."
-        print_info "Create DNS A record: ${le_fqdn} → ${expected_ip}"
-        exit 1
-        ;;
-      2)
-        log "ERROR: DNS validation failed - ${le_fqdn} resolves to ${DNS_RESOLVED_IP}, expected ${expected_ip}"
-        print_error "SSL certificate: letsencrypt (DNS MISMATCH)"
-        print_error "${le_fqdn} resolves to ${DNS_RESOLVED_IP}, expected ${expected_ip}"
-        echo ""
-        print_info "Update DNS A record: ${le_fqdn} → ${expected_ip}"
-        exit 1
-        ;;
-    esac
-  else
-    print_success "SSL certificate:" "${SSL_TYPE}"
-  fi
-
-  # Audit logging (auditd)
-  INSTALL_AUDITD="${INSTALL_AUDITD:-no}"
-  if [[ $INSTALL_AUDITD == "yes" ]]; then
-    print_success "Audit logging:" "enabled"
-  else
-    print_success "Audit logging:" "disabled"
-  fi
-
-  # Bandwidth monitoring (vnstat)
-  INSTALL_VNSTAT="${INSTALL_VNSTAT:-yes}"
-  if [[ $INSTALL_VNSTAT == "yes" ]]; then
-    print_success "Bandwidth monitoring:" "enabled (vnstat)"
-  else
-    print_success "Bandwidth monitoring:" "disabled"
-  fi
-
-  # Unattended upgrades
-  INSTALL_UNATTENDED_UPGRADES="${INSTALL_UNATTENDED_UPGRADES:-yes}"
-  if [[ $INSTALL_UNATTENDED_UPGRADES == "yes" ]]; then
-    print_success "Auto security updates:" "enabled"
-  else
-    print_success "Auto security updates:" "disabled"
-  fi
-
-  # Tailscale
-  INSTALL_TAILSCALE="${INSTALL_TAILSCALE:-no}"
-  if [[ $INSTALL_TAILSCALE == "yes" ]]; then
-    TAILSCALE_SSH="${TAILSCALE_SSH:-yes}"
-    TAILSCALE_WEBUI="${TAILSCALE_WEBUI:-yes}"
-    TAILSCALE_DISABLE_SSH="${TAILSCALE_DISABLE_SSH:-no}"
-    if [[ -n $TAILSCALE_AUTH_KEY ]]; then
-      print_success "Tailscale:" "will be installed (auto-connect)"
-    else
-      print_success "Tailscale:" "will be installed (manual auth required)"
-    fi
-    print_success "Tailscale SSH:" "${TAILSCALE_SSH}"
-    print_success "Tailscale WebUI:" "${TAILSCALE_WEBUI}"
-    if [[ $TAILSCALE_SSH == "yes" && $TAILSCALE_DISABLE_SSH == "yes" ]]; then
-      print_success "OpenSSH:" "will be disabled on first boot"
-      # Enable stealth mode when OpenSSH is disabled
-      STEALTH_MODE="${STEALTH_MODE:-yes}"
-      if [[ $STEALTH_MODE == "yes" ]]; then
-        print_success "Stealth firewall:" "enabled"
-      fi
-    else
-      STEALTH_MODE="${STEALTH_MODE:-no}"
-    fi
-  else
-    STEALTH_MODE="${STEALTH_MODE:-no}"
-    print_success "Tailscale:" "skipped"
-  fi
 }
 
 # --- 09-input-interactive.sh ---
@@ -3821,19 +3322,13 @@ get_inputs_interactive() {
 # =============================================================================
 
 # Main entry point for input collection.
-# Detects network, collects inputs (interactive or non-interactive mode),
-# calculates derived values, and optionally saves configuration.
-# Side effects: Sets all configuration globals, may save config file
+# Detects network, collects inputs interactively, and calculates derived values.
+# Side effects: Sets all configuration globals
 get_system_inputs() {
   detect_network_interface
   collect_network_info
 
-  if [[ $NON_INTERACTIVE == true ]]; then
-    print_success "Network interface:" "${INTERFACE_NAME}"
-    get_inputs_non_interactive
-  else
-    get_inputs_interactive
-  fi
+  get_inputs_interactive
 
   # Calculate derived values
   FQDN="${PVE_HOSTNAME}.${DOMAIN_SUFFIX}"
@@ -3844,11 +3339,6 @@ get_system_inputs() {
     PRIVATE_IP="${PRIVATE_CIDR}.1"
     SUBNET_MASK=$(echo "$PRIVATE_SUBNET" | cut -d'/' -f2)
     PRIVATE_IP_CIDR="${PRIVATE_IP}/${SUBNET_MASK}"
-  fi
-
-  # Save config if requested
-  if [[ -n $SAVE_CONFIG ]]; then
-    save_config "$SAVE_CONFIG"
   fi
 }
 
@@ -5039,17 +4529,10 @@ setup_qemu_config() {
     log "Legacy BIOS mode"
   fi
 
-  # KVM or TCG mode
-  if [[ $TEST_MODE == true ]]; then
-    # TCG (software emulation) for testing without KVM
-    KVM_OPTS="-accel tcg"
-    CPU_OPTS="-cpu qemu64"
-    log "Using TCG emulation (test mode)"
-  else
-    KVM_OPTS="-enable-kvm"
-    CPU_OPTS="-cpu host"
-    log "Using KVM acceleration"
-  fi
+  # KVM acceleration
+  KVM_OPTS="-enable-kvm"
+  CPU_OPTS="-cpu host"
+  log "Using KVM acceleration"
 
   # CPU and RAM configuration
   local available_cores available_ram_mb
@@ -6493,11 +5976,6 @@ reboot_to_main_os() {
 log "=========================================="
 log "Proxmox VE Automated Installer v${VERSION}"
 log "=========================================="
-log "TEST_MODE=$TEST_MODE"
-log "NON_INTERACTIVE=$NON_INTERACTIVE"
-log "CONFIG_FILE=$CONFIG_FILE"
-log "VALIDATE_ONLY=$VALIDATE_ONLY"
-log "DRY_RUN=$DRY_RUN"
 log "QEMU_RAM_OVERRIDE=$QEMU_RAM_OVERRIDE"
 log "QEMU_CORES_OVERRIDE=$QEMU_CORES_OVERRIDE"
 log "PVE_REPO_TYPE=${PVE_REPO_TYPE:-no-subscription}"
@@ -6511,177 +5989,16 @@ show_system_status
 log "Step: get_system_inputs"
 get_system_inputs
 
-# Show configuration preview for interactive mode
-if [[ $NON_INTERACTIVE != true ]]; then
-  log "Step: show_configuration_review"
-  show_configuration_review
+# Show configuration preview
+log "Step: show_configuration_review"
+show_configuration_review
 
-  echo ""
-  show_timed_progress "Configuring..." 5
+echo ""
+show_timed_progress "Configuring..." 5
 
-  # Clear screen and show banner
-  clear
-  show_banner --no-info
-fi
-
-# If validate-only mode, show summary and exit
-if [[ $VALIDATE_ONLY == true ]]; then
-  log "Validate-only mode: showing configuration summary"
-  echo ""
-  echo -e "${CLR_CYAN}✓ Configuration validated successfully${CLR_RESET}"
-  echo ""
-  echo "Configuration Summary:"
-  echo "  Hostname:     $HOSTNAME"
-  echo "  FQDN:         $FQDN"
-  echo "  Email:        $EMAIL"
-  echo "  Timezone:     $TIMEZONE"
-  echo "  IPv4:         $MAIN_IPV4_CIDR"
-  echo "  Gateway:      $MAIN_IPV4_GW"
-  echo "  Interface:    $INTERFACE_NAME"
-  echo "  ZFS Mode:     $ZFS_RAID_MODE"
-  echo "  Drives:       ${DRIVES[*]}"
-  echo "  Bridge Mode:  $BRIDGE_MODE"
-  if [[ $BRIDGE_MODE != "external" ]]; then
-    echo "  Private Net:  $PRIVATE_SUBNET"
-  fi
-  echo "  Tailscale:    $INSTALL_TAILSCALE"
-  echo "  Auditd:       ${INSTALL_AUDITD:-no}"
-  echo "  Repository:   ${PVE_REPO_TYPE:-no-subscription}"
-  echo "  SSL:          ${SSL_TYPE:-self-signed}"
-  if [[ -n $PROXMOX_ISO_VERSION ]]; then
-    echo "  Proxmox ISO:  ${PROXMOX_ISO_VERSION}"
-  else
-    echo "  Proxmox ISO:  latest"
-  fi
-  if [[ -n $QEMU_RAM_OVERRIDE ]]; then
-    echo "  QEMU RAM:     ${QEMU_RAM_OVERRIDE}MB (override)"
-  fi
-  if [[ -n $QEMU_CORES_OVERRIDE ]]; then
-    echo "  QEMU Cores:   ${QEMU_CORES_OVERRIDE} (override)"
-  fi
-  echo ""
-  echo -e "${CLR_GRAY}Run without --validate to start installation${CLR_RESET}"
-  exit 0
-fi
-
-# Dry-run mode: simulate installation without actual changes
-if [[ $DRY_RUN == true ]]; then
-  log "DRY-RUN MODE: Simulating installation"
-  echo ""
-  echo -e "${CLR_GRAY}═══════════════════════════════════════════════════════════${CLR_RESET}"
-  echo -e "${CLR_GRAY}                    DRY-RUN MODE                            ${CLR_RESET}"
-  echo -e "${CLR_GRAY}═══════════════════════════════════════════════════════════${CLR_RESET}"
-  echo ""
-  echo -e "${CLR_YELLOW}The following steps would be performed:${CLR_RESET}"
-  echo ""
-
-  # Simulate prepare_packages
-  echo -e "${CLR_CYAN}[1/7]${CLR_RESET} prepare_packages"
-  echo "      - Add Proxmox repository to apt sources"
-  echo "      - Download Proxmox GPG key"
-  echo "      - Update package lists"
-  echo "      - Install: proxmox-auto-install-assistant xorriso ovmf wget sshpass"
-  echo ""
-
-  # Simulate download_proxmox_iso
-  echo -e "${CLR_CYAN}[2/7]${CLR_RESET} download_proxmox_iso"
-  if [[ -n $PROXMOX_ISO_VERSION ]]; then
-    echo "      - Download ISO: ${PROXMOX_ISO_VERSION}"
-  else
-    echo "      - Download latest Proxmox VE ISO"
-  fi
-  echo "      - Verify SHA256 checksum"
-  echo ""
-
-  # Simulate make_answer_toml
-  echo -e "${CLR_CYAN}[3/7]${CLR_RESET} make_answer_toml"
-  echo "      - Generate answer.toml with:"
-  echo "        FQDN:     $FQDN"
-  echo "        Email:    $EMAIL"
-  echo "        Timezone: $TIMEZONE"
-  echo "        ZFS RAID: ${ZFS_RAID:-raid1}"
-  echo ""
-
-  # Simulate make_autoinstall_iso
-  echo -e "${CLR_CYAN}[4/7]${CLR_RESET} make_autoinstall_iso"
-  echo "      - Create pve-autoinstall.iso with embedded answer.toml"
-  echo ""
-
-  # Simulate install_proxmox
-  echo -e "${CLR_CYAN}[5/7]${CLR_RESET} install_proxmox"
-  echo "      - Release drives: ${DRIVES[*]}"
-  echo "      - Start QEMU with:"
-  dry_run_cores=$(($(nproc) / 2))
-  [[ $dry_run_cores -lt $MIN_CPU_CORES ]] && dry_run_cores=$MIN_CPU_CORES
-  [[ $dry_run_cores -gt $MAX_QEMU_CORES ]] && dry_run_cores=$MAX_QEMU_CORES
-  dry_run_ram=$DEFAULT_QEMU_RAM
-  [[ -n $QEMU_RAM_OVERRIDE ]] && dry_run_ram=$QEMU_RAM_OVERRIDE
-  [[ -n $QEMU_CORES_OVERRIDE ]] && dry_run_cores=$QEMU_CORES_OVERRIDE
-  echo "        vCPUs: ${dry_run_cores}"
-  echo "        RAM:   ${dry_run_ram}MB"
-  echo "      - Boot from autoinstall ISO"
-  echo "      - Install Proxmox to drives"
-  echo ""
-
-  # Simulate boot_proxmox_with_port_forwarding
-  echo -e "${CLR_CYAN}[6/7]${CLR_RESET} boot_proxmox_with_port_forwarding"
-  echo "      - Boot installed system in QEMU"
-  echo "      - Forward SSH port 5555 -> 22"
-  echo "      - Wait for SSH to be ready"
-  echo ""
-
-  # Simulate configure_proxmox_via_ssh
-  echo -e "${CLR_CYAN}[7/7]${CLR_RESET} configure_proxmox_via_ssh"
-  echo "      - Configure network interfaces (bridge mode: $BRIDGE_MODE)"
-  echo "      - Configure ZFS ARC limits"
-  echo "      - Install system utilities: ${SYSTEM_UTILITIES}"
-  echo "      - Configure shell: ${DEFAULT_SHELL:-zsh}"
-  echo "      - Configure repository: ${PVE_REPO_TYPE:-no-subscription}"
-  echo "      - Configure SSL: ${SSL_TYPE:-self-signed}"
-  if [[ $INSTALL_TAILSCALE == "yes" ]]; then
-    echo "      - Install and configure Tailscale VPN"
-    [[ $STEALTH_MODE == "yes" ]] && echo "      - Enable stealth mode (block public IP)"
-  else
-    echo "      - Install Fail2Ban (SSH + Proxmox API brute-force protection)"
-  fi
-  if [[ $INSTALL_AUDITD == "yes" ]]; then
-    echo "      - Install and configure auditd (audit logging)"
-  fi
-  echo "      - Harden SSH configuration"
-  echo "      - Deploy SSH public key"
-  echo ""
-
-  echo -e "${CLR_GRAY}═══════════════════════════════════════════════════════════${CLR_RESET}"
-  echo ""
-  echo -e "${CLR_CYAN}Configuration Summary:${CLR_RESET}"
-  echo "  Hostname:     $HOSTNAME"
-  echo "  FQDN:         $FQDN"
-  echo "  Email:        $EMAIL"
-  echo "  Timezone:     $TIMEZONE"
-  echo "  IPv4:         $MAIN_IPV4_CIDR"
-  echo "  Gateway:      $MAIN_IPV4_GW"
-  echo "  Interface:    $INTERFACE_NAME"
-  echo "  ZFS Mode:     ${ZFS_RAID_MODE:-auto}"
-  echo "  Drives:       ${DRIVES[*]}"
-  echo "  Bridge Mode:  $BRIDGE_MODE"
-  if [[ $BRIDGE_MODE != "external" ]]; then
-    echo "  Private Net:  $PRIVATE_SUBNET"
-  fi
-  echo "  Tailscale:    ${INSTALL_TAILSCALE:-no}"
-  echo "  Auditd:       ${INSTALL_AUDITD:-no}"
-  echo "  Repository:   ${PVE_REPO_TYPE:-no-subscription}"
-  echo "  SSL:          ${SSL_TYPE:-self-signed}"
-  echo ""
-  echo -e "${CLR_GRAY}═══════════════════════════════════════════════════════════${CLR_RESET}"
-  echo ""
-  echo -e "${CLR_CYAN}✓ Dry-run completed successfully${CLR_RESET}"
-  echo -e "${CLR_YELLOW}Run without --dry-run to perform actual installation${CLR_RESET}"
-  echo ""
-
-  # Mark as completed (prevents error handler)
-  INSTALL_COMPLETED=true
-  exit 0
-fi
+# Clear screen and show banner
+clear
+show_banner
 
 log "Step: prepare_packages"
 prepare_packages
