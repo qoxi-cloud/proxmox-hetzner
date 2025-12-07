@@ -222,12 +222,8 @@ Example allocation:
 If you prefer IPv4-only configuration:
 
 ```bash
-# Via environment variable
 export IPV6_MODE=disabled
 bash pve-install.sh
-
-# Or in config file
-IPV6_MODE=disabled
 ```
 
 ---

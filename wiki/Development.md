@@ -71,7 +71,7 @@ Scripts are numbered and concatenated in order:
 | 00-00d | Initialization | init, cli, config, logging, banner |
 | 01-05 | UI and utilities | display, utils, ssh, menu, validation |
 | 06-07 | System detection | system-check, network |
-| 08-10 | Input collection | non-interactive, interactive, main |
+| 09-10 | Input collection | interactive, main |
 | 11-12 | Installation | packages, qemu |
 | 13-18 | Post-install | templates, configure-*, validate |
 | 99 | Main flow | main |

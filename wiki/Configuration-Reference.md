@@ -8,43 +8,15 @@ Complete reference for all configuration options available in the installer.
 |--------|-------------|
 | `-h, --help` | Show help message |
 | `-v, --version` | Show version |
-| `-c, --config FILE` | Load configuration from file |
-| `-s, --save-config FILE` | Save configuration to file after input |
-| `-n, --non-interactive` | Run without prompts (requires `--config`) |
-| `-t, --test` | Test mode (TCG emulation, no KVM required) |
-| `-d, --dry-run` | Simulate installation without making changes |
-| `--validate` | Validate configuration only, do not install |
 | `--qemu-ram MB` | Set QEMU RAM in MB (default: auto 4096-8192) |
 | `--qemu-cores N` | Set QEMU CPU cores (default: auto, max 16) |
 | `--iso-version FILE` | Use specific Proxmox ISO (e.g., `proxmox-ve_8.3-1.iso`) |
-| `--no-color` | Disable colored output |
 
 ## Usage Examples
 
 ```bash
 # Interactive installation (default)
 bash pve-install.sh
-
-# Save config for future use
-bash pve-install.sh -s proxmox.conf
-
-# Load config, prompt for missing values
-bash pve-install.sh -c proxmox.conf
-
-# Fully automated installation
-bash pve-install.sh -c proxmox.conf -n
-
-# Test mode (for systems without KVM support)
-bash pve-install.sh -t
-
-# Dry-run mode (simulate without making changes)
-bash pve-install.sh -d
-
-# Dry-run with config file
-bash pve-install.sh -c proxmox.conf -n -d
-
-# Validate configuration without installing
-bash pve-install.sh -c proxmox.conf --validate
 
 # Use specific Proxmox version
 bash pve-install.sh --iso-version proxmox-ve_8.2-1.iso
@@ -55,10 +27,7 @@ bash pve-install.sh --qemu-ram 16384 --qemu-cores 8
 
 ## Environment Variables
 
-You can pre-configure any setting via environment variables.
-
-- **Interactive mode:** Pre-set variables will be skipped (shown with checkmark)
-- **Non-interactive mode (`-n`):** Variables provide required values
+You can pre-configure settings via environment variables. Pre-set variables will be shown with a checkmark and can be modified during interactive prompts.
 
 ### Basic Settings
 
@@ -187,7 +156,7 @@ You can pre-configure any setting via environment variables.
 
 ## Examples with Environment Variables
 
-### Semi-interactive (password from env)
+### Pre-configure password
 
 ```bash
 export NEW_ROOT_PASSWORD="MySecurePass123"
@@ -203,100 +172,6 @@ export TIMEZONE="Europe/Berlin"
 export INSTALL_TAILSCALE="yes"
 export TAILSCALE_AUTH_KEY="tskey-auth-xxx"
 bash pve-install.sh
-```
-
-### Fully automated with config file
-
-```bash
-# Create minimal config
-cat > proxmox.conf << 'EOF'
-NEW_ROOT_PASSWORD=MySecurePass123
-SSH_PUBLIC_KEY=ssh-ed25519 AAAA... user@host
-EOF
-
-bash pve-install.sh -c proxmox.conf -n
-```
-
-### Minimal automated (auto-generate password)
-
-```bash
-# SSH key will be auto-detected from rescue system
-# Password will be auto-generated and shown in final summary
-cat > proxmox.conf << 'EOF'
-# All other settings use defaults
-EOF
-
-bash pve-install.sh -c proxmox.conf -n
-```
-
-### Single-line with env vars + config
-
-```bash
-# Env vars override config file values
-NEW_ROOT_PASSWORD="pass" bash pve-install.sh -c proxmox.conf -n
-```
-
-## Configuration File Format
-
-Configuration files use simple `KEY=VALUE` format:
-
-```bash
-# proxmox.conf
-PVE_HOSTNAME=proxmox1
-DOMAIN_SUFFIX=example.com
-TIMEZONE=Europe/Berlin
-EMAIL=admin@example.com
-BRIDGE_MODE=internal
-PRIVATE_SUBNET=10.0.0.0/24
-ZFS_RAID=raid1
-DEFAULT_SHELL=zsh
-
-# Repository (no-subscription, enterprise, test)
-PVE_REPO_TYPE=no-subscription
-# PVE_SUBSCRIPTION_KEY=pve1c-xxxxxxxxxx  # Only for enterprise
-
-# SSL certificate (self-signed, letsencrypt)
-SSL_TYPE=self-signed
-
-# Optional features
-INSTALL_VNSTAT=yes              # Bandwidth monitoring
-INSTALL_UNATTENDED_UPGRADES=yes # Automatic security updates
-INSTALL_AUDITD=no               # Audit logging - disabled by default
-
-# Tailscale
-INSTALL_TAILSCALE=no
-
-# Advanced: use custom fork (optional)
-# GITHUB_REPO=your-org/proxmox-hetzner
-# GITHUB_BRANCH=custom-branch
-```
-
-> **Security Tip:** Use environment variables for sensitive data (passwords, auth keys) instead of storing them in config files.
-
-## Configuration Validation
-
-When loading a configuration file (`-c` option), the installer validates all values:
-
-| Setting | Valid Values |
-|---------|--------------|
-| `BRIDGE_MODE` | `internal`, `external`, `both` |
-| `ZFS_RAID` | `single`, `raid0`, `raid1` |
-| `PVE_REPO_TYPE` | `no-subscription`, `enterprise`, `test` |
-| `SSL_TYPE` | `self-signed`, `letsencrypt` |
-| `DEFAULT_SHELL` | `bash`, `zsh` |
-| `INSTALL_AUDITD` | `yes`, `no` |
-| `INSTALL_VNSTAT` | `yes`, `no` |
-| `INSTALL_UNATTENDED_UPGRADES` | `yes`, `no` |
-| `IPV6_MODE` | `auto`, `manual`, `disabled` |
-| `IPV6_GATEWAY` | Valid IPv6 address or `auto` |
-| `IPV6_ADDRESS` | Valid IPv6 CIDR notation (e.g., `2001:db8::1/64`) |
-
-Invalid values will cause the installer to exit with an error message.
-
-Use `--validate` to check configuration without running the installation:
-
-```bash
-bash pve-install.sh -c proxmox.conf --validate
 ```
 
 ---

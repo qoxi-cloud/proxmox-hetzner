@@ -153,7 +153,6 @@ The project includes comprehensive unit tests in the `tests/` directory:
 | Test File | Module | Tests | Description |
 |-----------|--------|-------|-------------|
 | `test-validation.sh` | 05-validation.sh | 103 | Hostname, FQDN, email, password, subnet, IPv6 validation |
-| `test-config.sh` | 00b-config.sh | 42 | Config validation (BRIDGE_MODE, ZFS_RAID, SSL_TYPE, etc.) |
 | `test-ssh.sh` | 03-ssh.sh | 16 | SSH key validation and parsing |
 | `test-main.sh` | 99-main.sh | 8 | String truncation utilities |
 | `test-utils.sh` | 02-utils.sh | 7 | Duration formatting |
@@ -320,7 +319,6 @@ Scripts are numbered and concatenated in order:
 
 - `00-init.sh` - Shebang, colors, version, configuration constants (see Constants section)
 - `00a-cli.sh` - Command line argument parsing
-- `00b-config.sh` - Config file load/save functions
 - `00c-logging.sh` - Logging functions
 - `00d-banner.sh` - ASCII banner and startup display
 
@@ -337,9 +335,8 @@ Scripts are numbered and concatenated in order:
 - `06-system-check.sh` - Pre-flight checks (root, RAM, KVM, NVMe detection), auto-installs required utilities
 - `07-network.sh` - Network interface detection with fallback chain (ip -j | jq → ip | awk → ifconfig/route)
 
-#### Input Collection (08-10)
+#### Input Collection (09-10)
 
-- `08-input-non-interactive.sh` - Non-interactive input collection
 - `09-input-interactive.sh` - Interactive input collection with menus
 - `10-input-main.sh` - Main input orchestration function
 
@@ -457,16 +454,9 @@ Post-install configuration runs via SSH into QEMU VM on port 5555:
 
 | Option | Description |
 |--------|-------------|
-| `-c, --config FILE` | Load configuration from file |
-| `-s, --save-config FILE` | Save configuration to file |
-| `-n, --non-interactive` | Automated mode (requires config) |
-| `-t, --test` | Test mode (TCG emulation, no KVM) |
-| `-d, --dry-run` | Simulate installation without making changes |
-| `--validate` | Validate config only, do not install |
 | `--qemu-ram MB` | Override QEMU RAM (default: auto 4096-8192) |
 | `--qemu-cores N` | Override QEMU CPU cores (default: auto, max 16) |
 | `--iso-version FILE` | Use specific Proxmox ISO (e.g., proxmox-ve_8.3-1.iso) |
-| `--no-color` | Disable colored output |
 
 ## Conventions
 
@@ -604,23 +594,6 @@ Use `trap RETURN` for automatic cleanup:
 local tmp_ip=$(mktemp)
 trap "rm -f '$tmp_ip'" RETURN
 ```
-
-### Configuration Validation (00b-config.sh)
-
-The `validate_config()` function validates configuration values:
-
-- `BRIDGE_MODE` - must be: `internal`, `external`, or `both`
-- `ZFS_RAID` - must be: `single`, `raid0`, or `raid1`
-- `PVE_REPO_TYPE` - must be: `no-subscription`, `enterprise`, or `test`
-- `SSL_TYPE` - must be: `self-signed` or `letsencrypt`
-- `DEFAULT_SHELL` - must be: `bash` or `zsh`
-- `INSTALL_AUDITD` - must be: `yes` or `no`
-- `INSTALL_VNSTAT` - must be: `yes` or `no`
-- `INSTALL_UNATTENDED_UPGRADES` - must be: `yes` or `no`
-- `CPU_GOVERNOR` - must be: `performance`, `ondemand`, `powersave`, `schedutil`, or `conservative`
-- `IPV6_MODE` - must be: `auto`, `manual`, or `disabled`
-- `IPV6_GATEWAY` - must be valid IPv6 address or `auto`
-- `IPV6_ADDRESS` - must be valid IPv6 CIDR notation (e.g., `2001:db8::1/64`)
 
 ### IPv6 Validation Functions (05-validation.sh)
 

@@ -51,12 +51,6 @@ Execute this command in the rescue system terminal:
 bash <(curl -sSL https://qoxi-cloud.github.io/proxmox-hetzner/pve-install.sh)
 ```
 
-> **Tip:** Use dry-run mode to preview what will happen without making any changes:
->
-> ```bash
-> bash <(curl -sSL https://qoxi-cloud.github.io/proxmox-hetzner/pve-install.sh) -d
-> ```
-
 The interactive installer will guide you through:
 
 - **Proxmox VE version selection** (last 5 versions available)

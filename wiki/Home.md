@@ -9,7 +9,7 @@ This project provides an automated solution for installing Proxmox VE on Hetzner
 | Page | Description |
 |------|-------------|
 | [Installation Guide](Installation-Guide) | Step-by-step installation instructions |
-| [Configuration Reference](Configuration-Reference) | CLI options, environment variables, config files |
+| [Configuration Reference](Configuration-Reference) | CLI options and environment variables |
 | [Network Modes](Network-Modes) | Bridge configurations explained |
 | [SSL Certificates](SSL-Certificates) | Let's Encrypt and self-signed certificates |
 | [Post-Installation](Post-Installation) | Packages, security hardening, optimizations |

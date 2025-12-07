@@ -24,17 +24,10 @@ setup_qemu_config() {
     log "Legacy BIOS mode"
   fi
 
-  # KVM or TCG mode
-  if [[ $TEST_MODE == true ]]; then
-    # TCG (software emulation) for testing without KVM
-    KVM_OPTS="-accel tcg"
-    CPU_OPTS="-cpu qemu64"
-    log "Using TCG emulation (test mode)"
-  else
-    KVM_OPTS="-enable-kvm"
-    CPU_OPTS="-cpu host"
-    log "Using KVM acceleration"
-  fi
+  # KVM acceleration
+  KVM_OPTS="-enable-kvm"
+  CPU_OPTS="-cpu host"
+  log "Using KVM acceleration"
 
   # CPU and RAM configuration
   local available_cores available_ram_mb

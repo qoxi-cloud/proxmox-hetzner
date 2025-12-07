@@ -27,18 +27,6 @@ MENU_BOX_WIDTH=60
 # shellcheck disable=SC2034
 SPINNER_CHARS=('○' '◔' '◑' '◕' '●' '◕' '◑' '◔')
 
-# Disables all color output variables by setting them to empty strings.
-# Called when --no-color flag is used to ensure accessible terminal output.
-disable_colors() {
-  CLR_RED=''
-  CLR_CYAN=''
-  CLR_YELLOW=''
-  CLR_ORANGE=''
-  CLR_GRAY=''
-  CLR_HETZNER=''
-  CLR_RESET=''
-}
-
 # Version (MAJOR only - MINOR.PATCH added by CI from git tags/commits)
 VERSION="1"
 
@@ -202,19 +190,11 @@ trap cleanup_and_error_handler EXIT
 # Start time for total duration tracking
 INSTALL_START_TIME=$(date +%s)
 
-# Default values
-NON_INTERACTIVE=false
-CONFIG_FILE=""
-SAVE_CONFIG=""
-TEST_MODE=false
-VALIDATE_ONLY=false
-DRY_RUN=false
-
 # QEMU resource overrides (empty = auto-detect)
 QEMU_RAM_OVERRIDE=""
 QEMU_CORES_OVERRIDE=""
 
-# Proxmox ISO version (empty = show menu in interactive, use latest in non-interactive)
+# Proxmox ISO version (empty = show menu in interactive mode)
 PROXMOX_ISO_VERSION=""
 
 # Proxmox repository type (no-subscription, enterprise, test)

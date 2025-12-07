@@ -180,10 +180,10 @@ Auditd provides a detailed audit trail of system activities, essential for:
 
 During installation, select "Install auditd" in the Audit Logging menu.
 
-**Non-interactive mode:**
+**Environment variable:**
 
 ```bash
-INSTALL_AUDITD=yes bash pve-install.sh -c config.conf -n
+INSTALL_AUDITD=yes bash pve-install.sh
 ```
 
 **Configuration file:**

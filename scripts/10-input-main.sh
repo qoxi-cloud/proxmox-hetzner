@@ -4,19 +4,13 @@
 # =============================================================================
 
 # Main entry point for input collection.
-# Detects network, collects inputs (interactive or non-interactive mode),
-# calculates derived values, and optionally saves configuration.
-# Side effects: Sets all configuration globals, may save config file
+# Detects network, collects inputs interactively, and calculates derived values.
+# Side effects: Sets all configuration globals
 get_system_inputs() {
   detect_network_interface
   collect_network_info
 
-  if [[ $NON_INTERACTIVE == true ]]; then
-    print_success "Network interface:" "${INTERFACE_NAME}"
-    get_inputs_non_interactive
-  else
-    get_inputs_interactive
-  fi
+  get_inputs_interactive
 
   # Calculate derived values
   FQDN="${PVE_HOSTNAME}.${DOMAIN_SUFFIX}"
@@ -27,10 +21,5 @@ get_system_inputs() {
     PRIVATE_IP="${PRIVATE_CIDR}.1"
     SUBNET_MASK=$(echo "$PRIVATE_SUBNET" | cut -d'/' -f2)
     PRIVATE_IP_CIDR="${PRIVATE_IP}/${SUBNET_MASK}"
-  fi
-
-  # Save config if requested
-  if [[ -n $SAVE_CONFIG ]]; then
-    save_config "$SAVE_CONFIG"
   fi
 }

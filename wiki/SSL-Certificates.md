@@ -64,10 +64,6 @@ If DNS validation fails, the installer retries 3 times with 10-second intervals,
 ℹ   4. Run this installer again
 ```
 
-**Non-interactive mode:**
-
-DNS validation fails immediately without retries if the domain doesn't resolve correctly.
-
 **On success:**
 
 ```text
@@ -109,21 +105,16 @@ DNS validation fails immediately without retries if the domain doesn't resolve c
 
 ### Configuration
 
-**Interactive mode:**
+Select "Let's Encrypt" from the SSL Certificate menu during installation. The installer will use your configured FQDN (hostname + domain suffix).
 
-Select "Let's Encrypt" from the SSL Certificate menu. The installer will use your configured FQDN (hostname + domain suffix).
-
-**Non-interactive mode:**
+**Using environment variables (optional):**
 
 ```bash
-cat > proxmox.conf << 'EOF'
-SSL_TYPE=letsencrypt
-PVE_HOSTNAME=proxmox
-DOMAIN_SUFFIX=example.com
-EMAIL=admin@example.com
-EOF
-
-bash pve-install.sh -c proxmox.conf -n
+export SSL_TYPE=letsencrypt
+export PVE_HOSTNAME=proxmox
+export DOMAIN_SUFFIX=example.com
+export EMAIL=admin@example.com
+bash pve-install.sh
 ```
 
 ### Verifying Certificate
