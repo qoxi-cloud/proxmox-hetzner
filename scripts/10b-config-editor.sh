@@ -201,44 +201,14 @@ _build_config_items() {
   CONFIG_ITEMS+=("SSH|SSH Key|${ssh_display}|_gum_edit_ssh")
 }
 
-# Display configuration table using gum with section headers
-# _display_config_table shows current configuration in a styled format
-_display_config_table() {
+# Build interactive menu with section headers and config items
+# Returns formatted strings for gum choose selection
+# Section headers are prefixed to first item in each section
+_build_interactive_menu() {
   _build_config_items
 
   local prev_section=""
-
-  for item in "${CONFIG_ITEMS[@]}"; do
-    local section="${item%%|*}"
-    local rest="${item#*|}"
-    local label="${rest%%|*}"
-    rest="${rest#*|}"
-    local value="${rest%%|*}"
-
-    # Print section header when section changes
-    if [[ $section != "$prev_section" ]]; then
-      if [[ -n $prev_section ]]; then
-        echo "" # Empty line between sections
-      fi
-      # Use -- to separate flags from text (--- looks like a flag)
-      gum style --foreground "$HEX_CYAN" --bold -- "--- ${section} ---"
-      prev_section="$section"
-    fi
-
-    # Print setting row with gray label and white value
-    # Use -- to ensure values starting with - are not interpreted as flags
-    printf "  %s  %s\n" \
-      "$(gum style --foreground "$HEX_GRAY" -- "${label}:")" \
-      "$(gum style --foreground "$HEX_WHITE" -- "$value")"
-  done
-}
-
-# Build menu options for gum choose (only editable items, with section headers)
-# Returns formatted strings for selection
-_build_menu_options() {
-  _build_config_items
-
-  local prev_section=""
+  local section_first=true
 
   for item in "${CONFIG_ITEMS[@]}"; do
     local section="${item%%|*}"
@@ -248,26 +218,60 @@ _build_menu_options() {
     local value="${rest%%|*}"
     local edit_fn="${rest#*|}"
 
-    # Only add items that have edit functions
-    if [[ -n $edit_fn ]]; then
-      # Add section prefix for context
-      if [[ $section != "$prev_section" ]]; then
-        prev_section="$section"
-      fi
-      echo "${label}|${value}"
+    # Check if section changed
+    if [[ $section != "$prev_section" ]]; then
+      section_first=true
+      prev_section="$section"
     fi
+
+    # Build the display line
+    local display_line=""
+
+    if [[ $section_first == true ]]; then
+      # First item in section shows section header
+      display_line=$(printf "${CLR_CYAN}%-12s${CLR_RESET} %-15s %s" "[$section]" "${label}:" "$value")
+      section_first=false
+    else
+      # Subsequent items have padding instead of section name
+      display_line=$(printf "%-12s %-15s %s" "" "${label}:" "$value")
+    fi
+
+    # Apply gray color for non-editable items
+    if [[ -z $edit_fn ]]; then
+      display_line="${CLR_GRAY}${display_line}${CLR_RESET}"
+    fi
+
+    echo "$display_line"
   done
 
-  # Add done option
-  echo "Done|Start installation"
+  echo ""
+  echo "${CLR_GREEN}>>> Start Installation <<<${CLR_RESET}"
 }
 
-# Get edit function for selected option
+# Strip ANSI escape codes from string
 # Parameters:
-#   $1 - Selected label (e.g., "Hostname")
+#   $1 - String with ANSI codes
+# Returns: Clean string without ANSI codes
+_strip_ansi() {
+  echo "$1" | sed 's/\x1b\[[0-9;]*m//g'
+}
+
+# Get edit function for selected menu line
+# Parameters:
+#   $1 - Selected line from menu (e.g., "[Basic]      Hostname:       pve.local")
 # Returns: edit function name
-_get_edit_function() {
-  local selected_label="$1"
+_get_edit_function_from_line() {
+  local selected_line="$1"
+
+  # Strip ANSI codes first
+  selected_line=$(_strip_ansi "$selected_line")
+
+  # Extract label from the line
+  # Format: "[Section]    Label:          Value" or "             Label:          Value"
+  # The label is after optional section bracket and spaces, before ":"
+  local selected_label
+  # Remove section prefix [xxx] if present, then trim spaces and get text before ":"
+  selected_label=$(echo "$selected_line" | sed 's/^\[[^]]*\]//' | sed 's/^[[:space:]]*//' | cut -d':' -f1)
 
   for item in "${CONFIG_ITEMS[@]}"; do
     local rest="${item#*|}"
@@ -874,35 +878,34 @@ show_gum_config_editor() {
     show_banner
 
     echo ""
-    gum style --foreground "$HEX_ORANGE" --bold "Configuration"
+    gum style --foreground "$HEX_ORANGE" --bold -- "Configuration"
     echo ""
 
-    # Display current configuration with section headers
-    _display_config_table
+    # Build interactive menu content
+    local menu_content
+    menu_content=$(_build_interactive_menu)
 
-    echo ""
-    echo ""
-
-    # Build menu options and show selection
-    local menu_options
-    menu_options=$(_build_menu_options)
-
+    # Use gum choose with the menu content
     local selected
-    selected=$(echo "$menu_options" | gum choose \
+    selected=$(echo "$menu_content" | gum choose \
+      --cursor "› " \
       --cursor.foreground "$HEX_ORANGE" \
-      --selected.foreground "$HEX_ORANGE" \
-      --header "Select setting to edit (use arrows, Enter to select):" \
+      --selected.foreground "$HEX_WHITE" \
       --header.foreground "$HEX_GRAY" \
-      --height 20)
+      --height 35)
 
-    # Parse selection (format: "Label|Value")
-    local selected_label="${selected%%|*}"
+    # Skip if empty line selected (user pressed Enter on empty line)
+    local selected_clean
+    selected_clean=$(_strip_ansi "$selected")
+    if [[ -z $selected_clean || $selected_clean =~ ^[[:space:]]*$ ]]; then
+      continue
+    fi
 
     # Check if done
-    if [[ $selected_label == "Done" ]]; then
+    if [[ $selected_clean == *"Start Installation"* ]]; then
       # Validate required fields before proceeding
       if [[ -z $SSH_PUBLIC_KEY ]]; then
-        gum style --foreground "$HEX_RED" "SSH key is required for secure access!"
+        gum style --foreground "$HEX_RED" -- "SSH key is required for secure access!"
         sleep 2
         continue
       fi
@@ -911,7 +914,7 @@ show_gum_config_editor() {
 
     # Get and execute edit function
     local edit_fn
-    edit_fn=$(_get_edit_function "$selected_label")
+    edit_fn=$(_get_edit_function_from_line "$selected")
 
     if [[ -n $edit_fn ]]; then
       clear
