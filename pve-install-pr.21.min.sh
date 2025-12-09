@@ -18,7 +18,7 @@ HEX_HETZNER="#d70000"
 HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 MENU_BOX_WIDTH=60
-VERSION="1.18.16-pr.21"
+VERSION="1.18.17-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -1974,8 +1974,8 @@ fi
 FQDN="$PVE_HOSTNAME.$DOMAIN_SUFFIX"
 }
 show_gum_config_editor(){
-detect_network_interface
-collect_network_info
+detect_network_interface >/dev/null 2>&1
+collect_network_info >/dev/null 2>&1
 _init_default_config
 _wizard_step_basic
 }
