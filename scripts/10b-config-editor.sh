@@ -7,18 +7,81 @@
 # Format: "section|label|value|edit_function"
 declare -a CONFIG_ITEMS=()
 
+# Initialize default configuration values
+# _init_default_config sets sensible defaults for all configuration options
+_init_default_config() {
+  # Basic settings
+  [[ -z $PVE_HOSTNAME ]] && PVE_HOSTNAME="$DEFAULT_HOSTNAME"
+  [[ -z $DOMAIN_SUFFIX ]] && DOMAIN_SUFFIX="$DEFAULT_DOMAIN"
+  [[ -z $EMAIL ]] && EMAIL="$DEFAULT_EMAIL"
+  [[ -z $TIMEZONE ]] && TIMEZONE="$DEFAULT_TIMEZONE"
+
+  # Password - auto-generate if not set
+  if [[ -z $NEW_ROOT_PASSWORD ]]; then
+    NEW_ROOT_PASSWORD=$(generate_password "$DEFAULT_PASSWORD_LENGTH")
+    PASSWORD_GENERATED="yes"
+  fi
+
+  # Network
+  [[ -z $BRIDGE_MODE ]] && BRIDGE_MODE="$DEFAULT_BRIDGE_MODE"
+  [[ -z $PRIVATE_SUBNET ]] && PRIVATE_SUBNET="$DEFAULT_SUBNET"
+  [[ -z $IPV6_MODE ]] && IPV6_MODE="$DEFAULT_IPV6_MODE"
+  [[ -z $IPV6_GATEWAY ]] && IPV6_GATEWAY="$DEFAULT_IPV6_GATEWAY"
+
+  # Calculate private network values
+  if [[ $BRIDGE_MODE == "internal" || $BRIDGE_MODE == "both" ]]; then
+    PRIVATE_CIDR=$(echo "$PRIVATE_SUBNET" | cut -d'/' -f1 | rev | cut -d'.' -f2- | rev)
+    PRIVATE_IP="${PRIVATE_CIDR}.1"
+    SUBNET_MASK=$(echo "$PRIVATE_SUBNET" | cut -d'/' -f2)
+    PRIVATE_IP_CIDR="${PRIVATE_IP}/${SUBNET_MASK}"
+  fi
+
+  # Storage - set default based on drive count
+  if [[ -z $ZFS_RAID ]]; then
+    if [[ ${DRIVE_COUNT:-0} -ge 2 ]]; then
+      ZFS_RAID="raid1"
+    else
+      ZFS_RAID="single"
+    fi
+  fi
+
+  # Proxmox
+  [[ -z $PVE_REPO_TYPE ]] && PVE_REPO_TYPE="$DEFAULT_REPO_TYPE"
+
+  # SSL
+  [[ -z $SSL_TYPE ]] && SSL_TYPE="$DEFAULT_SSL_TYPE"
+
+  # Tailscale - default to not installed
+  [[ -z $INSTALL_TAILSCALE ]] && INSTALL_TAILSCALE="no"
+
+  # Optional features
+  [[ -z $DEFAULT_SHELL ]] && DEFAULT_SHELL="zsh"
+  [[ -z $CPU_GOVERNOR ]] && CPU_GOVERNOR="$DEFAULT_CPU_GOVERNOR"
+  [[ -z $INSTALL_VNSTAT ]] && INSTALL_VNSTAT="yes"
+  [[ -z $INSTALL_UNATTENDED_UPGRADES ]] && INSTALL_UNATTENDED_UPGRADES="yes"
+  [[ -z $INSTALL_AUDITD ]] && INSTALL_AUDITD="no"
+
+  # SSH key - try to detect from rescue system
+  if [[ -z $SSH_PUBLIC_KEY ]]; then
+    SSH_PUBLIC_KEY=$(get_rescue_ssh_key 2>/dev/null || true)
+  fi
+
+  # Calculate FQDN
+  FQDN="${PVE_HOSTNAME}.${DOMAIN_SUFFIX}"
+}
+
 # Build configuration items list
 # _build_config_items populates CONFIG_ITEMS array with current configuration values
 _build_config_items() {
   CONFIG_ITEMS=()
 
   # --- Basic Settings ---
-  CONFIG_ITEMS+=("Basic|Hostname|${PVE_HOSTNAME}.${DOMAIN_SUFFIX}|_gum_edit_hostname")
-  CONFIG_ITEMS+=("Basic|Email|${EMAIL}|_gum_edit_email")
+  CONFIG_ITEMS+=("Basic Settings|Hostname|${PVE_HOSTNAME}.${DOMAIN_SUFFIX}|_gum_edit_hostname")
+  CONFIG_ITEMS+=("Basic Settings|Email|${EMAIL}|_gum_edit_email")
   local pass_display
   pass_display=$([ "$PASSWORD_GENERATED" == "yes" ] && echo "auto-generated" || echo "********")
-  CONFIG_ITEMS+=("Basic|Password|${pass_display}|_gum_edit_password")
-  CONFIG_ITEMS+=("Basic|Timezone|${TIMEZONE}|_gum_edit_timezone")
+  CONFIG_ITEMS+=("Basic Settings|Password|${pass_display}|_gum_edit_password")
+  CONFIG_ITEMS+=("Basic Settings|Timezone|${TIMEZONE}|_gum_edit_timezone")
 
   # --- Network ---
   CONFIG_ITEMS+=("Network|Interface|${INTERFACE_NAME}|_gum_edit_interface")
@@ -138,13 +201,11 @@ _build_config_items() {
   CONFIG_ITEMS+=("SSH|SSH Key|${ssh_display}|_gum_edit_ssh")
 }
 
-# Display configuration table using gum
-# _display_config_table shows current configuration in a gum table without border
+# Display configuration table using gum with section headers
+# _display_config_table shows current configuration in a styled format
 _display_config_table() {
   _build_config_items
 
-  local table_data="Section,Setting,Value
-"
   local prev_section=""
 
   for item in "${CONFIG_ITEMS[@]}"; do
@@ -154,38 +215,31 @@ _display_config_table() {
     rest="${rest#*|}"
     local value="${rest%%|*}"
 
-    # Add section separator
+    # Print section header when section changes
     if [[ $section != "$prev_section" ]]; then
       if [[ -n $prev_section ]]; then
-        table_data+="---,---,---
-"
+        echo "" # Empty line between sections
       fi
-      table_data+="${section},${label},${value}
-"
+      gum style --foreground "$HEX_CYAN" --bold "--- ${section} ---"
       prev_section="$section"
-    else
-      table_data+=",${label},${value}
-"
     fi
+
+    # Print setting row with gray label and white value
+    printf "  %s  %s\n" \
+      "$(gum style --foreground "$HEX_GRAY" "${label}:")" \
+      "$(gum style --foreground "$HEX_WHITE" "$value")"
   done
-
-  # Remove trailing newline
-  table_data="${table_data%$'\n'}"
-
-  echo "$table_data" | gum table \
-    --print \
-    --border "none" \
-    --cell.foreground "$HEX_GRAY" \
-    --header.foreground "$HEX_ORANGE"
 }
 
-# Build menu options for gum choose
-# Returns array of "Label - Value" strings for selection
+# Build menu options for gum choose (only editable items, with section headers)
+# Returns formatted strings for selection
 _build_menu_options() {
   _build_config_items
 
-  local -a options=()
+  local prev_section=""
+
   for item in "${CONFIG_ITEMS[@]}"; do
+    local section="${item%%|*}"
     local rest="${item#*|}"
     local label="${rest%%|*}"
     rest="${rest#*|}"
@@ -194,23 +248,24 @@ _build_menu_options() {
 
     # Only add items that have edit functions
     if [[ -n $edit_fn ]]; then
-      options+=("${label} - ${value}")
+      # Add section prefix for context
+      if [[ $section != "$prev_section" ]]; then
+        prev_section="$section"
+      fi
+      echo "${label}|${value}"
     fi
   done
 
   # Add done option
-  options+=("Done - Start installation")
-
-  printf '%s\n' "${options[@]}"
+  echo "Done|Start installation"
 }
 
 # Get edit function for selected option
 # Parameters:
-#   $1 - Selected label (e.g., "Hostname - pve.local")
+#   $1 - Selected label (e.g., "Hostname")
 # Returns: edit function name
 _get_edit_function() {
-  local selected="$1"
-  local selected_label="${selected%% - *}"
+  local selected_label="$1"
 
   for item in "${CONFIG_ITEMS[@]}"; do
     local rest="${item#*|}"
@@ -539,8 +594,55 @@ Single drive"
 }
 
 _gum_edit_pve_version() {
-  gum style --foreground "$HEX_GRAY" "Proxmox version is set during initial configuration"
-  sleep 1
+  # Fetch available versions if not already cached
+  if [[ -z $PROXMOX_ISO_LIST ]]; then
+    local iso_list
+    get_available_proxmox_isos 5 >/tmp/iso_list.tmp &
+    gum spin --spinner dot --title "Fetching available Proxmox versions..." -- wait $!
+    iso_list=$(cat /tmp/iso_list.tmp 2>/dev/null)
+    rm -f /tmp/iso_list.tmp
+    PROXMOX_ISO_LIST="$iso_list"
+  fi
+
+  if [[ -z $PROXMOX_ISO_LIST ]]; then
+    gum style --foreground "$HEX_YELLOW" "Could not fetch ISO list"
+    sleep 1
+    return
+  fi
+
+  # Build options from ISO list
+  local options=""
+  local first=true
+  while IFS= read -r iso; do
+    local version
+    version=$(get_iso_version "$iso")
+    if [[ $first == true ]]; then
+      options+="${version} (Latest)\n"
+      first=false
+    else
+      options+="${version}\n"
+    fi
+  done <<<"$PROXMOX_ISO_LIST"
+
+  local selected
+  selected=$(echo -e "$options" | gum choose \
+    --cursor.foreground "$HEX_ORANGE" \
+    --selected.foreground "$HEX_ORANGE" \
+    --header "Select Proxmox version:" \
+    --header.foreground "$HEX_GRAY")
+
+  if [[ -n $selected ]]; then
+    # Extract version number and find matching ISO
+    local selected_version="${selected%% *}"
+    while IFS= read -r iso; do
+      local version
+      version=$(get_iso_version "$iso")
+      if [[ $version == "$selected_version" ]]; then
+        PROXMOX_ISO_VERSION="$iso"
+        break
+      fi
+    done <<<"$PROXMOX_ISO_LIST"
+  fi
 }
 
 _gum_edit_repo() {
@@ -755,7 +857,15 @@ _gum_edit_ssh() {
 
 # show_gum_config_editor displays interactive configuration editor using gum
 # Clears screen, shows logo, then presents editable configuration table
+# Replaces the old get_system_inputs flow
 show_gum_config_editor() {
+  # Initialize network detection first
+  detect_network_interface
+  collect_network_info
+
+  # Initialize default configuration values
+  _init_default_config
+
   while true; do
     # Clear screen and show logo
     clear
@@ -765,28 +875,41 @@ show_gum_config_editor() {
     gum style --foreground "$HEX_ORANGE" --bold "Configuration"
     echo ""
 
-    # Display current configuration
+    # Display current configuration with section headers
     _display_config_table
 
     echo ""
+    echo ""
 
-    # Show selection menu
+    # Build menu options and show selection
+    local menu_options
+    menu_options=$(_build_menu_options)
+
     local selected
-    selected=$(_build_menu_options | gum choose \
+    selected=$(echo "$menu_options" | gum choose \
       --cursor.foreground "$HEX_ORANGE" \
       --selected.foreground "$HEX_ORANGE" \
-      --header "Select setting to edit (Enter to select):" \
+      --header "Select setting to edit (use arrows, Enter to select):" \
       --header.foreground "$HEX_GRAY" \
       --height 20)
 
+    # Parse selection (format: "Label|Value")
+    local selected_label="${selected%%|*}"
+
     # Check if done
-    if [[ $selected == "Done - Start installation" ]]; then
+    if [[ $selected_label == "Done" ]]; then
+      # Validate required fields before proceeding
+      if [[ -z $SSH_PUBLIC_KEY ]]; then
+        gum style --foreground "$HEX_RED" "SSH key is required for secure access!"
+        sleep 2
+        continue
+      fi
       return 0
     fi
 
     # Get and execute edit function
     local edit_fn
-    edit_fn=$(_get_edit_function "$selected")
+    edit_fn=$(_get_edit_function "$selected_label")
 
     if [[ -n $edit_fn ]]; then
       clear

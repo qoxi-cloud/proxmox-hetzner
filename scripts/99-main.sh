@@ -219,10 +219,8 @@ show_banner_animated_stop
 
 log "Step: show_system_status"
 show_system_status
-log "Step: get_system_inputs"
-get_system_inputs
 
-# Show interactive configuration editor
+# Show interactive configuration editor (replaces get_system_inputs)
 log "Step: show_gum_config_editor"
 show_gum_config_editor
 
