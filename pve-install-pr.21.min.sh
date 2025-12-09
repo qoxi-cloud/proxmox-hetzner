@@ -18,7 +18,7 @@ HEX_HETZNER="#d70000"
 HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 MENU_BOX_WIDTH=60
-VERSION="1.18.25-pr.21"
+VERSION="1.18.26-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -1712,8 +1712,6 @@ _get_mac_and_ipv6
 _validate_network_config "$max_attempts"
 _calculate_ipv6_prefix
 }
-WIZARD_CURRENT_STEP=1
-WIZARD_TOTAL_STEPS=1
 _wiz_read_key(){
 local key
 IFS= read -rsn1 key
@@ -1735,10 +1733,8 @@ WIZ_KEY="$key"
 fi
 }
 _WIZ_INITIAL_RENDER_DONE=""
-_WIZ_MENU_LINES=0
 _wiz_render_menu(){
 local selection="$1"
-local nav_focus="$2"
 local output=""
 if [[ -z $_WIZ_INITIAL_RENDER_DONE ]];then
 clear
@@ -1759,107 +1755,42 @@ local fields=(
 "Timezone         $TIMEZONE")
 local i
 for i in "${!fields[@]}";do
-if [[ $nav_focus == "fields" && $i -eq $selection ]];then
+if [[ $i -eq $selection ]];then
 output+="  $CLR_ORANGE›$CLR_RESET ${fields[$i]}\n"
 else
 output+="    ${fields[$i]}\n"
 fi
 done
 output+="\n"
-local back_style="$CLR_GRAY"
-local continue_style="$CLR_WHITE"
-if [[ $WIZARD_CURRENT_STEP -gt 1 ]];then
-if [[ $nav_focus == "back" ]];then
-back_style="$CLR_ORANGE"
-else
-back_style="$CLR_WHITE"
-fi
-fi
-if [[ $nav_focus == "continue" ]];then
-continue_style="$CLR_ORANGE"
-fi
-output+="  $back_style← Back$CLR_RESET           ${continue_style}Continue →$CLR_RESET\n\n"
-if [[ $nav_focus == "fields" ]];then
 output+="$CLR_GRAY[$CLR_ORANGE↑↓$CLR_GRAY] navigate  [${CLR_ORANGE}Enter$CLR_GRAY] edit  [${CLR_ORANGE}Q$CLR_GRAY] quit$CLR_RESET"
-else
-output+="$CLR_GRAY[$CLR_ORANGE←→$CLR_GRAY] navigate  [${CLR_ORANGE}Enter$CLR_GRAY] select  [${CLR_ORANGE}Q$CLR_GRAY] quit$CLR_RESET"
-fi
 echo -e "$output"
 }
-_wizard_step_basic(){
+_wizard_main(){
 local selection=0
-local nav_focus="fields"
 local max_fields=3
 while true;do
-_wiz_render_menu "$selection" "$nav_focus"
+_wiz_render_menu "$selection"
 _wiz_read_key
 case "$WIZ_KEY" in
 up)if
-[[ $nav_focus == "fields" ]]
+[[ $selection -gt 0 ]]
 then
-if [[ $selection -gt 0 ]];then
 ((selection--))
-fi
-elif [[ $nav_focus == "back" || $nav_focus == "continue" ]];then
-nav_focus="fields"
-selection=$max_fields
 fi
 ;;
 down)if
-[[ $nav_focus == "fields" ]]
+[[ $selection -lt $max_fields ]]
 then
-if [[ $selection -lt $max_fields ]];then
 ((selection++))
-else
-nav_focus="continue"
-fi
 fi
 ;;
-left)if
-[[ $nav_focus == "continue" ]]
-then
-if [[ $WIZARD_CURRENT_STEP -gt 1 ]];then
-nav_focus="back"
-fi
-elif [[ $nav_focus == "fields" ]];then
-if [[ $WIZARD_CURRENT_STEP -gt 1 ]];then
-nav_focus="back"
-fi
-fi
-;;
-right)if
-[[ $nav_focus == "back" ]]
-then
-nav_focus="continue"
-elif [[ $nav_focus == "fields" ]];then
-nav_focus="continue"
-fi
-;;
-enter)if
-[[ $nav_focus == "continue" ]]
-then
-if [[ -z $PVE_HOSTNAME ]];then
-gum style --foreground "$HEX_RED" "Hostname is required!"
-sleep 1
-continue
-fi
-if [[ -z $EMAIL ]]||! validate_email "$EMAIL";then
-gum style --foreground "$HEX_RED" "Valid email is required!"
-sleep 1
-continue
-fi
-return 0
-elif [[ $nav_focus == "back" && $WIZARD_CURRENT_STEP -gt 1 ]];then
-return 1
-elif [[ $nav_focus == "fields" ]];then
-case $selection in
+enter)case $selection in
 0)_edit_hostname;;
 1)_edit_email;;
 2)_edit_password;;
 3)_edit_timezone
 esac
 _WIZ_INITIAL_RENDER_DONE=""
-fi
 ;;
 quit|esc)if
 gum confirm "Quit installation?" --default=false \
@@ -2064,7 +1995,7 @@ show_gum_config_editor(){
 detect_network_interface >/dev/null 2>&1
 collect_network_info >/dev/null 2>&1
 _init_default_config
-_wizard_step_basic
+_wizard_main
 }
 prepare_packages(){
 log "Starting package preparation"
