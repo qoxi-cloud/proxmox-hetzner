@@ -1491,7 +1491,7 @@ gum style --foreground "#ff8700" --bold "SYSTEM INFORMATION"
 echo ""
 echo "$table_data"|gum table --print \
 --border "none" \
---cell.foreground "#ffffff"
+--cell.foreground "#585858"
 echo ""
 local has_errors=false
 if [[ $PREFLIGHT_ERRORS -gt 0 || $no_drives -eq 1 ]];then
