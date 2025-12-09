@@ -42,33 +42,22 @@ _wiz_read_key() {
 _wiz_hide_cursor() { printf '\033[?25l'; }
 _wiz_show_cursor() { printf '\033[?25h'; }
 
-# Track if initial render has been done
-_WIZ_INITIAL_RENDER_DONE=""
-# Banner is 10 lines + 1 empty line after = row 12
-_WIZ_MENU_START_ROW=12
-
 # Menu item indices (for mapping selection to edit functions)
 # These track which items are selectable fields vs section headers
 _WIZ_FIELD_COUNT=0
 _WIZ_FIELD_MAP=()
 
-# Render the main menu with current selection highlighted (flicker-free)
+# Render the main menu with current selection highlighted
 # Parameters:
 #   $1 - Current selection index (0-based, only counts selectable fields)
 _wiz_render_menu() {
   local selection="$1"
   local output=""
 
-  # First render: clear screen and show banner
-  if [[ -z $_WIZ_INITIAL_RENDER_DONE ]]; then
-    clear
-    show_banner
-    echo ""
-    _WIZ_INITIAL_RENDER_DONE=1
-  else
-    # Move cursor to menu start row and clear from there
-    printf '\033[%d;1H\033[J' "$_WIZ_MENU_START_ROW"
-  fi
+  # Always clear and redraw (simple approach for maximum compatibility)
+  clear
+  show_banner
+  echo ""
 
   # Build display values
   local pass_display
@@ -218,9 +207,8 @@ _wizard_main() {
           features) _edit_features ;;
           ssh_key) _edit_ssh_key ;;
         esac
-        # Hide cursor again and reset render state
+        # Hide cursor again
         _wiz_hide_cursor
-        _WIZ_INITIAL_RENDER_DONE=""
         ;;
       quit | esc)
         _wiz_show_cursor
@@ -229,9 +217,8 @@ _wizard_main() {
           --selected.background "$HEX_ORANGE"; then
           exit 0
         fi
-        # Hide cursor again and reset render state
+        # Hide cursor again
         _wiz_hide_cursor
-        _WIZ_INITIAL_RENDER_DONE=""
         ;;
     esac
   done
