@@ -65,9 +65,11 @@ _wizard_step_basic() {
       "$timezone_line" \
       "" \
       "$back_btn           $next_btn" \
+      --header="" \
       --cursor "› " \
       --cursor.foreground "$HEX_ORANGE" \
-      --selected.foreground "$HEX_ORANGE")
+      --selected.foreground "$HEX_WHITE" \
+      --item.foreground "$HEX_WHITE")
 
     # Footer after menu
     _wiz_footer_main
@@ -264,9 +266,11 @@ Custom..."
 
   local selected
   selected=$(echo "$tz_options" | gum choose \
+    --header="" \
     --cursor "› " \
     --cursor.foreground "$HEX_ORANGE" \
-    --selected.foreground "$HEX_ORANGE")
+    --selected.foreground "$HEX_WHITE" \
+    --item.foreground "$HEX_WHITE")
 
   if [[ $selected == "Custom..." ]]; then
     clear
