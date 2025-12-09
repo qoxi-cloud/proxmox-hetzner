@@ -176,19 +176,31 @@ show_system_status() {
     no_drives=1
   fi
 
-  # Build system info rows
-  local sys_rows=""
+  # Build table data with colored status markers
+  # Format: ,,\n then Header,Header,Header\n then data rows
+  local table_data
+  table_data=",,
+"
+
+  # Helper to format status with color using gum style
+  format_status() {
+    local status="$1"
+    case "$status" in
+      ok) gum style --foreground "$HEX_CYAN" "[OK]" ;;
+      warn) gum style --foreground "$HEX_YELLOW" "[WARN]" ;;
+      error) gum style --foreground "$HEX_RED" "[ERROR]" ;;
+    esac
+  }
 
   # Helper to add row
   add_row() {
     local status="$1"
     local label="$2"
     local value="$3"
-    case "$status" in
-      ok) sys_rows+="[OK]|${label}|${value}"$'\n' ;;
-      warn) sys_rows+="[WARN]|${label}|${value}"$'\n' ;;
-      error) sys_rows+="[ERROR]|${label}|${value}"$'\n' ;;
-    esac
+    local status_text
+    status_text=$(format_status "$status")
+    table_data+="${status_text},${label},${value}
+"
   }
 
   add_row "ok" "Installer" "v${VERSION}"
@@ -199,35 +211,41 @@ show_system_status() {
   add_row "$PREFLIGHT_CPU_STATUS" "CPU" "$PREFLIGHT_CPU"
   add_row "$PREFLIGHT_KVM_STATUS" "KVM" "$PREFLIGHT_KVM"
 
-  # Remove trailing newline
-  sys_rows="${sys_rows%$'\n'}"
+  # Add storage section header
+  table_data+="--- Storage ---,,
+"
 
-  # Build storage rows
-  local storage_rows=""
+  # Add storage rows
   if [[ $no_drives -eq 1 ]]; then
-    storage_rows="[ERROR]|No drives detected!|"
+    local error_status
+    error_status=$(format_status "error")
+    table_data+="${error_status},No drives detected!,
+"
   else
     for i in "${!DRIVE_NAMES[@]}"; do
-      storage_rows+="[OK]|${DRIVE_NAMES[$i]}|${DRIVE_SIZES[$i]}  ${DRIVE_MODELS[$i]:0:25}"
-      if [[ $i -lt $((${#DRIVE_NAMES[@]} - 1)) ]]; then
-        storage_rows+=$'\n'
-      fi
+      local ok_status
+      ok_status=$(format_status "ok")
+      table_data+="${ok_status},${DRIVE_NAMES[$i]},${DRIVE_SIZES[$i]}  ${DRIVE_MODELS[$i]:0:25}
+"
     done
   fi
 
-  # Display with boxes and colorize
-  # Inner width = MENU_BOX_WIDTH - 4 (borders) - 2 (padding) = 54
-  local inner_width=$((MENU_BOX_WIDTH - 6))
-  {
-    echo "SYSTEM INFORMATION"
-    {
-      echo "$sys_rows"
-      echo "|--- Storage ---|"
-      echo "$storage_rows"
-    } | column -t -s '|' | while IFS= read -r line; do
-      printf "%-${inner_width}s\n" "$line"
-    done
-  } | boxes -d stone -p a1 -s $MENU_BOX_WIDTH | colorize_status
+  # Remove trailing newline
+  table_data="${table_data%$'\n'}"
+
+  # Display title
+  gum style \
+    --foreground "$HEX_ORANGE" \
+    --bold \
+    "SYSTEM INFORMATION"
+
+  # Display table using gum table
+  echo "$table_data" | gum table \
+    --print \
+    --border "none" \
+    --cell.foreground "$HEX_GRAY" \
+    --header.foreground "$HEX_ORANGE"
+
   echo ""
 
   # Determine if there are critical errors

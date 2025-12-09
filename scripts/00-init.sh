@@ -19,6 +19,16 @@ CLR_GRAY=$'\033[38;5;240m'
 CLR_HETZNER=$'\033[38;5;160m'
 CLR_RESET=$'\033[m'
 
+# Hex colors for gum (terminal UI toolkit)
+HEX_RED="#ff0000"
+HEX_CYAN="#00b1ff"
+HEX_YELLOW="#ffff00"
+HEX_ORANGE="#ff8700"
+HEX_GRAY="#585858"
+HEX_HETZNER="#d70000"
+HEX_GREEN="#00ff00"
+HEX_WHITE="#ffffff"
+
 # Menu box width for consistent UI rendering across all scripts
 # shellcheck disable=SC2034
 MENU_BOX_WIDTH=60
