@@ -272,5 +272,10 @@ Status,Item,Value
       print_info "Installation cancelled by user"
       exit 0
     fi
+
+    # Clear screen and show logo after Start is pressed
+    clear
+    show_banner
+    echo ""
   fi
 }
