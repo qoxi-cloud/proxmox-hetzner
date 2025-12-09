@@ -33,7 +33,7 @@ MENU_BOX_WIDTH=60
 SPINNER_CHARS=('○' '◔' '◑' '◕' '●' '◕' '◑' '◔')
 
 # Version (MAJOR only - MINOR.PATCH added by CI from git tags/commits)
-VERSION="1.18.3"
+VERSION="1.18.4"
 
 # =============================================================================
 # Configuration constants
