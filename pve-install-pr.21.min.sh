@@ -18,7 +18,7 @@ HEX_HETZNER="#d70000"
 HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 MENU_BOX_WIDTH=60
-VERSION="1.18.24-pr.21"
+VERSION="1.18.25-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -1739,6 +1739,7 @@ _WIZ_MENU_LINES=0
 _wiz_render_menu(){
 local selection="$1"
 local nav_focus="$2"
+local output=""
 if [[ -z $_WIZ_INITIAL_RENDER_DONE ]];then
 clear
 show_banner
@@ -1746,13 +1747,11 @@ echo ""
 _WIZ_INITIAL_RENDER_DONE=1
 printf '\033[s'
 else
-printf '\033[u'
-printf '\033[J'
+printf '\033[u\033[J'
 fi
-gum style --foreground "$HEX_CYAN" --bold "Basic Settings"
-echo ""
 local pass_display
 pass_display=$([[ $PASSWORD_GENERATED == "yes" ]]&&echo "(auto-generated)"||echo "********")
+output+="\033[1m${CLR_CYAN}Basic Settings$CLR_RESET\n\n"
 local fields=(
 "Hostname         $PVE_HOSTNAME.$DOMAIN_SUFFIX"
 "Email            $EMAIL"
@@ -1761,12 +1760,12 @@ local fields=(
 local i
 for i in "${!fields[@]}";do
 if [[ $nav_focus == "fields" && $i -eq $selection ]];then
-echo -e "  $CLR_ORANGE›$CLR_RESET ${fields[$i]}"
+output+="  $CLR_ORANGE›$CLR_RESET ${fields[$i]}\n"
 else
-echo -e "    ${fields[$i]}"
+output+="    ${fields[$i]}\n"
 fi
 done
-echo ""
+output+="\n"
 local back_style="$CLR_GRAY"
 local continue_style="$CLR_WHITE"
 if [[ $WIZARD_CURRENT_STEP -gt 1 ]];then
@@ -1779,13 +1778,13 @@ fi
 if [[ $nav_focus == "continue" ]];then
 continue_style="$CLR_ORANGE"
 fi
-echo -e "  $back_style← Back$CLR_RESET           ${continue_style}Continue →$CLR_RESET"
-echo ""
+output+="  $back_style← Back$CLR_RESET           ${continue_style}Continue →$CLR_RESET\n\n"
 if [[ $nav_focus == "fields" ]];then
-echo -e "$CLR_GRAY[$CLR_ORANGE↑↓$CLR_GRAY] navigate  [${CLR_ORANGE}Enter$CLR_GRAY] edit  [${CLR_ORANGE}Q$CLR_GRAY] quit$CLR_RESET"
+output+="$CLR_GRAY[$CLR_ORANGE↑↓$CLR_GRAY] navigate  [${CLR_ORANGE}Enter$CLR_GRAY] edit  [${CLR_ORANGE}Q$CLR_GRAY] quit$CLR_RESET"
 else
-echo -e "$CLR_GRAY[$CLR_ORANGE←→$CLR_GRAY] navigate  [${CLR_ORANGE}Enter$CLR_GRAY] select  [${CLR_ORANGE}Q$CLR_GRAY] quit$CLR_RESET"
+output+="$CLR_GRAY[$CLR_ORANGE←→$CLR_GRAY] navigate  [${CLR_ORANGE}Enter$CLR_GRAY] select  [${CLR_ORANGE}Q$CLR_GRAY] quit$CLR_RESET"
 fi
+echo -e "$output"
 }
 _wizard_step_basic(){
 local selection=0
