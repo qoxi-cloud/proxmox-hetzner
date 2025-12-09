@@ -45,9 +45,14 @@ _wiz_show_cursor() { printf '\033[?25h'; }
 # Track if initial render has been done
 _WIZ_INITIAL_RENDER_DONE=""
 
+# Menu item indices (for mapping selection to edit functions)
+# These track which items are selectable fields vs section headers
+_WIZ_FIELD_COUNT=0
+_WIZ_FIELD_MAP=()
+
 # Render the main menu with current selection highlighted (flicker-free)
 # Parameters:
-#   $1 - Current selection index (0-based)
+#   $1 - Current selection index (0-based, only counts selectable fields)
 _wiz_render_menu() {
   local selection="$1"
   local output=""
@@ -65,29 +70,99 @@ _wiz_render_menu() {
     printf '\033[u\033[J'
   fi
 
-  # Build field values
+  # Build display values
   local pass_display
   pass_display=$([[ $PASSWORD_GENERATED == "yes" ]] && echo "(auto-generated)" || echo "********")
 
-  # Step title
-  output+="\033[1m${CLR_CYAN}Basic Settings${CLR_RESET}\n\n"
+  local ipv6_display
+  case "$IPV6_MODE" in
+    auto) ipv6_display="Auto" ;;
+    manual) ipv6_display="Manual" ;;
+    disabled) ipv6_display="Disabled" ;;
+    *) ipv6_display="$IPV6_MODE" ;;
+  esac
 
-  # Fields
-  local fields=(
-    "Hostname         ${PVE_HOSTNAME}.${DOMAIN_SUFFIX}"
-    "Email            ${EMAIL}"
-    "Password         ${pass_display}"
-    "Timezone         ${TIMEZONE}"
-  )
+  local tailscale_display
+  tailscale_display=$([[ $INSTALL_TAILSCALE == "yes" ]] && echo "Enabled" || echo "Disabled")
 
-  local i
-  for i in "${!fields[@]}"; do
-    if [[ $i -eq $selection ]]; then
-      output+="  ${CLR_ORANGE}›${CLR_RESET} ${fields[$i]}\n"
+  local features_display=""
+  [[ $INSTALL_VNSTAT == "yes" ]] && features_display+="vnstat"
+  [[ $INSTALL_AUDITD == "yes" ]] && features_display+="${features_display:+, }auditd"
+  [[ -z $features_display ]] && features_display="none"
+
+  local ssh_display
+  if [[ -n $SSH_PUBLIC_KEY ]]; then
+    # Show first 20 chars of key type and fingerprint hint
+    ssh_display="${SSH_PUBLIC_KEY:0:20}..."
+  else
+    ssh_display="(not set)"
+  fi
+
+  # Reset field map
+  _WIZ_FIELD_MAP=()
+  local field_idx=0
+
+  # Helper to add section header
+  _add_section() {
+    output+="\n\033[1m${CLR_CYAN}$1${CLR_RESET}\n"
+  }
+
+  # Helper to add field
+  _add_field() {
+    local label="$1"
+    local value="$2"
+    local field_name="$3"
+    _WIZ_FIELD_MAP+=("$field_name")
+    if [[ $field_idx -eq $selection ]]; then
+      output+="  ${CLR_ORANGE}›${CLR_RESET} ${label}${value}\n"
     else
-      output+="    ${fields[$i]}\n"
+      output+="    ${label}${value}\n"
     fi
-  done
+    ((field_idx++))
+  }
+
+  # --- Basic Settings ---
+  _add_section "Basic Settings"
+  _add_field "Hostname         " "${PVE_HOSTNAME}.${DOMAIN_SUFFIX}" "hostname"
+  _add_field "Email            " "${EMAIL}" "email"
+  _add_field "Password         " "${pass_display}" "password"
+  _add_field "Timezone         " "${TIMEZONE}" "timezone"
+
+  # --- Proxmox ---
+  _add_section "Proxmox"
+  _add_field "Repository       " "${PVE_REPO_TYPE}" "repository"
+
+  # --- Network ---
+  _add_section "Network"
+  _add_field "Interface        " "${INTERFACE_NAME:-auto}" "interface"
+  _add_field "Bridge mode      " "${BRIDGE_MODE}" "bridge_mode"
+  _add_field "Private subnet   " "${PRIVATE_SUBNET}" "private_subnet"
+  _add_field "IPv6             " "${ipv6_display}" "ipv6"
+
+  # --- Storage ---
+  _add_section "Storage"
+  _add_field "ZFS mode         " "${ZFS_RAID}" "zfs_mode"
+
+  # --- VPN ---
+  _add_section "VPN"
+  _add_field "Tailscale        " "${tailscale_display}" "tailscale"
+
+  # --- SSL ---
+  _add_section "SSL"
+  _add_field "Certificate      " "${SSL_TYPE}" "ssl"
+
+  # --- Optional ---
+  _add_section "Optional"
+  _add_field "Shell            " "${DEFAULT_SHELL}" "shell"
+  _add_field "Power profile    " "${CPU_GOVERNOR}" "power_profile"
+  _add_field "Features         " "${features_display}" "features"
+
+  # --- SSH ---
+  _add_section "SSH"
+  _add_field "SSH Key          " "${ssh_display}" "ssh_key"
+
+  # Store total field count
+  _WIZ_FIELD_COUNT=$field_idx
 
   output+="\n"
 
@@ -104,7 +179,9 @@ _wiz_render_menu() {
 
 _wizard_main() {
   local selection=0
-  local max_fields=3 # 0-3 for 4 fields
+
+  # Initial render to populate _WIZ_FIELD_COUNT
+  _wiz_render_menu "$selection"
 
   while true; do
     _wiz_render_menu "$selection"
@@ -117,19 +194,32 @@ _wizard_main() {
         fi
         ;;
       down)
-        if [[ $selection -lt $max_fields ]]; then
+        if [[ $selection -lt $((_WIZ_FIELD_COUNT - 1)) ]]; then
           ((selection++))
         fi
         ;;
       enter)
         # Show cursor for edit screens
         _wiz_show_cursor
-        # Edit selected field
-        case $selection in
-          0) _edit_hostname ;;
-          1) _edit_email ;;
-          2) _edit_password ;;
-          3) _edit_timezone ;;
+        # Edit selected field based on field map
+        local field_name="${_WIZ_FIELD_MAP[$selection]}"
+        case "$field_name" in
+          hostname) _edit_hostname ;;
+          email) _edit_email ;;
+          password) _edit_password ;;
+          timezone) _edit_timezone ;;
+          repository) _edit_repository ;;
+          interface) _edit_interface ;;
+          bridge_mode) _edit_bridge_mode ;;
+          private_subnet) _edit_private_subnet ;;
+          ipv6) _edit_ipv6 ;;
+          zfs_mode) _edit_zfs_mode ;;
+          tailscale) _edit_tailscale ;;
+          ssl) _edit_ssl ;;
+          shell) _edit_shell ;;
+          power_profile) _edit_power_profile ;;
+          features) _edit_features ;;
+          ssh_key) _edit_ssh_key ;;
         esac
         # Hide cursor again and reset render state
         _wiz_hide_cursor
@@ -327,6 +417,302 @@ Custom..."
     fi
   elif [[ -n $selected ]]; then
     TIMEZONE="$selected"
+  fi
+}
+
+_edit_repository() {
+  clear
+  show_banner
+  echo ""
+
+  echo -e "${CLR_GRAY}[${CLR_ORANGE}↑↓${CLR_GRAY}] navigate  [${CLR_ORANGE}Enter${CLR_GRAY}] select${CLR_RESET}"
+  echo ""
+
+  local options="no-subscription
+enterprise
+test"
+
+  local selected
+  selected=$(echo "$options" | gum choose \
+    --header="" \
+    --cursor "› " \
+    --cursor.foreground "$HEX_ORANGE" \
+    --selected.foreground "$HEX_WHITE" \
+    --item.foreground "$HEX_WHITE")
+
+  [[ -n $selected ]] && PVE_REPO_TYPE="$selected"
+}
+
+_edit_interface() {
+  clear
+  show_banner
+  echo ""
+
+  echo -e "${CLR_GRAY}Interface is auto-detected. Current: ${INTERFACE_NAME:-auto}${CLR_RESET}"
+  echo ""
+  sleep 1
+}
+
+_edit_bridge_mode() {
+  clear
+  show_banner
+  echo ""
+
+  echo -e "${CLR_GRAY}[${CLR_ORANGE}↑↓${CLR_GRAY}] navigate  [${CLR_ORANGE}Enter${CLR_GRAY}] select${CLR_RESET}"
+  echo ""
+
+  local options="external
+internal
+both"
+
+  local selected
+  selected=$(echo "$options" | gum choose \
+    --header="" \
+    --cursor "› " \
+    --cursor.foreground "$HEX_ORANGE" \
+    --selected.foreground "$HEX_WHITE" \
+    --item.foreground "$HEX_WHITE")
+
+  [[ -n $selected ]] && BRIDGE_MODE="$selected"
+}
+
+_edit_private_subnet() {
+  clear
+  show_banner
+  echo ""
+
+  echo -e "${CLR_GRAY}[${CLR_ORANGE}Enter${CLR_GRAY}] confirm  [${CLR_ORANGE}Esc${CLR_GRAY}] cancel${CLR_RESET}"
+  echo ""
+
+  local new_subnet
+  new_subnet=$(gum input \
+    --placeholder "e.g., 10.10.10.0/24" \
+    --value "$PRIVATE_SUBNET" \
+    --prompt "Private subnet: " \
+    --prompt.foreground "$HEX_CYAN" \
+    --cursor.foreground "$HEX_ORANGE" \
+    --width 40)
+
+  if [[ -n $new_subnet ]]; then
+    if validate_subnet "$new_subnet"; then
+      PRIVATE_SUBNET="$new_subnet"
+    else
+      echo ""
+      gum style --foreground "$HEX_RED" "Invalid subnet format"
+      sleep 1
+    fi
+  fi
+}
+
+_edit_ipv6() {
+  clear
+  show_banner
+  echo ""
+
+  echo -e "${CLR_GRAY}[${CLR_ORANGE}↑↓${CLR_GRAY}] navigate  [${CLR_ORANGE}Enter${CLR_GRAY}] select${CLR_RESET}"
+  echo ""
+
+  local options="auto
+manual
+disabled"
+
+  local selected
+  selected=$(echo "$options" | gum choose \
+    --header="" \
+    --cursor "› " \
+    --cursor.foreground "$HEX_ORANGE" \
+    --selected.foreground "$HEX_WHITE" \
+    --item.foreground "$HEX_WHITE")
+
+  [[ -n $selected ]] && IPV6_MODE="$selected"
+}
+
+_edit_zfs_mode() {
+  clear
+  show_banner
+  echo ""
+
+  echo -e "${CLR_GRAY}[${CLR_ORANGE}↑↓${CLR_GRAY}] navigate  [${CLR_ORANGE}Enter${CLR_GRAY}] select${CLR_RESET}"
+  echo ""
+
+  local options="single
+raid1"
+
+  # Add more options if multiple drives detected
+  if [[ ${DRIVE_COUNT:-0} -ge 3 ]]; then
+    options+="\nraid5"
+  fi
+  if [[ ${DRIVE_COUNT:-0} -ge 4 ]]; then
+    options+="\nraid10"
+  fi
+
+  local selected
+  selected=$(echo -e "$options" | gum choose \
+    --header="" \
+    --cursor "› " \
+    --cursor.foreground "$HEX_ORANGE" \
+    --selected.foreground "$HEX_WHITE" \
+    --item.foreground "$HEX_WHITE")
+
+  [[ -n $selected ]] && ZFS_RAID="$selected"
+}
+
+_edit_tailscale() {
+  clear
+  show_banner
+  echo ""
+
+  echo -e "${CLR_GRAY}[${CLR_ORANGE}↑↓${CLR_GRAY}] navigate  [${CLR_ORANGE}Enter${CLR_GRAY}] select${CLR_RESET}"
+  echo ""
+
+  local options="Disabled
+Enabled"
+
+  local selected
+  selected=$(echo "$options" | gum choose \
+    --header="" \
+    --cursor "› " \
+    --cursor.foreground "$HEX_ORANGE" \
+    --selected.foreground "$HEX_WHITE" \
+    --item.foreground "$HEX_WHITE")
+
+  case "$selected" in
+    Enabled) INSTALL_TAILSCALE="yes" ;;
+    Disabled) INSTALL_TAILSCALE="no" ;;
+  esac
+}
+
+_edit_ssl() {
+  clear
+  show_banner
+  echo ""
+
+  echo -e "${CLR_GRAY}[${CLR_ORANGE}↑↓${CLR_GRAY}] navigate  [${CLR_ORANGE}Enter${CLR_GRAY}] select${CLR_RESET}"
+  echo ""
+
+  local options="self-signed
+letsencrypt"
+
+  local selected
+  selected=$(echo "$options" | gum choose \
+    --header="" \
+    --cursor "› " \
+    --cursor.foreground "$HEX_ORANGE" \
+    --selected.foreground "$HEX_WHITE" \
+    --item.foreground "$HEX_WHITE")
+
+  [[ -n $selected ]] && SSL_TYPE="$selected"
+}
+
+_edit_shell() {
+  clear
+  show_banner
+  echo ""
+
+  echo -e "${CLR_GRAY}[${CLR_ORANGE}↑↓${CLR_GRAY}] navigate  [${CLR_ORANGE}Enter${CLR_GRAY}] select${CLR_RESET}"
+  echo ""
+
+  local options="zsh
+bash"
+
+  local selected
+  selected=$(echo "$options" | gum choose \
+    --header="" \
+    --cursor "› " \
+    --cursor.foreground "$HEX_ORANGE" \
+    --selected.foreground "$HEX_WHITE" \
+    --item.foreground "$HEX_WHITE")
+
+  [[ -n $selected ]] && DEFAULT_SHELL="$selected"
+}
+
+_edit_power_profile() {
+  clear
+  show_banner
+  echo ""
+
+  echo -e "${CLR_GRAY}[${CLR_ORANGE}↑↓${CLR_GRAY}] navigate  [${CLR_ORANGE}Enter${CLR_GRAY}] select${CLR_RESET}"
+  echo ""
+
+  local options="performance
+ondemand
+powersave
+schedutil
+conservative"
+
+  local selected
+  selected=$(echo "$options" | gum choose \
+    --header="" \
+    --cursor "› " \
+    --cursor.foreground "$HEX_ORANGE" \
+    --selected.foreground "$HEX_WHITE" \
+    --item.foreground "$HEX_WHITE")
+
+  [[ -n $selected ]] && CPU_GOVERNOR="$selected"
+}
+
+_edit_features() {
+  clear
+  show_banner
+  echo ""
+
+  echo -e "${CLR_GRAY}[${CLR_ORANGE}Space${CLR_GRAY}] toggle  [${CLR_ORANGE}Enter${CLR_GRAY}] confirm${CLR_RESET}"
+  echo ""
+
+  # Build options with current state
+  local options=""
+  [[ $INSTALL_VNSTAT == "yes" ]] && options+="vnstat (network stats)\n" || options+="vnstat (network stats)\n"
+  [[ $INSTALL_AUDITD == "yes" ]] && options+="auditd (audit logging)\n" || options+="auditd (audit logging)\n"
+
+  # Use gum choose with --no-limit for multi-select
+  local selected
+  selected=$(echo -e "vnstat (network stats)\nauditd (audit logging)" | gum choose \
+    --no-limit \
+    --header="" \
+    --cursor "› " \
+    --cursor.foreground "$HEX_ORANGE" \
+    --selected.foreground "$HEX_WHITE" \
+    --item.foreground "$HEX_WHITE")
+
+  # Parse selection
+  INSTALL_VNSTAT="no"
+  INSTALL_AUDITD="no"
+  if echo "$selected" | grep -q "vnstat"; then
+    INSTALL_VNSTAT="yes"
+  fi
+  if echo "$selected" | grep -q "auditd"; then
+    INSTALL_AUDITD="yes"
+  fi
+}
+
+_edit_ssh_key() {
+  clear
+  show_banner
+  echo ""
+
+  echo -e "${CLR_GRAY}Paste your SSH public key (ssh-rsa, ssh-ed25519, etc.)${CLR_RESET}"
+  echo ""
+
+  echo -e "${CLR_GRAY}[${CLR_ORANGE}Enter${CLR_GRAY}] confirm  [${CLR_ORANGE}Esc${CLR_GRAY}] cancel${CLR_RESET}"
+  echo ""
+
+  local new_key
+  new_key=$(gum input \
+    --placeholder "ssh-ed25519 AAAA... user@host" \
+    --value "$SSH_PUBLIC_KEY" \
+    --prompt "SSH Key: " \
+    --prompt.foreground "$HEX_CYAN" \
+    --cursor.foreground "$HEX_ORANGE" \
+    --width 60)
+
+  if [[ -n $new_key ]]; then
+    if validate_ssh_public_key "$new_key"; then
+      SSH_PUBLIC_KEY="$new_key"
+    else
+      echo ""
+      gum style --foreground "$HEX_RED" "Invalid SSH key format"
+      sleep 1
+    fi
   fi
 }
 
