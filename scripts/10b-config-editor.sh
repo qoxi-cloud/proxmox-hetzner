@@ -56,9 +56,6 @@ _wizard_step_basic() {
       back_btn="${CLR_GRAY}← Back${CLR_RESET}"
     fi
 
-    # Footer
-    _wiz_footer_main
-
     # Show selectable menu with field values and navigation
     local selected
     selected=$(gum choose \
@@ -71,6 +68,9 @@ _wizard_step_basic() {
       --cursor "› " \
       --cursor.foreground "$HEX_ORANGE" \
       --selected.foreground "$HEX_ORANGE")
+
+    # Footer after menu
+    _wiz_footer_main
 
     # Handle empty selection (Esc/Ctrl+C)
     if [[ -z $selected ]]; then
