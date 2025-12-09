@@ -44,6 +44,7 @@ _wiz_show_cursor() { printf '\033[?25h'; }
 
 # Track if initial render has been done
 _WIZ_INITIAL_RENDER_DONE=""
+_WIZ_MENU_START_ROW=0
 
 # Menu item indices (for mapping selection to edit functions)
 # These track which items are selectable fields vs section headers
@@ -63,11 +64,11 @@ _wiz_render_menu() {
     show_banner
     echo ""
     _WIZ_INITIAL_RENDER_DONE=1
-    # Save cursor position after banner
-    printf '\033[s'
+    # Count banner lines (logo + info line + empty line)
+    _WIZ_MENU_START_ROW=$(($(show_banner 2>/dev/null | wc -l) + 2))
   else
-    # Subsequent renders: restore cursor position and clear menu area
-    printf '\033[u\033[J'
+    # Move cursor to menu start row and clear from there
+    printf '\033[%d;1H\033[J' "$_WIZ_MENU_START_ROW"
   fi
 
   # Build display values
