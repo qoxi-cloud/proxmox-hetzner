@@ -181,9 +181,6 @@ _wiz_render_menu() {
 _wizard_main() {
   local selection=0
 
-  # Initial render to populate _WIZ_FIELD_COUNT
-  _wiz_render_menu "$selection"
-
   while true; do
     _wiz_render_menu "$selection"
     _wiz_read_key
