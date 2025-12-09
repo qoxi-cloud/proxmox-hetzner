@@ -18,7 +18,7 @@ HEX_HETZNER="#d70000"
 HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 MENU_BOX_WIDTH=60
-VERSION="1.18.8-pr.19"
+VERSION="1.18.9-pr.19"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/gum-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -231,8 +231,7 @@ printf '%s\n' \
 "$CLR_GRAY   | |     | |   | (_) |$CLR_ORANGE >  <$CLR_GRAY  | | | | | || (_) |$CLR_ORANGE >  <$CLR_RESET" \
 "$CLR_GRAY   |_|     |_|    \\___/ $CLR_ORANGE/_/\\_\\$CLR_GRAY |_| |_| |_| \\___/ $CLR_ORANGE/_/\\_\\$CLR_RESET" \
 "" \
-"$CLR_HETZNER               Hetzner ${CLR_GRAY}Automated Installer$CLR_RESET" \
-""
+"$CLR_HETZNER               Hetzner ${CLR_GRAY}Automated Installer$CLR_RESET"
 }
 _show_banner_frame(){
 local h="${1:--1}"
@@ -1530,8 +1529,8 @@ gum confirm "Exit installer?" \
 log "ERROR: Pre-flight checks failed"
 exit 1
 else
-if ! gum confirm "Continue with installation?" \
---affirmative "Continue" \
+if ! gum confirm "Start configuration?" \
+--affirmative "Start" \
 --negative "Cancel" \
 --default=true \
 --prompt.foreground "#ff8700" \
