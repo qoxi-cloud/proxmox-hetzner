@@ -203,12 +203,11 @@ _build_config_items() {
 
 # Build interactive menu with section headers and config items
 # Returns formatted strings for gum choose selection
-# Section headers are prefixed to first item in each section
+# Section headers are separate lines with --- Section --- format
 _build_interactive_menu() {
   _build_config_items
 
   local prev_section=""
-  local section_first=true
 
   for item in "${CONFIG_ITEMS[@]}"; do
     local section="${item%%|*}"
@@ -218,34 +217,28 @@ _build_interactive_menu() {
     local value="${rest%%|*}"
     local edit_fn="${rest#*|}"
 
-    # Check if section changed
+    # Add section header when section changes
     if [[ $section != "$prev_section" ]]; then
-      section_first=true
+      # Section header line
+      printf "${CLR_CYAN}    --- %s ---${CLR_RESET}\n" "$section"
       prev_section="$section"
     fi
 
-    # Build the display line
-    local display_line=""
-
-    if [[ $section_first == true ]]; then
-      # First item in section shows section header
-      display_line=$(printf "${CLR_CYAN}%-12s${CLR_RESET} %-15s %s" "[$section]" "${label}:" "$value")
-      section_first=false
-    else
-      # Subsequent items have padding instead of section name
-      display_line=$(printf "%-12s %-15s %s" "" "${label}:" "$value")
-    fi
-
-    # Apply gray color for non-editable items
+    # Build the item line with proper alignment
+    local display_line
     if [[ -z $edit_fn ]]; then
-      display_line="${CLR_GRAY}${display_line}${CLR_RESET}"
+      # Non-editable item - gray
+      display_line=$(printf "${CLR_GRAY}    %-20s %s${CLR_RESET}" "${label}" "$value")
+    else
+      # Editable item - white
+      display_line=$(printf "    %-20s %s" "${label}" "$value")
     fi
 
     echo "$display_line"
   done
 
   echo ""
-  echo "${CLR_GREEN}>>> Start Installation <<<${CLR_RESET}"
+  echo "${CLR_GREEN}    >>> Start Installation <<<${CLR_RESET}"
 }
 
 # Strip ANSI escape codes from string
@@ -258,20 +251,24 @@ _strip_ansi() {
 
 # Get edit function for selected menu line
 # Parameters:
-#   $1 - Selected line from menu (e.g., "[Basic]      Hostname:       pve.local")
-# Returns: edit function name
+#   $1 - Selected line from menu (e.g., "    Hostname             pve.local")
+# Returns: edit function name (empty if section header or non-editable)
 _get_edit_function_from_line() {
   local selected_line="$1"
 
   # Strip ANSI codes first
   selected_line=$(_strip_ansi "$selected_line")
 
+  # Skip section headers (lines containing "---")
+  if [[ $selected_line == *"---"* ]]; then
+    return
+  fi
+
   # Extract label from the line
-  # Format: "[Section]    Label:          Value" or "             Label:          Value"
-  # The label is after optional section bracket and spaces, before ":"
+  # Format: "    Label                Value"
+  # Trim leading spaces and get first word (the label)
   local selected_label
-  # Remove section prefix [xxx] if present, then trim spaces and get text before ":"
-  selected_label=$(echo "$selected_line" | sed 's/^\[[^]]*\]//' | sed 's/^[[:space:]]*//' | cut -d':' -f1)
+  selected_label=$(echo "$selected_line" | sed 's/^[[:space:]]*//' | awk '{print $1}')
 
   for item in "${CONFIG_ITEMS[@]}"; do
     local rest="${item#*|}"
@@ -894,10 +891,10 @@ show_gum_config_editor() {
       --header.foreground "$HEX_GRAY" \
       --height 35)
 
-    # Skip if empty line selected (user pressed Enter on empty line)
+    # Skip if empty line or section header selected
     local selected_clean
     selected_clean=$(_strip_ansi "$selected")
-    if [[ -z $selected_clean || $selected_clean =~ ^[[:space:]]*$ ]]; then
+    if [[ -z $selected_clean || $selected_clean =~ ^[[:space:]]*$ || $selected_clean == *"---"* ]]; then
       continue
     fi
 
