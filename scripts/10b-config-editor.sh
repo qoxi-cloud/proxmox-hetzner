@@ -11,16 +11,10 @@ WIZARD_TOTAL_STEPS=1 # Will increase as we add more steps
 # Helper functions
 # =============================================================================
 
-# Display footer for main step screen
-_wiz_footer_main() {
-  echo ""
-  echo -e "${CLR_GRAY}[${CLR_ORANGE}↑↓${CLR_GRAY}] navigate  [${CLR_ORANGE}Enter${CLR_GRAY}] select  [${CLR_ORANGE}Q${CLR_GRAY}] quit${CLR_RESET}"
-}
-
-# Display footer for edit screen
+# Display footer for edit screen (shown before gum input)
 _wiz_footer_edit() {
-  echo ""
   echo -e "${CLR_GRAY}[${CLR_ORANGE}Enter${CLR_GRAY}] confirm  [${CLR_ORANGE}Esc${CLR_GRAY}] cancel${CLR_RESET}"
+  echo ""
 }
 
 # =============================================================================
@@ -57,6 +51,8 @@ _wizard_step_basic() {
     fi
 
     # Show selectable menu with field values and navigation
+    # Note: gum shows header above menu, so we put hints there
+    local header_hint="[↑↓] navigate  [Enter] select  [Esc] quit"
     local selected
     selected=$(gum choose \
       "$hostname_line" \
@@ -65,14 +61,12 @@ _wizard_step_basic() {
       "$timezone_line" \
       "" \
       "$back_btn           $next_btn" \
-      --header="" \
+      --header="$header_hint" \
+      --header.foreground "$HEX_GRAY" \
       --cursor "› " \
       --cursor.foreground "$HEX_ORANGE" \
       --selected.foreground "$HEX_WHITE" \
       --item.foreground "$HEX_WHITE")
-
-    # Footer after menu
-    _wiz_footer_main
 
     # Handle empty selection (Esc/Ctrl+C)
     if [[ -z $selected ]]; then
@@ -252,9 +246,6 @@ _edit_timezone() {
   show_banner
   echo ""
 
-  echo -e "${CLR_GRAY}[${CLR_ORANGE}↑↓${CLR_GRAY}] navigate  [${CLR_ORANGE}Enter${CLR_GRAY}] select${CLR_RESET}"
-  echo ""
-
   local tz_options="Europe/Kyiv
 Europe/London
 Europe/Berlin
@@ -266,7 +257,8 @@ Custom..."
 
   local selected
   selected=$(echo "$tz_options" | gum choose \
-    --header="" \
+    --header="[↑↓] navigate  [Enter] select" \
+    --header.foreground "$HEX_GRAY" \
     --cursor "› " \
     --cursor.foreground "$HEX_ORANGE" \
     --selected.foreground "$HEX_WHITE" \
