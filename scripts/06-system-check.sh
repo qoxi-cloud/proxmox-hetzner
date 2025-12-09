@@ -230,14 +230,38 @@ show_system_status() {
   } | boxes -d stone -p a1 -s $MENU_BOX_WIDTH | colorize_status
   echo ""
 
-  # Check for errors
-  if [[ $PREFLIGHT_ERRORS -gt 0 ]]; then
-    log "ERROR: Pre-flight checks failed with $PREFLIGHT_ERRORS error(s)"
-    exit 1
+  # Determine if there are critical errors
+  local has_errors=false
+  if [[ $PREFLIGHT_ERRORS -gt 0 || $no_drives -eq 1 ]]; then
+    has_errors=true
   fi
 
-  if [[ $no_drives -eq 1 ]]; then
-    log "ERROR: No drives detected"
+  # Show confirmation dialog using gum confirm
+  if [[ $has_errors == true ]]; then
+    # Show error message and only allow Cancel
+    print_error "System requirements not met. Please fix the issues above."
+    echo ""
+    gum confirm "Exit installer?" \
+      --affirmative "Exit" \
+      --negative "" \
+      --default=true \
+      --prompt.foreground "#ff8700" \
+      --selected.background "#ff8700" \
+      --unselected.foreground "#585858" || true
+    log "ERROR: Pre-flight checks failed"
     exit 1
+  else
+    # Allow user to continue or cancel
+    if ! gum confirm "Continue with installation?" \
+      --affirmative "Continue" \
+      --negative "Cancel" \
+      --default=true \
+      --prompt.foreground "#ff8700" \
+      --selected.background "#ff8700" \
+      --unselected.foreground "#585858"; then
+      log "INFO: User cancelled installation"
+      print_info "Installation cancelled by user"
+      exit 0
+    fi
   fi
 }
