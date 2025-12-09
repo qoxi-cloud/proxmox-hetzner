@@ -18,7 +18,7 @@ HEX_HETZNER="#d70000"
 HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 MENU_BOX_WIDTH=60
-VERSION="1.18.32-pr.21"
+VERSION="1.18.33-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -1734,6 +1734,11 @@ fi
 }
 _wiz_hide_cursor(){ printf '\033[?25l';}
 _wiz_show_cursor(){ printf '\033[?25h';}
+_wiz_get_cursor_row(){
+local row col
+IFS='[;' read -rs -d'R' -p $'\033[6n' _ row col 2>/dev/null </dev/tty
+echo "$row"
+}
 _WIZ_INITIAL_RENDER_DONE=""
 _WIZ_MENU_START_ROW=0
 _WIZ_FIELD_COUNT=0
@@ -1746,7 +1751,7 @@ clear
 show_banner
 echo ""
 _WIZ_INITIAL_RENDER_DONE=1
-_WIZ_MENU_START_ROW=$(($(show_banner 2>/dev/null|wc -l)+2))
+_WIZ_MENU_START_ROW=$(_wiz_get_cursor_row)
 else
 printf '\033[%d;1H\033[J' "$_WIZ_MENU_START_ROW"
 fi
