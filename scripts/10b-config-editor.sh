@@ -3,11 +3,7 @@
 # Configuration Wizard - Step-by-step configuration with manual UI rendering
 # =============================================================================
 # Uses manual rendering + key capture instead of gum choose for main menu.
-# This allows footer at bottom and arrow key navigation for Back/Continue.
-
-# Current wizard step
-WIZARD_CURRENT_STEP=1
-WIZARD_TOTAL_STEPS=1 # Will increase as we add more steps
+# Edit screens use gum input/choose for actual input.
 
 # =============================================================================
 # Key reading helper
@@ -44,15 +40,12 @@ _wiz_read_key() {
 
 # Track if initial render has been done
 _WIZ_INITIAL_RENDER_DONE=""
-_WIZ_MENU_LINES=0
 
 # Render the main menu with current selection highlighted (flicker-free)
 # Parameters:
 #   $1 - Current selection index (0-based)
-#   $2 - Nav button focus: "fields" or "back" or "continue"
 _wiz_render_menu() {
   local selection="$1"
-  local nav_focus="$2"
   local output=""
 
   # First render: clear screen and show banner
@@ -85,7 +78,7 @@ _wiz_render_menu() {
 
   local i
   for i in "${!fields[@]}"; do
-    if [[ $nav_focus == "fields" && $i -eq $selection ]]; then
+    if [[ $i -eq $selection ]]; then
       output+="  ${CLR_ORANGE}›${CLR_RESET} ${fields[$i]}\n"
     else
       output+="    ${fields[$i]}\n"
@@ -94,116 +87,46 @@ _wiz_render_menu() {
 
   output+="\n"
 
-  # Navigation buttons
-  local back_style="${CLR_GRAY}"
-  local continue_style="${CLR_WHITE}"
-
-  if [[ $WIZARD_CURRENT_STEP -gt 1 ]]; then
-    if [[ $nav_focus == "back" ]]; then
-      back_style="${CLR_ORANGE}"
-    else
-      back_style="${CLR_WHITE}"
-    fi
-  fi
-
-  if [[ $nav_focus == "continue" ]]; then
-    continue_style="${CLR_ORANGE}"
-  fi
-
-  output+="  ${back_style}← Back${CLR_RESET}           ${continue_style}Continue →${CLR_RESET}\n\n"
-
-  # Footer - show ↑↓ for fields, ←→ for nav buttons
-  if [[ $nav_focus == "fields" ]]; then
-    output+="${CLR_GRAY}[${CLR_ORANGE}↑↓${CLR_GRAY}] navigate  [${CLR_ORANGE}Enter${CLR_GRAY}] edit  [${CLR_ORANGE}Q${CLR_GRAY}] quit${CLR_RESET}"
-  else
-    output+="${CLR_GRAY}[${CLR_ORANGE}←→${CLR_GRAY}] navigate  [${CLR_ORANGE}Enter${CLR_GRAY}] select  [${CLR_ORANGE}Q${CLR_GRAY}] quit${CLR_RESET}"
-  fi
+  # Footer
+  output+="${CLR_GRAY}[${CLR_ORANGE}↑↓${CLR_GRAY}] navigate  [${CLR_ORANGE}Enter${CLR_GRAY}] edit  [${CLR_ORANGE}Q${CLR_GRAY}] quit${CLR_RESET}"
 
   # Output everything at once
   echo -e "$output"
 }
 
 # =============================================================================
-# Step 1: Basic Settings
+# Main wizard loop
 # =============================================================================
 
-_wizard_step_basic() {
+_wizard_main() {
   local selection=0
-  local nav_focus="fields" # "fields", "back", or "continue"
-  local max_fields=3       # 0-3 for 4 fields
+  local max_fields=3 # 0-3 for 4 fields
 
   while true; do
-    _wiz_render_menu "$selection" "$nav_focus"
+    _wiz_render_menu "$selection"
     _wiz_read_key
 
     case "$WIZ_KEY" in
       up)
-        if [[ $nav_focus == "fields" ]]; then
-          if [[ $selection -gt 0 ]]; then
-            ((selection--))
-          fi
-        elif [[ $nav_focus == "back" || $nav_focus == "continue" ]]; then
-          # Move from nav buttons to last field
-          nav_focus="fields"
-          selection=$max_fields
+        if [[ $selection -gt 0 ]]; then
+          ((selection--))
         fi
         ;;
       down)
-        if [[ $nav_focus == "fields" ]]; then
-          if [[ $selection -lt $max_fields ]]; then
-            ((selection++))
-          else
-            # Move to nav buttons
-            nav_focus="continue"
-          fi
-        fi
-        ;;
-      left)
-        if [[ $nav_focus == "continue" ]]; then
-          if [[ $WIZARD_CURRENT_STEP -gt 1 ]]; then
-            nav_focus="back"
-          fi
-        elif [[ $nav_focus == "fields" ]]; then
-          # Move to back button if allowed
-          if [[ $WIZARD_CURRENT_STEP -gt 1 ]]; then
-            nav_focus="back"
-          fi
-        fi
-        ;;
-      right)
-        if [[ $nav_focus == "back" ]]; then
-          nav_focus="continue"
-        elif [[ $nav_focus == "fields" ]]; then
-          nav_focus="continue"
+        if [[ $selection -lt $max_fields ]]; then
+          ((selection++))
         fi
         ;;
       enter)
-        if [[ $nav_focus == "continue" ]]; then
-          # Validate before continuing
-          if [[ -z $PVE_HOSTNAME ]]; then
-            gum style --foreground "$HEX_RED" "Hostname is required!"
-            sleep 1
-            continue
-          fi
-          if [[ -z $EMAIL ]] || ! validate_email "$EMAIL"; then
-            gum style --foreground "$HEX_RED" "Valid email is required!"
-            sleep 1
-            continue
-          fi
-          return 0 # Success, go to next step
-        elif [[ $nav_focus == "back" && $WIZARD_CURRENT_STEP -gt 1 ]]; then
-          return 1 # Go back
-        elif [[ $nav_focus == "fields" ]]; then
-          # Edit selected field
-          case $selection in
-            0) _edit_hostname ;;
-            1) _edit_email ;;
-            2) _edit_password ;;
-            3) _edit_timezone ;;
-          esac
-          # Reset render state to redraw banner after edit
-          _WIZ_INITIAL_RENDER_DONE=""
-        fi
+        # Edit selected field
+        case $selection in
+          0) _edit_hostname ;;
+          1) _edit_email ;;
+          2) _edit_password ;;
+          3) _edit_timezone ;;
+        esac
+        # Reset render state to redraw banner after edit
+        _WIZ_INITIAL_RENDER_DONE=""
         ;;
       quit | esc)
         if gum confirm "Quit installation?" --default=false \
@@ -475,11 +398,6 @@ show_gum_config_editor() {
   # Initialize default configuration values
   _init_default_config
 
-  # Run wizard steps
-  _wizard_step_basic
-
-  # TODO: Add more steps here
-  # _wizard_step_network
-  # _wizard_step_storage
-  # etc.
+  # Run wizard
+  _wizard_main
 }
