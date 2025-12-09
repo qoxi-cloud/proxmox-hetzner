@@ -42,6 +42,14 @@ _wiz_read_key() {
 _wiz_hide_cursor() { printf '\033[?25l'; }
 _wiz_show_cursor() { printf '\033[?25h'; }
 
+# Get current cursor row position
+_wiz_get_cursor_row() {
+  local row col
+  # Request cursor position (DSR) - response is ESC[row;colR
+  IFS='[;' read -rs -d'R' -p $'\033[6n' _ row col 2>/dev/null </dev/tty
+  echo "${row}"
+}
+
 # Track if initial render has been done
 _WIZ_INITIAL_RENDER_DONE=""
 _WIZ_MENU_START_ROW=0
@@ -64,8 +72,8 @@ _wiz_render_menu() {
     show_banner
     echo ""
     _WIZ_INITIAL_RENDER_DONE=1
-    # Count banner lines (logo + info line + empty line)
-    _WIZ_MENU_START_ROW=$(($(show_banner 2>/dev/null | wc -l) + 2))
+    # Get actual cursor row after banner is displayed
+    _WIZ_MENU_START_ROW=$(_wiz_get_cursor_row)
   else
     # Move cursor to menu start row and clear from there
     printf '\033[%d;1H\033[J' "$_WIZ_MENU_START_ROW"
