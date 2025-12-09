@@ -127,7 +127,7 @@ chmod +x pve-install.sh
 
 ```bash
 shellcheck scripts/*.sh
-# Ignored warnings: SC1003 (ASCII art escapes), SC1091 (sourced files), SC2034 (unused vars), SC2086 (word splitting)
+# Ignored warnings: SC1003 (ASCII art escapes), SC1091 (sourced files), SC2001 (sed for complex regex), SC2034 (unused vars), SC2086 (word splitting)
 ```
 
 **Format scripts:**
