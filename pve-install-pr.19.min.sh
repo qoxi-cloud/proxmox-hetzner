@@ -1457,15 +1457,16 @@ local no_drives=0
 if [[ $DRIVE_COUNT -eq 0 ]];then
 no_drives=1
 fi
-local table_data="Status,Check,Value"
+local table_data=""
 add_row(){
 local status="$1"
 local label="$2"
 local value="$3"
+[[ -n $table_data ]]&&table_data+=$'\n'
 case "$status" in
-ok)table_data+=$'\n'"[OK],$label,$value";;
-warn)table_data+=$'\n'"[WARN],$label,$value";;
-error)table_data+=$'\n'"[ERROR],$label,$value"
+ok)table_data+="[OK],$label,$value";;
+warn)table_data+="[WARN],$label,$value";;
+error)table_data+="[ERROR],$label,$value"
 esac
 }
 add_row "ok" "Installer" "v$VERSION"
@@ -1486,8 +1487,7 @@ gum style --foreground "#ff8700" --bold "SYSTEM INFORMATION"
 echo ""
 echo "$table_data"|gum table --print \
 --border "none" \
---cell.foreground "#888888" \
---header.foreground "#ff8700"
+--cell.foreground "#888888"
 echo ""
 local has_errors=false
 if [[ $PREFLIGHT_ERRORS -gt 0 || $no_drives -eq 1 ]];then
