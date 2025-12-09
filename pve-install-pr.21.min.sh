@@ -18,7 +18,7 @@ HEX_HETZNER="#d70000"
 HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 MENU_BOX_WIDTH=60
-VERSION="1.18.31-pr.21"
+VERSION="1.18.32-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -1819,7 +1819,6 @@ echo -e "$output"
 }
 _wizard_main(){
 local selection=0
-_wiz_render_menu "$selection"
 while true;do
 _wiz_render_menu "$selection"
 _wiz_read_key
