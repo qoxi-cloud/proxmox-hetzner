@@ -42,17 +42,10 @@ _wiz_read_key() {
 _wiz_hide_cursor() { printf '\033[?25l'; }
 _wiz_show_cursor() { printf '\033[?25h'; }
 
-# Get current cursor row position
-_wiz_get_cursor_row() {
-  local row col
-  # Request cursor position (DSR) - response is ESC[row;colR
-  IFS='[;' read -rs -d'R' -p $'\033[6n' _ row col 2>/dev/null </dev/tty
-  echo "${row}"
-}
-
 # Track if initial render has been done
 _WIZ_INITIAL_RENDER_DONE=""
-_WIZ_MENU_START_ROW=0
+# Banner is 10 lines + 1 empty line after = row 12
+_WIZ_MENU_START_ROW=12
 
 # Menu item indices (for mapping selection to edit functions)
 # These track which items are selectable fields vs section headers
@@ -72,8 +65,6 @@ _wiz_render_menu() {
     show_banner
     echo ""
     _WIZ_INITIAL_RENDER_DONE=1
-    # Get actual cursor row after banner is displayed
-    _WIZ_MENU_START_ROW=$(_wiz_get_cursor_row)
   else
     # Move cursor to menu start row and clear from there
     printf '\033[%d;1H\033[J' "$_WIZ_MENU_START_ROW"
