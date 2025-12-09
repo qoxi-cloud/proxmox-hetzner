@@ -18,7 +18,7 @@ HEX_HETZNER="#d70000"
 HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 MENU_BOX_WIDTH=60
-VERSION="1.18.10-pr.21"
+VERSION="1.18.11-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -1868,12 +1868,12 @@ if [[ $section != "$prev_section" ]];then
 if [[ -n $prev_section ]];then
 echo ""
 fi
-gum style --foreground "$HEX_CYAN" --bold "--- $section ---"
+gum style --foreground "$HEX_CYAN" --bold -- "--- $section ---"
 prev_section="$section"
 fi
 printf "  %s  %s\n" \
-"$(gum style --foreground "$HEX_GRAY" "$label:")" \
-"$(gum style --foreground "$HEX_WHITE" "$value")"
+"$(gum style --foreground "$HEX_GRAY" -- "$label:")" \
+"$(gum style --foreground "$HEX_WHITE" -- "$value")"
 done
 }
 _build_menu_options(){
