@@ -1487,13 +1487,17 @@ storage_rows+=$'\n'
 fi
 done
 fi
-gum style --foreground "#ff8700" --bold "SYSTEM INFORMATION"
-echo ""
-{
+local table_content
+table_content=$({
 echo "$sys_rows"
 echo "|--- Storage ---|"
 echo "$storage_rows"
-}|column -t -s '|'|colorize_status
+}|column -t -s '|'|colorize_status)
+echo "$table_content"|gum style \
+--border "rounded" \
+--border-foreground "#585858" \
+--padding "1 2" \
+--margin "0"
 echo ""
 local has_errors=false
 if [[ $PREFLIGHT_ERRORS -gt 0 || $no_drives -eq 1 ]];then
