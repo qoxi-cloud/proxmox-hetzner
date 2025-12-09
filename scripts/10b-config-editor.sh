@@ -368,9 +368,9 @@ _init_default_config() {
 # =============================================================================
 
 show_gum_config_editor() {
-  # Initialize network detection first
-  detect_network_interface
-  collect_network_info
+  # Initialize network detection silently (output suppressed)
+  detect_network_interface >/dev/null 2>&1
+  collect_network_info >/dev/null 2>&1
 
   # Initialize default configuration values
   _init_default_config
