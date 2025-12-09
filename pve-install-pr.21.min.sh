@@ -18,7 +18,7 @@ HEX_HETZNER="#d70000"
 HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 MENU_BOX_WIDTH=60
-VERSION="1.18.16-pr.21"
+VERSION="1.18.17-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -1740,9 +1740,9 @@ local next_btn="Continue →"
 if [[ $WIZARD_CURRENT_STEP -gt 1 ]];then
 back_btn="← Back"
 else
-back_btn="$CLR_GRAY← Back$CLR_RESET"
+back_btn="← Back"
 fi
-_wiz_footer_main
+local nav_line="$back_btn           $next_btn"
 local selected
 selected=$(gum choose \
 "$hostname_line" \
@@ -1750,10 +1750,13 @@ selected=$(gum choose \
 "$password_line" \
 "$timezone_line" \
 "" \
-"$back_btn           $next_btn" \
+"$nav_line" \
+--no-show-help \
 --cursor "› " \
 --cursor.foreground "$HEX_ORANGE" \
---selected.foreground "$HEX_ORANGE")
+--selected.foreground "$HEX_WHITE" \
+--unselected.foreground "$HEX_WHITE")
+_wiz_footer_main
 if [[ -z $selected ]];then
 if gum confirm "Quit installation?" --default=false \
 --prompt.foreground "$HEX_ORANGE" \
@@ -1781,6 +1784,9 @@ fi
 if [[ -z $selected || $selected =~ ^[[:space:]]*$ ]];then
 continue
 fi
+if [[ $selected == *"← Back"* && $WIZARD_CURRENT_STEP -eq 1 ]];then
+continue
+fi
 case "$selected" in
 "$hostname_line")_edit_hostname
 ;;
@@ -1796,7 +1802,6 @@ _edit_hostname(){
 clear
 show_banner
 echo ""
-_wiz_footer_edit
 local new_hostname
 new_hostname=$(gum input \
 --placeholder "e.g., pve, proxmox, node1" \
@@ -1805,6 +1810,7 @@ new_hostname=$(gum input \
 --prompt.foreground "$HEX_CYAN" \
 --cursor.foreground "$HEX_ORANGE" \
 --width 40)
+_wiz_footer_edit
 if [[ -n $new_hostname ]];then
 if validate_hostname "$new_hostname";then
 PVE_HOSTNAME="$new_hostname"
@@ -1818,7 +1824,6 @@ fi
 clear
 show_banner
 echo ""
-_wiz_footer_edit
 local new_domain
 new_domain=$(gum input \
 --placeholder "e.g., local, example.com" \
@@ -1827,6 +1832,7 @@ new_domain=$(gum input \
 --prompt.foreground "$HEX_CYAN" \
 --cursor.foreground "$HEX_ORANGE" \
 --width 40)
+_wiz_footer_edit
 if [[ -n $new_domain ]];then
 DOMAIN_SUFFIX="$new_domain"
 fi
@@ -1836,7 +1842,6 @@ _edit_email(){
 clear
 show_banner
 echo ""
-_wiz_footer_edit
 local new_email
 new_email=$(gum input \
 --placeholder "admin@example.com" \
@@ -1845,6 +1850,7 @@ new_email=$(gum input \
 --prompt.foreground "$HEX_CYAN" \
 --cursor.foreground "$HEX_ORANGE" \
 --width 50)
+_wiz_footer_edit
 if [[ -n $new_email ]];then
 if validate_email "$new_email";then
 EMAIL="$new_email"
@@ -1861,7 +1867,6 @@ show_banner
 echo ""
 gum style --foreground "$HEX_GRAY" "Leave empty to auto-generate a secure password"
 echo ""
-_wiz_footer_edit
 local new_password
 new_password=$(gum input \
 --password \
@@ -1870,6 +1875,7 @@ new_password=$(gum input \
 --prompt.foreground "$HEX_CYAN" \
 --cursor.foreground "$HEX_ORANGE" \
 --width 40)
+_wiz_footer_edit
 if [[ -z $new_password ]];then
 NEW_ROOT_PASSWORD=$(generate_password "$DEFAULT_PASSWORD_LENGTH")
 PASSWORD_GENERATED="yes"
@@ -1893,8 +1899,6 @@ _edit_timezone(){
 clear
 show_banner
 echo ""
-echo -e "$CLR_GRAY[$CLR_ORANGE↑↓$CLR_GRAY] navigate  [${CLR_ORANGE}Enter$CLR_GRAY] select$CLR_RESET"
-echo ""
 local tz_options="Europe/Kyiv
 Europe/London
 Europe/Berlin
@@ -1905,14 +1909,16 @@ UTC
 Custom..."
 local selected
 selected=$(echo "$tz_options"|gum choose \
+--no-show-help \
 --cursor "› " \
 --cursor.foreground "$HEX_ORANGE" \
---selected.foreground "$HEX_ORANGE")
+--selected.foreground "$HEX_WHITE" \
+--unselected.foreground "$HEX_WHITE")
+echo -e "$CLR_GRAY[$CLR_ORANGE↑↓$CLR_GRAY] navigate  [${CLR_ORANGE}Enter$CLR_GRAY] select$CLR_RESET"
 if [[ $selected == "Custom..." ]];then
 clear
 show_banner
 echo ""
-_wiz_footer_edit
 local custom_tz
 custom_tz=$(gum input \
 --placeholder "e.g., Europe/Paris, Asia/Singapore" \
@@ -1921,6 +1927,7 @@ custom_tz=$(gum input \
 --prompt.foreground "$HEX_CYAN" \
 --cursor.foreground "$HEX_ORANGE" \
 --width 40)
+_wiz_footer_edit
 if [[ -n $custom_tz ]];then
 if validate_timezone "$custom_tz";then
 TIMEZONE="$custom_tz"
