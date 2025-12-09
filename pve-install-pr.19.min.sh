@@ -1457,7 +1457,7 @@ local no_drives=0
 if [[ $DRIVE_COUNT -eq 0 ]];then
 no_drives=1
 fi
-local table_data="Check,Item,Status"
+local rows=""
 add_row(){
 local status="$1"
 local label="$2"
@@ -1468,23 +1468,23 @@ ok)status_text="[OK]";;
 warn)status_text="[WARN]";;
 error)status_text="[ERROR]"
 esac
-table_data+=$'\n'"$status_text,$label,$value"
+rows+="$status_text,$label,$value"$'\n'
 }
 add_row "ok" "Installer" "v$VERSION"
 add_row "$PREFLIGHT_ROOT_STATUS" "Root Access" "$PREFLIGHT_ROOT"
 add_row "$PREFLIGHT_NET_STATUS" "Internet" "$PREFLIGHT_NET"
-add_row "$PREFLIGHT_DISK_STATUS" "Temp Space" "$PREFLIGHT_DISK"
-add_row "$PREFLIGHT_RAM_STATUS" "RAM" "$PREFLIGHT_RAM"
+add_row "$PREFLIGHT_DISK_STATUS" "Disk Space" "$PREFLIGHT_DISK"
+add_row "$PREFLIGHT_RAM_STATUS" "Memory" "$PREFLIGHT_RAM"
 add_row "$PREFLIGHT_CPU_STATUS" "CPU" "$PREFLIGHT_CPU"
 add_row "$PREFLIGHT_KVM_STATUS" "KVM" "$PREFLIGHT_KVM"
 if [[ $no_drives -eq 1 ]];then
-table_data+=$'\n'"[ERROR],Storage,No drives detected!"
+rows+="[ERROR],Storage,No drives detected!"$'\n'
 else
 for i in "${!DRIVE_NAMES[@]}";do
-table_data+=$'\n'"[OK],${DRIVE_NAMES[$i]},${DRIVE_SIZES[$i]} ${DRIVE_MODELS[$i]:0:25}"
+rows+="[OK],${DRIVE_NAMES[$i]},${DRIVE_SIZES[$i]} ${DRIVE_MODELS[$i]:0:25}"$'\n'
 done
 fi
-echo "$table_data"|gum table --print \
+printf "Status,Component,Info\n%s" "$rows"|gum table --print \
 --border "none" \
 --cell.foreground "#888888" \
 --header.foreground "#ff8700"
