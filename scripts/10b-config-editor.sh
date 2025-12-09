@@ -114,9 +114,9 @@ _wiz_render_menu() {
     local field_name="$3"
     _WIZ_FIELD_MAP+=("$field_name")
     if [[ $field_idx -eq $selection ]]; then
-      output+="  ${CLR_ORANGE}›${CLR_RESET} ${label}${value}\n"
+      output+="  ${CLR_ORANGE}›${CLR_RESET} ${CLR_GRAY}${label}${CLR_RESET}${value}\n"
     else
-      output+="    ${label}${value}\n"
+      output+="    ${CLR_GRAY}${label}${CLR_RESET}${value}\n"
     fi
     ((field_idx++))
   }
