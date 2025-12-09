@@ -244,7 +244,7 @@ prompt_validated() {
 # Progress indicators
 # =============================================================================
 
-# Shows progress indicator with spinner while process runs.
+# Shows progress indicator with gum spinner while process runs.
 # Parameters:
 #   $1 - PID of process to wait for
 #   $2 - Progress message
@@ -258,25 +258,24 @@ show_progress() {
   local silent=false
   [[ ${3:-} == "--silent" || ${4:-} == "--silent" ]] && silent=true
   [[ ${3:-} == "--silent" ]] && done_message="$message"
-  local i=0
 
-  while kill -0 "$pid" 2>/dev/null; do
-    printf "\r\e[K${CLR_CYAN}%s %s${CLR_RESET}" "${SPINNER_CHARS[i++ % ${#SPINNER_CHARS[@]}]}" "$message"
-    sleep 0.2
-  done
+  # Use gum spin to wait for the process
+  gum spin --spinner meter --spinner.foreground "#ff8700" --title "$message" -- bash -c "
+    while kill -0 $pid 2>/dev/null; do
+      sleep 0.2
+    done
+  "
 
-  # Wait for exit code (process already finished, this just gets the code)
+  # Get exit code from the original process
   wait "$pid" 2>/dev/null
   local exit_code=$?
 
   if [[ $exit_code -eq 0 ]]; then
-    if [[ $silent == true ]]; then
-      printf "\r\e[K"
-    else
-      printf "\r\e[K${CLR_CYAN}✓${CLR_RESET} %s\n" "$done_message"
+    if [[ $silent != true ]]; then
+      printf "${CLR_CYAN}✓${CLR_RESET} %s\n" "$done_message"
     fi
   else
-    printf "\r\e[K${CLR_RED}✗${CLR_RESET} %s\n" "$message"
+    printf "${CLR_RED}✗${CLR_RESET} %s\n" "$message"
   fi
 
   return $exit_code
@@ -296,26 +295,49 @@ wait_with_progress() {
   local check_cmd="$3"
   local interval="${4:-5}"
   local done_message="${5:-$message}"
-  local start_time
-  start_time=$(date +%s)
-  local i=0
 
-  while true; do
-    local elapsed=$(($(date +%s) - start_time))
+  # Run the wait loop in background and use gum spin to display progress
+  local result_file
+  result_file=$(mktemp)
+  echo "running" >"$result_file"
 
-    if eval "$check_cmd" 2>/dev/null; then
-      printf "\r\e[K${CLR_CYAN}✓${CLR_RESET} %s\n" "$done_message"
-      return 0
-    fi
+  (
+    local start_time
+    start_time=$(date +%s)
+    while true; do
+      local elapsed=$(($(date +%s) - start_time))
+      if eval "$check_cmd" 2>/dev/null; then
+        echo "success" >"$result_file"
+        exit 0
+      fi
+      if [ $elapsed -ge $timeout ]; then
+        echo "timeout" >"$result_file"
+        exit 1
+      fi
+      sleep "$interval"
+    done
+  ) &
+  local wait_pid=$!
 
-    if [ $elapsed -ge $timeout ]; then
-      printf "\r\e[K${CLR_RED}✗${CLR_RESET} %s timed out\n" "$message"
-      return 1
-    fi
+  # Use gum spin to show progress while waiting
+  gum spin --spinner meter --spinner.foreground "#ff8700" --title "$message" -- bash -c "
+    while kill -0 $wait_pid 2>/dev/null; do
+      sleep 0.2
+    done
+  "
 
-    printf "\r\e[K${CLR_CYAN}%s %s${CLR_RESET}" "${SPINNER_CHARS[i++ % ${#SPINNER_CHARS[@]}]}" "$message"
-    sleep "$interval"
-  done
+  wait "$wait_pid" 2>/dev/null
+  local result
+  result=$(cat "$result_file")
+  rm -f "$result_file"
+
+  if [[ $result == "success" ]]; then
+    printf "${CLR_CYAN}✓${CLR_RESET} %s\n" "$done_message"
+    return 0
+  else
+    printf "${CLR_RED}✗${CLR_RESET} %s timed out\n" "$message"
+    return 1
+  fi
 }
 
 # Shows timed progress bar with visual animation.

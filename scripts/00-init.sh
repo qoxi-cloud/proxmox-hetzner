@@ -4,7 +4,7 @@
 # All error handling is done explicitly with exit 1
 cd /root || exit 1
 
-# Ensure UTF-8 locale for proper Unicode display (spinner characters)
+# Ensure UTF-8 locale for proper Unicode display
 export LANG=en_US.UTF-8
 export LC_ALL=en_US.UTF-8
 
@@ -22,10 +22,6 @@ CLR_RESET=$'\033[m'
 # Menu box width for consistent UI rendering across all scripts
 # shellcheck disable=SC2034
 MENU_BOX_WIDTH=60
-
-# Spinner characters for progress display (filling circle animation)
-# shellcheck disable=SC2034
-SPINNER_CHARS=('○' '◔' '◑' '◕' '●' '◕' '◑' '◔')
 
 # Version (MAJOR only - MINOR.PATCH added by CI from git tags/commits)
 VERSION="1"
