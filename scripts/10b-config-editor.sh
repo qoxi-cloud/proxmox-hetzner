@@ -38,6 +38,10 @@ _wiz_read_key() {
 # UI rendering helpers
 # =============================================================================
 
+# Hide/show cursor
+_wiz_hide_cursor() { printf '\033[?25l'; }
+_wiz_show_cursor() { printf '\033[?25h'; }
+
 # Track if initial render has been done
 _WIZ_INITIAL_RENDER_DONE=""
 
@@ -118,6 +122,8 @@ _wizard_main() {
         fi
         ;;
       enter)
+        # Show cursor for edit screens
+        _wiz_show_cursor
         # Edit selected field
         case $selection in
           0) _edit_hostname ;;
@@ -125,16 +131,19 @@ _wizard_main() {
           2) _edit_password ;;
           3) _edit_timezone ;;
         esac
-        # Reset render state to redraw banner after edit
+        # Hide cursor again and reset render state
+        _wiz_hide_cursor
         _WIZ_INITIAL_RENDER_DONE=""
         ;;
       quit | esc)
+        _wiz_show_cursor
         if gum confirm "Quit installation?" --default=false \
           --prompt.foreground "$HEX_ORANGE" \
           --selected.background "$HEX_ORANGE"; then
           exit 0
         fi
-        # Reset render state to redraw after dialog
+        # Hide cursor again and reset render state
+        _wiz_hide_cursor
         _WIZ_INITIAL_RENDER_DONE=""
         ;;
     esac
@@ -397,6 +406,10 @@ show_gum_config_editor() {
 
   # Initialize default configuration values
   _init_default_config
+
+  # Hide cursor during wizard, restore on exit
+  _wiz_hide_cursor
+  trap '_wiz_show_cursor' EXIT
 
   # Run wizard
   _wizard_main
