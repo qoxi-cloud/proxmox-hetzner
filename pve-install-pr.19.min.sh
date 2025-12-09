@@ -1457,34 +1457,43 @@ local no_drives=0
 if [[ $DRIVE_COUNT -eq 0 ]];then
 no_drives=1
 fi
-local table_data=""
+local sys_rows=""
 add_row(){
 local status="$1"
 local label="$2"
 local value="$3"
-[[ -n $table_data ]]&&table_data+=$'\n'
 case "$status" in
-ok)table_data+="$CLR_CYAN[OK]$CLR_RESET,$label,$value";;
-warn)table_data+="$CLR_YELLOW[WARN]$CLR_RESET,$label,$value";;
-error)table_data+="$CLR_RED[ERROR]$CLR_RESET,$label,$value"
+ok)sys_rows+="[OK]|$label|$value"$'\n';;
+warn)sys_rows+="[WARN]|$label|$value"$'\n';;
+error)sys_rows+="[ERROR]|$label|$value"$'\n'
 esac
 }
+add_row "ok" "Installer" "v$VERSION"
 add_row "$PREFLIGHT_ROOT_STATUS" "Root Access" "$PREFLIGHT_ROOT"
 add_row "$PREFLIGHT_NET_STATUS" "Internet" "$PREFLIGHT_NET"
 add_row "$PREFLIGHT_DISK_STATUS" "Temp Space" "$PREFLIGHT_DISK"
 add_row "$PREFLIGHT_RAM_STATUS" "RAM" "$PREFLIGHT_RAM"
 add_row "$PREFLIGHT_CPU_STATUS" "CPU" "$PREFLIGHT_CPU"
 add_row "$PREFLIGHT_KVM_STATUS" "KVM" "$PREFLIGHT_KVM"
+sys_rows="${sys_rows%$'\n'}"
+local storage_rows=""
 if [[ $no_drives -eq 1 ]];then
-table_data+=$'\n'"$CLR_RED[ERROR]$CLR_RESET,Storage,No drives detected!"
+storage_rows="[ERROR]|No drives detected!|"
 else
 for i in "${!DRIVE_NAMES[@]}";do
-table_data+=$'\n'"$CLR_CYAN[OK]$CLR_RESET,${DRIVE_NAMES[$i]},${DRIVE_SIZES[$i]} ${DRIVE_MODELS[$i]:0:25}"
+storage_rows+="[OK]|${DRIVE_NAMES[$i]}|${DRIVE_SIZES[$i]}  ${DRIVE_MODELS[$i]:0:25}"
+if [[ $i -lt $((${#DRIVE_NAMES[@]}-1)) ]];then
+storage_rows+=$'\n'
+fi
 done
 fi
 gum style --foreground "#ff8700" --bold "SYSTEM INFORMATION"
 echo ""
-echo "$table_data"|gum table --print --border "none"
+{
+echo "$sys_rows"
+echo "|--- Storage ---|"
+echo "$storage_rows"
+}|column -t -s '|'|colorize_status
 echo ""
 local has_errors=false
 if [[ $PREFLIGHT_ERRORS -gt 0 || $no_drives -eq 1 ]];then
