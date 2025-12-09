@@ -9,6 +9,12 @@ CLR_ORANGE=$'\033[38;5;208m'
 CLR_GRAY=$'\033[38;5;240m'
 CLR_HETZNER=$'\033[38;5;160m'
 CLR_RESET=$'\033[m'
+HEX_RED="#ff0000"
+HEX_CYAN="#00b1ff"
+HEX_YELLOW="#ffff00"
+HEX_ORANGE="#ff8700"
+HEX_GRAY="#585858"
+HEX_HETZNER="#d70000"
 MENU_BOX_WIDTH=60
 VERSION="1.18.7-pr.19"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
@@ -1457,37 +1463,37 @@ local no_drives=0
 if [[ $DRIVE_COUNT -eq 0 ]];then
 no_drives=1
 fi
-local rows="Status,Component,Info\n"
-add_row(){
+format_status(){
+local status="$1"
+case "$status" in
+ok)gum style --foreground "$HEX_CYAN" "[OK]";;
+warn)gum style --foreground "$HEX_YELLOW" "[WARN]";;
+error)gum style --foreground "$HEX_RED" "[ERROR]"
+esac
+}
+print_row(){
 local status="$1"
 local label="$2"
 local value="$3"
 local status_text
-case "$status" in
-ok)status_text="[OK]";;
-warn)status_text="[WARN]";;
-error)status_text="[ERROR]"
-esac
-rows+="$status_text,$label,$value"$'\n'
+status_text=$(format_status "$status")
+printf "%-18s %-15s %s\n" "$status_text" "$(gum style --foreground "$HEX_GRAY" "$label")" "$(gum style --foreground "$HEX_GRAY" "$value")"
 }
-add_row "ok" "Installer" "v$VERSION"
-add_row "$PREFLIGHT_ROOT_STATUS" "Root Access" "$PREFLIGHT_ROOT"
-add_row "$PREFLIGHT_NET_STATUS" "Internet" "$PREFLIGHT_NET"
-add_row "$PREFLIGHT_DISK_STATUS" "Disk Space" "$PREFLIGHT_DISK"
-add_row "$PREFLIGHT_RAM_STATUS" "Memory" "$PREFLIGHT_RAM"
-add_row "$PREFLIGHT_CPU_STATUS" "CPU" "$PREFLIGHT_CPU"
-add_row "$PREFLIGHT_KVM_STATUS" "KVM" "$PREFLIGHT_KVM"
+gum style --foreground "$HEX_ORANGE" "$(printf "%-10s %-15s %s" "Status" "Component" "Info")"
+print_row "ok" "Installer" "v$VERSION"
+print_row "$PREFLIGHT_ROOT_STATUS" "Root Access" "$PREFLIGHT_ROOT"
+print_row "$PREFLIGHT_NET_STATUS" "Internet" "$PREFLIGHT_NET"
+print_row "$PREFLIGHT_DISK_STATUS" "Disk Space" "$PREFLIGHT_DISK"
+print_row "$PREFLIGHT_RAM_STATUS" "Memory" "$PREFLIGHT_RAM"
+print_row "$PREFLIGHT_CPU_STATUS" "CPU" "$PREFLIGHT_CPU"
+print_row "$PREFLIGHT_KVM_STATUS" "KVM" "$PREFLIGHT_KVM"
 if [[ $no_drives -eq 1 ]];then
-rows+="[ERROR],Storage,No drives detected!"$'\n'
+print_row "error" "Storage" "No drives detected!"
 else
 for i in "${!DRIVE_NAMES[@]}";do
-rows+="[OK],${DRIVE_NAMES[$i]},${DRIVE_SIZES[$i]} ${DRIVE_MODELS[$i]:0:25}"$'\n'
+print_row "ok" "${DRIVE_NAMES[$i]}" "${DRIVE_SIZES[$i]} ${DRIVE_MODELS[$i]:0:25}"
 done
 fi
-printf ",,\n%s" "$rows"|gum table --print \
---border "none" \
---cell.foreground "#888888" \
---header.foreground "#ff8700"
 echo ""
 local has_errors=false
 if [[ $PREFLIGHT_ERRORS -gt 0 || $no_drives -eq 1 ]];then
