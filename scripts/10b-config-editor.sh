@@ -53,6 +53,7 @@ _WIZ_MENU_LINES=0
 _wiz_render_menu() {
   local selection="$1"
   local nav_focus="$2"
+  local output=""
 
   # First render: clear screen and show banner
   if [[ -z $_WIZ_INITIAL_RENDER_DONE ]]; then
@@ -64,19 +65,17 @@ _wiz_render_menu() {
     printf '\033[s'
   else
     # Subsequent renders: restore cursor position and clear menu area
-    printf '\033[u'
-    # Clear from cursor to end of screen
-    printf '\033[J'
+    printf '\033[u\033[J'
   fi
-
-  # Step title
-  gum style --foreground "$HEX_CYAN" --bold "Basic Settings"
-  echo ""
 
   # Build field values
   local pass_display
   pass_display=$([[ $PASSWORD_GENERATED == "yes" ]] && echo "(auto-generated)" || echo "********")
 
+  # Step title
+  output+="\033[1m${CLR_CYAN}Basic Settings${CLR_RESET}\n\n"
+
+  # Fields
   local fields=(
     "Hostname         ${PVE_HOSTNAME}.${DOMAIN_SUFFIX}"
     "Email            ${EMAIL}"
@@ -84,17 +83,16 @@ _wiz_render_menu() {
     "Timezone         ${TIMEZONE}"
   )
 
-  # Render fields
   local i
   for i in "${!fields[@]}"; do
     if [[ $nav_focus == "fields" && $i -eq $selection ]]; then
-      echo -e "  ${CLR_ORANGE}›${CLR_RESET} ${fields[$i]}"
+      output+="  ${CLR_ORANGE}›${CLR_RESET} ${fields[$i]}\n"
     else
-      echo -e "    ${fields[$i]}"
+      output+="    ${fields[$i]}\n"
     fi
   done
 
-  echo ""
+  output+="\n"
 
   # Navigation buttons
   local back_style="${CLR_GRAY}"
@@ -112,15 +110,17 @@ _wiz_render_menu() {
     continue_style="${CLR_ORANGE}"
   fi
 
-  echo -e "  ${back_style}← Back${CLR_RESET}           ${continue_style}Continue →${CLR_RESET}"
+  output+="  ${back_style}← Back${CLR_RESET}           ${continue_style}Continue →${CLR_RESET}\n\n"
 
-  echo ""
   # Footer - show ↑↓ for fields, ←→ for nav buttons
   if [[ $nav_focus == "fields" ]]; then
-    echo -e "${CLR_GRAY}[${CLR_ORANGE}↑↓${CLR_GRAY}] navigate  [${CLR_ORANGE}Enter${CLR_GRAY}] edit  [${CLR_ORANGE}Q${CLR_GRAY}] quit${CLR_RESET}"
+    output+="${CLR_GRAY}[${CLR_ORANGE}↑↓${CLR_GRAY}] navigate  [${CLR_ORANGE}Enter${CLR_GRAY}] edit  [${CLR_ORANGE}Q${CLR_GRAY}] quit${CLR_RESET}"
   else
-    echo -e "${CLR_GRAY}[${CLR_ORANGE}←→${CLR_GRAY}] navigate  [${CLR_ORANGE}Enter${CLR_GRAY}] select  [${CLR_ORANGE}Q${CLR_GRAY}] quit${CLR_RESET}"
+    output+="${CLR_GRAY}[${CLR_ORANGE}←→${CLR_GRAY}] navigate  [${CLR_ORANGE}Enter${CLR_GRAY}] select  [${CLR_ORANGE}Q${CLR_GRAY}] quit${CLR_RESET}"
   fi
+
+  # Output everything at once
+  echo -e "$output"
 }
 
 # =============================================================================
