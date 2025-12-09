@@ -1485,7 +1485,7 @@ table_data+=$'\n'"[OK],${DRIVE_NAMES[$i]},${DRIVE_SIZES[$i]} ${DRIVE_MODELS[$i]:
 done
 fi
 echo "$table_data"|gum table --print \
---border.foreground "#585858" \
+--border "none" \
 --cell.foreground "#888888" \
 --header.foreground "#ff8700"
 echo ""
