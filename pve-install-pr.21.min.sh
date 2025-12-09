@@ -18,7 +18,7 @@ HEX_HETZNER="#d70000"
 HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 MENU_BOX_WIDTH=60
-VERSION="1.18.34-pr.21"
+VERSION="1.18.35-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -1734,21 +1734,14 @@ fi
 }
 _wiz_hide_cursor(){ printf '\033[?25l';}
 _wiz_show_cursor(){ printf '\033[?25h';}
-_WIZ_INITIAL_RENDER_DONE=""
-_WIZ_MENU_START_ROW=12
 _WIZ_FIELD_COUNT=0
 _WIZ_FIELD_MAP=()
 _wiz_render_menu(){
 local selection="$1"
 local output=""
-if [[ -z $_WIZ_INITIAL_RENDER_DONE ]];then
 clear
 show_banner
 echo ""
-_WIZ_INITIAL_RENDER_DONE=1
-else
-printf '\033[%d;1H\033[J' "$_WIZ_MENU_START_ROW"
-fi
 local pass_display
 pass_display=$([[ $PASSWORD_GENERATED == "yes" ]]&&echo "(auto-generated)"||echo "********")
 local ipv6_display
@@ -1855,7 +1848,6 @@ features)_edit_features;;
 ssh_key)_edit_ssh_key
 esac
 _wiz_hide_cursor
-_WIZ_INITIAL_RENDER_DONE=""
 ;;
 quit|esc)_wiz_show_cursor
 if gum confirm "Quit installation?" --default=false \
@@ -1864,7 +1856,6 @@ if gum confirm "Quit installation?" --default=false \
 exit 0
 fi
 _wiz_hide_cursor
-_WIZ_INITIAL_RENDER_DONE=""
 esac
 done
 }
