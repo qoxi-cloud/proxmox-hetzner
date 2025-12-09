@@ -18,7 +18,7 @@ HEX_HETZNER="#d70000"
 HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 MENU_BOX_WIDTH=60
-VERSION="1.18.7-pr.19"
+VERSION="1.18.8-pr.19"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/gum-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -1467,6 +1467,7 @@ no_drives=1
 fi
 local table_data
 table_data=",,
+Status,Item,Value
 "
 format_status(){
 local status="$1"
@@ -1492,8 +1493,6 @@ add_row "$PREFLIGHT_DISK_STATUS" "Temp Space" "$PREFLIGHT_DISK"
 add_row "$PREFLIGHT_RAM_STATUS" "RAM" "$PREFLIGHT_RAM"
 add_row "$PREFLIGHT_CPU_STATUS" "CPU" "$PREFLIGHT_CPU"
 add_row "$PREFLIGHT_KVM_STATUS" "KVM" "$PREFLIGHT_KVM"
-table_data+="--- Storage ---,,
-"
 if [[ $no_drives -eq 1 ]];then
 local error_status
 error_status=$(format_status "error")
@@ -1508,10 +1507,6 @@ table_data+="$ok_status,${DRIVE_NAMES[$i]},${DRIVE_SIZES[$i]}  ${DRIVE_MODELS[$i
 done
 fi
 table_data="${table_data%$'\n'}"
-gum style \
---foreground "$HEX_ORANGE" \
---bold \
-"SYSTEM INFORMATION"
 echo "$table_data"|gum table \
 --print \
 --border "none" \
