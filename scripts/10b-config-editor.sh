@@ -110,8 +110,8 @@ _wiz_render_menu() {
 
 _wizard_step_basic() {
   local selection=0
-  local nav_focus="fields"  # "fields", "back", or "continue"
-  local max_fields=3        # 0-3 for 4 fields
+  local nav_focus="fields" # "fields", "back", or "continue"
+  local max_fields=3       # 0-3 for 4 fields
 
   while true; do
     _wiz_render_menu "$selection" "$nav_focus"
@@ -171,9 +171,9 @@ _wizard_step_basic() {
             sleep 1
             continue
           fi
-          return 0  # Success, go to next step
+          return 0 # Success, go to next step
         elif [[ $nav_focus == "back" && $WIZARD_CURRENT_STEP -gt 1 ]]; then
-          return 1  # Go back
+          return 1 # Go back
         elif [[ $nav_focus == "fields" ]]; then
           # Edit selected field
           case $selection in
@@ -184,7 +184,7 @@ _wizard_step_basic() {
           esac
         fi
         ;;
-      quit|esc)
+      quit | esc)
         if gum confirm "Quit installation?" --default=false \
           --prompt.foreground "$HEX_ORANGE" \
           --selected.background "$HEX_ORANGE"; then
