@@ -230,8 +230,8 @@ _wizard_main() {
 
 # Display footer with key hints below current cursor position
 # Parameters:
-#   $1 - type: "input" (default) or "filter"
-#   $2 - lines for component (default: 1 for input, used for filter height)
+#   $1 - type: "input" (default), "filter", or "checkbox"
+#   $2 - lines for component (default: 1 for input, used for filter/checkbox height)
 _show_input_footer() {
   local type="${1:-input}"
   local component_lines="${2:-1}"
@@ -244,11 +244,17 @@ _show_input_footer() {
 
   # Blank line + footer
   echo ""
-  if [[ $type == "filter" ]]; then
-    echo -e "${CLR_GRAY}[${CLR_ORANGE}↑↓${CLR_GRAY}] navigate  [${CLR_ORANGE}Enter${CLR_GRAY}] select  [${CLR_ORANGE}Esc${CLR_GRAY}] cancel${CLR_RESET}"
-  else
-    echo -e "${CLR_GRAY}[${CLR_ORANGE}Enter${CLR_GRAY}] confirm  [${CLR_ORANGE}Esc${CLR_GRAY}] cancel${CLR_RESET}"
-  fi
+  case "$type" in
+    filter)
+      echo -e "${CLR_GRAY}[${CLR_ORANGE}↑↓${CLR_GRAY}] navigate  [${CLR_ORANGE}Enter${CLR_GRAY}] select  [${CLR_ORANGE}Esc${CLR_GRAY}] cancel${CLR_RESET}"
+      ;;
+    checkbox)
+      echo -e "${CLR_GRAY}[${CLR_ORANGE}↑↓${CLR_GRAY}] navigate  [${CLR_ORANGE}Space${CLR_GRAY}] toggle  [${CLR_ORANGE}Enter${CLR_GRAY}] confirm${CLR_RESET}"
+      ;;
+    *)
+      echo -e "${CLR_GRAY}[${CLR_ORANGE}Enter${CLR_GRAY}] confirm  [${CLR_ORANGE}Esc${CLR_GRAY}] cancel${CLR_RESET}"
+      ;;
+  esac
 
   # Move cursor back up: component_lines + 1 blank + 1 footer
   tput cuu $((component_lines + 2))
@@ -1069,11 +1075,8 @@ _edit_features() {
   show_banner
   echo ""
 
-  # 2 items for multi-select, need custom footer for Space toggle
-  echo ""
-  echo ""
-  echo -e "${CLR_GRAY}[${CLR_ORANGE}↑↓${CLR_GRAY}] navigate  [${CLR_ORANGE}Space${CLR_GRAY}] toggle  [${CLR_ORANGE}Enter${CLR_GRAY}] confirm${CLR_RESET}"
-  tput cuu 3
+  # 2 items for multi-select checkbox
+  _show_input_footer "checkbox" 2
 
   # Use gum choose with --no-limit for multi-select
   local selected
