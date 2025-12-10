@@ -693,11 +693,11 @@ _edit_ssh_key() {
 # =============================================================================
 
 _init_default_config() {
-  # Basic settings
-  [[ -z $PVE_HOSTNAME ]] && PVE_HOSTNAME="$DEFAULT_HOSTNAME"
-  [[ -z $DOMAIN_SUFFIX ]] && DOMAIN_SUFFIX="$DEFAULT_DOMAIN"
-  [[ -z $EMAIL ]] && EMAIL="$DEFAULT_EMAIL"
-  [[ -z $TIMEZONE ]] && TIMEZONE="$DEFAULT_TIMEZONE"
+  # Basic settings (use env DEFAULT_* if set, otherwise hardcoded fallbacks)
+  [[ -z $PVE_HOSTNAME ]] && PVE_HOSTNAME="${DEFAULT_HOSTNAME:-pve}"
+  [[ -z $DOMAIN_SUFFIX ]] && DOMAIN_SUFFIX="${DEFAULT_DOMAIN:-local}"
+  [[ -z $EMAIL ]] && EMAIL="${DEFAULT_EMAIL:-admin@example.com}"
+  [[ -z $TIMEZONE ]] && TIMEZONE="${DEFAULT_TIMEZONE:-Europe/Kyiv}"
 
   # Password - auto-generate if not set
   if [[ -z $NEW_ROOT_PASSWORD ]]; then
@@ -706,10 +706,10 @@ _init_default_config() {
   fi
 
   # Network
-  [[ -z $BRIDGE_MODE ]] && BRIDGE_MODE="$DEFAULT_BRIDGE_MODE"
-  [[ -z $PRIVATE_SUBNET ]] && PRIVATE_SUBNET="$DEFAULT_SUBNET"
-  [[ -z $IPV6_MODE ]] && IPV6_MODE="$DEFAULT_IPV6_MODE"
-  [[ -z $IPV6_GATEWAY ]] && IPV6_GATEWAY="$DEFAULT_IPV6_GATEWAY"
+  [[ -z $BRIDGE_MODE ]] && BRIDGE_MODE="${DEFAULT_BRIDGE_MODE:-internal}"
+  [[ -z $PRIVATE_SUBNET ]] && PRIVATE_SUBNET="${DEFAULT_SUBNET:-10.0.0.0/24}"
+  [[ -z $IPV6_MODE ]] && IPV6_MODE="${DEFAULT_IPV6_MODE:-auto}"
+  [[ -z $IPV6_GATEWAY ]] && IPV6_GATEWAY="${DEFAULT_IPV6_GATEWAY:-fe80::1}"
 
   # Calculate private network values
   if [[ $BRIDGE_MODE == "internal" || $BRIDGE_MODE == "both" ]]; then
@@ -729,17 +729,17 @@ _init_default_config() {
   fi
 
   # Proxmox
-  [[ -z $PVE_REPO_TYPE ]] && PVE_REPO_TYPE="$DEFAULT_REPO_TYPE"
+  [[ -z $PVE_REPO_TYPE ]] && PVE_REPO_TYPE="${DEFAULT_REPO_TYPE:-no-subscription}"
 
   # SSL
-  [[ -z $SSL_TYPE ]] && SSL_TYPE="$DEFAULT_SSL_TYPE"
+  [[ -z $SSL_TYPE ]] && SSL_TYPE="${DEFAULT_SSL_TYPE:-self-signed}"
 
   # Tailscale - default to not installed
   [[ -z $INSTALL_TAILSCALE ]] && INSTALL_TAILSCALE="no"
 
   # Optional features
   [[ -z $DEFAULT_SHELL ]] && DEFAULT_SHELL="zsh"
-  [[ -z $CPU_GOVERNOR ]] && CPU_GOVERNOR="$DEFAULT_CPU_GOVERNOR"
+  [[ -z $CPU_GOVERNOR ]] && CPU_GOVERNOR="${DEFAULT_CPU_GOVERNOR:-performance}"
   [[ -z $INSTALL_VNSTAT ]] && INSTALL_VNSTAT="yes"
   [[ -z $INSTALL_UNATTENDED_UPGRADES ]] && INSTALL_UNATTENDED_UPGRADES="yes"
   [[ -z $INSTALL_AUDITD ]] && INSTALL_AUDITD="no"
