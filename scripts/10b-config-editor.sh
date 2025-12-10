@@ -225,6 +225,16 @@ _wizard_main() {
 }
 
 # =============================================================================
+# Edit screen helpers
+# =============================================================================
+
+# Display footer with key hints for input screens
+_show_input_footer() {
+  echo -e "${CLR_GRAY}[${CLR_ORANGE}Enter${CLR_GRAY}] confirm  [${CLR_ORANGE}Esc${CLR_GRAY}] cancel${CLR_RESET}"
+  echo ""
+}
+
+# =============================================================================
 # Edit functions - each clears screen, shows banner, then input field
 # =============================================================================
 
@@ -232,9 +242,7 @@ _edit_hostname() {
   clear
   show_banner
   echo ""
-
-  echo -e "${CLR_GRAY}[${CLR_ORANGE}Enter${CLR_GRAY}] confirm  [${CLR_ORANGE}Esc${CLR_GRAY}] cancel${CLR_RESET}"
-  echo ""
+  _show_input_footer
 
   local new_hostname
   new_hostname=$(gum input \
@@ -243,7 +251,8 @@ _edit_hostname() {
     --prompt "Hostname: " \
     --prompt.foreground "$HEX_CYAN" \
     --cursor.foreground "$HEX_ORANGE" \
-    --width 40)
+    --width 40 \
+    --no-show-help)
 
   if [[ -n $new_hostname ]]; then
     if validate_hostname "$new_hostname"; then
@@ -260,9 +269,7 @@ _edit_hostname() {
   clear
   show_banner
   echo ""
-
-  echo -e "${CLR_GRAY}[${CLR_ORANGE}Enter${CLR_GRAY}] confirm  [${CLR_ORANGE}Esc${CLR_GRAY}] cancel${CLR_RESET}"
-  echo ""
+  _show_input_footer
 
   local new_domain
   new_domain=$(gum input \
@@ -271,7 +278,8 @@ _edit_hostname() {
     --prompt "Domain: " \
     --prompt.foreground "$HEX_CYAN" \
     --cursor.foreground "$HEX_ORANGE" \
-    --width 40)
+    --width 40 \
+    --no-show-help)
 
   if [[ -n $new_domain ]]; then
     DOMAIN_SUFFIX="$new_domain"
