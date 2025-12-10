@@ -19,7 +19,7 @@ HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 HEX_NONE="7"
 MENU_BOX_WIDTH=60
-VERSION="2.0.64-pr.21"
+VERSION="2.0.65-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -1944,9 +1944,11 @@ log "WARNING: Could not detect network interface, defaulting to eth0"
 fi
 PREDICTABLE_NAME=""
 if [[ -e "/sys/class/net/$CURRENT_INTERFACE" ]];then
-PREDICTABLE_NAME=$(udevadm info "/sys/class/net/$CURRENT_INTERFACE" 2>/dev/null|grep "ID_NET_NAME_PATH="|cut -d'=' -f2)
+local udev_info
+udev_info=$(udevadm info "/sys/class/net/$CURRENT_INTERFACE" 2>/dev/null)
+PREDICTABLE_NAME=$(echo "$udev_info"|grep "ID_NET_NAME_PATH="|cut -d'=' -f2)
 if [[ -z $PREDICTABLE_NAME ]];then
-PREDICTABLE_NAME=$(udevadm info "/sys/class/net/$CURRENT_INTERFACE" 2>/dev/null|grep "ID_NET_NAME_ONBOARD="|cut -d'=' -f2)
+PREDICTABLE_NAME=$(echo "$udev_info"|grep "ID_NET_NAME_ONBOARD="|cut -d'=' -f2)
 fi
 if [[ -z $PREDICTABLE_NAME ]];then
 PREDICTABLE_NAME=$(ip -d link show "$CURRENT_INTERFACE" 2>/dev/null|grep "altname"|awk '{print $2}'|head -1)
@@ -2154,6 +2156,10 @@ local ssh_display=""
 if [[ -n $SSH_PUBLIC_KEY ]];then
 ssh_display="${SSH_PUBLIC_KEY:0:20}..."
 fi
+local iso_version_display=""
+if [[ -n $PROXMOX_ISO_VERSION ]];then
+iso_version_display=$(get_iso_version "$PROXMOX_ISO_VERSION")
+fi
 local hostname_display=""
 if [[ -n $PVE_HOSTNAME && -n $DOMAIN_SUFFIX ]];then
 hostname_display="$PVE_HOSTNAME.$DOMAIN_SUFFIX"
@@ -2181,6 +2187,7 @@ _add_field "Email            " "$(_wiz_fmt "$EMAIL")" "email"
 _add_field "Password         " "$(_wiz_fmt "$pass_display")" "password"
 _add_field "Timezone         " "$(_wiz_fmt "$TIMEZONE")" "timezone"
 _add_section "Proxmox"
+_add_field "Version          " "$(_wiz_fmt "$iso_version_display")" "iso_version"
 _add_field "Repository       " "$(_wiz_fmt "$PVE_REPO_TYPE")" "repository"
 _add_section "Network"
 _add_field "Interface        " "$(_wiz_fmt "$INTERFACE_NAME" "→ auto-detect")" "interface"
@@ -2229,6 +2236,7 @@ hostname)_edit_hostname;;
 email)_edit_email;;
 password)_edit_password;;
 timezone)_edit_timezone;;
+iso_version)_edit_iso_version;;
 repository)_edit_repository;;
 interface)_edit_interface;;
 bridge_mode)_edit_bridge_mode;;
@@ -2393,6 +2401,28 @@ selected=$(echo "$WIZ_TIMEZONES"|gum filter \
 if [[ -n $selected ]];then
 TIMEZONE="$selected"
 fi
+}
+_edit_iso_version(){
+clear
+show_banner
+echo ""
+local iso_list
+iso_list=$(get_available_proxmox_isos 5)
+if [[ -z $iso_list ]];then
+gum style --foreground "$HEX_RED" "Failed to fetch ISO list"
+sleep 2
+return
+fi
+_show_input_footer "filter" 6
+local selected
+selected=$(echo "$iso_list"|gum choose \
+--header="Proxmox Version:" \
+--header.foreground "$HEX_CYAN" \
+--cursor "$CLR_ORANGE›$CLR_RESET " \
+--cursor.foreground "$HEX_NONE" \
+--selected.foreground "$HEX_WHITE" \
+--no-show-help)
+[[ -n $selected ]]&&PROXMOX_ISO_VERSION="$selected"
 }
 _edit_repository(){
 clear
@@ -2619,12 +2649,6 @@ _wizard_main
 }
 prepare_packages(){
 log "Starting package preparation"
-log "Checking Proxmox repository availability"
-if ! curl -fsSL --max-time 10 "https://enterprise.proxmox.com/debian/proxmox-release-bookworm.gpg" >/dev/null 2>&1;then
-print_error "Cannot reach Proxmox repository"
-log "ERROR: Cannot reach Proxmox repository"
-exit 1
-fi
 log "Adding Proxmox repository"
 echo "deb http://download.proxmox.com/debian/pve bookworm pve-no-subscription" >/etc/apt/sources.list.d/pve.list
 log "Downloading Proxmox GPG key"
@@ -2634,6 +2658,7 @@ wait $!
 local exit_code=$?
 if [[ $exit_code -ne 0 ]];then
 log "ERROR: Failed to download Proxmox GPG key"
+print_error "Cannot reach Proxmox repository"
 exit 1
 fi
 log "Proxmox GPG key downloaded successfully"
@@ -2661,29 +2686,13 @@ log "Required packages installed successfully"
 }
 _ISO_LIST_CACHE=""
 _CHECKSUM_CACHE=""
-_fetch_iso_list(){
-if [[ -z $_ISO_LIST_CACHE ]];then
-_ISO_LIST_CACHE=$(curl -s "$PROXMOX_ISO_BASE_URL"|grep -oE 'proxmox-ve_[0-9]+\.[0-9]+-[0-9]+\.iso'|sort -uV)
-fi
-echo "$_ISO_LIST_CACHE"
-}
 prefetch_proxmox_iso_info(){
 _ISO_LIST_CACHE=$(curl -s "$PROXMOX_ISO_BASE_URL" 2>/dev/null|grep -oE 'proxmox-ve_[0-9]+\.[0-9]+-[0-9]+\.iso'|sort -uV)||true
 _CHECKSUM_CACHE=$(curl -s "$PROXMOX_CHECKSUM_URL" 2>/dev/null)||true
 }
 get_available_proxmox_isos(){
 local count="${1:-5}"
-_fetch_iso_list|tail -n "$count"|tac
-}
-get_latest_proxmox_ve_iso(){
-local latest_iso
-latest_iso=$(_fetch_iso_list|tail -n1)
-if [[ -n $latest_iso ]];then
-echo "$PROXMOX_ISO_BASE_URL$latest_iso"
-else
-echo "No Proxmox VE ISO found." >&2
-return 1
-fi
+echo "$_ISO_LIST_CACHE"|tail -n "$count"|tac
 }
 get_proxmox_iso_url(){
 local iso_filename="$1"
@@ -2753,31 +2762,19 @@ log "Proxmox ISO already exists, skipping download"
 print_success "Proxmox ISO:" "already exists, skipping download"
 return 0
 fi
-if [[ -n $PROXMOX_ISO_VERSION ]];then
-log "Using user-selected ISO: $PROXMOX_ISO_VERSION"
-PROXMOX_ISO_URL=$(get_proxmox_iso_url "$PROXMOX_ISO_VERSION")
-else
-log "Fetching latest Proxmox ISO URL"
-PROXMOX_ISO_URL=$(get_latest_proxmox_ve_iso)
-fi
-if [[ -z $PROXMOX_ISO_URL ]];then
-log "ERROR: Failed to retrieve Proxmox ISO URL"
+if [[ -z $PROXMOX_ISO_VERSION ]];then
+log "ERROR: PROXMOX_ISO_VERSION not set"
 exit 1
 fi
+log "Using selected ISO: $PROXMOX_ISO_VERSION"
+PROXMOX_ISO_URL=$(get_proxmox_iso_url "$PROXMOX_ISO_VERSION")
 log "Found ISO URL: $PROXMOX_ISO_URL"
 ISO_FILENAME=$(basename "$PROXMOX_ISO_URL")
 local expected_checksum=""
 if [[ -n $_CHECKSUM_CACHE ]];then
-log "Using cached checksum data"
 expected_checksum=$(echo "$_CHECKSUM_CACHE"|grep "$ISO_FILENAME"|awk '{print $1}')
-else
-log "Downloading checksum file"
-curl -sS -o SHA256SUMS "$PROXMOX_CHECKSUM_URL" >>"$LOG_FILE" 2>&1||true
-if [[ -f "SHA256SUMS" ]];then
-expected_checksum=$(grep "$ISO_FILENAME" SHA256SUMS|awk '{print $1}')
 fi
-fi
-log "Expected checksum: $expected_checksum"
+log "Expected checksum: ${expected_checksum:-not available}"
 log "Downloading ISO: $ISO_FILENAME"
 local download_success=false
 local download_method=""
@@ -2828,7 +2825,7 @@ fi
 fi
 if [[ $download_success != "true" ]];then
 log "ERROR: All download methods failed for Proxmox ISO"
-rm -f pve.iso SHA256SUMS
+rm -f pve.iso
 exit 1
 fi
 local iso_size
@@ -2843,7 +2840,7 @@ local actual_checksum
 actual_checksum=$(sha256sum pve.iso|awk '{print $1}')
 if [[ $actual_checksum != "$expected_checksum" ]];then
 log "ERROR: Checksum mismatch! Expected: $expected_checksum, Got: $actual_checksum"
-rm -f pve.iso SHA256SUMS
+rm -f pve.iso
 exit 1
 fi
 log "Checksum verification passed"
@@ -2852,7 +2849,6 @@ else
 log "WARNING: Could not find checksum for $ISO_FILENAME"
 print_warning "Could not find checksum for $ISO_FILENAME"
 fi
-rm -f SHA256SUMS
 }
 validate_answer_toml(){
 local file="$1"
@@ -3396,8 +3392,11 @@ remote_exec "tailscale up --authkey='$TAILSCALE_AUTH_KEY' --ssh"||exit 1
 else
 remote_exec "tailscale up --authkey='$TAILSCALE_AUTH_KEY'"||exit 1
 fi
-remote_exec "tailscale ip -4" >"$tmp_ip" 2>/dev/null||true
-remote_exec "tailscale status --json | jq -r '.Self.DNSName // empty' | sed 's/\\.$//' " >"$tmp_hostname" 2>/dev/null||true) > \
+remote_exec "tailscale status --json | jq -r '[(.Self.TailscaleIPs[0] // \"pending\"), (.Self.DNSName // \"\" | rtrimstr(\".\"))] | @tsv'" 2>/dev/null|{
+IFS=$'\t' read -r ip hostname
+echo "$ip" >"$tmp_ip"
+echo "$hostname" >"$tmp_hostname"
+}||true) > \
 /dev/null 2>&1&
 show_progress $! "Authenticating Tailscale"
 TAILSCALE_IP=$(cat "$tmp_ip" 2>/dev/null||echo "pending")
