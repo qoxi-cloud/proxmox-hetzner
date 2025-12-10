@@ -18,7 +18,7 @@ HEX_HETZNER="#d70000"
 HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 MENU_BOX_WIDTH=60
-VERSION="1.18.42-pr.21"
+VERSION="1.18.43-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -1860,12 +1860,9 @@ esac
 done
 }
 _show_input_footer(){
-local rows
-rows=$(tput lines)
-tput sc
-tput cup $((rows-2)) 0
+echo ""
 echo -e "$CLR_GRAY[${CLR_ORANGE}Enter$CLR_GRAY] confirm  [${CLR_ORANGE}Esc$CLR_GRAY] cancel$CLR_RESET"
-tput rc
+tput cuu 2
 }
 _edit_hostname(){
 clear
