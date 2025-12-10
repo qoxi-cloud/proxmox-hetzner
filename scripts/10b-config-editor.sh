@@ -445,6 +445,7 @@ _edit_repository() {
     --header.foreground "$HEX_CYAN" \
     --cursor "› " \
     --cursor.foreground "$HEX_ORANGE" \
+    --selected.foreground "$HEX_WHITE" \
     --no-show-help)
 
   [[ -n $selected ]] && PVE_REPO_TYPE="$selected"
@@ -474,6 +475,7 @@ _edit_bridge_mode() {
     --header.foreground "$HEX_CYAN" \
     --cursor "› " \
     --cursor.foreground "$HEX_ORANGE" \
+    --selected.foreground "$HEX_WHITE" \
     --no-show-help)
 
   [[ -n $selected ]] && BRIDGE_MODE="$selected"
@@ -521,6 +523,7 @@ _edit_ipv6() {
     --header.foreground "$HEX_CYAN" \
     --cursor "› " \
     --cursor.foreground "$HEX_ORANGE" \
+    --selected.foreground "$HEX_WHITE" \
     --no-show-help)
 
   [[ -n $selected ]] && IPV6_MODE="$selected"
@@ -552,6 +555,7 @@ _edit_zfs_mode() {
     --header.foreground "$HEX_CYAN" \
     --cursor "› " \
     --cursor.foreground "$HEX_ORANGE" \
+    --selected.foreground "$HEX_WHITE" \
     --no-show-help)
 
   [[ -n $selected ]] && ZFS_RAID="$selected"
@@ -571,6 +575,7 @@ _edit_tailscale() {
     --header.foreground "$HEX_CYAN" \
     --cursor "› " \
     --cursor.foreground "$HEX_ORANGE" \
+    --selected.foreground "$HEX_WHITE" \
     --no-show-help)
 
   case "$selected" in
@@ -593,6 +598,7 @@ _edit_ssl() {
     --header.foreground "$HEX_CYAN" \
     --cursor "› " \
     --cursor.foreground "$HEX_ORANGE" \
+    --selected.foreground "$HEX_WHITE" \
     --no-show-help)
 
   [[ -n $selected ]] && SSL_TYPE="$selected"
@@ -612,6 +618,7 @@ _edit_shell() {
     --header.foreground "$HEX_CYAN" \
     --cursor "› " \
     --cursor.foreground "$HEX_ORANGE" \
+    --selected.foreground "$HEX_WHITE" \
     --no-show-help)
 
   [[ -n $selected ]] && SHELL_TYPE="$selected"
@@ -631,6 +638,7 @@ _edit_power_profile() {
     --header.foreground "$HEX_CYAN" \
     --cursor "› " \
     --cursor.foreground "$HEX_ORANGE" \
+    --selected.foreground "$HEX_WHITE" \
     --no-show-help)
 
   [[ -n $selected ]] && CPU_GOVERNOR="$selected"
@@ -652,6 +660,7 @@ _edit_features() {
     --header.foreground "$HEX_CYAN" \
     --cursor "› " \
     --cursor.foreground "$HEX_ORANGE" \
+    --selected.foreground "$HEX_WHITE" \
     --no-show-help)
 
   # Parse selection
