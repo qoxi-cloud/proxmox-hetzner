@@ -170,7 +170,7 @@ configure_base_system() {
 # Optionally installs ZSH with Oh-My-Zsh and Powerlevel10k theme.
 configure_shell() {
   # Configure default shell for root
-  if [[ $DEFAULT_SHELL == "zsh" ]]; then
+  if [[ $SHELL_TYPE == "zsh" ]]; then
     run_remote "Installing ZSH and Git" '
             export DEBIAN_FRONTEND=noninteractive
             apt-get install -yqq zsh git curl

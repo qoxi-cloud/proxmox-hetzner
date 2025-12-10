@@ -42,6 +42,20 @@ _wiz_read_key() {
 _wiz_hide_cursor() { printf '\033[?25l'; }
 _wiz_show_cursor() { printf '\033[?25h'; }
 
+# Format value for display - shows placeholder if empty
+# Parameters:
+#   $1 - value to display
+#   $2 - placeholder text (default: "→ set value")
+_wiz_fmt() {
+  local value="$1"
+  local placeholder="${2:-→ set value}"
+  if [[ -n "$value" ]]; then
+    echo "$value"
+  else
+    echo "${CLR_GRAY}${placeholder}${CLR_RESET}"
+  fi
+}
+
 # Menu item indices (for mapping selection to edit functions)
 # These track which items are selectable fields vs section headers
 _WIZ_FIELD_COUNT=0
@@ -60,31 +74,42 @@ _wiz_render_menu() {
   echo ""
 
   # Build display values
-  local pass_display
-  pass_display=$([[ $PASSWORD_GENERATED == "yes" ]] && echo "(auto-generated)" || echo "********")
+  local pass_display=""
+  if [[ -n "$NEW_ROOT_PASSWORD" ]]; then
+    pass_display=$([[ $PASSWORD_GENERATED == "yes" ]] && echo "(auto-generated)" || echo "********")
+  fi
 
-  local ipv6_display
-  case "$IPV6_MODE" in
-    auto) ipv6_display="Auto" ;;
-    manual) ipv6_display="Manual" ;;
-    disabled) ipv6_display="Disabled" ;;
-    *) ipv6_display="$IPV6_MODE" ;;
-  esac
+  local ipv6_display=""
+  if [[ -n "$IPV6_MODE" ]]; then
+    case "$IPV6_MODE" in
+      auto) ipv6_display="Auto" ;;
+      manual) ipv6_display="Manual" ;;
+      disabled) ipv6_display="Disabled" ;;
+      *) ipv6_display="$IPV6_MODE" ;;
+    esac
+  fi
 
-  local tailscale_display
-  tailscale_display=$([[ $INSTALL_TAILSCALE == "yes" ]] && echo "Enabled" || echo "Disabled")
+  local tailscale_display=""
+  if [[ -n "$INSTALL_TAILSCALE" ]]; then
+    tailscale_display=$([[ $INSTALL_TAILSCALE == "yes" ]] && echo "Enabled" || echo "Disabled")
+  fi
 
   local features_display=""
-  [[ $INSTALL_VNSTAT == "yes" ]] && features_display+="vnstat"
-  [[ $INSTALL_AUDITD == "yes" ]] && features_display+="${features_display:+, }auditd"
-  [[ -z $features_display ]] && features_display="none"
+  if [[ -n "$INSTALL_VNSTAT" || -n "$INSTALL_AUDITD" ]]; then
+    [[ $INSTALL_VNSTAT == "yes" ]] && features_display+="vnstat"
+    [[ $INSTALL_AUDITD == "yes" ]] && features_display+="${features_display:+, }auditd"
+    [[ -z $features_display ]] && features_display="none"
+  fi
 
-  local ssh_display
+  local ssh_display=""
   if [[ -n $SSH_PUBLIC_KEY ]]; then
     # Show first 20 chars of key type and fingerprint hint
     ssh_display="${SSH_PUBLIC_KEY:0:20}..."
-  else
-    ssh_display="(not set)"
+  fi
+
+  local hostname_display=""
+  if [[ -n "$PVE_HOSTNAME" && -n "$DOMAIN_SUFFIX" ]]; then
+    hostname_display="${PVE_HOSTNAME}.${DOMAIN_SUFFIX}"
   fi
 
   # Reset field map
@@ -112,43 +137,43 @@ _wiz_render_menu() {
 
   # --- Basic Settings ---
   _add_section "Basic Settings"
-  _add_field "Hostname         " "${PVE_HOSTNAME}.${DOMAIN_SUFFIX}" "hostname"
-  _add_field "Email            " "${EMAIL}" "email"
-  _add_field "Password         " "${pass_display}" "password"
-  _add_field "Timezone         " "${TIMEZONE}" "timezone"
+  _add_field "Hostname         " "$(_wiz_fmt "$hostname_display")" "hostname"
+  _add_field "Email            " "$(_wiz_fmt "$EMAIL")" "email"
+  _add_field "Password         " "$(_wiz_fmt "$pass_display")" "password"
+  _add_field "Timezone         " "$(_wiz_fmt "$TIMEZONE")" "timezone"
 
   # --- Proxmox ---
   _add_section "Proxmox"
-  _add_field "Repository       " "${PVE_REPO_TYPE}" "repository"
+  _add_field "Repository       " "$(_wiz_fmt "$PVE_REPO_TYPE")" "repository"
 
   # --- Network ---
   _add_section "Network"
-  _add_field "Interface        " "${INTERFACE_NAME:-auto}" "interface"
-  _add_field "Bridge mode      " "${BRIDGE_MODE}" "bridge_mode"
-  _add_field "Private subnet   " "${PRIVATE_SUBNET}" "private_subnet"
-  _add_field "IPv6             " "${ipv6_display}" "ipv6"
+  _add_field "Interface        " "$(_wiz_fmt "$INTERFACE_NAME" "→ auto-detect")" "interface"
+  _add_field "Bridge mode      " "$(_wiz_fmt "$BRIDGE_MODE")" "bridge_mode"
+  _add_field "Private subnet   " "$(_wiz_fmt "$PRIVATE_SUBNET")" "private_subnet"
+  _add_field "IPv6             " "$(_wiz_fmt "$ipv6_display")" "ipv6"
 
   # --- Storage ---
   _add_section "Storage"
-  _add_field "ZFS mode         " "${ZFS_RAID}" "zfs_mode"
+  _add_field "ZFS mode         " "$(_wiz_fmt "$ZFS_RAID")" "zfs_mode"
 
   # --- VPN ---
   _add_section "VPN"
-  _add_field "Tailscale        " "${tailscale_display}" "tailscale"
+  _add_field "Tailscale        " "$(_wiz_fmt "$tailscale_display")" "tailscale"
 
   # --- SSL ---
   _add_section "SSL"
-  _add_field "Certificate      " "${SSL_TYPE}" "ssl"
+  _add_field "Certificate      " "$(_wiz_fmt "$SSL_TYPE")" "ssl"
 
   # --- Optional ---
   _add_section "Optional"
-  _add_field "Shell            " "${DEFAULT_SHELL}" "shell"
-  _add_field "Power profile    " "${CPU_GOVERNOR}" "power_profile"
-  _add_field "Features         " "${features_display}" "features"
+  _add_field "Shell            " "$(_wiz_fmt "$SHELL_TYPE")" "shell"
+  _add_field "Power profile    " "$(_wiz_fmt "$CPU_GOVERNOR")" "power_profile"
+  _add_field "Features         " "$(_wiz_fmt "$features_display")" "features"
 
   # --- SSH ---
   _add_section "SSH"
-  _add_field "SSH Key          " "${ssh_display}" "ssh_key"
+  _add_field "SSH Key          " "$(_wiz_fmt "$ssh_display")" "ssh_key"
 
   # Store total field count
   _WIZ_FIELD_COUNT=$field_idx
@@ -603,7 +628,7 @@ _edit_shell() {
     --item.foreground "$HEX_WHITE" \
     --no-show-help)
 
-  [[ -n $selected ]] && DEFAULT_SHELL="$selected"
+  [[ -n $selected ]] && SHELL_TYPE="$selected"
 }
 
 _edit_power_profile() {
@@ -689,71 +714,6 @@ _edit_ssh_key() {
 }
 
 # =============================================================================
-# Initialize defaults
-# =============================================================================
-
-_init_default_config() {
-  # Basic settings (from env DEFAULT_* only)
-  [[ -z $PVE_HOSTNAME ]] && PVE_HOSTNAME="$DEFAULT_HOSTNAME"
-  [[ -z $DOMAIN_SUFFIX ]] && DOMAIN_SUFFIX="$DEFAULT_DOMAIN"
-  [[ -z $EMAIL ]] && EMAIL="$DEFAULT_EMAIL"
-  [[ -z $TIMEZONE ]] && TIMEZONE="$DEFAULT_TIMEZONE"
-
-  # Password - auto-generate if not set
-  if [[ -z $NEW_ROOT_PASSWORD ]]; then
-    NEW_ROOT_PASSWORD=$(generate_password "$DEFAULT_PASSWORD_LENGTH")
-    PASSWORD_GENERATED="yes"
-  fi
-
-  # Network
-  [[ -z $BRIDGE_MODE ]] && BRIDGE_MODE="$DEFAULT_BRIDGE_MODE"
-  [[ -z $PRIVATE_SUBNET ]] && PRIVATE_SUBNET="$DEFAULT_SUBNET"
-  [[ -z $IPV6_MODE ]] && IPV6_MODE="$DEFAULT_IPV6_MODE"
-  [[ -z $IPV6_GATEWAY ]] && IPV6_GATEWAY="$DEFAULT_IPV6_GATEWAY"
-
-  # Calculate private network values
-  if [[ $BRIDGE_MODE == "internal" || $BRIDGE_MODE == "both" ]]; then
-    PRIVATE_CIDR=$(echo "$PRIVATE_SUBNET" | cut -d'/' -f1 | rev | cut -d'.' -f2- | rev)
-    PRIVATE_IP="${PRIVATE_CIDR}.1"
-    SUBNET_MASK=$(echo "$PRIVATE_SUBNET" | cut -d'/' -f2)
-    PRIVATE_IP_CIDR="${PRIVATE_IP}/${SUBNET_MASK}"
-  fi
-
-  # Storage - set default based on drive count
-  if [[ -z $ZFS_RAID ]]; then
-    if [[ ${DRIVE_COUNT:-0} -ge 2 ]]; then
-      ZFS_RAID="raid1"
-    else
-      ZFS_RAID="single"
-    fi
-  fi
-
-  # Proxmox
-  [[ -z $PVE_REPO_TYPE ]] && PVE_REPO_TYPE="$DEFAULT_REPO_TYPE"
-
-  # SSL
-  [[ -z $SSL_TYPE ]] && SSL_TYPE="$DEFAULT_SSL_TYPE"
-
-  # Tailscale
-  [[ -z $INSTALL_TAILSCALE ]] && INSTALL_TAILSCALE="no"
-
-  # Optional features
-  [[ -z $DEFAULT_SHELL ]] && DEFAULT_SHELL="$DEFAULT_SHELL_TYPE"
-  [[ -z $CPU_GOVERNOR ]] && CPU_GOVERNOR="$DEFAULT_CPU_GOVERNOR"
-  [[ -z $INSTALL_VNSTAT ]] && INSTALL_VNSTAT="yes"
-  [[ -z $INSTALL_UNATTENDED_UPGRADES ]] && INSTALL_UNATTENDED_UPGRADES="yes"
-  [[ -z $INSTALL_AUDITD ]] && INSTALL_AUDITD="no"
-
-  # SSH key - try to detect from rescue system
-  if [[ -z $SSH_PUBLIC_KEY ]]; then
-    SSH_PUBLIC_KEY=$(get_rescue_ssh_key 2>/dev/null || true)
-  fi
-
-  # Calculate FQDN
-  FQDN="${PVE_HOSTNAME}.${DOMAIN_SUFFIX}"
-}
-
-# =============================================================================
 # Main wizard entry point
 # =============================================================================
 
@@ -761,9 +721,6 @@ show_gum_config_editor() {
   # Initialize network detection silently (output suppressed)
   detect_network_interface >/dev/null 2>&1
   collect_network_info >/dev/null 2>&1
-
-  # Initialize default configuration values
-  _init_default_config
 
   # Hide cursor during wizard, restore on exit
   _wiz_hide_cursor

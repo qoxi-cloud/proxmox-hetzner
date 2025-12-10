@@ -34,7 +34,7 @@ HEX_WHITE="#ffffff"
 MENU_BOX_WIDTH=60
 
 # Version (MAJOR only - MINOR.PATCH added by CI from git tags/commits)
-VERSION="1"
+VERSION="2"
 
 # =============================================================================
 # Configuration constants
@@ -94,11 +94,6 @@ DNS_LOOKUP_TIMEOUT=5
 # Retry delays (seconds)
 DNS_RETRY_DELAY=10
 
-# Default configuration values (can be overridden via environment variables)
-DEFAULT_HOSTNAME="${DEFAULT_HOSTNAME:-}"
-DEFAULT_DOMAIN="${DEFAULT_DOMAIN:-}"
-DEFAULT_TIMEZONE="${DEFAULT_TIMEZONE:-}"
-DEFAULT_EMAIL="${DEFAULT_EMAIL:-}"
 
 # All standard Debian/Linux timezones (used in interactive wizard)
 # shellcheck disable=SC2034
@@ -522,13 +517,6 @@ Pacific/Tongatapu
 Pacific/Wake
 Pacific/Wallis
 UTC"
-DEFAULT_BRIDGE_MODE="${DEFAULT_BRIDGE_MODE:-}"
-DEFAULT_SUBNET="${DEFAULT_SUBNET:-}"
-DEFAULT_BRIDGE_MTU="${DEFAULT_BRIDGE_MTU:-}"
-DEFAULT_SHELL_TYPE="${DEFAULT_SHELL_TYPE:-}"
-DEFAULT_REPO_TYPE="${DEFAULT_REPO_TYPE:-}"
-DEFAULT_SSL_TYPE="${DEFAULT_SSL_TYPE:-}"
-DEFAULT_CPU_GOVERNOR="${DEFAULT_CPU_GOVERNOR:-}"
 
 # =============================================================================
 # Wizard menu option lists (WIZ_ prefix to avoid conflicts)
@@ -579,14 +567,6 @@ conservative"
 # shellcheck disable=SC2034
 readonly WIZ_OPTIONAL_FEATURES="vnstat (network stats)
 auditd (audit logging)"
-
-# IPv6 configuration defaults (can be overridden via environment variables)
-# IPV6_MODE: auto (detect from interface), manual (user-specified), disabled
-DEFAULT_IPV6_MODE="${DEFAULT_IPV6_MODE:-}"
-# Default gateway for IPv6 (fe80::1 is standard for Hetzner)
-DEFAULT_IPV6_GATEWAY="${DEFAULT_IPV6_GATEWAY:-}"
-# VM subnet prefix length (80 allows 65536 /96 subnets within a /64)
-DEFAULT_IPV6_VM_PREFIX="${DEFAULT_IPV6_VM_PREFIX:-}"
 
 # System utilities to install on Proxmox
 SYSTEM_UTILITIES="btop iotop ncdu tmux pigz smartmontools jq bat fastfetch"
