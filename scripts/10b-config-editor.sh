@@ -391,7 +391,7 @@ _edit_timezone() {
   _show_input_footer "filter" 6
 
   local selected
-  selected=$(echo "$TIMEZONES" | gum filter \
+  selected=$(echo "$WIZ_TIMEZONES" | gum filter \
     --placeholder "Type to search..." \
     --indicator "›" \
     --height 5 \
@@ -415,7 +415,7 @@ _edit_repository() {
   _show_input_footer "filter" 4
 
   local selected
-  selected=$(echo "$REPO_TYPES" | gum choose \
+  selected=$(echo "$WIZ_REPO_TYPES" | gum choose \
     --header="Repository:" \
     --header.foreground "$HEX_CYAN" \
     --cursor "› " \
@@ -446,7 +446,7 @@ _edit_bridge_mode() {
   _show_input_footer "filter" 4
 
   local selected
-  selected=$(echo "$BRIDGE_MODES" | gum choose \
+  selected=$(echo "$WIZ_BRIDGE_MODES" | gum choose \
     --header="Bridge mode:" \
     --header.foreground "$HEX_CYAN" \
     --cursor "› " \
@@ -495,7 +495,7 @@ _edit_ipv6() {
   _show_input_footer "filter" 4
 
   local selected
-  selected=$(echo "$IPV6_MODES" | gum choose \
+  selected=$(echo "$WIZ_IPV6_MODES" | gum choose \
     --header="IPv6:" \
     --header.foreground "$HEX_CYAN" \
     --cursor "› " \
@@ -513,7 +513,7 @@ _edit_zfs_mode() {
   echo ""
 
   # Start with base ZFS modes, add more based on drive count
-  local options="$ZFS_MODES"
+  local options="$WIZ_ZFS_MODES"
   if [[ ${DRIVE_COUNT:-0} -ge 3 ]]; then
     options+="\nraid5"
   fi
@@ -573,7 +573,7 @@ _edit_ssl() {
   _show_input_footer "filter" 3
 
   local selected
-  selected=$(echo "$SSL_TYPES" | gum choose \
+  selected=$(echo "$WIZ_SSL_TYPES" | gum choose \
     --header="SSL Certificate:" \
     --header.foreground "$HEX_CYAN" \
     --cursor "› " \
@@ -594,7 +594,7 @@ _edit_shell() {
   _show_input_footer "filter" 3
 
   local selected
-  selected=$(echo "$SHELL_OPTIONS" | gum choose \
+  selected=$(echo "$WIZ_SHELL_OPTIONS" | gum choose \
     --header="Shell:" \
     --header.foreground "$HEX_CYAN" \
     --cursor "› " \
@@ -615,7 +615,7 @@ _edit_power_profile() {
   _show_input_footer "filter" 6
 
   local selected
-  selected=$(echo "$CPU_GOVERNORS" | gum choose \
+  selected=$(echo "$WIZ_CPU_GOVERNORS" | gum choose \
     --header="Power profile:" \
     --header.foreground "$HEX_CYAN" \
     --cursor "› " \
@@ -637,7 +637,7 @@ _edit_features() {
 
   # Use gum choose with --no-limit for multi-select
   local selected
-  selected=$(echo "$OPTIONAL_FEATURES" | gum choose \
+  selected=$(echo "$WIZ_OPTIONAL_FEATURES" | gum choose \
     --no-limit \
     --header="Features:" \
     --header.foreground "$HEX_CYAN" \

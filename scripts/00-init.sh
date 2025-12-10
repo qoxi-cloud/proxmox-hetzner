@@ -100,9 +100,9 @@ DEFAULT_DOMAIN="local"
 DEFAULT_TIMEZONE="Europe/Kyiv"
 DEFAULT_EMAIL="admin@example.com"
 
-# All standard Debian/Linux timezones (used in interactive menu)
+# All standard Debian/Linux timezones (used in interactive wizard)
 # shellcheck disable=SC2034
-readonly TIMEZONES="Africa/Abidjan
+readonly WIZ_TIMEZONES="Africa/Abidjan
 Africa/Accra
 Africa/Addis_Ababa
 Africa/Algiers
@@ -534,53 +534,53 @@ DEFAULT_SSL_TYPE="self-signed"
 DEFAULT_CPU_GOVERNOR="performance"
 
 # =============================================================================
-# Menu option lists (used in interactive wizard)
+# Wizard menu option lists (WIZ_ prefix to avoid conflicts)
 # =============================================================================
 
 # Proxmox repository types
 # shellcheck disable=SC2034
-readonly REPO_TYPES="no-subscription
+readonly WIZ_REPO_TYPES="no-subscription
 enterprise
 test"
 
 # Network bridge modes
 # shellcheck disable=SC2034
-readonly BRIDGE_MODES="external
+readonly WIZ_BRIDGE_MODES="external
 internal
 both"
 
 # IPv6 configuration modes
 # shellcheck disable=SC2034
-readonly IPV6_MODES="auto
+readonly WIZ_IPV6_MODES="auto
 manual
 disabled"
 
 # ZFS RAID levels (base options, raid5/raid10 added dynamically based on drive count)
 # shellcheck disable=SC2034
-readonly ZFS_MODES="single
+readonly WIZ_ZFS_MODES="single
 raid1"
 
 # SSL certificate types
 # shellcheck disable=SC2034
-readonly SSL_TYPES="self-signed
+readonly WIZ_SSL_TYPES="self-signed
 letsencrypt"
 
 # Shell options
 # shellcheck disable=SC2034
-readonly SHELL_OPTIONS="zsh
+readonly WIZ_SHELL_OPTIONS="zsh
 bash"
 
 # CPU governor / power profile options
 # shellcheck disable=SC2034
-readonly CPU_GOVERNORS="performance
+readonly WIZ_CPU_GOVERNORS="performance
 ondemand
 powersave
 schedutil
 conservative"
 
-# Optional features (format: "id|description")
+# Optional features
 # shellcheck disable=SC2034
-readonly OPTIONAL_FEATURES="vnstat (network stats)
+readonly WIZ_OPTIONAL_FEATURES="vnstat (network stats)
 auditd (audit logging)"
 
 # IPv6 configuration defaults
