@@ -18,7 +18,7 @@ HEX_HETZNER="#d70000"
 HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 MENU_BOX_WIDTH=60
-VERSION="2.0.61-pr.21"
+VERSION="2.0.62-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -2403,6 +2403,7 @@ selected=$(echo "$WIZ_REPO_TYPES"|gum choose \
 --header="Repository:" \
 --header.foreground "$HEX_CYAN" \
 --cursor "$CLR_ORANGE›$CLR_RESET " \
+--selected.foreground "" \
 --no-show-help)
 [[ -n $selected ]]&&PVE_REPO_TYPE="$selected"
 }
@@ -2424,6 +2425,7 @@ selected=$(echo "$WIZ_BRIDGE_MODES"|gum choose \
 --header="Bridge mode:" \
 --header.foreground "$HEX_CYAN" \
 --cursor "$CLR_ORANGE›$CLR_RESET " \
+--selected.foreground "" \
 --no-show-help)
 [[ -n $selected ]]&&BRIDGE_MODE="$selected"
 }
@@ -2462,6 +2464,7 @@ selected=$(echo "$WIZ_IPV6_MODES"|gum choose \
 --header="IPv6:" \
 --header.foreground "$HEX_CYAN" \
 --cursor "$CLR_ORANGE›$CLR_RESET " \
+--selected.foreground "" \
 --no-show-help)
 [[ -n $selected ]]&&IPV6_MODE="$selected"
 }
@@ -2485,6 +2488,7 @@ selected=$(echo -e "$options"|gum choose \
 --header="ZFS mode:" \
 --header.foreground "$HEX_CYAN" \
 --cursor "$CLR_ORANGE›$CLR_RESET " \
+--selected.foreground "" \
 --no-show-help)
 [[ -n $selected ]]&&ZFS_RAID="$selected"
 }
@@ -2498,6 +2502,7 @@ selected=$(echo -e "Disabled\nEnabled"|gum choose \
 --header="Tailscale:" \
 --header.foreground "$HEX_CYAN" \
 --cursor "$CLR_ORANGE›$CLR_RESET " \
+--selected.foreground "" \
 --no-show-help)
 case "$selected" in
 Enabled)INSTALL_TAILSCALE="yes";;
@@ -2514,6 +2519,7 @@ selected=$(echo "$WIZ_SSL_TYPES"|gum choose \
 --header="SSL Certificate:" \
 --header.foreground "$HEX_CYAN" \
 --cursor "$CLR_ORANGE›$CLR_RESET " \
+--selected.foreground "" \
 --no-show-help)
 [[ -n $selected ]]&&SSL_TYPE="$selected"
 }
@@ -2527,6 +2533,7 @@ selected=$(echo "$WIZ_SHELL_OPTIONS"|gum choose \
 --header="Shell:" \
 --header.foreground "$HEX_CYAN" \
 --cursor "$CLR_ORANGE›$CLR_RESET " \
+--selected.foreground "" \
 --no-show-help)
 [[ -n $selected ]]&&SHELL_TYPE="$selected"
 }
@@ -2540,6 +2547,7 @@ selected=$(echo "$WIZ_CPU_GOVERNORS"|gum choose \
 --header="Power profile:" \
 --header.foreground "$HEX_CYAN" \
 --cursor "$CLR_ORANGE›$CLR_RESET " \
+--selected.foreground "" \
 --no-show-help)
 [[ -n $selected ]]&&CPU_GOVERNOR="$selected"
 }
@@ -2554,6 +2562,7 @@ selected=$(echo "$WIZ_OPTIONAL_FEATURES"|gum choose \
 --header="Features:" \
 --header.foreground "$HEX_CYAN" \
 --cursor "$CLR_ORANGE›$CLR_RESET " \
+--selected.foreground "" \
 --no-show-help)
 INSTALL_VNSTAT="no"
 INSTALL_AUDITD="no"
