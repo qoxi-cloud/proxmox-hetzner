@@ -443,9 +443,7 @@ _edit_repository() {
   selected=$(echo "$WIZ_REPO_TYPES" | gum choose \
     --header="Repository:" \
     --header.foreground "$HEX_CYAN" \
-    --cursor "› " \
-    --cursor.foreground "$HEX_ORANGE" \
-    --selected.foreground "$HEX_WHITE" \
+    --cursor "${CLR_ORANGE}›${CLR_RESET} " \
     --no-show-help)
 
   [[ -n $selected ]] && PVE_REPO_TYPE="$selected"
@@ -473,9 +471,7 @@ _edit_bridge_mode() {
   selected=$(echo "$WIZ_BRIDGE_MODES" | gum choose \
     --header="Bridge mode:" \
     --header.foreground "$HEX_CYAN" \
-    --cursor "› " \
-    --cursor.foreground "$HEX_ORANGE" \
-    --selected.foreground "$HEX_WHITE" \
+    --cursor "${CLR_ORANGE}›${CLR_RESET} " \
     --no-show-help)
 
   [[ -n $selected ]] && BRIDGE_MODE="$selected"
@@ -521,9 +517,7 @@ _edit_ipv6() {
   selected=$(echo "$WIZ_IPV6_MODES" | gum choose \
     --header="IPv6:" \
     --header.foreground "$HEX_CYAN" \
-    --cursor "› " \
-    --cursor.foreground "$HEX_ORANGE" \
-    --selected.foreground "$HEX_WHITE" \
+    --cursor "${CLR_ORANGE}›${CLR_RESET} " \
     --no-show-help)
 
   [[ -n $selected ]] && IPV6_MODE="$selected"
@@ -553,9 +547,7 @@ _edit_zfs_mode() {
   selected=$(echo -e "$options" | gum choose \
     --header="ZFS mode:" \
     --header.foreground "$HEX_CYAN" \
-    --cursor "› " \
-    --cursor.foreground "$HEX_ORANGE" \
-    --selected.foreground "$HEX_WHITE" \
+    --cursor "${CLR_ORANGE}›${CLR_RESET} " \
     --no-show-help)
 
   [[ -n $selected ]] && ZFS_RAID="$selected"
@@ -573,9 +565,7 @@ _edit_tailscale() {
   selected=$(echo -e "Disabled\nEnabled" | gum choose \
     --header="Tailscale:" \
     --header.foreground "$HEX_CYAN" \
-    --cursor "› " \
-    --cursor.foreground "$HEX_ORANGE" \
-    --selected.foreground "$HEX_WHITE" \
+    --cursor "${CLR_ORANGE}›${CLR_RESET} " \
     --no-show-help)
 
   case "$selected" in
@@ -596,9 +586,7 @@ _edit_ssl() {
   selected=$(echo "$WIZ_SSL_TYPES" | gum choose \
     --header="SSL Certificate:" \
     --header.foreground "$HEX_CYAN" \
-    --cursor "› " \
-    --cursor.foreground "$HEX_ORANGE" \
-    --selected.foreground "$HEX_WHITE" \
+    --cursor "${CLR_ORANGE}›${CLR_RESET} " \
     --no-show-help)
 
   [[ -n $selected ]] && SSL_TYPE="$selected"
@@ -616,9 +604,7 @@ _edit_shell() {
   selected=$(echo "$WIZ_SHELL_OPTIONS" | gum choose \
     --header="Shell:" \
     --header.foreground "$HEX_CYAN" \
-    --cursor "› " \
-    --cursor.foreground "$HEX_ORANGE" \
-    --selected.foreground "$HEX_WHITE" \
+    --cursor "${CLR_ORANGE}›${CLR_RESET} " \
     --no-show-help)
 
   [[ -n $selected ]] && SHELL_TYPE="$selected"
@@ -636,9 +622,7 @@ _edit_power_profile() {
   selected=$(echo "$WIZ_CPU_GOVERNORS" | gum choose \
     --header="Power profile:" \
     --header.foreground "$HEX_CYAN" \
-    --cursor "› " \
-    --cursor.foreground "$HEX_ORANGE" \
-    --selected.foreground "$HEX_WHITE" \
+    --cursor "${CLR_ORANGE}›${CLR_RESET} " \
     --no-show-help)
 
   [[ -n $selected ]] && CPU_GOVERNOR="$selected"
@@ -658,9 +642,7 @@ _edit_features() {
     --no-limit \
     --header="Features:" \
     --header.foreground "$HEX_CYAN" \
-    --cursor "› " \
-    --cursor.foreground "$HEX_ORANGE" \
-    --selected.foreground "$HEX_WHITE" \
+    --cursor "${CLR_ORANGE}›${CLR_RESET} " \
     --no-show-help)
 
   # Parse selection
