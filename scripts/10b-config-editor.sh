@@ -228,15 +228,14 @@ _wizard_main() {
 # Edit screen helpers
 # =============================================================================
 
-# Display footer with key hints for input screens at bottom of terminal
+# Display footer with key hints below current cursor position
+# Prints footer on next line, then moves cursor back up for input field
 _show_input_footer() {
-  local rows
-  rows=$(tput lines)
-  # Save cursor position, move to bottom, print footer, restore cursor
-  tput sc
-  tput cup $((rows - 2)) 0
+  # Print empty line for input field, then footer
+  echo ""
   echo -e "${CLR_GRAY}[${CLR_ORANGE}Enter${CLR_GRAY}] confirm  [${CLR_ORANGE}Esc${CLR_GRAY}] cancel${CLR_RESET}"
-  tput rc
+  # Move cursor up 2 lines (back to where input should be)
+  tput cuu 2
 }
 
 # =============================================================================
