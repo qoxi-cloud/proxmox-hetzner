@@ -18,7 +18,7 @@ HEX_HETZNER="#d70000"
 HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 MENU_BOX_WIDTH=60
-VERSION="1.18.49-pr.21"
+VERSION="1.18.50-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -2426,10 +2426,11 @@ echo ""
 local options="no-subscription
 enterprise
 test"
-_show_input_footer "filter" 3
+_show_input_footer "filter" 4
 local selected
 selected=$(echo "$options"|gum choose \
---header="" \
+--header="Repository:" \
+--header.foreground "$HEX_CYAN" \
 --cursor "› " \
 --cursor.foreground "$HEX_ORANGE" \
 --selected.foreground "$HEX_WHITE" \
@@ -2452,10 +2453,11 @@ echo ""
 local options="external
 internal
 both"
-_show_input_footer "filter" 3
+_show_input_footer "filter" 4
 local selected
 selected=$(echo "$options"|gum choose \
---header="" \
+--header="Bridge mode:" \
+--header.foreground "$HEX_CYAN" \
 --cursor "› " \
 --cursor.foreground "$HEX_ORANGE" \
 --selected.foreground "$HEX_WHITE" \
@@ -2495,10 +2497,11 @@ echo ""
 local options="auto
 manual
 disabled"
-_show_input_footer "filter" 3
+_show_input_footer "filter" 4
 local selected
 selected=$(echo "$options"|gum choose \
---header="" \
+--header="IPv6:" \
+--header.foreground "$HEX_CYAN" \
 --cursor "› " \
 --cursor.foreground "$HEX_ORANGE" \
 --selected.foreground "$HEX_WHITE" \
@@ -2518,13 +2521,14 @@ fi
 if [[ ${DRIVE_COUNT:-0} -ge 4 ]];then
 options+="\nraid10"
 fi
-local item_count=2
-[[ ${DRIVE_COUNT:-0} -ge 3 ]]&&item_count=3
-[[ ${DRIVE_COUNT:-0} -ge 4 ]]&&item_count=4
+local item_count=3
+[[ ${DRIVE_COUNT:-0} -ge 3 ]]&&item_count=4
+[[ ${DRIVE_COUNT:-0} -ge 4 ]]&&item_count=5
 _show_input_footer "filter" "$item_count"
 local selected
 selected=$(echo -e "$options"|gum choose \
---header="" \
+--header="ZFS mode:" \
+--header.foreground "$HEX_CYAN" \
 --cursor "› " \
 --cursor.foreground "$HEX_ORANGE" \
 --selected.foreground "$HEX_WHITE" \
@@ -2538,10 +2542,11 @@ show_banner
 echo ""
 local options="Disabled
 Enabled"
-_show_input_footer "filter" 2
+_show_input_footer "filter" 3
 local selected
 selected=$(echo "$options"|gum choose \
---header="" \
+--header="Tailscale:" \
+--header.foreground "$HEX_CYAN" \
 --cursor "› " \
 --cursor.foreground "$HEX_ORANGE" \
 --selected.foreground "$HEX_WHITE" \
@@ -2558,10 +2563,11 @@ show_banner
 echo ""
 local options="self-signed
 letsencrypt"
-_show_input_footer "filter" 2
+_show_input_footer "filter" 3
 local selected
 selected=$(echo "$options"|gum choose \
---header="" \
+--header="SSL Certificate:" \
+--header.foreground "$HEX_CYAN" \
 --cursor "› " \
 --cursor.foreground "$HEX_ORANGE" \
 --selected.foreground "$HEX_WHITE" \
@@ -2575,10 +2581,11 @@ show_banner
 echo ""
 local options="zsh
 bash"
-_show_input_footer "filter" 2
+_show_input_footer "filter" 3
 local selected
 selected=$(echo "$options"|gum choose \
---header="" \
+--header="Shell:" \
+--header.foreground "$HEX_CYAN" \
 --cursor "› " \
 --cursor.foreground "$HEX_ORANGE" \
 --selected.foreground "$HEX_WHITE" \
@@ -2595,10 +2602,11 @@ ondemand
 powersave
 schedutil
 conservative"
-_show_input_footer "filter" 5
+_show_input_footer "filter" 6
 local selected
 selected=$(echo "$options"|gum choose \
---header="" \
+--header="Power profile:" \
+--header.foreground "$HEX_CYAN" \
 --cursor "› " \
 --cursor.foreground "$HEX_ORANGE" \
 --selected.foreground "$HEX_WHITE" \
@@ -2610,11 +2618,12 @@ _edit_features(){
 clear
 show_banner
 echo ""
-_show_input_footer "checkbox" 2
+_show_input_footer "checkbox" 3
 local selected
 selected=$(echo -e "vnstat (network stats)\nauditd (audit logging)"|gum choose \
 --no-limit \
---header="" \
+--header="Features:" \
+--header.foreground "$HEX_CYAN" \
 --cursor "› " \
 --cursor.foreground "$HEX_ORANGE" \
 --selected.foreground "$HEX_WHITE" \
