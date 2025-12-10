@@ -18,7 +18,7 @@ HEX_HETZNER="#d70000"
 HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 MENU_BOX_WIDTH=60
-VERSION="1.18.37-pr.21"
+VERSION="1.18.38-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -1859,12 +1859,15 @@ _wiz_hide_cursor
 esac
 done
 }
+_show_input_footer(){
+echo -e "$CLR_GRAY[${CLR_ORANGE}Enter$CLR_GRAY] confirm  [${CLR_ORANGE}Esc$CLR_GRAY] cancel$CLR_RESET"
+echo ""
+}
 _edit_hostname(){
 clear
 show_banner
 echo ""
-echo -e "$CLR_GRAY[${CLR_ORANGE}Enter$CLR_GRAY] confirm  [${CLR_ORANGE}Esc$CLR_GRAY] cancel$CLR_RESET"
-echo ""
+_show_input_footer
 local new_hostname
 new_hostname=$(gum input \
 --placeholder "e.g., pve, proxmox, node1" \
@@ -1872,7 +1875,8 @@ new_hostname=$(gum input \
 --prompt "Hostname: " \
 --prompt.foreground "$HEX_CYAN" \
 --cursor.foreground "$HEX_ORANGE" \
---width 40)
+--width 40 \
+--no-show-help)
 if [[ -n $new_hostname ]];then
 if validate_hostname "$new_hostname";then
 PVE_HOSTNAME="$new_hostname"
@@ -1886,8 +1890,7 @@ fi
 clear
 show_banner
 echo ""
-echo -e "$CLR_GRAY[${CLR_ORANGE}Enter$CLR_GRAY] confirm  [${CLR_ORANGE}Esc$CLR_GRAY] cancel$CLR_RESET"
-echo ""
+_show_input_footer
 local new_domain
 new_domain=$(gum input \
 --placeholder "e.g., local, example.com" \
@@ -1895,7 +1898,8 @@ new_domain=$(gum input \
 --prompt "Domain: " \
 --prompt.foreground "$HEX_CYAN" \
 --cursor.foreground "$HEX_ORANGE" \
---width 40)
+--width 40 \
+--no-show-help)
 if [[ -n $new_domain ]];then
 DOMAIN_SUFFIX="$new_domain"
 fi
