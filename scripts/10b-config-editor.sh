@@ -444,6 +444,7 @@ _edit_repository() {
     --header="Repository:" \
     --header.foreground "$HEX_CYAN" \
     --cursor "${CLR_ORANGE}›${CLR_RESET} " \
+    --selected.foreground "" \
     --no-show-help)
 
   [[ -n $selected ]] && PVE_REPO_TYPE="$selected"
@@ -472,6 +473,7 @@ _edit_bridge_mode() {
     --header="Bridge mode:" \
     --header.foreground "$HEX_CYAN" \
     --cursor "${CLR_ORANGE}›${CLR_RESET} " \
+    --selected.foreground "" \
     --no-show-help)
 
   [[ -n $selected ]] && BRIDGE_MODE="$selected"
@@ -518,6 +520,7 @@ _edit_ipv6() {
     --header="IPv6:" \
     --header.foreground "$HEX_CYAN" \
     --cursor "${CLR_ORANGE}›${CLR_RESET} " \
+    --selected.foreground "" \
     --no-show-help)
 
   [[ -n $selected ]] && IPV6_MODE="$selected"
@@ -548,6 +551,7 @@ _edit_zfs_mode() {
     --header="ZFS mode:" \
     --header.foreground "$HEX_CYAN" \
     --cursor "${CLR_ORANGE}›${CLR_RESET} " \
+    --selected.foreground "" \
     --no-show-help)
 
   [[ -n $selected ]] && ZFS_RAID="$selected"
@@ -566,6 +570,7 @@ _edit_tailscale() {
     --header="Tailscale:" \
     --header.foreground "$HEX_CYAN" \
     --cursor "${CLR_ORANGE}›${CLR_RESET} " \
+    --selected.foreground "" \
     --no-show-help)
 
   case "$selected" in
@@ -587,6 +592,7 @@ _edit_ssl() {
     --header="SSL Certificate:" \
     --header.foreground "$HEX_CYAN" \
     --cursor "${CLR_ORANGE}›${CLR_RESET} " \
+    --selected.foreground "" \
     --no-show-help)
 
   [[ -n $selected ]] && SSL_TYPE="$selected"
@@ -605,6 +611,7 @@ _edit_shell() {
     --header="Shell:" \
     --header.foreground "$HEX_CYAN" \
     --cursor "${CLR_ORANGE}›${CLR_RESET} " \
+    --selected.foreground "" \
     --no-show-help)
 
   [[ -n $selected ]] && SHELL_TYPE="$selected"
@@ -623,6 +630,7 @@ _edit_power_profile() {
     --header="Power profile:" \
     --header.foreground "$HEX_CYAN" \
     --cursor "${CLR_ORANGE}›${CLR_RESET} " \
+    --selected.foreground "" \
     --no-show-help)
 
   [[ -n $selected ]] && CPU_GOVERNOR="$selected"
@@ -643,6 +651,7 @@ _edit_features() {
     --header="Features:" \
     --header.foreground "$HEX_CYAN" \
     --cursor "${CLR_ORANGE}›${CLR_RESET} " \
+    --selected.foreground "" \
     --no-show-help)
 
   # Parse selection
