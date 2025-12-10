@@ -242,7 +242,9 @@ _edit_hostname() {
   clear
   show_banner
   echo ""
+  # Print footer first, then move cursor up for input field
   _show_input_footer
+  printf '\033[2A'  # Move cursor up 2 lines (above footer)
 
   local new_hostname
   new_hostname=$(gum input \
@@ -259,6 +261,7 @@ _edit_hostname() {
       PVE_HOSTNAME="$new_hostname"
     else
       echo ""
+      echo ""
       gum style --foreground "$HEX_RED" "Invalid hostname format"
       sleep 1
       return
@@ -270,6 +273,7 @@ _edit_hostname() {
   show_banner
   echo ""
   _show_input_footer
+  printf '\033[2A'
 
   local new_domain
   new_domain=$(gum input \
