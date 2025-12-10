@@ -18,7 +18,7 @@ HEX_HETZNER="#d70000"
 HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 MENU_BOX_WIDTH=60
-VERSION="1.18.55-pr.21"
+VERSION="2.0.57-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -49,10 +49,6 @@ DEFAULT_PASSWORD_LENGTH=16
 QEMU_MIN_RAM_RESERVE=2048
 DNS_LOOKUP_TIMEOUT=5
 DNS_RETRY_DELAY=10
-DEFAULT_HOSTNAME="${DEFAULT_HOSTNAME:-}"
-DEFAULT_DOMAIN="${DEFAULT_DOMAIN:-}"
-DEFAULT_TIMEZONE="${DEFAULT_TIMEZONE:-}"
-DEFAULT_EMAIL="${DEFAULT_EMAIL:-}"
 readonly WIZ_TIMEZONES="Africa/Abidjan
 Africa/Accra
 Africa/Addis_Ababa
@@ -473,13 +469,6 @@ Pacific/Tongatapu
 Pacific/Wake
 Pacific/Wallis
 UTC"
-DEFAULT_BRIDGE_MODE="${DEFAULT_BRIDGE_MODE:-}"
-DEFAULT_SUBNET="${DEFAULT_SUBNET:-}"
-DEFAULT_BRIDGE_MTU="${DEFAULT_BRIDGE_MTU:-}"
-DEFAULT_SHELL_TYPE="${DEFAULT_SHELL_TYPE:-}"
-DEFAULT_REPO_TYPE="${DEFAULT_REPO_TYPE:-}"
-DEFAULT_SSL_TYPE="${DEFAULT_SSL_TYPE:-}"
-DEFAULT_CPU_GOVERNOR="${DEFAULT_CPU_GOVERNOR:-}"
 readonly WIZ_REPO_TYPES="no-subscription
 enterprise
 test"
@@ -502,9 +491,6 @@ schedutil
 conservative"
 readonly WIZ_OPTIONAL_FEATURES="vnstat (network stats)
 auditd (audit logging)"
-DEFAULT_IPV6_MODE="${DEFAULT_IPV6_MODE:-}"
-DEFAULT_IPV6_GATEWAY="${DEFAULT_IPV6_GATEWAY:-}"
-DEFAULT_IPV6_VM_PREFIX="${DEFAULT_IPV6_VM_PREFIX:-}"
 SYSTEM_UTILITIES="btop iotop ncdu tmux pigz smartmontools jq bat fastfetch"
 OPTIONAL_PACKAGES="libguestfs-tools"
 LOG_FILE="/root/pve-install-$(date +%Y%m%d-%H%M%S).log"
@@ -875,13 +861,13 @@ apply_template_vars "$file" \
 "MAIN_IPV4_GW=${MAIN_IPV4_GW:-}" \
 "MAIN_IPV6=${MAIN_IPV6:-}" \
 "FIRST_IPV6_CIDR=${FIRST_IPV6_CIDR:-}" \
-"IPV6_GATEWAY=${IPV6_GATEWAY:-${DEFAULT_IPV6_GATEWAY:-fe80::1}}" \
+"IPV6_GATEWAY=${IPV6_GATEWAY:-fe80::1}" \
 "FQDN=${FQDN:-}" \
 "HOSTNAME=${PVE_HOSTNAME:-}" \
 "INTERFACE_NAME=${INTERFACE_NAME:-}" \
 "PRIVATE_IP_CIDR=${PRIVATE_IP_CIDR:-}" \
 "PRIVATE_SUBNET=${PRIVATE_SUBNET:-}" \
-"BRIDGE_MTU=${DEFAULT_BRIDGE_MTU:-9000}" \
+"BRIDGE_MTU=${BRIDGE_MTU:-9000}" \
 "DNS_PRIMARY=${DNS_PRIMARY:-1.1.1.1}" \
 "DNS_SECONDARY=${DNS_SECONDARY:-1.0.0.1}" \
 "DNS_TERTIARY=${DNS_TERTIARY:-8.8.8.8}" \
@@ -2123,6 +2109,15 @@ fi
 }
 _wiz_hide_cursor(){ printf '\033[?25l';}
 _wiz_show_cursor(){ printf '\033[?25h';}
+_wiz_fmt(){
+local value="$1"
+local placeholder="${2:-→ set value}"
+if [[ -n $value ]];then
+echo "$value"
+else
+echo "$CLR_GRAY$placeholder$CLR_RESET"
+fi
+}
 _WIZ_FIELD_COUNT=0
 _WIZ_FIELD_MAP=()
 _wiz_render_menu(){
@@ -2131,26 +2126,36 @@ local output=""
 clear
 show_banner
 echo ""
-local pass_display
+local pass_display=""
+if [[ -n $NEW_ROOT_PASSWORD ]];then
 pass_display=$([[ $PASSWORD_GENERATED == "yes" ]]&&echo "(auto-generated)"||echo "********")
-local ipv6_display
+fi
+local ipv6_display=""
+if [[ -n $IPV6_MODE ]];then
 case "$IPV6_MODE" in
 auto)ipv6_display="Auto";;
 manual)ipv6_display="Manual";;
 disabled)ipv6_display="Disabled";;
 *)ipv6_display="$IPV6_MODE"
 esac
-local tailscale_display
+fi
+local tailscale_display=""
+if [[ -n $INSTALL_TAILSCALE ]];then
 tailscale_display=$([[ $INSTALL_TAILSCALE == "yes" ]]&&echo "Enabled"||echo "Disabled")
+fi
 local features_display=""
+if [[ -n $INSTALL_VNSTAT || -n $INSTALL_AUDITD ]];then
 [[ $INSTALL_VNSTAT == "yes" ]]&&features_display+="vnstat"
 [[ $INSTALL_AUDITD == "yes" ]]&&features_display+="${features_display:+, }auditd"
 [[ -z $features_display ]]&&features_display="none"
-local ssh_display
+fi
+local ssh_display=""
 if [[ -n $SSH_PUBLIC_KEY ]];then
 ssh_display="${SSH_PUBLIC_KEY:0:20}..."
-else
-ssh_display="(not set)"
+fi
+local hostname_display=""
+if [[ -n $PVE_HOSTNAME && -n $DOMAIN_SUFFIX ]];then
+hostname_display="$PVE_HOSTNAME.$DOMAIN_SUFFIX"
 fi
 _WIZ_FIELD_MAP=()
 local field_idx=0
@@ -2170,29 +2175,29 @@ fi
 ((field_idx++))
 }
 _add_section "Basic Settings"
-_add_field "Hostname         " "$PVE_HOSTNAME.$DOMAIN_SUFFIX" "hostname"
-_add_field "Email            " "$EMAIL" "email"
-_add_field "Password         " "$pass_display" "password"
-_add_field "Timezone         " "$TIMEZONE" "timezone"
+_add_field "Hostname         " "$(_wiz_fmt "$hostname_display")" "hostname"
+_add_field "Email            " "$(_wiz_fmt "$EMAIL")" "email"
+_add_field "Password         " "$(_wiz_fmt "$pass_display")" "password"
+_add_field "Timezone         " "$(_wiz_fmt "$TIMEZONE")" "timezone"
 _add_section "Proxmox"
-_add_field "Repository       " "$PVE_REPO_TYPE" "repository"
+_add_field "Repository       " "$(_wiz_fmt "$PVE_REPO_TYPE")" "repository"
 _add_section "Network"
-_add_field "Interface        " "${INTERFACE_NAME:-auto}" "interface"
-_add_field "Bridge mode      " "$BRIDGE_MODE" "bridge_mode"
-_add_field "Private subnet   " "$PRIVATE_SUBNET" "private_subnet"
-_add_field "IPv6             " "$ipv6_display" "ipv6"
+_add_field "Interface        " "$(_wiz_fmt "$INTERFACE_NAME" "→ auto-detect")" "interface"
+_add_field "Bridge mode      " "$(_wiz_fmt "$BRIDGE_MODE")" "bridge_mode"
+_add_field "Private subnet   " "$(_wiz_fmt "$PRIVATE_SUBNET")" "private_subnet"
+_add_field "IPv6             " "$(_wiz_fmt "$ipv6_display")" "ipv6"
 _add_section "Storage"
-_add_field "ZFS mode         " "$ZFS_RAID" "zfs_mode"
+_add_field "ZFS mode         " "$(_wiz_fmt "$ZFS_RAID")" "zfs_mode"
 _add_section "VPN"
-_add_field "Tailscale        " "$tailscale_display" "tailscale"
+_add_field "Tailscale        " "$(_wiz_fmt "$tailscale_display")" "tailscale"
 _add_section "SSL"
-_add_field "Certificate      " "$SSL_TYPE" "ssl"
+_add_field "Certificate      " "$(_wiz_fmt "$SSL_TYPE")" "ssl"
 _add_section "Optional"
-_add_field "Shell            " "$DEFAULT_SHELL" "shell"
-_add_field "Power profile    " "$CPU_GOVERNOR" "power_profile"
-_add_field "Features         " "$features_display" "features"
+_add_field "Shell            " "$(_wiz_fmt "$SHELL_TYPE")" "shell"
+_add_field "Power profile    " "$(_wiz_fmt "$CPU_GOVERNOR")" "power_profile"
+_add_field "Features         " "$(_wiz_fmt "$features_display")" "features"
 _add_section "SSH"
-_add_field "SSH Key          " "$ssh_display" "ssh_key"
+_add_field "SSH Key          " "$(_wiz_fmt "$ssh_display")" "ssh_key"
 _WIZ_FIELD_COUNT=$field_idx
 output+="\n"
 output+="$CLR_GRAY[$CLR_ORANGE↑↓$CLR_GRAY] navigate  [${CLR_ORANGE}Enter$CLR_GRAY] edit  [${CLR_ORANGE}Q$CLR_GRAY] quit$CLR_RESET"
@@ -2544,7 +2549,7 @@ selected=$(echo "$WIZ_SHELL_OPTIONS"|gum choose \
 --selected.foreground "$HEX_WHITE" \
 --item.foreground "$HEX_WHITE" \
 --no-show-help)
-[[ -n $selected ]]&&DEFAULT_SHELL="$selected"
+[[ -n $selected ]]&&SHELL_TYPE="$selected"
 }
 _edit_power_profile(){
 clear
@@ -2613,49 +2618,9 @@ sleep 1
 fi
 fi
 }
-_init_default_config(){
-[[ -z $PVE_HOSTNAME ]]&&PVE_HOSTNAME="$DEFAULT_HOSTNAME"
-[[ -z $DOMAIN_SUFFIX ]]&&DOMAIN_SUFFIX="$DEFAULT_DOMAIN"
-[[ -z $EMAIL ]]&&EMAIL="$DEFAULT_EMAIL"
-[[ -z $TIMEZONE ]]&&TIMEZONE="$DEFAULT_TIMEZONE"
-if [[ -z $NEW_ROOT_PASSWORD ]];then
-NEW_ROOT_PASSWORD=$(generate_password "$DEFAULT_PASSWORD_LENGTH")
-PASSWORD_GENERATED="yes"
-fi
-[[ -z $BRIDGE_MODE ]]&&BRIDGE_MODE="$DEFAULT_BRIDGE_MODE"
-[[ -z $PRIVATE_SUBNET ]]&&PRIVATE_SUBNET="$DEFAULT_SUBNET"
-[[ -z $IPV6_MODE ]]&&IPV6_MODE="$DEFAULT_IPV6_MODE"
-[[ -z $IPV6_GATEWAY ]]&&IPV6_GATEWAY="$DEFAULT_IPV6_GATEWAY"
-if [[ $BRIDGE_MODE == "internal" || $BRIDGE_MODE == "both" ]];then
-PRIVATE_CIDR=$(echo "$PRIVATE_SUBNET"|cut -d'/' -f1|rev|cut -d'.' -f2-|rev)
-PRIVATE_IP="$PRIVATE_CIDR.1"
-SUBNET_MASK=$(echo "$PRIVATE_SUBNET"|cut -d'/' -f2)
-PRIVATE_IP_CIDR="$PRIVATE_IP/$SUBNET_MASK"
-fi
-if [[ -z $ZFS_RAID ]];then
-if [[ ${DRIVE_COUNT:-0} -ge 2 ]];then
-ZFS_RAID="raid1"
-else
-ZFS_RAID="single"
-fi
-fi
-[[ -z $PVE_REPO_TYPE ]]&&PVE_REPO_TYPE="$DEFAULT_REPO_TYPE"
-[[ -z $SSL_TYPE ]]&&SSL_TYPE="$DEFAULT_SSL_TYPE"
-[[ -z $INSTALL_TAILSCALE ]]&&INSTALL_TAILSCALE="no"
-[[ -z $DEFAULT_SHELL ]]&&DEFAULT_SHELL="$DEFAULT_SHELL_TYPE"
-[[ -z $CPU_GOVERNOR ]]&&CPU_GOVERNOR="$DEFAULT_CPU_GOVERNOR"
-[[ -z $INSTALL_VNSTAT ]]&&INSTALL_VNSTAT="yes"
-[[ -z $INSTALL_UNATTENDED_UPGRADES ]]&&INSTALL_UNATTENDED_UPGRADES="yes"
-[[ -z $INSTALL_AUDITD ]]&&INSTALL_AUDITD="no"
-if [[ -z $SSH_PUBLIC_KEY ]];then
-SSH_PUBLIC_KEY=$(get_rescue_ssh_key 2>/dev/null||true)
-fi
-FQDN="$PVE_HOSTNAME.$DOMAIN_SUFFIX"
-}
 show_gum_config_editor(){
 detect_network_interface >/dev/null 2>&1
 collect_network_info >/dev/null 2>&1
-_init_default_config
 _wiz_hide_cursor
 trap '_wiz_show_cursor' EXIT
 _wizard_main
@@ -3338,7 +3303,7 @@ remote_exec "grep -q 'profile.d/fastfetch.sh' /etc/bash.bashrc || echo '[ -f /et
 show_progress $! "Configuring fastfetch" "Fastfetch configured"
 }
 configure_shell(){
-if [[ $DEFAULT_SHELL == "zsh" ]];then
+if [[ $SHELL_TYPE == "zsh" ]];then
 run_remote "Installing ZSH and Git" '
             export DEBIAN_FRONTEND=noninteractive
             apt-get install -yqq zsh git curl
