@@ -107,6 +107,11 @@ _wiz_render_menu() {
     ssh_display="${SSH_PUBLIC_KEY:0:20}..."
   fi
 
+  local iso_version_display=""
+  if [[ -n $PROXMOX_ISO_VERSION ]]; then
+    iso_version_display=$(get_iso_version "$PROXMOX_ISO_VERSION")
+  fi
+
   local hostname_display=""
   if [[ -n $PVE_HOSTNAME && -n $DOMAIN_SUFFIX ]]; then
     hostname_display="${PVE_HOSTNAME}.${DOMAIN_SUFFIX}"
@@ -144,6 +149,7 @@ _wiz_render_menu() {
 
   # --- Proxmox ---
   _add_section "Proxmox"
+  _add_field "Version          " "$(_wiz_fmt "$iso_version_display")" "iso_version"
   _add_field "Repository       " "$(_wiz_fmt "$PVE_REPO_TYPE")" "repository"
 
   # --- Network ---
@@ -219,6 +225,7 @@ _wizard_main() {
           email) _edit_email ;;
           password) _edit_password ;;
           timezone) _edit_timezone ;;
+          iso_version) _edit_iso_version ;;
           repository) _edit_repository ;;
           interface) _edit_interface ;;
           bridge_mode) _edit_bridge_mode ;;
@@ -429,6 +436,36 @@ _edit_timezone() {
   if [[ -n $selected ]]; then
     TIMEZONE="$selected"
   fi
+}
+
+_edit_iso_version() {
+  clear
+  show_banner
+  echo ""
+
+  # Get available ISO versions (last 5, uses cached data from prefetch)
+  local iso_list
+  iso_list=$(get_available_proxmox_isos 5)
+
+  if [[ -z $iso_list ]]; then
+    gum style --foreground "$HEX_RED" "Failed to fetch ISO list"
+    sleep 2
+    return
+  fi
+
+  # 1 header + 5 items for gum choose
+  _show_input_footer "filter" 6
+
+  local selected
+  selected=$(echo "$iso_list" | gum choose \
+    --header="Proxmox Version:" \
+    --header.foreground "$HEX_CYAN" \
+    --cursor "${CLR_ORANGE}›${CLR_RESET} " \
+    --cursor.foreground "$HEX_NONE" \
+    --selected.foreground "$HEX_WHITE" \
+    --no-show-help)
+
+  [[ -n $selected ]] && PROXMOX_ISO_VERSION="$selected"
 }
 
 _edit_repository() {

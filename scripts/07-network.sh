@@ -42,12 +42,16 @@ detect_network_interface() {
 
   # Try to get predictable name from udev
   if [[ -e "/sys/class/net/${CURRENT_INTERFACE}" ]]; then
+    # Get udevadm info once and extract names
+    local udev_info
+    udev_info=$(udevadm info "/sys/class/net/${CURRENT_INTERFACE}" 2>/dev/null)
+
     # Try ID_NET_NAME_PATH first (most reliable for PCIe devices)
-    PREDICTABLE_NAME=$(udevadm info "/sys/class/net/${CURRENT_INTERFACE}" 2>/dev/null | grep "ID_NET_NAME_PATH=" | cut -d'=' -f2)
+    PREDICTABLE_NAME=$(echo "$udev_info" | grep "ID_NET_NAME_PATH=" | cut -d'=' -f2)
 
     # Fallback to ID_NET_NAME_ONBOARD (for onboard NICs)
     if [[ -z $PREDICTABLE_NAME ]]; then
-      PREDICTABLE_NAME=$(udevadm info "/sys/class/net/${CURRENT_INTERFACE}" 2>/dev/null | grep "ID_NET_NAME_ONBOARD=" | cut -d'=' -f2)
+      PREDICTABLE_NAME=$(echo "$udev_info" | grep "ID_NET_NAME_ONBOARD=" | cut -d'=' -f2)
     fi
 
     # Fallback to altname from ip link
