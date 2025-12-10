@@ -18,7 +18,7 @@ HEX_HETZNER="#d70000"
 HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 MENU_BOX_WIDTH=60
-VERSION="1.18.45-pr.21"
+VERSION="1.18.46-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -1861,15 +1861,18 @@ done
 }
 _show_input_footer(){
 local type="${1:-input}"
-local lines_up="${2:-3}"
+local component_lines="${2:-1}"
+local i
+for ((i=0; i<component_lines; i++));do
 echo ""
+done
 echo ""
 if [[ $type == "filter" ]];then
 echo -e "$CLR_GRAY[$CLR_ORANGE↑↓$CLR_GRAY] navigate  [${CLR_ORANGE}Enter$CLR_GRAY] select  [${CLR_ORANGE}Esc$CLR_GRAY] cancel$CLR_RESET"
 else
 echo -e "$CLR_GRAY[${CLR_ORANGE}Enter$CLR_GRAY] confirm  [${CLR_ORANGE}Esc$CLR_GRAY] cancel$CLR_RESET"
 fi
-tput cuu "$lines_up"
+tput cuu $((component_lines+2))
 }
 _edit_hostname(){
 clear
@@ -2396,7 +2399,7 @@ Pacific/Tongatapu
 Pacific/Wake
 Pacific/Wallis
 UTC"
-_show_input_footer "filter" 8
+_show_input_footer "filter" 6
 local selected
 selected=$(echo "$tz_list"|gum filter \
 --placeholder "Type to search..." \
