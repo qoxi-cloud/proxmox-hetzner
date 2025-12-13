@@ -1,3 +1,4 @@
+name: CI / Cleanup PR
 
 on:
   pull_request_target:

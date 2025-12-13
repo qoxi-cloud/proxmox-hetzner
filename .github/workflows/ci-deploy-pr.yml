@@ -1,3 +1,4 @@
+name: CI / Deploy PR
 
 # This workflow runs in the context of the base repository,
 # allowing it to deploy PR builds from forks securely.
@@ -5,7 +6,7 @@
 
 on:
   workflow_run:
-    workflows: [".github/workflows/ci-build.yml"]
+    workflows: ["CI / Build"]
     types:
       - completed
   workflow_dispatch:

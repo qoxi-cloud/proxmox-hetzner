@@ -1,3 +1,4 @@
+name: CI / Commit Lint
 
 on:
   pull_request:

@@ -1,7 +1,8 @@
+name: CI / Deploy
 
 on:
   workflow_run:
-    workflows: [".github/workflows/ci-build.yml"]
+    workflows: ["CI / Build"]
     types:
       - completed
 

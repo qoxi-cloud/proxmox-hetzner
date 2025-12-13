@@ -1,3 +1,4 @@
+name: CI / Wiki Sync
 
 on:
   push:
