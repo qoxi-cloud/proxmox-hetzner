@@ -72,6 +72,21 @@ jobs:
                 check.name.includes('commit')
               );
 
+              console.log(`Attempt ${attempt}/${maxAttempts}:`);
+              console.log(`Total CI checks: ${ciChecks.length}`);
+              console.log(`Completed: ${ciChecks.filter(c => c.status === 'completed').length}`);
+              console.log(`Successful: ${ciChecks.filter(c => c.conclusion === 'success').length}`);
+
+              // Guard against empty array (Array.every returns true for empty arrays)
+              if (ciChecks.length === 0) {
+                console.log('No CI checks found yet, waiting...');
+                if (attempt < maxAttempts) {
+                  console.log(`Waiting ${delayMs/1000}s before next check...`);
+                  await new Promise(resolve => setTimeout(resolve, delayMs));
+                }
+                continue;
+              }
+
               const allCompleted = ciChecks.every(check =>
                 check.status === 'completed'
               );
@@ -79,11 +94,6 @@ jobs:
               const allSuccess = ciChecks.every(check =>
                 check.conclusion === 'success' || check.conclusion === 'skipped'
               );
-
-              console.log(`Attempt ${attempt}/${maxAttempts}:`);
-              console.log(`Total CI checks: ${ciChecks.length}`);
-              console.log(`Completed: ${ciChecks.filter(c => c.status === 'completed').length}`);
-              console.log(`Successful: ${ciChecks.filter(c => c.conclusion === 'success').length}`);
 
               if (allCompleted) {
                 if (allSuccess) {
@@ -103,7 +113,7 @@ jobs:
               }
             }
 
-            throw new Error('Timeout waiting for CI checks to complete');
+            throw new Error('Timeout: CI checks did not complete or were not found');
 
   deployPr:
     runs-on: ubuntu-latest

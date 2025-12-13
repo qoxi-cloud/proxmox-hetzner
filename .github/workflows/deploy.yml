@@ -45,20 +45,26 @@ jobs:
                 check.name === 'build'
               );
 
-              if (!buildCheck) {
-                console.log(`Attempt ${attempt}/${maxAttempts}: Build check not found yet`);
-              } else {
-                console.log(`Attempt ${attempt}/${maxAttempts}:`);
-                console.log(`Build status: ${buildCheck.status}`);
-                console.log(`Build conclusion: ${buildCheck.conclusion}`);
+              console.log(`Attempt ${attempt}/${maxAttempts}:`);
 
-                if (buildCheck.status === 'completed') {
-                  if (buildCheck.conclusion === 'success') {
-                    console.log('Build check passed!');
-                    return;
-                  } else {
-                    throw new Error(`Build check failed with conclusion: ${buildCheck.conclusion}`);
-                  }
+              if (!buildCheck) {
+                console.log('Build check not found yet, waiting...');
+                if (attempt < maxAttempts) {
+                  console.log(`Waiting ${delayMs/1000}s before next check...`);
+                  await new Promise(resolve => setTimeout(resolve, delayMs));
+                }
+                continue;
+              }
+
+              console.log(`Build status: ${buildCheck.status}`);
+              console.log(`Build conclusion: ${buildCheck.conclusion}`);
+
+              if (buildCheck.status === 'completed') {
+                if (buildCheck.conclusion === 'success') {
+                  console.log('Build check passed!');
+                  return;
+                } else {
+                  throw new Error(`Build check failed with conclusion: ${buildCheck.conclusion}`);
                 }
               }
 
@@ -68,7 +74,7 @@ jobs:
               }
             }
 
-            throw new Error('Timeout waiting for build check to complete');
+            throw new Error('Timeout: Build check did not complete or was not found');
 
   deploy:
     runs-on: ubuntu-latest
