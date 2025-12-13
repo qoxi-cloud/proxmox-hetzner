@@ -38,8 +38,8 @@ jobs:
             PATCH=$(git rev-list HEAD --count)
           fi
 
-          # Add PR suffix
-          VERSION="${VERSION}-pr.${{ github.event.pull_request.number }}"
+          # Build version and add PR suffix
+          VERSION="${MAJOR}.${MINOR}.${PATCH}-pr.${{ github.event.pull_request.number }}"
 
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
           echo "Generated version: ${VERSION}"
