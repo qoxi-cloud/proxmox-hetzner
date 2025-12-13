@@ -1,16 +1,8 @@
-<<<<<<<< HEAD:.github/workflows/deployPr.yml
 name: CD
-========
-name: Deploy PR
-
-# This workflow runs in the context of the base repository,
-# allowing it to deploy PR builds from forks securely.
-# It triggers after the build workflow completes.
->>>>>>>> 6a20fd4 (♻️ refactor: simplify workflow names and structure):.github/workflows/deploy-pr.yml
 
 on:
   workflow_run:
-    workflows: ["Deploy"]
+    workflows: ["CI"]
     types:
       - completed
   workflow_dispatch:
@@ -21,11 +13,7 @@ on:
         type: string
 
 jobs:
-<<<<<<<< HEAD:.github/workflows/deployPr.yml
   deployPr:
-========
-  deploy:
->>>>>>>> 6a20fd4 (♻️ refactor: simplify workflow names and structure):.github/workflows/deploy-pr.yml
     runs-on: ubuntu-latest
     # Run on workflow_run from PR (push events to PR branches), or on manual dispatch
     if: >

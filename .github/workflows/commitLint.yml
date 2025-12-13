@@ -1,8 +1,4 @@
-<<<<<<<< HEAD:.github/workflows/commitLint.yml
 name: CI
-========
-name: Commit Lint
->>>>>>>> 6a20fd4 (♻️ refactor: simplify workflow names and structure):.github/workflows/commit-lint.yml
 
 on:
   pull_request:
@@ -11,11 +7,7 @@ on:
     types: [opened, synchronize, reopened, edited]
 
 jobs:
-<<<<<<<< HEAD:.github/workflows/commitLint.yml
   commitLint:
-========
-  lint-commits:
->>>>>>>> 6a20fd4 (♻️ refactor: simplify workflow names and structure):.github/workflows/commit-lint.yml
     runs-on: ubuntu-latest
 
     steps:

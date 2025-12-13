@@ -1,8 +1,4 @@
-<<<<<<<< HEAD:.github/workflows/buildPr.yml
 name: CI
-========
-name: Deploy-PR
->>>>>>>> 6a20fd4 (♻️ refactor: simplify workflow names and structure):.github/workflows/deploy.yml
 
 on:
   pull_request:
