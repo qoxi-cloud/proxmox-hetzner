@@ -1,4 +1,4 @@
-name: CI / Wiki Sync
+name: Wiki Sync
 
 on:
   push:
@@ -12,7 +12,7 @@ permissions:
   contents: write
 
 jobs:
-  run:
+  sync:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository

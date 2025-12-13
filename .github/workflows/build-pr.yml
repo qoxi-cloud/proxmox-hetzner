@@ -1,9 +1,6 @@
-name: CI / Build
+name: Build PR
 
 on:
-  push:
-    branches:
-      - main
   pull_request:
     branches:
       - main
@@ -11,7 +8,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  run:
+  build-pr:
     runs-on: ubuntu-latest
 
     permissions:
@@ -41,12 +38,8 @@ jobs:
             PATCH=$(git rev-list HEAD --count)
           fi
 
-          VERSION="${MAJOR}.${MINOR}.${PATCH}"
-
-          # Add PR suffix for pull request builds
-          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            VERSION="${VERSION}-pr.${{ github.event.pull_request.number }}"
-          fi
+          # Add PR suffix
+          VERSION="${VERSION}-pr.${{ github.event.pull_request.number }}"
 
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
           echo "Generated version: ${VERSION}"
@@ -74,19 +67,17 @@ jobs:
           # Replace version placeholder with calculated version
           sed -i "s/^VERSION=\"[0-9]*\"$/VERSION=\"${VERSION}\"/" pve-install.sh
 
-          # For PR builds, update GITHUB_BRANCH to use PR branch for templates
+          # Update GITHUB_BRANCH to use PR branch for templates
           # For fork PRs, templates will come from fork's branch
-          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            PR_BRANCH="${{ github.event.pull_request.head.ref }}"
-            PR_REPO="${{ github.event.pull_request.head.repo.full_name }}"
+          PR_BRANCH="${{ github.event.pull_request.head.ref }}"
+          PR_REPO="${{ github.event.pull_request.head.repo.full_name }}"
 
-            # Update GITHUB_BRANCH
-            sed -i "s|^GITHUB_BRANCH=\"\${GITHUB_BRANCH:-main}\"|GITHUB_BRANCH=\"\${GITHUB_BRANCH:-${PR_BRANCH}}\"|" pve-install.sh
+          # Update GITHUB_BRANCH
+          sed -i "s|^GITHUB_BRANCH=\"\${GITHUB_BRANCH:-main}\"|GITHUB_BRANCH=\"\${GITHUB_BRANCH:-${PR_BRANCH}}\"|" pve-install.sh
 
-            # For forks, also update GITHUB_REPO
-            if [[ "$PR_REPO" != "${{ github.repository }}" ]]; then
-              sed -i "s|^GITHUB_REPO=\"\${GITHUB_REPO:-[^}]*}\"|GITHUB_REPO=\"\${GITHUB_REPO:-${PR_REPO}}\"|" pve-install.sh
-            fi
+          # For forks, also update GITHUB_REPO
+          if [[ "$PR_REPO" != "${{ github.repository }}" ]]; then
+            sed -i "s|^GITHUB_REPO=\"\${GITHUB_REPO:-[^}]*}\"|GITHUB_REPO=\"\${GITHUB_REPO:-${PR_REPO}}\"|" pve-install.sh
           fi
 
           chmod +x pve-install.sh
@@ -95,6 +86,16 @@ jobs:
         run: |
           curl -sS https://webi.sh/shfmt | sh
           echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Check formatting with shfmt
+        run: |
+          # Check if scripts are properly formatted (2-space indent, simplify)
+          if ! shfmt -i 2 -ci -s -d scripts/*.sh; then
+            echo ""
+            echo "::error::Scripts are not properly formatted. Run: shfmt -i 2 -ci -s -w scripts/*.sh"
+            exit 1
+          fi
+          echo "✓ All scripts are properly formatted"
 
       - name: Minify script with shfmt
         run: |
@@ -111,6 +112,12 @@ jobs:
 
           chmod +x pve-install.min.sh
 
+      - name: Lint with ShellCheck
+        # SC1003: single quote escape in ASCII art banner (intentional)
+        # SC2001: sed used for complex regex (ANSI escape codes) that bash can't handle
+        # SC2153: false positive for TIMEZONES vs TIMEZONE (both are valid variables)
+        run: shellcheck -e SC1003,SC1091,SC2001,SC2034,SC2086,SC2153 scripts/*.sh
+
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
@@ -120,7 +127,6 @@ jobs:
             pve-install.min.sh
 
       - name: Save PR metadata
-        if: github.event_name == 'pull_request'
         run: |
           mkdir -p pr-metadata
           echo "${{ github.event.pull_request.number }}" > pr-metadata/pr_number
@@ -128,7 +134,6 @@ jobs:
           echo "${{ github.event.pull_request.head.repo.full_name }}" > pr-metadata/pr_repo
 
       - name: Upload PR metadata
-        if: github.event_name == 'pull_request'
         uses: actions/upload-artifact@v4
         with:
           name: pr-metadata

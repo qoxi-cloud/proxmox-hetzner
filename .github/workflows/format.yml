@@ -1,4 +1,4 @@
-name: CI / Format Check
+name: Format
 
 # Runs on every commit to PRs (pull_request trigger covers this)
 # Direct pushes to main are not checked as all changes must go through PRs
@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  run:
+  check-format:
     runs-on: ubuntu-latest
 
     steps:

@@ -1,0 +1,95 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for version calculation
+
+      - name: Calculate version
+        id: version
+        run: |
+          # Get MAJOR version from source file
+          MAJOR=$(grep -oP 'VERSION="\K[0-9]+' scripts/00-init.sh)
+
+          # Count tags matching vMAJOR.* for MINOR
+          MINOR=$(git tag -l "v${MAJOR}.*" 2>/dev/null | wc -l | tr -d ' ')
+
+          # Count commits since last tag for PATCH
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          if [[ -n "$LATEST_TAG" ]]; then
+            PATCH=$(git rev-list "${LATEST_TAG}..HEAD" --count)
+          else
+            PATCH=$(git rev-list HEAD --count)
+          fi
+
+          VERSION="${MAJOR}.${MINOR}.${PATCH}"
+
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "Generated version: ${VERSION}"
+
+      - name: Build script
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+
+          # Header
+          cat > pve-install.sh << 'HEADER'
+          #!/usr/bin/env bash
+          # =============================================================================
+          # Proxmox VE Auto-Installer for Hetzner Dedicated Servers
+          # =============================================================================
+          HEADER
+
+          # Concatenate all source files in order
+          for f in scripts/*.sh; do
+            echo "" >> pve-install.sh
+            echo "# --- $(basename "$f") ---" >> pve-install.sh
+            # Remove shebang from all files
+            sed '1{/^#!/d}' "$f" >> pve-install.sh
+          done
+
+          # Replace version placeholder with calculated version
+          sed -i "s/^VERSION=\"[0-9]*\"$/VERSION=\"${VERSION}\"/" pve-install.sh
+
+          chmod +x pve-install.sh
+
+      - name: Install shfmt
+        run: |
+          curl -sS https://webi.sh/shfmt | sh
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Minify script with shfmt
+        run: |
+          # Minify: -mn removes comments and minimizes whitespace
+          shfmt -mn pve-install.sh > pve-install.min.sh
+
+          # Show size reduction
+          ORIGINAL_SIZE=$(wc -c < pve-install.sh)
+          MINIFIED_SIZE=$(wc -c < pve-install.min.sh)
+          REDUCTION=$((100 - (MINIFIED_SIZE * 100 / ORIGINAL_SIZE)))
+          echo "Original: ${ORIGINAL_SIZE} bytes"
+          echo "Minified: ${MINIFIED_SIZE} bytes"
+          echo "Reduction: ${REDUCTION}%"
+
+          chmod +x pve-install.min.sh
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pve-install
+          path: |
+            pve-install.sh
+            pve-install.min.sh
