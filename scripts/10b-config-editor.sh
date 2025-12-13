@@ -985,12 +985,12 @@ _edit_features() {
     --no-limit
     --header="Features:"
     --header.foreground "$HEX_CYAN"
-    --cursor "${CLR_ORANGE}›${CLR_RESET}   "
+    --cursor "${CLR_ORANGE}›${CLR_RESET} "
     --cursor.foreground "$HEX_NONE"
-    --cursor-prefix ""
+    --cursor-prefix "  "
     --selected.foreground "$HEX_WHITE"
-    --selected-prefix "${CLR_CYAN}✓${CLR_RESET}   "
-    --unselected-prefix "    "
+    --selected-prefix "${CLR_CYAN}✓${CLR_RESET} "
+    --unselected-prefix "  "
     --no-show-help
   )
 
