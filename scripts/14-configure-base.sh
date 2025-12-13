@@ -164,6 +164,13 @@ configure_base_system() {
     remote_exec "grep -q 'profile.d/fastfetch.sh' /etc/bash.bashrc || echo '[ -f /etc/profile.d/fastfetch.sh ] && . /etc/profile.d/fastfetch.sh' >> /etc/bash.bashrc"
   ) >/dev/null 2>&1 &
   show_progress $! "Configuring fastfetch" "Fastfetch configured"
+
+  # Configure bat with Visual Studio Dark+ theme
+  (
+    remote_exec "mkdir -p /root/.config/bat"
+    remote_copy "templates/bat-config" "/root/.config/bat/config"
+  ) >/dev/null 2>&1 &
+  show_progress $! "Configuring bat" "Bat configured"
 }
 
 # Configures default shell for root user.
