@@ -39,7 +39,7 @@ HEX_WHITE="#ffffff"
 MENU_BOX_WIDTH=60
 
 # Version (MAJOR only - MINOR.PATCH added by CI from git tags/commits)
-VERSION="1.18.9"
+VERSION="1.18.10"
 
 # =============================================================================
 # Configuration constants
