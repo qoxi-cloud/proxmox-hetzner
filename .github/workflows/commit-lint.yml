@@ -1,4 +1,4 @@
-name: commit_lint
+name: ci
 
 on:
   pull_request:

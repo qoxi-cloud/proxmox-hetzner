@@ -2,7 +2,7 @@ name: deploy_pr
 
 on:
   workflow_run:
-    workflows: ["build_pr"]
+    workflows: ["ci"]
     types:
       - completed
   workflow_dispatch:
