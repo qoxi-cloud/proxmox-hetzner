@@ -19,7 +19,7 @@ HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 HEX_NONE="7"
 MENU_BOX_WIDTH=60
-VERSION="2.0.92-pr.21"
+VERSION="2.0.93-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -2758,11 +2758,12 @@ local gum_args=(
 --no-limit
 --header="Features:"
 --header.foreground "$HEX_CYAN"
---cursor.foreground "$HEX_ORANGE"
---cursor-prefix "› "
+--cursor "$CLR_ORANGE›$CLR_RESET "
+--cursor.foreground "$HEX_NONE"
+--cursor-prefix " "
 --selected.foreground "$HEX_WHITE"
---selected-prefix "$CLR_CYAN✓$CLR_RESET "
---unselected-prefix "  "
+--selected-prefix " $CLR_CYAN✓$CLR_RESET "
+--unselected-prefix "   "
 --no-show-help)
 for item in "${preselected[@]}";do
 gum_args+=(--selected "$item")
