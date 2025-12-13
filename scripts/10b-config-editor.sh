@@ -110,8 +110,9 @@ _wiz_render_menu() {
     fi
   fi
 
-  local features_display=""
+  local features_display="none"
   if [[ -n $INSTALL_VNSTAT || -n $INSTALL_AUDITD ]]; then
+    features_display=""
     [[ $INSTALL_VNSTAT == "yes" ]] && features_display+="vnstat"
     [[ $INSTALL_AUDITD == "yes" ]] && features_display+="${features_display:+, }auditd"
     [[ -z $features_display ]] && features_display="none"
