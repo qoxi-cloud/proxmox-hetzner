@@ -19,7 +19,7 @@ HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 HEX_NONE="7"
 MENU_BOX_WIDTH=60
-VERSION="2.0.98-pr.21"
+VERSION="2.0.99-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -495,7 +495,9 @@ powersave
 schedutil
 conservative"
 readonly WIZ_OPTIONAL_FEATURES="vnstat (network stats)
-auditd (audit logging)"
+auditd (audit logging)
+yazi (file manager)
+nvim (text editor)"
 SYSTEM_UTILITIES="btop iotop ncdu tmux pigz smartmontools jq bat fastfetch"
 OPTIONAL_PACKAGES="libguestfs-tools"
 LOG_FILE="/root/pve-install-$(date +%Y%m%d-%H%M%S).log"
@@ -550,6 +552,10 @@ CPU_GOVERNOR=""
 AUDITD_INSTALLED=""
 INSTALL_VNSTAT=""
 VNSTAT_INSTALLED=""
+INSTALL_YAZI=""
+YAZI_INSTALLED=""
+INSTALL_NVIM=""
+NVIM_INSTALLED=""
 INSTALL_UNATTENDED_UPGRADES=""
 INSTALL_TAILSCALE=""
 TAILSCALE_AUTH_KEY=""
@@ -2099,10 +2105,12 @@ tailscale_display="Disabled"
 fi
 fi
 local features_display="none"
-if [[ -n $INSTALL_VNSTAT || -n $INSTALL_AUDITD ]];then
+if [[ -n $INSTALL_VNSTAT || -n $INSTALL_AUDITD || -n $INSTALL_YAZI || -n $INSTALL_NVIM ]];then
 features_display=""
 [[ $INSTALL_VNSTAT == "yes" ]]&&features_display+="vnstat"
 [[ $INSTALL_AUDITD == "yes" ]]&&features_display+="${features_display:+, }auditd"
+[[ $INSTALL_YAZI == "yes" ]]&&features_display+="${features_display:+, }yazi"
+[[ $INSTALL_NVIM == "yes" ]]&&features_display+="${features_display:+, }nvim"
 [[ -z $features_display ]]&&features_display="none"
 fi
 local ssh_display=""
@@ -2749,10 +2757,12 @@ _edit_features(){
 clear
 show_banner
 echo ""
-_show_input_footer "checkbox" 3
+_show_input_footer "checkbox" 5
 local preselected=()
 [[ $INSTALL_VNSTAT == "yes" ]]&&preselected+=("vnstat")
 [[ $INSTALL_AUDITD == "yes" ]]&&preselected+=("auditd")
+[[ $INSTALL_YAZI == "yes" ]]&&preselected+=("yazi")
+[[ $INSTALL_NVIM == "yes" ]]&&preselected+=("nvim")
 local selected
 local gum_args=(
 --no-limit
@@ -2771,11 +2781,19 @@ done
 selected=$(echo "$WIZ_OPTIONAL_FEATURES"|gum choose "${gum_args[@]}")
 INSTALL_VNSTAT="no"
 INSTALL_AUDITD="no"
+INSTALL_YAZI="no"
+INSTALL_NVIM="no"
 if echo "$selected"|grep -q "vnstat";then
 INSTALL_VNSTAT="yes"
 fi
 if echo "$selected"|grep -q "auditd";then
 INSTALL_AUDITD="yes"
+fi
+if echo "$selected"|grep -q "yazi";then
+INSTALL_YAZI="yes"
+fi
+if echo "$selected"|grep -q "nvim";then
+INSTALL_NVIM="yes"
 fi
 }
 _edit_ssh_key(){
@@ -3761,6 +3779,64 @@ return 0
 fi
 AUDITD_INSTALLED="yes"
 }
+configure_yazi(){
+if [[ $INSTALL_YAZI != "yes" ]];then
+log "Skipping yazi (not requested)"
+return 0
+fi
+log "Installing and configuring yazi"
+run_remote "Installing yazi" '
+        export DEBIAN_FRONTEND=noninteractive
+        apt-get update -qq
+        apt-get install -yqq yazi
+    ' "Yazi installed"
+(download_template "./templates/yazi-theme.toml"||exit 1
+remote_exec '
+            mkdir -p /root/.config/yazi
+        '||exit 1
+remote_copy "templates/yazi-theme.toml" "/root/.config/yazi/theme.toml"||exit 1) > \
+/dev/null 2>&1&
+show_progress $! "Configuring yazi theme" "Yazi configured"
+local exit_code=$?
+if [[ $exit_code -ne 0 ]];then
+log "WARNING: Yazi configuration failed"
+print_warning "Yazi configuration failed - continuing without it"
+return 0
+fi
+YAZI_INSTALLED="yes"
+}
+configure_nvim(){
+if [[ $INSTALL_NVIM != "yes" ]];then
+log "Skipping neovim (not requested)"
+return 0
+fi
+log "Installing and configuring neovim"
+run_remote "Installing neovim" '
+        export DEBIAN_FRONTEND=noninteractive
+        apt-get update -qq
+        apt-get install -yqq neovim
+    ' "Neovim installed"
+(remote_exec '
+            # Create alternatives for vi and vim
+            update-alternatives --install /usr/bin/vi vi /usr/bin/nvim 60
+            update-alternatives --install /usr/bin/vim vim /usr/bin/nvim 60
+            update-alternatives --install /usr/bin/editor editor /usr/bin/nvim 60
+
+            # Set nvim as default
+            update-alternatives --set vi /usr/bin/nvim
+            update-alternatives --set vim /usr/bin/nvim
+            update-alternatives --set editor /usr/bin/nvim
+        '||exit 1) > \
+/dev/null 2>&1&
+show_progress $! "Configuring nvim aliases" "Neovim configured"
+local exit_code=$?
+if [[ $exit_code -ne 0 ]];then
+log "WARNING: Neovim configuration failed"
+print_warning "Neovim configuration failed - continuing without it"
+return 0
+fi
+NVIM_INSTALLED="yes"
+}
 configure_ssl_certificate(){
 log "configure_ssl_certificate: SSL_TYPE=$SSL_TYPE"
 if [[ $SSL_TYPE != "letsencrypt" ]];then
@@ -3842,6 +3918,8 @@ configure_system_services
 configure_tailscale
 configure_fail2ban
 configure_auditd
+configure_yazi
+configure_nvim
 configure_ssl_certificate
 configure_ssh_hardening
 validate_installation
