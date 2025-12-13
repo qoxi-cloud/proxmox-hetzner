@@ -19,7 +19,7 @@ HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 HEX_NONE="7"
 MENU_BOX_WIDTH=60
-VERSION="2.0.94-pr.21"
+VERSION="2.0.95-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -2758,7 +2758,7 @@ local gum_args=(
 --no-limit
 --header="Features:"
 --header.foreground "$HEX_CYAN"
---cursor "$CLR_ORANGE›$CLR_RESET "
+--cursor "$CLR_ORANGE›$CLR_RESET   "
 --cursor.foreground "$HEX_NONE"
 --cursor-prefix ""
 --selected.foreground "$HEX_WHITE"
