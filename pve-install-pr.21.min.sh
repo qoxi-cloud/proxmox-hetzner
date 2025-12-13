@@ -19,7 +19,7 @@ HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 HEX_NONE="7"
 MENU_BOX_WIDTH=60
-VERSION="2.0.70-pr.21"
+VERSION="2.0.71-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -1819,6 +1819,121 @@ PREFLIGHT_KVM_STATUS="error"
 errors=$((errors+1))
 fi
 PREFLIGHT_ERRORS=$errors
+if command -v ip &>/dev/null&&command -v jq &>/dev/null;then
+CURRENT_INTERFACE=$(ip -j route 2>/dev/null|jq -r '.[] | select(.dst == "default") | .dev'|head -n1)
+elif command -v ip &>/dev/null;then
+CURRENT_INTERFACE=$(ip route|grep default|awk '{print $5}'|head -n1)
+elif command -v route &>/dev/null;then
+CURRENT_INTERFACE=$(route -n|awk '/^0\.0\.0\.0/ {print $8}'|head -n1)
+fi
+if [[ -z $CURRENT_INTERFACE ]];then
+if command -v ip &>/dev/null&&command -v jq &>/dev/null;then
+CURRENT_INTERFACE=$(ip -j link show 2>/dev/null|jq -r '.[] | select(.ifname != "lo" and .operstate == "UP") | .ifname'|head -n1)
+elif command -v ip &>/dev/null;then
+CURRENT_INTERFACE=$(ip link show|awk -F': ' '/^[0-9]+:/ && !/lo:/ {print $2; exit}')
+elif command -v ifconfig &>/dev/null;then
+CURRENT_INTERFACE=$(ifconfig -a|awk '/^[a-z]/ && !/^lo/ {print $1; exit}'|tr -d ':')
+fi
+fi
+if [[ -z $CURRENT_INTERFACE ]];then
+CURRENT_INTERFACE="eth0"
+log "WARNING: Could not detect network interface, defaulting to eth0"
+fi
+PREDICTABLE_NAME=""
+if [[ -e "/sys/class/net/$CURRENT_INTERFACE" ]];then
+local udev_info
+udev_info=$(udevadm info "/sys/class/net/$CURRENT_INTERFACE" 2>/dev/null)
+PREDICTABLE_NAME=$(echo "$udev_info"|grep "ID_NET_NAME_PATH="|cut -d'=' -f2)
+if [[ -z $PREDICTABLE_NAME ]];then
+PREDICTABLE_NAME=$(echo "$udev_info"|grep "ID_NET_NAME_ONBOARD="|cut -d'=' -f2)
+fi
+if [[ -z $PREDICTABLE_NAME ]];then
+PREDICTABLE_NAME=$(ip -d link show "$CURRENT_INTERFACE" 2>/dev/null|grep "altname"|awk '{print $2}'|head -1)
+fi
+fi
+if [[ -n $PREDICTABLE_NAME ]];then
+DEFAULT_INTERFACE="$PREDICTABLE_NAME"
+else
+DEFAULT_INTERFACE="$CURRENT_INTERFACE"
+fi
+AVAILABLE_ALTNAMES=$(ip -d link show|grep -v "lo:"|grep -E '(^[0-9]+:|altname)'|awk '/^[0-9]+:/ {interface=$2; gsub(/:/, "", interface); printf "%s", interface} /altname/ {printf ", %s", $2} END {print ""}'|sed 's/, $//')
+if command -v ip &>/dev/null&&command -v jq &>/dev/null;then
+AVAILABLE_INTERFACES=$(ip -j link show 2>/dev/null|jq -r '.[] | select(.ifname != "lo") | .ifname'|sort)
+elif command -v ip &>/dev/null;then
+AVAILABLE_INTERFACES=$(ip link show|awk -F': ' '/^[0-9]+:/ && !/lo:/ {print $2}'|sort)
+else
+AVAILABLE_INTERFACES="$CURRENT_INTERFACE"
+fi
+INTERFACE_COUNT=$(echo "$AVAILABLE_INTERFACES"|wc -l)
+if [[ -z $INTERFACE_NAME ]];then
+INTERFACE_NAME="$DEFAULT_INTERFACE"
+fi
+local max_attempts=3
+local attempt=0
+while [[ $attempt -lt $max_attempts ]];do
+attempt=$((attempt+1))
+if command -v ip &>/dev/null&&command -v jq &>/dev/null;then
+MAIN_IPV4_CIDR=$(ip -j address show "$CURRENT_INTERFACE" 2>/dev/null|jq -r '.[0].addr_info[] | select(.family == "inet" and .scope == "global") | "\(.local)/\(.prefixlen)"'|head -n1)
+MAIN_IPV4="${MAIN_IPV4_CIDR%/*}"
+MAIN_IPV4_GW=$(ip -j route 2>/dev/null|jq -r '.[] | select(.dst == "default") | .gateway'|head -n1)
+[[ -n $MAIN_IPV4 ]]&&[[ -n $MAIN_IPV4_GW ]]&&break
+elif command -v ip &>/dev/null;then
+MAIN_IPV4_CIDR=$(ip address show "$CURRENT_INTERFACE" 2>/dev/null|grep global|grep "inet "|awk '{print $2}'|head -n1)
+MAIN_IPV4="${MAIN_IPV4_CIDR%/*}"
+MAIN_IPV4_GW=$(ip route 2>/dev/null|grep default|awk '{print $3}'|head -n1)
+[[ -n $MAIN_IPV4 ]]&&[[ -n $MAIN_IPV4_GW ]]&&break
+elif command -v ifconfig &>/dev/null;then
+MAIN_IPV4=$(ifconfig "$CURRENT_INTERFACE" 2>/dev/null|awk '/inet / {print $2}'|sed 's/addr://')
+local netmask
+netmask=$(ifconfig "$CURRENT_INTERFACE" 2>/dev/null|awk '/inet / {print $4}'|sed 's/Mask://')
+if [[ -n $MAIN_IPV4 ]]&&[[ -n $netmask ]];then
+case "$netmask" in
+255.255.255.0)MAIN_IPV4_CIDR="$MAIN_IPV4/24";;
+255.255.255.128)MAIN_IPV4_CIDR="$MAIN_IPV4/25";;
+255.255.255.192)MAIN_IPV4_CIDR="$MAIN_IPV4/26";;
+255.255.255.224)MAIN_IPV4_CIDR="$MAIN_IPV4/27";;
+255.255.255.240)MAIN_IPV4_CIDR="$MAIN_IPV4/28";;
+255.255.255.248)MAIN_IPV4_CIDR="$MAIN_IPV4/29";;
+255.255.255.252)MAIN_IPV4_CIDR="$MAIN_IPV4/30";;
+255.255.0.0)MAIN_IPV4_CIDR="$MAIN_IPV4/16";;
+*)MAIN_IPV4_CIDR="$MAIN_IPV4/24"
+esac
+fi
+if command -v route &>/dev/null;then
+MAIN_IPV4_GW=$(route -n 2>/dev/null|awk '/^0\.0\.0\.0/ {print $2}'|head -n1)
+fi
+[[ -n $MAIN_IPV4 ]]&&[[ -n $MAIN_IPV4_GW ]]&&break
+fi
+if [[ $attempt -lt $max_attempts ]];then
+log "Network info attempt $attempt failed, retrying in 2 seconds..."
+sleep 2
+fi
+done
+if command -v ip &>/dev/null&&command -v jq &>/dev/null;then
+MAC_ADDRESS=$(ip -j link show "$CURRENT_INTERFACE" 2>/dev/null|jq -r '.[0].address // empty')
+IPV6_CIDR=$(ip -j address show "$CURRENT_INTERFACE" 2>/dev/null|jq -r '.[0].addr_info[] | select(.family == "inet6" and .scope == "global") | "\(.local)/\(.prefixlen)"'|head -n1)
+elif command -v ip &>/dev/null;then
+MAC_ADDRESS=$(ip link show "$CURRENT_INTERFACE" 2>/dev/null|awk '/ether/ {print $2}')
+IPV6_CIDR=$(ip address show "$CURRENT_INTERFACE" 2>/dev/null|grep global|grep "inet6 "|awk '{print $2}'|head -n1)
+elif command -v ifconfig &>/dev/null;then
+MAC_ADDRESS=$(ifconfig "$CURRENT_INTERFACE" 2>/dev/null|awk '/ether/ {print $2}')
+IPV6_CIDR=$(ifconfig "$CURRENT_INTERFACE" 2>/dev/null|awk '/inet6/ && /global/ {print $2}')
+fi
+MAIN_IPV6="${IPV6_CIDR%/*}"
+if [[ -n $IPV6_CIDR ]];then
+local ipv6_prefix="${MAIN_IPV6%%:*:*:*:*}"
+if [[ $ipv6_prefix == "$MAIN_IPV6" ]]||[[ -z $ipv6_prefix ]];then
+ipv6_prefix=$(printf '%s' "$MAIN_IPV6"|cut -d':' -f1-4)
+fi
+FIRST_IPV6_CIDR="$ipv6_prefix:1::1/80"
+else
+FIRST_IPV6_CIDR=""
+fi
+if [[ -n $MAIN_IPV6 ]];then
+if command -v ip &>/dev/null;then
+IPV6_GATEWAY=$(ip -6 route 2>/dev/null|grep default|awk '{print $3}'|head -n1)
+fi
+fi
 }
 detect_drives(){
 mapfile -t DRIVES < <(lsblk -d -n -o NAME,TYPE|grep nvme|grep disk|awk '{print "/dev/"$1}'|sort)
@@ -1927,183 +2042,6 @@ show_banner
 echo ""
 fi
 }
-detect_network_interface(){
-if command -v ip &>/dev/null&&command -v jq &>/dev/null;then
-CURRENT_INTERFACE=$(ip -j route 2>/dev/null|jq -r '.[] | select(.dst == "default") | .dev'|head -n1)
-elif command -v ip &>/dev/null;then
-CURRENT_INTERFACE=$(ip route|grep default|awk '{print $5}'|head -n1)
-elif command -v route &>/dev/null;then
-CURRENT_INTERFACE=$(route -n|awk '/^0\.0\.0\.0/ {print $8}'|head -n1)
-fi
-if [[ -z $CURRENT_INTERFACE ]];then
-if command -v ip &>/dev/null&&command -v jq &>/dev/null;then
-CURRENT_INTERFACE=$(ip -j link show 2>/dev/null|jq -r '.[] | select(.ifname != "lo" and .operstate == "UP") | .ifname'|head -n1)
-elif command -v ip &>/dev/null;then
-CURRENT_INTERFACE=$(ip link show|awk -F': ' '/^[0-9]+:/ && !/lo:/ {print $2; exit}')
-elif command -v ifconfig &>/dev/null;then
-CURRENT_INTERFACE=$(ifconfig -a|awk '/^[a-z]/ && !/^lo/ {print $1; exit}'|tr -d ':')
-fi
-fi
-if [[ -z $CURRENT_INTERFACE ]];then
-CURRENT_INTERFACE="eth0"
-log "WARNING: Could not detect network interface, defaulting to eth0"
-fi
-PREDICTABLE_NAME=""
-if [[ -e "/sys/class/net/$CURRENT_INTERFACE" ]];then
-local udev_info
-udev_info=$(udevadm info "/sys/class/net/$CURRENT_INTERFACE" 2>/dev/null)
-PREDICTABLE_NAME=$(echo "$udev_info"|grep "ID_NET_NAME_PATH="|cut -d'=' -f2)
-if [[ -z $PREDICTABLE_NAME ]];then
-PREDICTABLE_NAME=$(echo "$udev_info"|grep "ID_NET_NAME_ONBOARD="|cut -d'=' -f2)
-fi
-if [[ -z $PREDICTABLE_NAME ]];then
-PREDICTABLE_NAME=$(ip -d link show "$CURRENT_INTERFACE" 2>/dev/null|grep "altname"|awk '{print $2}'|head -1)
-fi
-fi
-if [[ -n $PREDICTABLE_NAME ]];then
-DEFAULT_INTERFACE="$PREDICTABLE_NAME"
-print_success "Detected predictable interface name:" "$PREDICTABLE_NAME (current: $CURRENT_INTERFACE)"
-else
-DEFAULT_INTERFACE="$CURRENT_INTERFACE"
-print_warning "Could not detect predictable interface name"
-print_warning "Using current interface: $CURRENT_INTERFACE"
-print_warning "Proxmox might use different interface name - check after installation"
-fi
-AVAILABLE_ALTNAMES=$(ip -d link show|grep -v "lo:"|grep -E '(^[0-9]+:|altname)'|awk '/^[0-9]+:/ {interface=$2; gsub(/:/, "", interface); printf "%s", interface} /altname/ {printf ", %s", $2} END {print ""}'|sed 's/, $//')
-if command -v ip &>/dev/null&&command -v jq &>/dev/null;then
-AVAILABLE_INTERFACES=$(ip -j link show 2>/dev/null|jq -r '.[] | select(.ifname != "lo") | .ifname'|sort)
-elif command -v ip &>/dev/null;then
-AVAILABLE_INTERFACES=$(ip link show|awk -F': ' '/^[0-9]+:/ && !/lo:/ {print $2}'|sort)
-else
-AVAILABLE_INTERFACES="$CURRENT_INTERFACE"
-fi
-INTERFACE_COUNT=$(echo "$AVAILABLE_INTERFACES"|wc -l)
-if [[ -z $INTERFACE_NAME ]];then
-INTERFACE_NAME="$DEFAULT_INTERFACE"
-fi
-}
-_get_ipv4_via_ip_json(){
-MAIN_IPV4_CIDR=$(ip -j address show "$CURRENT_INTERFACE" 2>/dev/null|jq -r '.[0].addr_info[] | select(.family == "inet" and .scope == "global") | "\(.local)/\(.prefixlen)"'|head -n1)
-MAIN_IPV4="${MAIN_IPV4_CIDR%/*}"
-MAIN_IPV4_GW=$(ip -j route 2>/dev/null|jq -r '.[] | select(.dst == "default") | .gateway'|head -n1)
-[[ -n $MAIN_IPV4 ]]&&[[ -n $MAIN_IPV4_GW ]]
-}
-_get_ipv4_via_ip_text(){
-MAIN_IPV4_CIDR=$(ip address show "$CURRENT_INTERFACE" 2>/dev/null|grep global|grep "inet "|awk '{print $2}'|head -n1)
-MAIN_IPV4="${MAIN_IPV4_CIDR%/*}"
-MAIN_IPV4_GW=$(ip route 2>/dev/null|grep default|awk '{print $3}'|head -n1)
-[[ -n $MAIN_IPV4 ]]&&[[ -n $MAIN_IPV4_GW ]]
-}
-_get_ipv4_via_ifconfig(){
-MAIN_IPV4=$(ifconfig "$CURRENT_INTERFACE" 2>/dev/null|awk '/inet / {print $2}'|sed 's/addr://')
-local netmask
-netmask=$(ifconfig "$CURRENT_INTERFACE" 2>/dev/null|awk '/inet / {print $4}'|sed 's/Mask://')
-if [[ -n $MAIN_IPV4 ]]&&[[ -n $netmask ]];then
-case "$netmask" in
-255.255.255.0)MAIN_IPV4_CIDR="$MAIN_IPV4/24";;
-255.255.255.128)MAIN_IPV4_CIDR="$MAIN_IPV4/25";;
-255.255.255.192)MAIN_IPV4_CIDR="$MAIN_IPV4/26";;
-255.255.255.224)MAIN_IPV4_CIDR="$MAIN_IPV4/27";;
-255.255.255.240)MAIN_IPV4_CIDR="$MAIN_IPV4/28";;
-255.255.255.248)MAIN_IPV4_CIDR="$MAIN_IPV4/29";;
-255.255.255.252)MAIN_IPV4_CIDR="$MAIN_IPV4/30";;
-255.255.0.0)MAIN_IPV4_CIDR="$MAIN_IPV4/16";;
-*)MAIN_IPV4_CIDR="$MAIN_IPV4/24"
-esac
-fi
-if command -v route &>/dev/null;then
-MAIN_IPV4_GW=$(route -n 2>/dev/null|awk '/^0\.0\.0\.0/ {print $2}'|head -n1)
-fi
-[[ -n $MAIN_IPV4 ]]&&[[ -n $MAIN_IPV4_GW ]]
-}
-_get_mac_and_ipv6(){
-if command -v ip &>/dev/null&&command -v jq &>/dev/null;then
-MAC_ADDRESS=$(ip -j link show "$CURRENT_INTERFACE" 2>/dev/null|jq -r '.[0].address // empty')
-IPV6_CIDR=$(ip -j address show "$CURRENT_INTERFACE" 2>/dev/null|jq -r '.[0].addr_info[] | select(.family == "inet6" and .scope == "global") | "\(.local)/\(.prefixlen)"'|head -n1)
-elif command -v ip &>/dev/null;then
-MAC_ADDRESS=$(ip link show "$CURRENT_INTERFACE" 2>/dev/null|awk '/ether/ {print $2}')
-IPV6_CIDR=$(ip address show "$CURRENT_INTERFACE" 2>/dev/null|grep global|grep "inet6 "|awk '{print $2}'|head -n1)
-elif command -v ifconfig &>/dev/null;then
-MAC_ADDRESS=$(ifconfig "$CURRENT_INTERFACE" 2>/dev/null|awk '/ether/ {print $2}')
-IPV6_CIDR=$(ifconfig "$CURRENT_INTERFACE" 2>/dev/null|awk '/inet6/ && /global/ {print $2}')
-fi
-MAIN_IPV6="${IPV6_CIDR%/*}"
-}
-_validate_network_config(){
-local max_attempts="$1"
-if [[ -z $MAIN_IPV4 ]]||[[ -z $MAIN_IPV4_GW ]];then
-print_error "Failed to detect network configuration after $max_attempts attempts"
-print_error ""
-print_error "Detected values:"
-print_error "  Interface: ${CURRENT_INTERFACE:-not detected}"
-print_error "  IPv4:      ${MAIN_IPV4:-not detected}"
-print_error "  Gateway:   ${MAIN_IPV4_GW:-not detected}"
-print_error ""
-print_error "Available network interfaces:"
-if command -v ip &>/dev/null;then
-ip -brief link show 2>/dev/null|awk '{print "  " $1 " (" $2 ")"}' >&2||true
-elif command -v ifconfig &>/dev/null;then
-ifconfig -a 2>/dev/null|awk '/^[a-z]/ {print "  " $1}'|tr -d ':' >&2||true
-fi
-print_error ""
-print_error "Possible causes:"
-print_error "  - Network interface is down or not configured"
-print_error "  - Running in an environment without network access"
-print_error "  - Interface name mismatch (expected: $CURRENT_INTERFACE)"
-log "ERROR: Network detection failed - MAIN_IPV4=$MAIN_IPV4, MAIN_IPV4_GW=$MAIN_IPV4_GW, INTERFACE=$CURRENT_INTERFACE"
-exit 1
-fi
-if ! [[ $MAIN_IPV4 =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]];then
-print_error "Invalid IPv4 address format detected: '$MAIN_IPV4'"
-print_error "Expected format: X.X.X.X (e.g., 192.168.1.100)"
-print_error "This may indicate a parsing issue with the network configuration"
-log "ERROR: Invalid IPv4 address format: '$MAIN_IPV4' on interface $CURRENT_INTERFACE"
-exit 1
-fi
-if ! [[ $MAIN_IPV4_GW =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]];then
-print_error "Invalid gateway address format detected: '$MAIN_IPV4_GW'"
-print_error "Expected format: X.X.X.X (e.g., 192.168.1.1)"
-print_error "Check if default route is configured correctly"
-log "ERROR: Invalid gateway address format: '$MAIN_IPV4_GW'"
-exit 1
-fi
-if ! ping -c 1 -W 2 "$MAIN_IPV4_GW" >/dev/null 2>&1;then
-print_warning "Gateway $MAIN_IPV4_GW is not reachable (may be normal in rescue mode)"
-log "WARNING: Gateway $MAIN_IPV4_GW not reachable"
-fi
-}
-_calculate_ipv6_prefix(){
-if [[ -n $IPV6_CIDR ]];then
-local ipv6_prefix="${MAIN_IPV6%%:*:*:*:*}"
-if [[ $ipv6_prefix == "$MAIN_IPV6" ]]||[[ -z $ipv6_prefix ]];then
-ipv6_prefix=$(printf '%s' "$MAIN_IPV6"|cut -d':' -f1-4)
-fi
-FIRST_IPV6_CIDR="$ipv6_prefix:1::1/80"
-else
-FIRST_IPV6_CIDR=""
-fi
-}
-collect_network_info(){
-local max_attempts=3
-local attempt=0
-while [[ $attempt -lt $max_attempts ]];do
-attempt=$((attempt+1))
-if command -v ip &>/dev/null&&command -v jq &>/dev/null;then
-_get_ipv4_via_ip_json&&break
-elif command -v ip &>/dev/null;then
-_get_ipv4_via_ip_text&&break
-elif command -v ifconfig &>/dev/null;then
-_get_ipv4_via_ifconfig&&break
-fi
-if [[ $attempt -lt $max_attempts ]];then
-log "Network info attempt $attempt failed, retrying in 2 seconds..."
-sleep 2
-fi
-done
-_get_mac_and_ipv6
-_validate_network_config "$max_attempts"
-_calculate_ipv6_prefix
-}
 _wiz_read_key(){
 local key
 IFS= read -rsn1 key
@@ -2120,6 +2058,8 @@ elif [[ $key == "" ]];then
 WIZ_KEY="enter"
 elif [[ $key == "q" || $key == "Q" ]];then
 WIZ_KEY="quit"
+elif [[ $key == "s" || $key == "S" ]];then
+WIZ_KEY="start"
 else
 WIZ_KEY="$key"
 fi
@@ -2230,7 +2170,7 @@ _add_section "SSH"
 _add_field "SSH Key          " "$(_wiz_fmt "$ssh_display")" "ssh_key"
 _WIZ_FIELD_COUNT=$field_idx
 output+="\n"
-output+="$CLR_GRAY[$CLR_ORANGE↑↓$CLR_GRAY] navigate  [${CLR_ORANGE}Enter$CLR_GRAY] edit  [${CLR_ORANGE}Q$CLR_GRAY] quit$CLR_RESET"
+output+="$CLR_GRAY[$CLR_ORANGE↑↓$CLR_GRAY] navigate  [${CLR_ORANGE}Enter$CLR_GRAY] edit  [${CLR_ORANGE}S$CLR_GRAY] start  [${CLR_ORANGE}Q$CLR_GRAY] quit$CLR_RESET"
 echo -e "$output"
 }
 _wizard_main(){
@@ -2273,6 +2213,8 @@ features)_edit_features;;
 ssh_key)_edit_ssh_key
 esac
 _wiz_hide_cursor
+;;
+start)return 0
 ;;
 quit|esc)_wiz_show_cursor
 if gum confirm "Quit installation?" --default=false \
@@ -2731,12 +2673,56 @@ sleep 1
 fi
 fi
 }
+_validate_config(){
+local missing_fields=()
+local missing_count=0
+[[ -z $PVE_HOSTNAME ]]&&missing_fields+=("Hostname")&&((missing_count++))
+[[ -z $DOMAIN_SUFFIX ]]&&missing_fields+=("Domain")&&((missing_count++))
+[[ -z $EMAIL ]]&&missing_fields+=("Email")&&((missing_count++))
+[[ -z $NEW_ROOT_PASSWORD ]]&&missing_fields+=("Password")&&((missing_count++))
+[[ -z $TIMEZONE ]]&&missing_fields+=("Timezone")&&((missing_count++))
+[[ -z $PROXMOX_ISO_VERSION ]]&&missing_fields+=("Proxmox Version")&&((missing_count++))
+[[ -z $PVE_REPO_TYPE ]]&&missing_fields+=("Repository")&&((missing_count++))
+[[ -z $BRIDGE_MODE ]]&&missing_fields+=("Bridge mode")&&((missing_count++))
+[[ -z $PRIVATE_SUBNET ]]&&missing_fields+=("Private subnet")&&((missing_count++))
+[[ -z $IPV6_MODE ]]&&missing_fields+=("IPv6")&&((missing_count++))
+[[ -z $ZFS_RAID ]]&&missing_fields+=("ZFS mode")&&((missing_count++))
+[[ -z $SHELL_TYPE ]]&&missing_fields+=("Shell")&&((missing_count++))
+[[ -z $CPU_GOVERNOR ]]&&missing_fields+=("Power profile")&&((missing_count++))
+[[ -z $SSH_PUBLIC_KEY ]]&&missing_fields+=("SSH Key")&&((missing_count++))
+if [[ $INSTALL_TAILSCALE != "yes" ]];then
+[[ -z $SSL_TYPE ]]&&missing_fields+=("SSL Certificate")&&((missing_count++))
+fi
+if [[ $missing_count -gt 0 ]];then
+_wiz_show_cursor
+clear
+show_banner
+echo ""
+gum style --foreground "$HEX_RED" --bold "Configuration incomplete!"
+echo ""
+gum style --foreground "$HEX_YELLOW" "Please configure the following required fields:"
+echo ""
+for field in "${missing_fields[@]}";do
+echo "  $CLR_ORANGE•$CLR_RESET $field"
+done
+echo ""
+gum confirm "Return to configuration?" --default=true \
+--prompt.foreground "$HEX_ORANGE" \
+--selected.background "$HEX_ORANGE"||exit 1
+_wiz_hide_cursor
+return 1
+fi
+return 0
+}
 show_gum_config_editor(){
-detect_network_interface >/dev/null 2>&1
-collect_network_info >/dev/null 2>&1
 _wiz_hide_cursor
 trap '_wiz_show_cursor' EXIT
+while true;do
 _wizard_main
+if _validate_config;then
+break
+fi
+done
 }
 prepare_packages(){
 log "Starting package preparation"
