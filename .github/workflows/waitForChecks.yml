@@ -48,10 +48,11 @@ jobs:
             const checkType = '${{ inputs.check_type }}';
             const maxAttempts = ${{ inputs.max_attempts }};
             const delayMs = ${{ inputs.delay_ms }};
+            const maxEmptyAttempts = 3; // Allow a few attempts before treating missing checks as error
 
             async function getChecksForPR() {
-              const prNumber = ${{ inputs.pr_number || 'null' }};
-              if (!prNumber) {
+              const prNumber = '${{ inputs.pr_number }}';
+              if (!prNumber || prNumber === '') {
                 throw new Error('PR number is required for pr check type');
               }
 
@@ -91,6 +92,8 @@ jobs:
               return buildCheck ? [buildCheck] : [];
             }
 
+            let emptyAttempts = 0;
+
             for (let attempt = 1; attempt <= maxAttempts; attempt++) {
               const checks = checkType === 'pr'
                 ? await getChecksForPR()
@@ -101,21 +104,28 @@ jobs:
               console.log(`Completed: ${checks.filter(c => c.status === 'completed').length}`);
               console.log(`Successful: ${checks.filter(c => c.conclusion === 'success').length}`);
 
-              // Guard against empty array and fail fast on first attempt
+              // Guard against empty array - allow several attempts before treating as error
+              // This prevents race conditions with check creation
               if (checks.length === 0) {
-                if (attempt === 1) {
+                emptyAttempts++;
+                console.log(`No checks found yet (consecutive empty: ${emptyAttempts}/${maxEmptyAttempts})`);
+
+                if (emptyAttempts >= maxEmptyAttempts) {
                   const errorMsg = checkType === 'pr'
-                    ? 'No CI checks found for this PR. This likely means workflow/job names changed. Update check name filters in waitForChecks.yml'
-                    : 'Build check not found for main branch. This likely means the build workflow name changed. Update check name in waitForChecks.yml';
+                    ? `No CI checks found for this PR after ${maxEmptyAttempts} attempts. This likely means workflow/job names changed. Update check name filters in waitForChecks.yml`
+                    : `Build check not found for main branch after ${maxEmptyAttempts} attempts. This likely means the build workflow name changed. Update check name in waitForChecks.yml`;
                   throw new Error(errorMsg);
                 }
-                console.log('No checks found yet, waiting...');
+
                 if (attempt < maxAttempts) {
                   console.log(`Waiting ${delayMs/1000}s before next check...`);
                   await new Promise(resolve => setTimeout(resolve, delayMs));
                 }
                 continue;
               }
+
+              // Reset counter when checks are found
+              emptyAttempts = 0;
 
               const allCompleted = checks.every(check => check.status === 'completed');
               const allSuccess = checks.every(check =>
