@@ -1,8 +1,8 @@
-name: Deploy PR
+name: deploy_pr
 
 on:
   workflow_run:
-    workflows: ["Build PR"]
+    workflows: ["build_pr"]
     types:
       - completed
   workflow_dispatch:
