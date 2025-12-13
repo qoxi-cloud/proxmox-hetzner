@@ -158,7 +158,10 @@ _wiz_render_menu() {
 
   # --- Network ---
   _add_section "Network"
-  _add_field "Interface        " "$(_wiz_fmt "$INTERFACE_NAME" "→ auto-detect")" "interface"
+  # Show interface selector only if multiple interfaces available
+  if [[ ${INTERFACE_COUNT:-1} -gt 1 ]]; then
+    _add_field "Interface        " "$(_wiz_fmt "$INTERFACE_NAME")" "interface"
+  fi
   _add_field "Bridge mode      " "$(_wiz_fmt "$BRIDGE_MODE")" "bridge_mode"
   _add_field "Private subnet   " "$(_wiz_fmt "$PRIVATE_SUBNET")" "private_subnet"
   _add_field "IPv6             " "$(_wiz_fmt "$ipv6_display")" "ipv6"
@@ -526,9 +529,24 @@ _edit_interface() {
   show_banner
   echo ""
 
-  echo -e "${CLR_GRAY}Interface is auto-detected. Current: ${INTERFACE_NAME:-auto}${CLR_RESET}"
-  echo ""
-  sleep 1
+  # Get available interfaces (use cached value)
+  local interface_count=${INTERFACE_COUNT:-1}
+  local available_interfaces=${AVAILABLE_INTERFACES:-$INTERFACE_NAME}
+
+  # Calculate footer size: 1 header + number of interfaces
+  local footer_size=$((interface_count + 1))
+  _show_input_footer "filter" "$footer_size"
+
+  local selected
+  selected=$(echo "$available_interfaces" | gum choose \
+    --header="Network Interface:" \
+    --header.foreground "$HEX_CYAN" \
+    --cursor "${CLR_ORANGE}›${CLR_RESET} " \
+    --cursor.foreground "$HEX_NONE" \
+    --selected.foreground "$HEX_WHITE" \
+    --no-show-help)
+
+  [[ -n $selected ]] && INTERFACE_NAME="$selected"
 }
 
 _edit_bridge_mode() {

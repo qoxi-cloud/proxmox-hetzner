@@ -74,6 +74,18 @@ detect_network_interface() {
   # Get all available interfaces and their altnames for display
   AVAILABLE_ALTNAMES=$(ip -d link show | grep -v "lo:" | grep -E '(^[0-9]+:|altname)' | awk '/^[0-9]+:/ {interface=$2; gsub(/:/, "", interface); printf "%s", interface} /altname/ {printf ", %s", $2} END {print ""}' | sed 's/, $//')
 
+  # Get all available non-loopback interfaces (for wizard selection)
+  if command -v ip &>/dev/null && command -v jq &>/dev/null; then
+    AVAILABLE_INTERFACES=$(ip -j link show 2>/dev/null | jq -r '.[] | select(.ifname != "lo") | .ifname' | sort)
+  elif command -v ip &>/dev/null; then
+    AVAILABLE_INTERFACES=$(ip link show | awk -F': ' '/^[0-9]+:/ && !/lo:/ {print $2}' | sort)
+  else
+    AVAILABLE_INTERFACES="$CURRENT_INTERFACE"
+  fi
+
+  # Count available interfaces
+  INTERFACE_COUNT=$(echo "$AVAILABLE_INTERFACES" | wc -l)
+
   # Set INTERFACE_NAME to default if not already set
   if [[ -z $INTERFACE_NAME ]]; then
     INTERFACE_NAME="$DEFAULT_INTERFACE"
