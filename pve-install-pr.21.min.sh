@@ -19,7 +19,7 @@ HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 HEX_NONE="7"
 MENU_BOX_WIDTH=60
-VERSION="2.0.86-pr.21"
+VERSION="2.0.87-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -2750,15 +2750,24 @@ clear
 show_banner
 echo ""
 _show_input_footer "checkbox" 3
+local preselected=()
+[[ $INSTALL_VNSTAT == "yes" ]]&&preselected+=("vnstat")
+[[ $INSTALL_AUDITD == "yes" ]]&&preselected+=("auditd")
 local selected
-selected=$(echo "$WIZ_OPTIONAL_FEATURES"|gum choose \
---no-limit \
---header="Features:" \
---header.foreground "$HEX_CYAN" \
---cursor "$CLR_ORANGE›$CLR_RESET " \
---cursor.foreground "$HEX_NONE" \
---selected.foreground "$HEX_WHITE" \
+local gum_args=(
+--no-limit
+--header="Features:"
+--header.foreground "$HEX_CYAN"
+--cursor "$CLR_ORANGE›$CLR_RESET "
+--cursor.foreground "$HEX_NONE"
+--selected.foreground "$HEX_WHITE"
+--selected-prefix "$CLR_CYAN✓$CLR_RESET "
+--unselected-prefix "  "
 --no-show-help)
+for item in "${preselected[@]}";do
+gum_args+=(--selected "$item")
+done
+selected=$(echo "$WIZ_OPTIONAL_FEATURES"|gum choose "${gum_args[@]}")
 INSTALL_VNSTAT="no"
 INSTALL_AUDITD="no"
 if echo "$selected"|grep -q "vnstat";then
