@@ -269,6 +269,7 @@ _wizard_main() {
         ;;
       quit | esc)
         _wiz_show_cursor
+        echo ""
         if gum confirm "Quit installation?" --default=false \
           --prompt.foreground "$HEX_ORANGE" \
           --selected.background "$HEX_ORANGE"; then
