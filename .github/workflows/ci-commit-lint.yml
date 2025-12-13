@@ -1,4 +1,4 @@
-name: Commit Lint
+name: CI / Commit Lint
 
 on:
   pull_request:
@@ -7,7 +7,7 @@ on:
     types: [opened, synchronize, reopened, edited]
 
 jobs:
-  lint-commits:
+  run:
     runs-on: ubuntu-latest
 
     steps:

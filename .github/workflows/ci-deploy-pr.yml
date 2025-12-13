@@ -1,4 +1,4 @@
-name: Deploy PR Build
+name: CI / Deploy PR
 
 # This workflow runs in the context of the base repository,
 # allowing it to deploy PR builds from forks securely.
@@ -6,7 +6,7 @@ name: Deploy PR Build
 
 on:
   workflow_run:
-    workflows: ["CI"]
+    workflows: ["CI / Build"]
     types:
       - completed
   workflow_dispatch:
@@ -17,13 +17,13 @@ on:
         type: string
 
 jobs:
-  deploy-pr:
+  run:
     runs-on: ubuntu-latest
-    # Run on workflow_run from PR, or on manual dispatch
+    # Run on workflow_run from PR (push events to PR branches), or on manual dispatch
     if: >
       github.event_name == 'workflow_dispatch' ||
-      (github.event.workflow_run.event == 'pull_request' &&
-       github.event.workflow_run.conclusion == 'success')
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.pull_requests[0] != null)
 
     permissions:
       contents: write
@@ -144,7 +144,7 @@ jobs:
 
             🤖 *This comment is automatically updated on each push to this PR.*`.replace(/^ +/gm, '');
 
-            // Find existing comment
+            // Find and delete existing comment
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -157,17 +157,17 @@ jobs:
             );
 
             if (botComment) {
-              await github.rest.issues.updateComment({
+              await github.rest.issues.deleteComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                comment_id: botComment.id,
-                body: body
-              });
-            } else {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: prNumber,
-                body: body
+                comment_id: botComment.id
               });
             }
+
+            // Create new comment at the end
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              body: body
+            });

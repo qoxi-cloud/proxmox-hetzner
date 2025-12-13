@@ -1,0 +1,62 @@
+name: CI / Deploy
+
+on:
+  workflow_run:
+    workflows: ["CI / Build"]
+    types:
+      - completed
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    if: github.event.workflow_run.event == 'push' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main'
+
+    permissions:
+      contents: write
+      actions: read
+
+    steps:
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: pve-install
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Calculate version for badge
+        id: version
+        run: |
+          VERSION=$(grep '^VERSION=' pve-install.min.sh | head -1 | sed 's/VERSION="//;s/"//')
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Checkout gh-pages
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: gh-pages
+
+      - name: Deploy to gh-pages
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+
+          # Copy build artifacts (minified is primary, full for debugging)
+          cp pve-install.min.sh gh-pages/
+          cp pve-install.sh gh-pages/
+
+          # Generate version.json for shields.io badge
+          cat > gh-pages/version.json << EOF
+          {
+            "schemaVersion": 1,
+            "label": "version",
+            "message": "${VERSION}",
+            "color": "blue"
+          }
+          EOF
+
+          # Commit and push
+          cd gh-pages
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add pve-install.sh pve-install.min.sh version.json
+          git commit -m "Deploy version ${VERSION}" || echo "No changes to commit"
+          git push origin gh-pages

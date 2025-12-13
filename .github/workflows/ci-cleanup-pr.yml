@@ -1,4 +1,4 @@
-name: Cleanup PR Build
+name: CI / Cleanup PR
 
 on:
   pull_request_target:
@@ -7,7 +7,7 @@ on:
     types: [closed]
 
 jobs:
-  cleanup:
+  run:
     runs-on: ubuntu-latest
 
     permissions:

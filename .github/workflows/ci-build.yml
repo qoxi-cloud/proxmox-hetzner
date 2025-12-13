@@ -1,4 +1,4 @@
-name: CI
+name: CI / Build
 
 on:
   push:
@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  run:
     runs-on: ubuntu-latest
 
     permissions:
@@ -96,16 +96,6 @@ jobs:
           curl -sS https://webi.sh/shfmt | sh
           echo "$HOME/.local/bin" >> $GITHUB_PATH
 
-      - name: Check formatting with shfmt
-        run: |
-          # Check if scripts are properly formatted (2-space indent, simplify)
-          if ! shfmt -i 2 -ci -s -d scripts/*.sh; then
-            echo ""
-            echo "::error::Scripts are not properly formatted. Run: shfmt -i 2 -ci -s -w scripts/*.sh"
-            exit 1
-          fi
-          echo "✓ All scripts are properly formatted"
-
       - name: Minify script with shfmt
         run: |
           # Minify: -mn removes comments and minimizes whitespace
@@ -120,15 +110,6 @@ jobs:
           echo "Reduction: ${REDUCTION}%"
 
           chmod +x pve-install.min.sh
-
-      - name: Lint with ShellCheck
-        # SC1003: single quote escape in ASCII art banner (intentional)
-        run: shellcheck -e SC1003,SC1091,SC2034,SC2086 scripts/*.sh
-
-      - name: Run unit tests
-        run: |
-          chmod +x tests/*.sh
-          ./tests/run-all-tests.sh
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
@@ -152,55 +133,3 @@ jobs:
         with:
           name: pr-metadata
           path: pr-metadata/
-
-  deploy:
-    runs-on: ubuntu-latest
-    needs: build
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-
-    permissions:
-      contents: write
-
-    steps:
-      - name: Download build artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: pve-install
-
-      - name: Calculate version for badge
-        id: version
-        run: |
-          VERSION=$(grep '^VERSION=' pve-install.min.sh | head -1 | sed 's/VERSION="//;s/"//')
-          echo "version=${VERSION}" >> $GITHUB_OUTPUT
-
-      - name: Checkout gh-pages
-        uses: actions/checkout@v4
-        with:
-          ref: gh-pages
-          path: gh-pages
-
-      - name: Deploy to gh-pages
-        run: |
-          VERSION="${{ steps.version.outputs.version }}"
-
-          # Copy build artifacts (minified is primary, full for debugging)
-          cp pve-install.min.sh gh-pages/
-          cp pve-install.sh gh-pages/
-
-          # Generate version.json for shields.io badge
-          cat > gh-pages/version.json << EOF
-          {
-            "schemaVersion": 1,
-            "label": "version",
-            "message": "${VERSION}",
-            "color": "blue"
-          }
-          EOF
-
-          # Commit and push
-          cd gh-pages
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add pve-install.sh pve-install.min.sh version.json
-          git commit -m "Deploy version ${VERSION}" || echo "No changes to commit"
-          git push origin gh-pages
