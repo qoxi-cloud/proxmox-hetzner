@@ -42,6 +42,10 @@ jobs:
     needs: prepareAndWait
     if: needs.prepareAndWait.outputs.pr_number != ''
     uses: ./.github/workflows/waitForChecks.yml
+    permissions:
+      checks: read
+      pull-requests: read
+      actions: read
     with:
       check_type: pr
       pr_number: ${{ needs.prepareAndWait.outputs.pr_number }}
