@@ -1,0 +1,144 @@
+name: Wait for CI Checks
+
+on:
+  workflow_call:
+    inputs:
+      check_type:
+        description: 'Type of checks to wait for: pr or main'
+        required: true
+        type: string
+      pr_number:
+        description: 'PR number (required for pr type)'
+        required: false
+        type: string
+      commit_sha:
+        description: 'Commit SHA (required for main type)'
+        required: false
+        type: string
+      max_attempts:
+        description: 'Maximum number of polling attempts'
+        required: false
+        type: number
+        default: 60
+      delay_ms:
+        description: 'Delay between attempts in milliseconds'
+        required: false
+        type: number
+        default: 10000
+    outputs:
+      checks_passed:
+        description: 'Whether all checks passed'
+        value: ${{ jobs.waitForChecks.outputs.checks_passed }}
+
+jobs:
+  waitForChecks:
+    runs-on: ubuntu-latest
+    permissions:
+      checks: read
+      pull-requests: read
+      actions: read
+    outputs:
+      checks_passed: ${{ steps.wait.outputs.passed }}
+    steps:
+      - name: Wait for CI checks
+        id: wait
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const checkType = '${{ inputs.check_type }}';
+            const maxAttempts = ${{ inputs.max_attempts }};
+            const delayMs = ${{ inputs.delay_ms }};
+
+            async function getChecksForPR() {
+              const prNumber = ${{ inputs.pr_number || 'null' }};
+              if (!prNumber) {
+                throw new Error('PR number is required for pr check type');
+              }
+
+              const { data: pr } = await github.rest.pulls.get({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: prNumber
+              });
+
+              const { data: checks } = await github.rest.checks.listForRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: pr.head.sha
+              });
+
+              return checks.check_runs.filter(check =>
+                check.name.startsWith('CI') ||
+                check.name.includes('shellcheck') ||
+                check.name.includes('format') ||
+                check.name.includes('commit')
+              );
+            }
+
+            async function getChecksForMain() {
+              const commitSha = '${{ inputs.commit_sha }}';
+              if (!commitSha) {
+                throw new Error('Commit SHA is required for main check type');
+              }
+
+              const { data: checks } = await github.rest.checks.listForRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: commitSha
+              });
+
+              const buildCheck = checks.check_runs.find(check => check.name === 'build');
+              return buildCheck ? [buildCheck] : [];
+            }
+
+            for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+              const checks = checkType === 'pr'
+                ? await getChecksForPR()
+                : await getChecksForMain();
+
+              console.log(`Attempt ${attempt}/${maxAttempts}:`);
+              console.log(`Total checks: ${checks.length}`);
+              console.log(`Completed: ${checks.filter(c => c.status === 'completed').length}`);
+              console.log(`Successful: ${checks.filter(c => c.conclusion === 'success').length}`);
+
+              // Guard against empty array and fail fast on first attempt
+              if (checks.length === 0) {
+                if (attempt === 1) {
+                  const errorMsg = checkType === 'pr'
+                    ? 'No CI checks found for this PR. This likely means workflow/job names changed. Update check name filters in wait-for-checks.yml'
+                    : 'Build check not found for main branch. This likely means the build workflow name changed. Update check name in wait-for-checks.yml';
+                  throw new Error(errorMsg);
+                }
+                console.log('No checks found yet, waiting...');
+                if (attempt < maxAttempts) {
+                  console.log(`Waiting ${delayMs/1000}s before next check...`);
+                  await new Promise(resolve => setTimeout(resolve, delayMs));
+                }
+                continue;
+              }
+
+              const allCompleted = checks.every(check => check.status === 'completed');
+              const allSuccess = checks.every(check =>
+                check.conclusion === 'success' || check.conclusion === 'skipped'
+              );
+
+              if (allCompleted) {
+                if (allSuccess) {
+                  console.log('All checks passed!');
+                  core.setOutput('passed', 'true');
+                  return;
+                } else {
+                  const failed = checks.filter(c =>
+                    c.conclusion !== 'success' && c.conclusion !== 'skipped'
+                  );
+                  throw new Error(`Checks failed: ${failed.map(c => c.name).join(', ')}`);
+                }
+              }
+
+              if (attempt < maxAttempts) {
+                console.log(`Waiting ${delayMs/1000}s before next check...`);
+                await new Promise(resolve => setTimeout(resolve, delayMs));
+              }
+            }
+
+            throw new Error('Timeout: Checks did not complete or were not found');

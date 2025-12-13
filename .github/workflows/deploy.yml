@@ -7,85 +7,14 @@ on:
       - completed
 
 jobs:
-  # Wait for all CI workflows to complete
   waitForCi:
-    runs-on: ubuntu-latest
     if: github.event.workflow_run.event == 'push' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main'
-    permissions:
-      checks: read
-      actions: read
-    outputs:
-      run_id: ${{ steps.run.outputs.id }}
-      commit_sha: ${{ steps.commit.outputs.sha }}
-    steps:
-      - name: Set run ID
-        id: run
-        run: |
-          echo "id=${{ github.event.workflow_run.id }}" >> $GITHUB_OUTPUT
-
-      - name: Get commit SHA
-        id: commit
-        run: |
-          echo "sha=${{ github.event.workflow_run.head_sha }}" >> $GITHUB_OUTPUT
-
-      - name: Wait for build workflow
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const commitSha = '${{ steps.commit.outputs.sha }}';
-            const maxAttempts = 30; // 5 minutes max
-            const delayMs = 10000; // 10 seconds between checks
-
-            for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-              const { data: checks } = await github.rest.checks.listForRef({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                ref: commitSha
-              });
-
-              // For main branch, only wait for the build workflow
-              const buildCheck = checks.check_runs.find(check =>
-                check.name === 'build'
-              );
-
-              console.log(`Attempt ${attempt}/${maxAttempts}:`);
-
-              if (!buildCheck) {
-                // Fail fast on first attempt if build check not found
-                // This prevents timeout when workflow name changes
-                if (attempt === 1) {
-                  throw new Error(
-                    'Build check not found for main branch. This likely means the build workflow name changed. ' +
-                    'Update the check name in deploy.yml waitForCi step.'
-                  );
-                }
-                console.log('Build check not found yet, waiting...');
-                if (attempt < maxAttempts) {
-                  console.log(`Waiting ${delayMs/1000}s before next check...`);
-                  await new Promise(resolve => setTimeout(resolve, delayMs));
-                }
-                continue;
-              }
-
-              console.log(`Build status: ${buildCheck.status}`);
-              console.log(`Build conclusion: ${buildCheck.conclusion}`);
-
-              if (buildCheck.status === 'completed') {
-                if (buildCheck.conclusion === 'success') {
-                  console.log('Build check passed!');
-                  return;
-                } else {
-                  throw new Error(`Build check failed with conclusion: ${buildCheck.conclusion}`);
-                }
-              }
-
-              if (attempt < maxAttempts) {
-                console.log(`Waiting ${delayMs/1000}s before next check...`);
-                await new Promise(resolve => setTimeout(resolve, delayMs));
-              }
-            }
-
-            throw new Error('Timeout: Build check did not complete or was not found');
+    uses: ./.github/workflows/wait-for-checks.yml
+    with:
+      check_type: main
+      commit_sha: ${{ github.event.workflow_run.head_sha }}
+      max_attempts: 30
+      delay_ms: 10000
 
   deploy:
     runs-on: ubuntu-latest
@@ -101,7 +30,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: pve-install
-          run-id: ${{ needs.waitForCi.outputs.run_id }}
+          run-id: ${{ github.event.workflow_run.id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Calculate version for badge
