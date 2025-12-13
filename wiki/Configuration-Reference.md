@@ -76,7 +76,7 @@ You can pre-configure settings via environment variables. Pre-set variables will
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `DEFAULT_SHELL` | Default shell for root: `zsh`, `bash` | `zsh` |
+| `DEFAULT_SHELL_TYPE` | Default shell for root: `zsh`, `bash` | (none) |
 
 ### Repository Settings
 

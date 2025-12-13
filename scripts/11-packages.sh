@@ -9,14 +9,6 @@
 prepare_packages() {
   log "Starting package preparation"
 
-  # Check repository availability before proceeding
-  log "Checking Proxmox repository availability"
-  if ! curl -fsSL --max-time 10 "https://enterprise.proxmox.com/debian/proxmox-release-bookworm.gpg" >/dev/null 2>&1; then
-    print_error "Cannot reach Proxmox repository"
-    log "ERROR: Cannot reach Proxmox repository"
-    exit 1
-  fi
-
   log "Adding Proxmox repository"
   echo "deb http://download.proxmox.com/debian/pve bookworm pve-no-subscription" >/etc/apt/sources.list.d/pve.list
 
@@ -28,6 +20,7 @@ prepare_packages() {
   local exit_code=$?
   if [[ $exit_code -ne 0 ]]; then
     log "ERROR: Failed to download Proxmox GPG key"
+    print_error "Cannot reach Proxmox repository"
     exit 1
   fi
   log "Proxmox GPG key downloaded successfully"
@@ -58,53 +51,27 @@ prepare_packages() {
   log "Required packages installed successfully"
 }
 
-# Cache for ISO list (avoid multiple HTTP requests)
+# Cache for ISO list (populated by prefetch_proxmox_iso_info)
 _ISO_LIST_CACHE=""
 
 # Cache for SHA256SUMS content
 _CHECKSUM_CACHE=""
 
-# Internal: fetches ISO list from Proxmox repository (cached).
-# Returns: List of ISO filenames via stdout
-_fetch_iso_list() {
-  if [[ -z $_ISO_LIST_CACHE ]]; then
-    _ISO_LIST_CACHE=$(curl -s "$PROXMOX_ISO_BASE_URL" | grep -oE 'proxmox-ve_[0-9]+\.[0-9]+-[0-9]+\.iso' | sort -uV)
-  fi
-  echo "$_ISO_LIST_CACHE"
-}
-
-# Prefetches ISO list and checksums in background.
+# Prefetches ISO list and checksums.
 # Call this early to cache data for later use.
 # Side effects: Populates _ISO_LIST_CACHE and _CHECKSUM_CACHE
 prefetch_proxmox_iso_info() {
-  # Fetch ISO list
   _ISO_LIST_CACHE=$(curl -s "$PROXMOX_ISO_BASE_URL" 2>/dev/null | grep -oE 'proxmox-ve_[0-9]+\.[0-9]+-[0-9]+\.iso' | sort -uV) || true
-
-  # Fetch checksums
   _CHECKSUM_CACHE=$(curl -s "$PROXMOX_CHECKSUM_URL" 2>/dev/null) || true
 }
 
-# Fetches available Proxmox VE ISO versions (last N versions).
+# Returns available Proxmox VE ISO versions (last N versions).
 # Parameters:
 #   $1 - Number of versions to return (default: 5)
 # Returns: ISO filenames via stdout, newest first
 get_available_proxmox_isos() {
   local count="${1:-5}"
-  _fetch_iso_list | tail -n "$count" | tac
-}
-
-# Fetches URL of latest Proxmox VE ISO.
-# Returns: Full ISO URL via stdout, or error on failure
-get_latest_proxmox_ve_iso() {
-  local latest_iso
-  latest_iso=$(_fetch_iso_list | tail -n1)
-
-  if [[ -n $latest_iso ]]; then
-    echo "${PROXMOX_ISO_BASE_URL}${latest_iso}"
-  else
-    echo "No Proxmox VE ISO found." >&2
-    return 1
-  fi
+  echo "$_ISO_LIST_CACHE" | tail -n "$count" | tac
 }
 
 # Constructs full ISO URL from filename.
@@ -205,7 +172,7 @@ _download_iso_aria2c() {
 }
 
 # Downloads Proxmox ISO with fallback chain and checksum verification.
-# Uses selected version or fetches latest if not specified.
+# Requires PROXMOX_ISO_VERSION to be set (user selects version in wizard).
 # Tries: aria2c → curl → wget
 # Side effects: Creates pve.iso file, exits on failure
 download_proxmox_iso() {
@@ -217,36 +184,23 @@ download_proxmox_iso() {
     return 0
   fi
 
-  # Use selected ISO or fetch latest
-  if [[ -n $PROXMOX_ISO_VERSION ]]; then
-    log "Using user-selected ISO: $PROXMOX_ISO_VERSION"
-    PROXMOX_ISO_URL=$(get_proxmox_iso_url "$PROXMOX_ISO_VERSION")
-  else
-    log "Fetching latest Proxmox ISO URL"
-    PROXMOX_ISO_URL=$(get_latest_proxmox_ve_iso)
-  fi
-
-  if [[ -z $PROXMOX_ISO_URL ]]; then
-    log "ERROR: Failed to retrieve Proxmox ISO URL"
+  if [[ -z $PROXMOX_ISO_VERSION ]]; then
+    log "ERROR: PROXMOX_ISO_VERSION not set"
     exit 1
   fi
+
+  log "Using selected ISO: $PROXMOX_ISO_VERSION"
+  PROXMOX_ISO_URL=$(get_proxmox_iso_url "$PROXMOX_ISO_VERSION")
   log "Found ISO URL: $PROXMOX_ISO_URL"
 
   ISO_FILENAME=$(basename "$PROXMOX_ISO_URL")
 
-  # Get checksum from cache or download
+  # Get checksum from cache (populated by prefetch_proxmox_iso_info)
   local expected_checksum=""
   if [[ -n $_CHECKSUM_CACHE ]]; then
-    log "Using cached checksum data"
     expected_checksum=$(echo "$_CHECKSUM_CACHE" | grep "$ISO_FILENAME" | awk '{print $1}')
-  else
-    log "Downloading checksum file"
-    curl -sS -o SHA256SUMS "$PROXMOX_CHECKSUM_URL" >>"$LOG_FILE" 2>&1 || true
-    if [[ -f "SHA256SUMS" ]]; then
-      expected_checksum=$(grep "$ISO_FILENAME" SHA256SUMS | awk '{print $1}')
-    fi
   fi
-  log "Expected checksum: $expected_checksum"
+  log "Expected checksum: ${expected_checksum:-not available}"
 
   # Download with fallback chain: aria2c (conservative) -> curl -> wget
   log "Downloading ISO: $ISO_FILENAME"
@@ -306,7 +260,7 @@ download_proxmox_iso() {
 
   if [[ $download_success != "true" ]]; then
     log "ERROR: All download methods failed for Proxmox ISO"
-    rm -f pve.iso SHA256SUMS
+    rm -f pve.iso
     exit 1
   fi
 
@@ -325,7 +279,7 @@ download_proxmox_iso() {
       actual_checksum=$(sha256sum pve.iso | awk '{print $1}')
       if [[ $actual_checksum != "$expected_checksum" ]]; then
         log "ERROR: Checksum mismatch! Expected: $expected_checksum, Got: $actual_checksum"
-        rm -f pve.iso SHA256SUMS
+        rm -f pve.iso
         exit 1
       fi
       log "Checksum verification passed"
@@ -334,8 +288,6 @@ download_proxmox_iso() {
     log "WARNING: Could not find checksum for $ISO_FILENAME"
     print_warning "Could not find checksum for $ISO_FILENAME"
   fi
-
-  rm -f SHA256SUMS
 }
 
 # Validates answer.toml has all required fields.

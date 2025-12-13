@@ -2,6 +2,9 @@
 pve-install.sh
 _site/
 
+# Project documentation (local only)
+CLAUDE.md
+
 # OS files
 .DS_Store
 Thumbs.db

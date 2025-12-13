@@ -219,12 +219,10 @@ show_banner_animated_stop
 
 log "Step: show_system_status"
 show_system_status
-log "Step: get_system_inputs"
-get_system_inputs
 
-# Show configuration preview
-log "Step: show_configuration_review"
-show_configuration_review
+# Show interactive configuration editor (replaces get_system_inputs)
+log "Step: show_gum_config_editor"
+show_gum_config_editor
 
 echo ""
 show_timed_progress "Configuring..." 5

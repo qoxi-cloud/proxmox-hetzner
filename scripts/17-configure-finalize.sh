@@ -58,6 +58,8 @@ configure_proxmox_via_ssh() {
   configure_tailscale
   configure_fail2ban
   configure_auditd
+  configure_yazi
+  configure_nvim
   configure_ssl_certificate
   configure_ssh_hardening
   validate_installation

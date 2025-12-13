@@ -38,8 +38,12 @@ configure_tailscale() {
       else
         remote_exec "tailscale up --authkey='$TAILSCALE_AUTH_KEY'" || exit 1
       fi
-      remote_exec "tailscale ip -4" >"$tmp_ip" 2>/dev/null || true
-      remote_exec "tailscale status --json | jq -r '.Self.DNSName // empty' | sed 's/\\.$//' " >"$tmp_hostname" 2>/dev/null || true
+      # Get IP and hostname in one call using tailscale status --json
+      remote_exec "tailscale status --json | jq -r '[(.Self.TailscaleIPs[0] // \"pending\"), (.Self.DNSName // \"\" | rtrimstr(\".\"))] | @tsv'" 2>/dev/null | {
+        IFS=$'\t' read -r ip hostname
+        echo "$ip" >"$tmp_ip"
+        echo "$hostname" >"$tmp_hostname"
+      } || true
     ) >/dev/null 2>&1 &
     show_progress $! "Authenticating Tailscale"
 
