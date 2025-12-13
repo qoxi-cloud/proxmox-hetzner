@@ -19,7 +19,7 @@ HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 HEX_NONE="7"
 MENU_BOX_WIDTH=60
-VERSION="2.0.72-pr.21"
+VERSION="2.0.74-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -2333,13 +2333,12 @@ PASSWORD_GENERATED="yes"
 clear
 show_banner
 echo ""
-gum style --foreground "$HEX_GREEN" "Password generated successfully!"
-echo ""
-gum style --foreground "$HEX_GRAY" "Generated password: $CLR_ORANGE$NEW_ROOT_PASSWORD$CLR_RESET"
-echo ""
 gum style --foreground "$HEX_YELLOW" "Please save this password - it will be required for login"
 echo ""
-read -n 1 -s -r -p "Press any key to continue..."
+echo -e "${CLR_CYAN}Generated password:$CLR_RESET $CLR_ORANGE$NEW_ROOT_PASSWORD$CLR_RESET"
+echo ""
+echo -e "${CLR_GRAY}Press any key to continue...$CLR_RESET"
+read -n 1 -s -r
 break
 ;;
 "Manual entry")clear
