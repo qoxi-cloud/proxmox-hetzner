@@ -261,38 +261,8 @@ validate_timezone() {
 }
 
 # =============================================================================
-# Input prompt helpers with validation
+# DNS validation
 # =============================================================================
-
-# Prompts for input with validation, showing success checkmark when valid.
-# Parameters:
-#   $1 - Prompt text
-#   $2 - Default value
-#   $3 - Validator function name
-#   $4 - Error message for invalid input
-#   $5 - Variable name to store result
-#   $6 - Optional confirmation label
-# Side effects: Sets variable named by $5
-prompt_with_validation() {
-  local prompt="$1"
-  local default="$2"
-  local validator="$3"
-  local error_msg="$4"
-  local var_name="$5"
-  local confirm_label="${6:-$prompt}"
-
-  local result
-  while true; do
-    read -r -e -p "$prompt" -i "$default" result
-    if $validator "$result"; then
-      printf "\033[A\r%s✓%s %s%s%s%s\033[K\n" "${CLR_CYAN}" "${CLR_RESET}" "$confirm_label" "${CLR_CYAN}" "$result" "${CLR_RESET}"
-      # Use printf -v for safe variable assignment (avoids eval)
-      printf -v "$var_name" '%s' "$result"
-      return 0
-    fi
-    print_error "$error_msg"
-  done
-}
 
 # Validates that FQDN resolves to expected IP using public DNS servers.
 # Parameters:
