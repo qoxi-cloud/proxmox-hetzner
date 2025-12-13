@@ -19,7 +19,7 @@ HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 HEX_NONE="7"
 MENU_BOX_WIDTH=60
-VERSION="2.0.67-pr.21"
+VERSION="2.0.70-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -1970,6 +1970,14 @@ print_warning "Using current interface: $CURRENT_INTERFACE"
 print_warning "Proxmox might use different interface name - check after installation"
 fi
 AVAILABLE_ALTNAMES=$(ip -d link show|grep -v "lo:"|grep -E '(^[0-9]+:|altname)'|awk '/^[0-9]+:/ {interface=$2; gsub(/:/, "", interface); printf "%s", interface} /altname/ {printf ", %s", $2} END {print ""}'|sed 's/, $//')
+if command -v ip &>/dev/null&&command -v jq &>/dev/null;then
+AVAILABLE_INTERFACES=$(ip -j link show 2>/dev/null|jq -r '.[] | select(.ifname != "lo") | .ifname'|sort)
+elif command -v ip &>/dev/null;then
+AVAILABLE_INTERFACES=$(ip link show|awk -F': ' '/^[0-9]+:/ && !/lo:/ {print $2}'|sort)
+else
+AVAILABLE_INTERFACES="$CURRENT_INTERFACE"
+fi
+INTERFACE_COUNT=$(echo "$AVAILABLE_INTERFACES"|wc -l)
 if [[ -z $INTERFACE_NAME ]];then
 INTERFACE_NAME="$DEFAULT_INTERFACE"
 fi
@@ -2200,7 +2208,9 @@ _add_section "Proxmox"
 _add_field "Version          " "$(_wiz_fmt "$iso_version_display")" "iso_version"
 _add_field "Repository       " "$(_wiz_fmt "$PVE_REPO_TYPE")" "repository"
 _add_section "Network"
-_add_field "Interface        " "$(_wiz_fmt "$INTERFACE_NAME" "→ auto-detect")" "interface"
+if [[ ${INTERFACE_COUNT:-1} -gt 1 ]];then
+_add_field "Interface        " "$(_wiz_fmt "$INTERFACE_NAME")" "interface"
+fi
 _add_field "Bridge mode      " "$(_wiz_fmt "$BRIDGE_MODE")" "bridge_mode"
 _add_field "Private subnet   " "$(_wiz_fmt "$PRIVATE_SUBNET")" "private_subnet"
 _add_field "IPv6             " "$(_wiz_fmt "$ipv6_display")" "ipv6"
@@ -2208,8 +2218,10 @@ _add_section "Storage"
 _add_field "ZFS mode         " "$(_wiz_fmt "$ZFS_RAID")" "zfs_mode"
 _add_section "VPN"
 _add_field "Tailscale        " "$(_wiz_fmt "$tailscale_display")" "tailscale"
+if [[ $INSTALL_TAILSCALE != "yes" ]];then
 _add_section "SSL"
 _add_field "Certificate      " "$(_wiz_fmt "$SSL_TYPE")" "ssl"
+fi
 _add_section "Optional"
 _add_field "Shell            " "$(_wiz_fmt "$SHELL_TYPE")" "shell"
 _add_field "Power profile    " "$(_wiz_fmt "$CPU_GOVERNOR")" "power_profile"
@@ -2475,9 +2487,19 @@ _edit_interface(){
 clear
 show_banner
 echo ""
-echo -e "${CLR_GRAY}Interface is auto-detected. Current: ${INTERFACE_NAME:-auto}$CLR_RESET"
-echo ""
-sleep 1
+local interface_count=${INTERFACE_COUNT:-1}
+local available_interfaces=${AVAILABLE_INTERFACES:-$INTERFACE_NAME}
+local footer_size=$((interface_count+1))
+_show_input_footer "filter" "$footer_size"
+local selected
+selected=$(echo "$available_interfaces"|gum choose \
+--header="Network Interface:" \
+--header.foreground "$HEX_CYAN" \
+--cursor "$CLR_ORANGE›$CLR_RESET " \
+--cursor.foreground "$HEX_NONE" \
+--selected.foreground "$HEX_WHITE" \
+--no-show-help)
+[[ -n $selected ]]&&INTERFACE_NAME="$selected"
 }
 _edit_bridge_mode(){
 clear
@@ -2594,6 +2616,7 @@ TAILSCALE_SSH="yes"
 TAILSCALE_WEBUI="yes"
 TAILSCALE_DISABLE_SSH="yes"
 STEALTH_MODE="yes"
+SSL_TYPE="self-signed"
 else
 INSTALL_TAILSCALE="no"
 TAILSCALE_AUTH_KEY=""
@@ -2601,6 +2624,7 @@ TAILSCALE_SSH=""
 TAILSCALE_WEBUI=""
 TAILSCALE_DISABLE_SSH=""
 STEALTH_MODE=""
+SSL_TYPE=""
 fi
 ;;
 Disabled)INSTALL_TAILSCALE="no"
@@ -2609,6 +2633,7 @@ TAILSCALE_SSH=""
 TAILSCALE_WEBUI=""
 TAILSCALE_DISABLE_SSH=""
 STEALTH_MODE=""
+SSL_TYPE=""
 esac
 }
 _edit_ssl(){
