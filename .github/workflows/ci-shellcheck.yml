@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  shellcheck:
+  run:
     runs-on: ubuntu-latest
 
     steps:
