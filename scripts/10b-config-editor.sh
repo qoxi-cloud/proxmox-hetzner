@@ -987,10 +987,10 @@ _edit_features() {
     --header.foreground "$HEX_CYAN"
     --cursor "${CLR_ORANGE}›${CLR_RESET} "
     --cursor.foreground "$HEX_NONE"
-    --cursor-prefix "  "
+    --cursor-prefix "◦ "
     --selected.foreground "$HEX_WHITE"
     --selected-prefix "${CLR_CYAN}✓${CLR_RESET} "
-    --unselected-prefix "  "
+    --unselected-prefix "◦ "
     --no-show-help
   )
 
