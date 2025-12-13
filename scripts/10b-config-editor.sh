@@ -390,43 +390,84 @@ _edit_email() {
 }
 
 _edit_password() {
-  clear
-  show_banner
-  echo ""
-  gum style --foreground "$HEX_GRAY" "Leave empty to auto-generate a secure password"
-  echo ""
-  _show_input_footer
-
-  local new_password
-  new_password=$(gum input \
-    --password \
-    --placeholder "Enter password or leave empty" \
-    --prompt "Password: " \
-    --prompt.foreground "$HEX_CYAN" \
-    --cursor.foreground "$HEX_ORANGE" \
-    --width 40 \
-    --no-show-help)
-
-  if [[ -z $new_password ]]; then
-    NEW_ROOT_PASSWORD=$(generate_password "$DEFAULT_PASSWORD_LENGTH")
-    PASSWORD_GENERATED="yes"
+  while true; do
+    clear
+    show_banner
     echo ""
-    echo ""
-    gum style --foreground "$HEX_GREEN" "Password auto-generated"
-    sleep 1
-  else
-    local password_error
-    password_error=$(get_password_error "$new_password")
-    if [[ -n $password_error ]]; then
-      echo ""
-      echo ""
-      gum style --foreground "$HEX_RED" "$password_error"
-      sleep 2
-    else
-      NEW_ROOT_PASSWORD="$new_password"
-      PASSWORD_GENERATED="no"
+
+    # 1 header + 2 options (Manual/Generate)
+    _show_input_footer "filter" 3
+
+    local choice
+    choice=$(echo -e "Manual entry\nGenerate password" | gum choose \
+      --header="Password:" \
+      --header.foreground "$HEX_CYAN" \
+      --cursor "${CLR_ORANGE}›${CLR_RESET} " \
+      --cursor.foreground "$HEX_NONE" \
+      --selected.foreground "$HEX_WHITE" \
+      --no-show-help)
+
+    # If user cancelled (Esc)
+    if [[ -z $choice ]]; then
+      return
     fi
-  fi
+
+    case "$choice" in
+      "Generate password")
+        NEW_ROOT_PASSWORD=$(generate_password "$DEFAULT_PASSWORD_LENGTH")
+        PASSWORD_GENERATED="yes"
+
+        clear
+        show_banner
+        echo ""
+        gum style --foreground "$HEX_GREEN" "Password generated successfully!"
+        echo ""
+        gum style --foreground "$HEX_GRAY" "Generated password: ${CLR_ORANGE}${NEW_ROOT_PASSWORD}${CLR_RESET}"
+        echo ""
+        gum style --foreground "$HEX_YELLOW" "Please save this password - it will be required for login"
+        echo ""
+        read -n 1 -s -r -p "Press any key to continue..."
+        break
+        ;;
+      "Manual entry")
+        clear
+        show_banner
+        echo ""
+        _show_input_footer
+
+        local new_password
+        new_password=$(gum input \
+          --password \
+          --placeholder "Enter password" \
+          --prompt "Password: " \
+          --prompt.foreground "$HEX_CYAN" \
+          --cursor.foreground "$HEX_ORANGE" \
+          --width 40 \
+          --no-show-help)
+
+        # If empty or cancelled, return to menu
+        if [[ -z $new_password ]]; then
+          continue
+        fi
+
+        # Validate password
+        local password_error
+        password_error=$(get_password_error "$new_password")
+        if [[ -n $password_error ]]; then
+          echo ""
+          echo ""
+          gum style --foreground "$HEX_RED" "$password_error"
+          sleep 2
+          continue
+        fi
+
+        # Password is valid
+        NEW_ROOT_PASSWORD="$new_password"
+        PASSWORD_GENERATED="no"
+        break
+        ;;
+    esac
+  done
 }
 
 _edit_timezone() {
