@@ -20,6 +20,10 @@ jobs:
       github.event_name == 'workflow_dispatch' ||
       (github.event.workflow_run.conclusion == 'success' &&
        github.event.workflow_run.pull_requests[0] != null)
+    permissions:
+      checks: read
+      pull-requests: read
+      actions: read
     outputs:
       run_id: ${{ steps.run.outputs.id }}
       pr_number: ${{ steps.check.outputs.pr_number }}
@@ -79,6 +83,14 @@ jobs:
 
               // Guard against empty array (Array.every returns true for empty arrays)
               if (ciChecks.length === 0) {
+                // Fail fast on first attempt if no CI checks are found
+                // This prevents timeout when workflow names change
+                if (attempt === 1) {
+                  throw new Error(
+                    'No CI checks found for this PR. This likely means workflow/job names changed. ' +
+                    'Update the check name filters in deployPr.yml waitForCi step.'
+                  );
+                }
                 console.log('No CI checks found yet, waiting...');
                 if (attempt < maxAttempts) {
                   console.log(`Waiting ${delayMs/1000}s before next check...`);
