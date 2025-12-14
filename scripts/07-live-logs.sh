@@ -203,11 +203,11 @@ live_show_progress() {
   # Wait for process with periodic updates
   while kill -0 "$pid" 2>/dev/null; do
     sleep 0.3
-    # Update the task line with animated dots
+    # Update the task line with animated dots (orange)
     local dots_count=$((($(date +%s) % 3) + 1))
     local dots
     dots=$(printf '.%.0s' $(seq 1 $dots_count))
-    LOG_LINES[task_idx]="  ${CLR_GRAY}├─${CLR_RESET} ${message}${dots}"
+    LOG_LINES[task_idx]="  ${CLR_GRAY}├─${CLR_RESET} ${message}${CLR_ORANGE}${dots}${CLR_RESET}"
     render_logs
   done
 
