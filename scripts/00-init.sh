@@ -592,18 +592,18 @@ INSTALL_COMPLETED=false
 # Behavior depends on INSTALL_COMPLETED flag - preserves files if installation succeeded.
 # Uses secure deletion for password files when available.
 cleanup_temp_files() {
-  # Clean up standard temporary files
-  rm -f /tmp/tailscale_*.txt /tmp/iso_checksum.txt /tmp/*.tmp 2>/dev/null || true
+	# Clean up standard temporary files
+	rm -f /tmp/tailscale_*.txt /tmp/iso_checksum.txt /tmp/*.tmp 2>/dev/null || true
 
-  # Clean up ISO and installation files (only if installation failed)
-  if [[ $INSTALL_COMPLETED != "true" ]]; then
-    rm -f /root/pve.iso /root/pve-autoinstall.iso /root/answer.toml /root/SHA256SUMS 2>/dev/null || true
-    rm -f /root/qemu_*.log 2>/dev/null || true
-  fi
+	# Clean up ISO and installation files (only if installation failed)
+	if [[ $INSTALL_COMPLETED != "true" ]]; then
+		rm -f /root/pve.iso /root/pve-autoinstall.iso /root/answer.toml /root/SHA256SUMS 2>/dev/null || true
+		rm -f /root/qemu_*.log 2>/dev/null || true
+	fi
 
-  # Clean up password files from /dev/shm and /tmp
-  find /dev/shm /tmp -name "pve-passfile.*" -type f -delete 2>/dev/null || true
-  find /dev/shm /tmp -name "*passfile*" -type f -delete 2>/dev/null || true
+	# Clean up password files from /dev/shm and /tmp
+	find /dev/shm /tmp -name "pve-passfile.*" -type f -delete 2>/dev/null || true
+	find /dev/shm /tmp -name "*passfile*" -type f -delete 2>/dev/null || true
 }
 
 # Cleanup handler invoked on script exit via trap.
@@ -611,43 +611,43 @@ cleanup_temp_files() {
 # Displays error message if installation failed (INSTALL_COMPLETED != true).
 # Returns: Exit code from the script
 cleanup_and_error_handler() {
-  local exit_code=$?
+	local exit_code=$?
 
-  # Stop all background jobs
-  jobs -p | xargs -r kill 2>/dev/null || true
-  sleep 1
+	# Stop all background jobs
+	jobs -p | xargs -r kill 2>/dev/null || true
+	sleep 1
 
-  # Clean up temporary files
-  cleanup_temp_files
+	# Clean up temporary files
+	cleanup_temp_files
 
-  # Release drives if QEMU is still running
-  if [[ -n ${QEMU_PID:-} ]] && kill -0 "$QEMU_PID" 2>/dev/null; then
-    log "Cleaning up QEMU process $QEMU_PID"
-    # Source release_drives if available (may not be sourced yet)
-    if type release_drives &>/dev/null; then
-      release_drives
-    else
-      # Fallback cleanup
-      pkill -TERM qemu-system-x86 2>/dev/null || true
-      sleep 2
-      pkill -9 qemu-system-x86 2>/dev/null || true
-    fi
-  fi
+	# Release drives if QEMU is still running
+	if [[ -n ${QEMU_PID:-} ]] && kill -0 "$QEMU_PID" 2>/dev/null; then
+		log "Cleaning up QEMU process $QEMU_PID"
+		# Source release_drives if available (may not be sourced yet)
+		if type release_drives &>/dev/null; then
+			release_drives
+		else
+			# Fallback cleanup
+			pkill -TERM qemu-system-x86 2>/dev/null || true
+			sleep 2
+			pkill -9 qemu-system-x86 2>/dev/null || true
+		fi
+	fi
 
-  # Always restore cursor visibility
-  tput cnorm 2>/dev/null || true
+	# Always restore cursor visibility
+	tput cnorm 2>/dev/null || true
 
-  # Show error message if installation failed
-  if [[ $INSTALL_COMPLETED != "true" && $exit_code -ne 0 ]]; then
-    echo ""
-    echo -e "${CLR_RED}*** INSTALLATION FAILED ***${CLR_RESET}"
-    echo ""
-    echo -e "${CLR_YELLOW}An error occurred and the installation was aborted.${CLR_RESET}"
-    echo ""
-    echo -e "${CLR_YELLOW}Please check the log file for details:${CLR_RESET}"
-    echo -e "${CLR_YELLOW}  ${LOG_FILE}${CLR_RESET}"
-    echo ""
-  fi
+	# Show error message if installation failed
+	if [[ $INSTALL_COMPLETED != "true" && $exit_code -ne 0 ]]; then
+		echo ""
+		echo -e "${CLR_RED}*** INSTALLATION FAILED ***${CLR_RESET}"
+		echo ""
+		echo -e "${CLR_YELLOW}An error occurred and the installation was aborted.${CLR_RESET}"
+		echo ""
+		echo -e "${CLR_YELLOW}Please check the log file for details:${CLR_RESET}"
+		echo -e "${CLR_YELLOW}  ${LOG_FILE}${CLR_RESET}"
+		echo ""
+	fi
 }
 
 trap cleanup_and_error_handler EXIT
@@ -668,6 +668,9 @@ PVE_SUBSCRIPTION_KEY=""
 
 # SSL certificate (self-signed, letsencrypt)
 SSL_TYPE=""
+
+# Shell type selection (zsh, bash)
+SHELL_TYPE=""
 
 # Fail2Ban installation flag (set by configure_fail2ban)
 # shellcheck disable=SC2034
