@@ -90,6 +90,7 @@ start_live_installation() {
   fi
 
   # Override show_progress with our live version
+  # shellcheck disable=SC2317,SC2329
   show_progress() {
     live_show_progress "$@"
   }
@@ -113,6 +114,7 @@ finish_live_installation() {
 
   # Restore original show_progress if it was saved
   if type show_progress_original &>/dev/null 2>&1; then
+    # shellcheck disable=SC2317,SC2329
     show_progress() {
       show_progress_original "$@"
     }
@@ -203,7 +205,8 @@ live_show_progress() {
     sleep 0.3
     # Update the task line with animated dots
     local dots_count=$((($(date +%s) % 3) + 1))
-    local dots=$(printf '.%.0s' $(seq 1 $dots_count))
+    local dots
+    dots=$(printf '.%.0s' $(seq 1 $dots_count))
     LOG_LINES[task_idx]="  ${CLR_GRAY}├─${CLR_RESET} ${message}${dots}"
     render_logs
   done
