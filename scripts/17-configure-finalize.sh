@@ -55,12 +55,27 @@ configure_proxmox_via_ssh() {
   configure_base_system
   configure_shell
   configure_system_services
+
+  # Security Configuration section (if applicable)
+  if type live_log_security_configuration &>/dev/null 2>&1; then
+    live_log_security_configuration
+  fi
   configure_tailscale
   configure_fail2ban
   configure_auditd
   configure_yazi
   configure_nvim
+
+  # SSL Configuration section (if applicable)
+  if type live_log_ssl_configuration &>/dev/null 2>&1; then
+    live_log_ssl_configuration
+  fi
   configure_ssl_certificate
+
+  # Validation & Finalization section
+  if type live_log_validation_finalization &>/dev/null 2>&1; then
+    live_log_validation_finalization
+  fi
   configure_ssh_hardening
   validate_installation
   finalize_vm

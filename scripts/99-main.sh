@@ -227,31 +227,63 @@ show_gum_config_editor
 echo ""
 show_timed_progress "Configuring..." 5
 
-# Clear screen and show banner
-clear
-show_banner
+# Start live installation display
+start_live_installation || {
+  log "WARNING: Failed to start live installation display, falling back to regular mode"
+  # Fallback to regular mode
+  clear
+  show_banner
+}
+
+# ============================================================================
+# Rescue System Preparation
+# ============================================================================
+live_log_system_preparation
 
 log "Step: prepare_packages"
 prepare_packages
+
+# ============================================================================
+# Proxmox ISO Download
+# ============================================================================
+live_log_iso_download
+
 log "Step: download_proxmox_iso"
 download_proxmox_iso
 log "Step: make_answer_toml"
 make_answer_toml
 log "Step: make_autoinstall_iso"
 make_autoinstall_iso
+
+# ============================================================================
+# Proxmox Installation
+# ============================================================================
+live_log_proxmox_installation
+
 log "Step: install_proxmox"
 install_proxmox
 
-# Boot and configure via SSH
 log "Step: boot_proxmox_with_port_forwarding"
 boot_proxmox_with_port_forwarding || {
   log "ERROR: Failed to boot Proxmox with port forwarding"
   exit 1
 }
 
-# Configure Proxmox via SSH
+# ============================================================================
+# System Configuration
+# ============================================================================
+live_log_system_configuration
+
 log "Step: configure_proxmox_via_ssh"
 configure_proxmox_via_ssh
+
+# ============================================================================
+# Installation Complete
+# ============================================================================
+live_log_installation_complete
+
+# Finish live installation display
+finish_live_installation
 
 # Mark installation as completed (disables error handler message)
 INSTALL_COMPLETED=true
