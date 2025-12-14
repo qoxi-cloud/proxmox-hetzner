@@ -317,20 +317,3 @@ show_timed_progress() {
   # Clear the progress bar line
   printf "\r\e[K"
 }
-
-# Formats time duration in seconds to human-readable string.
-# Parameters:
-#   $1 - Duration in seconds
-# Returns: Formatted duration (e.g., "1h 30m 45s") via stdout
-format_duration() {
-  local seconds="$1"
-  local hours=$((seconds / 3600))
-  local minutes=$(((seconds % 3600) / 60))
-  local secs=$((seconds % 60))
-
-  if [[ $hours -gt 0 ]]; then
-    echo "${hours}h ${minutes}m ${secs}s"
-  else
-    echo "${minutes}m ${secs}s"
-  fi
-}

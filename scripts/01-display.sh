@@ -3,28 +3,6 @@
 # Display utilities
 # =============================================================================
 
-# Colorizes the output of boxes (post-process).
-# Adds cyan frame and colors for [OK], [WARN], [ERROR] markers.
-# Reads from stdin, writes to stdout.
-colorize_status() {
-  while IFS= read -r line; do
-    # Top/bottom border
-    if [[ $line =~ ^\+[-+]+\+$ ]]; then
-      echo "${CLR_GRAY}${line}${CLR_RESET}"
-    # Content line with | borders
-    elif [[ $line =~ ^(\|)(.*)\|$ ]]; then
-      local content="${BASH_REMATCH[2]}"
-      # Color status markers
-      content="${content//\[OK\]/${CLR_CYAN}[OK]${CLR_RESET}}"
-      content="${content//\[WARN\]/${CLR_YELLOW}[WARN]${CLR_RESET}}"
-      content="${content//\[ERROR\]/${CLR_RED}[ERROR]${CLR_RESET}}"
-      echo "${CLR_GRAY}|${CLR_RESET}${content}${CLR_GRAY}|${CLR_RESET}"
-    else
-      echo "$line"
-    fi
-  done
-}
-
 # Prints success message with checkmark.
 # Parameters:
 #   $1 - Label or full message

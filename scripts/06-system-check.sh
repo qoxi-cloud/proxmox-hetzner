@@ -12,7 +12,7 @@ collect_system_info() {
   local errors=0
 
   # Install required tools and display utilities
-  # boxes: table display, column: alignment, iproute2: ip command
+  # column: alignment, iproute2: ip command
   # udev: udevadm for interface detection, timeout: command timeouts
   # jq: JSON parsing for API responses
   # aria2c: optional multi-connection downloads (fallback: curl, wget)
@@ -20,7 +20,6 @@ collect_system_info() {
   # gum: interactive prompts and spinners (from Charm repo)
   local packages_to_install=""
   local need_charm_repo=false
-  command -v boxes &>/dev/null || packages_to_install+=" boxes"
   command -v column &>/dev/null || packages_to_install+=" bsdmainutils"
   command -v ip &>/dev/null || packages_to_install+=" iproute2"
   command -v udevadm &>/dev/null || packages_to_install+=" udev"
