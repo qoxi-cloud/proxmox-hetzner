@@ -104,6 +104,9 @@ start_live_installation() {
   save_cursor_position
   tput civis # Hide cursor
 
+  # Add empty line after banner for spacing
+  add_log ""
+
   # Set trap to restore cursor on exit
   trap 'tput cnorm' EXIT RETURN
 }
@@ -130,7 +133,6 @@ finish_live_installation() {
 
 # Rescue System Preparation section (first section)
 live_log_system_preparation() {
-  add_log ""
   add_log "${CLR_CYAN}▼ Rescue System Preparation${CLR_RESET}"
 }
 
