@@ -281,65 +281,6 @@ show_progress() {
   return $exit_code
 }
 
-# Waits for condition to become true within timeout period, showing progress.
-# Parameters:
-#   $1 - Progress message
-#   $2 - Timeout in seconds
-#   $3 - Check command (evaluated)
-#   $4 - Check interval in seconds (default: 5)
-#   $5 - Success message (default: same as $1)
-# Returns: 0 if condition met, 1 on timeout
-wait_with_progress() {
-  local message="$1"
-  local timeout="$2"
-  local check_cmd="$3"
-  local interval="${4:-5}"
-  local done_message="${5:-$message}"
-
-  # Run the wait loop in background and use gum spin to display progress
-  local result_file
-  result_file=$(mktemp)
-  echo "running" >"$result_file"
-
-  (
-    local start_time
-    start_time=$(date +%s)
-    while true; do
-      local elapsed=$(($(date +%s) - start_time))
-      if eval "$check_cmd" 2>/dev/null; then
-        echo "success" >"$result_file"
-        exit 0
-      fi
-      if [ $elapsed -ge $timeout ]; then
-        echo "timeout" >"$result_file"
-        exit 1
-      fi
-      sleep "$interval"
-    done
-  ) &
-  local wait_pid=$!
-
-  # Use gum spin to show progress while waiting
-  gum spin --spinner meter --spinner.foreground "#ff8700" --title "$message" -- bash -c "
-    while kill -0 $wait_pid 2>/dev/null; do
-      sleep 0.2
-    done
-  "
-
-  wait "$wait_pid" 2>/dev/null
-  local result
-  result=$(cat "$result_file")
-  rm -f "$result_file"
-
-  if [[ $result == "success" ]]; then
-    printf "${CLR_CYAN}✓${CLR_RESET} %s\n" "$done_message"
-    return 0
-  else
-    printf "${CLR_RED}✗${CLR_RESET} %s timed out\n" "$message"
-    return 1
-  fi
-}
-
 # Shows timed progress bar with visual animation.
 # Parameters:
 #   $1 - Progress message

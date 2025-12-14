@@ -100,12 +100,24 @@ wait_for_ssh_ready() {
   local passfile
   passfile=$(create_passfile)
 
-  # shellcheck disable=SC2086
-  wait_with_progress "Waiting for SSH to be ready" "$timeout" \
-    "sshpass -f \"$passfile\" ssh -p \"$SSH_PORT\" $SSH_OPTS root@localhost 'echo ready' >/dev/null 2>&1" \
-    2 "SSH connection established"
+  # Wait for SSH to be ready with background process
+  (
+    local elapsed=0
+    while ((elapsed < timeout)); do
+      # shellcheck disable=SC2086
+      if sshpass -f "$passfile" ssh -p "$SSH_PORT" $SSH_OPTS root@localhost 'echo ready' >/dev/null 2>&1; then
+        exit 0
+      fi
+      sleep 2
+      ((elapsed += 2))
+    done
+    exit 1
+  ) &
+  local wait_pid=$!
 
+  show_progress $wait_pid "Waiting for SSH to be ready" "SSH connection established"
   local exit_code=$?
+
   secure_cleanup_passfile "$passfile"
   return $exit_code
 }

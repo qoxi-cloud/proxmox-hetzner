@@ -33,8 +33,22 @@ finalize_vm() {
   remote_exec "poweroff" >/dev/null 2>&1 &
   show_progress $! "Powering off the VM"
 
-  # Wait for QEMU to exit
-  wait_with_progress "Waiting for QEMU process to exit" 120 "! kill -0 $QEMU_PID 2>/dev/null" 1 "QEMU process exited"
+  # Wait for QEMU to exit with background process
+  (
+    local timeout=120
+    local elapsed=0
+    while ((elapsed < timeout)); do
+      if ! kill -0 "$QEMU_PID" 2>/dev/null; then
+        exit 0
+      fi
+      sleep 1
+      ((elapsed += 1))
+    done
+    exit 1
+  ) &
+  local wait_pid=$!
+
+  show_progress $wait_pid "Waiting for QEMU process to exit" "QEMU process exited"
   local exit_code=$?
   if [[ $exit_code -ne 0 ]]; then
     log "WARNING: QEMU process did not exit cleanly within 120 seconds"
