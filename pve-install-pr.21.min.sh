@@ -19,7 +19,7 @@ HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 HEX_NONE="7"
 MENU_BOX_WIDTH=60
-VERSION="2.0.121-pr.21"
+VERSION="2.0.122-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -4326,128 +4326,20 @@ done <"$results_file"
 fi
 log "Validation complete: $VALIDATION_PASSED passed, $VALIDATION_WARNINGS warnings, $VALIDATION_FAILED failed"
 }
-truncate_middle(){
-local str="$1"
-local max_len="${2:-25}"
-local len=${#str}
-if [[ $len -le $max_len ]];then
-echo "$str"
-return
-fi
-local keep_start=$(((max_len-3)*2/3))
-local keep_end=$((max_len-3-keep_start))
-echo "${str:0:keep_start}...${str: -$keep_end}"
-}
 reboot_to_main_os(){
-local inner_width=$((MENU_BOX_WIDTH-6))
-local summary=""
-local end_time total_seconds duration
-end_time=$(date +%s)
-total_seconds=$((end_time-INSTALL_START_TIME))
-duration=$(format_duration $total_seconds)
-summary+="[OK]|Installation time|$duration"$'\n'
-if [[ ${#VALIDATION_RESULTS[@]} -gt 0 ]];then
-summary+="|--- System Checks ---|"$'\n'
-for result in "${VALIDATION_RESULTS[@]}";do
-summary+="$result"$'\n'
-done
-fi
-summary+="|--- Configuration ---|"$'\n'
-summary+="[OK]|CPU governor|${CPU_GOVERNOR:-performance}"$'\n'
-summary+="[OK]|Kernel params|optimized"$'\n'
-summary+="[OK]|nf_conntrack|optimized"$'\n'
-summary+="[OK]|Security updates|unattended"$'\n'
-summary+="[OK]|Monitoring tools|btop, iotop, ncdu..."$'\n'
-case "${PVE_REPO_TYPE:-no-subscription}" in
-enterprise)summary+="[OK]|Repository|enterprise"$'\n'
-if [[ -n $PVE_SUBSCRIPTION_KEY ]];then
-summary+="[OK]|Subscription|registered"$'\n'
-else
-summary+="[WARN]|Subscription|key not provided"$'\n'
-fi
-;;
-test)summary+="[WARN]|Repository|test (unstable)"$'\n'
-;;
-*)summary+="[OK]|Repository|no-subscription"$'\n'
-esac
-if [[ $SSL_TYPE == "letsencrypt" ]];then
-summary+="[OK]|SSL auto-renewal|enabled"$'\n'
-fi
-if [[ $INSTALL_TAILSCALE == "yes" ]];then
-summary+="[OK]|Tailscale VPN|installed"$'\n'
-if [[ -z $TAILSCALE_AUTH_KEY ]];then
-summary+="[WARN]|Tailscale|needs auth after reboot"$'\n'
-fi
-else
-if [[ $FAIL2BAN_INSTALLED == "yes" ]];then
-summary+="[OK]|Fail2Ban|SSH + Proxmox protected"$'\n'
-fi
-fi
-if [[ $AUDITD_INSTALLED == "yes" ]];then
-summary+="[OK]|Audit logging|auditd enabled"$'\n'
-fi
-summary+="|--- Access ---|"$'\n'
-if [[ $PASSWORD_GENERATED == "yes" ]];then
-summary+="[WARN]|Root password|$NEW_ROOT_PASSWORD"$'\n'
-fi
-if [[ $STEALTH_MODE == "yes" ]];then
-summary+="[WARN]|Public IP|BLOCKED (stealth mode)"$'\n'
-if [[ $TAILSCALE_DISABLE_SSH == "yes" ]];then
-summary+="[WARN]|OpenSSH|DISABLED after first boot"
-fi
-if [[ $INSTALL_TAILSCALE == "yes" && -n $TAILSCALE_AUTH_KEY && $TAILSCALE_IP != "pending" && $TAILSCALE_IP != "not authenticated" ]];then
-summary+=$'\n'"[OK]|Tailscale SSH|root@$TAILSCALE_IP"
-if [[ -n $TAILSCALE_HOSTNAME ]];then
-summary+=$'\n'"[OK]|Tailscale Web|$(truncate_middle "$TAILSCALE_HOSTNAME" 25)"
-else
-summary+=$'\n'"[OK]|Tailscale Web|$TAILSCALE_IP:8006"
-fi
-fi
-else
-summary+="[OK]|Web UI|https://${MAIN_IPV4_CIDR%/*}:8006"$'\n'
-summary+="[OK]|SSH|root@${MAIN_IPV4_CIDR%/*}"
-if [[ $INSTALL_TAILSCALE == "yes" && -n $TAILSCALE_AUTH_KEY && $TAILSCALE_IP != "pending" && $TAILSCALE_IP != "not authenticated" ]];then
-summary+=$'\n'"[OK]|Tailscale SSH|root@$TAILSCALE_IP"
-if [[ -n $TAILSCALE_HOSTNAME ]];then
-summary+=$'\n'"[OK]|Tailscale Web|$(truncate_middle "$TAILSCALE_HOSTNAME" 25)"
-else
-summary+=$'\n'"[OK]|Tailscale Web|$TAILSCALE_IP:8006"
-fi
-fi
-fi
-if [[ $VALIDATION_FAILED -gt 0 || $VALIDATION_WARNINGS -gt 0 ]];then
-summary+=$'\n'"|--- Validation ---|"$'\n'
-summary+="[OK]|Checks passed|$VALIDATION_PASSED"$'\n'
-if [[ $VALIDATION_WARNINGS -gt 0 ]];then
-summary+="[WARN]|Warnings|$VALIDATION_WARNINGS"$'\n'
-fi
-if [[ $VALIDATION_FAILED -gt 0 ]];then
-summary+="[ERROR]|Failed|$VALIDATION_FAILED"$'\n'
-fi
-fi
-echo ""
-show_timed_progress "Summarizing..." 5
+finish_live_installation
 clear
-show_banner --no-info
-{
-echo "INSTALLATION SUMMARY"
-echo "$summary"|column -t -s '|'|while IFS= read -r line;do
-printf "%-${inner_width}s\n" "$line"
-done
-}|boxes -d stone -p a1 -s $MENU_BOX_WIDTH|colorize_status
+show_banner
 echo ""
-if [[ $VALIDATION_FAILED -gt 0 ]];then
-print_warning "Some validation checks failed. Review the summary above."
+print_info "Installation completed successfully!"
 echo ""
-fi
 if [[ $INSTALL_TAILSCALE == "yes" && -z $TAILSCALE_AUTH_KEY ]];then
 print_warning "Tailscale needs authentication after reboot:"
-echo "    tailscale up --ssh"
-echo "    tailscale serve --bg --https=443 https://127.0.0.1:8006"
+echo "    ${CLR_CYAN}tailscale up --ssh$CLR_RESET"
+echo "    ${CLR_CYAN}tailscale serve --bg --https=443 https://127.0.0.1:8006$CLR_RESET"
 echo ""
 fi
-read -r -e -p "Do you want to reboot the system? (y/n): " -i "y" REBOOT
-if [[ $REBOOT == "y" ]];then
+if gum confirm "Reboot the system now?" --default=true --affirmative="Yes" --negative="No";then
 print_info "Rebooting the system..."
 if ! reboot;then
 log "ERROR: Failed to reboot - system may require manual restart"
@@ -4455,7 +4347,9 @@ print_error "Failed to reboot the system"
 exit 1
 fi
 else
-print_info "Exiting..."
+print_info "Exiting without reboot."
+echo ""
+print_info "You can reboot manually when ready with: ${CLR_CYAN}reboot$CLR_RESET"
 exit 0
 fi
 }
