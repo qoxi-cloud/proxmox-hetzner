@@ -19,7 +19,7 @@ HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 HEX_NONE="7"
 MENU_BOX_WIDTH=60
-VERSION="2.0.118-pr.21"
+VERSION="2.0.119-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -3505,9 +3505,6 @@ $CPU_OPTS -smp "$QEMU_CORES" -m "$QEMU_RAM" \
 -boot d -cdrom ./pve-autoinstall.iso \
 $DRIVE_ARGS -no-reboot -display none >qemu_install.log 2>&1&
 local qemu_pid=$!
-if type live_log_subtask &>/dev/null 2>&1;then
-live_log_subtask "QEMU started ($QEMU_CORES vCPUs, ${QEMU_RAM}MB RAM)"
-fi
 sleep 2
 if ! kill -0 $qemu_pid 2>/dev/null;then
 log "ERROR: QEMU failed to start"
@@ -3515,6 +3512,10 @@ log "QEMU install log:"
 cat qemu_install.log >>"$LOG_FILE" 2>&1
 exit 1
 fi
+(sleep 0.1) \
+&
+local startup_pid=$!
+show_progress $startup_pid "QEMU started ($QEMU_CORES vCPUs, ${QEMU_RAM}MB RAM)" "QEMU started ($QEMU_CORES vCPUs, ${QEMU_RAM}MB RAM)"
 show_progress $qemu_pid "Installing Proxmox VE" "Proxmox VE installed"
 local exit_code=$?
 if [[ $exit_code -ne 0 ]];then
@@ -3538,13 +3539,11 @@ $CPU_OPTS -device e1000,netdev=net0 \
 $DRIVE_ARGS -display none > \
 qemu_output.log 2>&1&
 QEMU_PID=$!
-if type live_log_subtask &>/dev/null 2>&1;then
-live_log_subtask "Waiting for SSH port 5555"
-fi
 (local timeout=300
 local elapsed=0
 while ((elapsed<timeout));do
-if echo >/dev/tcp/localhost/5555 2>/dev/null;then
+if exec 3<>/dev/tcp/localhost/5555 2>/dev/null;then
+exec 3<&-
 exit 0
 fi
 sleep 3
