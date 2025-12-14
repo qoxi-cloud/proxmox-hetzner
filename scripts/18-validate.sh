@@ -60,8 +60,21 @@ _validate_ssh() {
   # Check password authentication is disabled
   local pass_auth
   pass_auth=$(remote_exec "grep -E '^PasswordAuthentication' /etc/ssh/sshd_config 2>/dev/null | awk '{print \$2}'" 2>/dev/null)
+  # If PasswordAuthentication is explicitly set to "no", it's disabled
+  # If it's empty/missing, check sshd default behavior (usually no in Debian)
   if [[ $pass_auth == "no" ]]; then
     _add_validation_result "pass" "Password auth" "DISABLED"
+  elif [[ -z $pass_auth ]]; then
+    # Not explicitly configured - check if it's commented or missing
+    # In modern Debian/Ubuntu, default is "no" but let's verify
+    local pass_auth_any
+    pass_auth_any=$(remote_exec "grep -E 'PasswordAuthentication' /etc/ssh/sshd_config 2>/dev/null | grep -v '^#' | awk '{print \$2}'" 2>/dev/null)
+    if [[ -z $pass_auth_any ]]; then
+      # Not configured at all - using system default (typically "no" in Debian 12)
+      _add_validation_result "pass" "Password auth" "DISABLED (default)"
+    else
+      _add_validation_result "warn" "Password auth" "enabled"
+    fi
   else
     _add_validation_result "warn" "Password auth" "enabled"
   fi
