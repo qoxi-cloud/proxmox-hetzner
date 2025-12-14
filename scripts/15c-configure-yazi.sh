@@ -17,6 +17,7 @@ configure_yazi() {
   log "Installing and configuring yazi"
 
   # Install yazi from GitHub releases (not available in Debian repos)
+  # shellcheck disable=SC2016
   run_remote "Installing yazi" '
         # Install dependencies
         export DEBIAN_FRONTEND=noninteractive
