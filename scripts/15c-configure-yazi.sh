@@ -35,10 +35,8 @@ configure_yazi() {
         rm -rf /tmp/yazi.zip /tmp/yazi-x86_64-unknown-linux-gnu
     ' "Yazi installed"
 
-  # Download and deploy theme configuration
+  # Deploy theme configuration (already downloaded in make_templates)
   (
-    download_template "./templates/yazi-theme.toml" || exit 1
-
     # Create config directory and copy theme
     remote_exec '
             mkdir -p /root/.config/yazi

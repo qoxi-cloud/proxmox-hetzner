@@ -59,12 +59,11 @@ configure_tailscale() {
       show_progress $! "Configuring Tailscale Serve" "Proxmox Web UI available via Tailscale Serve"
     fi
 
-    # Deploy OpenSSH disable service if requested
+    # Deploy OpenSSH disable service if requested (already downloaded in make_templates)
     if [[ $TAILSCALE_SSH == "yes" && $TAILSCALE_DISABLE_SSH == "yes" ]]; then
       log "Deploying disable-openssh.service (TAILSCALE_SSH=$TAILSCALE_SSH, TAILSCALE_DISABLE_SSH=$TAILSCALE_DISABLE_SSH)"
       (
-        download_template "./templates/disable-openssh.service" || exit 1
-        log "Downloaded disable-openssh.service, size: $(wc -c <./templates/disable-openssh.service 2>/dev/null || echo 'failed')"
+        log "Using pre-downloaded disable-openssh.service, size: $(wc -c <./templates/disable-openssh.service 2>/dev/null || echo 'failed')"
         remote_copy "templates/disable-openssh.service" "/etc/systemd/system/disable-openssh.service" || exit 1
         log "Copied disable-openssh.service to VM"
         remote_exec "systemctl daemon-reload && systemctl enable disable-openssh.service" >/dev/null 2>&1 || exit 1
@@ -75,12 +74,11 @@ configure_tailscale() {
       log "Skipping disable-openssh.service (TAILSCALE_SSH=$TAILSCALE_SSH, TAILSCALE_DISABLE_SSH=$TAILSCALE_DISABLE_SSH)"
     fi
 
-    # Deploy stealth firewall if requested
+    # Deploy stealth firewall if requested (already downloaded in make_templates)
     if [[ $STEALTH_MODE == "yes" ]]; then
       log "Deploying stealth-firewall.service (STEALTH_MODE=$STEALTH_MODE)"
       (
-        download_template "./templates/stealth-firewall.service" || exit 1
-        log "Downloaded stealth-firewall.service, size: $(wc -c <./templates/stealth-firewall.service 2>/dev/null || echo 'failed')"
+        log "Using pre-downloaded stealth-firewall.service, size: $(wc -c <./templates/stealth-firewall.service 2>/dev/null || echo 'failed')"
         remote_copy "templates/stealth-firewall.service" "/etc/systemd/system/stealth-firewall.service" || exit 1
         log "Copied stealth-firewall.service to VM"
         remote_exec "systemctl daemon-reload && systemctl enable stealth-firewall.service" >/dev/null 2>&1 || exit 1

@@ -24,10 +24,8 @@ configure_auditd() {
         apt-get install -yqq auditd audispd-plugins
     ' "Auditd installed"
 
-  # Download and deploy audit rules
+  # Deploy audit rules (already downloaded in make_templates)
   (
-    download_template "./templates/auditd-rules" || exit 1
-
     # Copy rules to VM
     remote_copy "templates/auditd-rules" "/etc/audit/rules.d/proxmox.rules" || exit 1
 

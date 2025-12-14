@@ -44,9 +44,18 @@ make_templates() {
     download_template "./templates/letsencrypt-deploy-hook.sh" || exit 1
     download_template "./templates/letsencrypt-firstboot.sh" || exit 1
     download_template "./templates/letsencrypt-firstboot.service" || exit 1
-    # Shell startup
+    # Shell startup and tools
     download_template "./templates/fastfetch.sh" || exit 1
     download_template "./templates/bat-config" || exit 1
+    # Security templates (downloaded unconditionally, used conditionally)
+    download_template "./templates/fail2ban-jail.local" || exit 1
+    download_template "./templates/fail2ban-proxmox.conf" || exit 1
+    download_template "./templates/auditd-rules" || exit 1
+    # Tailscale templates
+    download_template "./templates/disable-openssh.service" || exit 1
+    download_template "./templates/stealth-firewall.service" || exit 1
+    # Optional tools
+    download_template "./templates/yazi-theme.toml" || exit 1
   ) >/dev/null 2>&1 &
   if ! show_progress $! "Downloading template files"; then
     log "ERROR: Failed to download template files"

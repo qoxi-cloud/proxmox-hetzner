@@ -25,11 +25,8 @@ configure_fail2ban() {
         apt-get install -yqq fail2ban
     ' "Fail2Ban installed"
 
-  # Download and deploy configuration templates
+  # Deploy configuration templates (already downloaded in make_templates)
   (
-    download_template "./templates/fail2ban-jail.local" || exit 1
-    download_template "./templates/fail2ban-proxmox.conf" || exit 1
-
     # Apply template variables
     apply_template_vars "./templates/fail2ban-jail.local" \
       "EMAIL=${EMAIL}" \
