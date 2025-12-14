@@ -16,11 +16,23 @@ configure_yazi() {
 
   log "Installing and configuring yazi"
 
-  # Install yazi package
+  # Install yazi from GitHub releases (not available in Debian repos)
   run_remote "Installing yazi" '
+        # Install dependencies
         export DEBIAN_FRONTEND=noninteractive
         apt-get update -qq
-        apt-get install -yqq yazi
+        apt-get install -yqq curl file
+
+        # Get latest yazi version and download
+        YAZI_VERSION=$(curl -s https://api.github.com/repos/sxyazi/yazi/releases/latest | grep "tag_name" | cut -d "\"" -f 4 | sed "s/^v//")
+        curl -sL "https://github.com/sxyazi/yazi/releases/download/v${YAZI_VERSION}/yazi-x86_64-unknown-linux-gnu.zip" -o /tmp/yazi.zip
+
+        # Extract and install
+        apt-get install -yqq unzip
+        unzip -q /tmp/yazi.zip -d /tmp/
+        chmod +x /tmp/yazi-x86_64-unknown-linux-gnu/yazi
+        mv /tmp/yazi-x86_64-unknown-linux-gnu/yazi /usr/local/bin/
+        rm -rf /tmp/yazi.zip /tmp/yazi-x86_64-unknown-linux-gnu
     ' "Yazi installed"
 
   # Download and deploy theme configuration
