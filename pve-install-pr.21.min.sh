@@ -19,7 +19,7 @@ HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 HEX_NONE="7"
 MENU_BOX_WIDTH=60
-VERSION="2.0.106-pr.21"
+VERSION="2.0.107-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -3517,23 +3517,23 @@ if [[ ! -f "./pve-autoinstall.iso" ]];then
 print_error "Autoinstall ISO not found!"
 exit 1
 fi
-local install_msg="Installing Proxmox VE ($QEMU_CORES vCPUs, ${QEMU_RAM}MB RAM)"
-printf "$CLR_YELLOW%s %s$CLR_RESET" "${SPINNER_CHARS[0]}" "$install_msg"
 release_drives
 qemu-system-x86_64 $KVM_OPTS $UEFI_OPTS \
 $CPU_OPTS -smp "$QEMU_CORES" -m "$QEMU_RAM" \
 -boot d -cdrom ./pve-autoinstall.iso \
 $DRIVE_ARGS -no-reboot -display none >qemu_install.log 2>&1&
 local qemu_pid=$!
+if type live_log_subtask &>/dev/null 2>&1;then
+live_log_subtask "QEMU started ($QEMU_CORES vCPUs, ${QEMU_RAM}MB RAM)"
+fi
 sleep 2
 if ! kill -0 $qemu_pid 2>/dev/null;then
-printf "\r\e[K"
 log "ERROR: QEMU failed to start"
 log "QEMU install log:"
 cat qemu_install.log >>"$LOG_FILE" 2>&1
 exit 1
 fi
-show_progress $qemu_pid "$install_msg" "Proxmox VE installed"
+show_progress $qemu_pid "Installing Proxmox VE" "Proxmox VE installed"
 local exit_code=$?
 if [[ $exit_code -ne 0 ]];then
 log "ERROR: QEMU installation failed with exit code $exit_code"
