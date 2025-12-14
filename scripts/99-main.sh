@@ -19,16 +19,14 @@ reboot_to_main_os() {
   print_info "Installation completed successfully!"
   echo ""
 
-  # Show Tailscale auth instructions if needed
-  if [[ $INSTALL_TAILSCALE == "yes" && -z $TAILSCALE_AUTH_KEY ]]; then
-    print_warning "Tailscale needs authentication after reboot:"
-    echo "    ${CLR_CYAN}tailscale up --ssh${CLR_RESET}"
-    echo "    ${CLR_CYAN}tailscale serve --bg --https=443 https://127.0.0.1:8006${CLR_RESET}"
-    echo ""
-  fi
-
   # Ask user to reboot using gum confirm
-  if gum confirm "Reboot the system now?" --default=true --affirmative="Yes" --negative="No"; then
+  if gum confirm "Reboot the system now?" \
+    --affirmative "Yes" \
+    --negative "No" \
+    --default=true \
+    --prompt.foreground "#ff8700" \
+    --selected.background "#ff8700" \
+    --unselected.foreground "#585858"; then
     print_info "Rebooting the system..."
     if ! reboot; then
       log "ERROR: Failed to reboot - system may require manual restart"
