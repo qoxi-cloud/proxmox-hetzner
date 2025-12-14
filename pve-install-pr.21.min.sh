@@ -19,7 +19,7 @@ HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 HEX_NONE="7"
 MENU_BOX_WIDTH=60
-VERSION="2.0.102-pr.21"
+VERSION="2.0.104-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -2035,6 +2035,166 @@ show_banner
 echo ""
 fi
 }
+get_terminal_dimensions(){
+TERM_HEIGHT=$(tput lines)
+TERM_WIDTH=$(tput cols)
+}
+LOGO_HEIGHT=9
+calculate_log_area(){
+get_terminal_dimensions
+LOG_AREA_HEIGHT=$((TERM_HEIGHT-LOGO_HEIGHT-2))
+}
+declare -a LOG_LINES=()
+LOG_COUNT=0
+save_cursor_position(){
+printf '\033[s'
+}
+restore_cursor_position(){
+printf '\033[u'
+printf '\033[J'
+}
+add_log(){
+local message="$1"
+LOG_LINES+=("$message")
+((LOG_COUNT++))
+render_logs
+}
+render_logs(){
+restore_cursor_position
+local start_line=0
+if ((LOG_COUNT>LOG_AREA_HEIGHT));then
+start_line=$((LOG_COUNT-LOG_AREA_HEIGHT))
+fi
+for ((i=start_line; i<LOG_COUNT; i++));do
+echo "${LOG_LINES[$i]}"
+done
+}
+start_task(){
+local message="$1"
+add_log "$message..."
+TASK_INDEX=$((LOG_COUNT-1))
+}
+complete_task(){
+local task_index="$1"
+local message="$2"
+LOG_LINES[task_index]="$message $CLR_CYAN✓$CLR_RESET"
+render_logs
+}
+add_subtask_log(){
+local message="$1"
+add_log "  $CLR_GRAY│$CLR_RESET   $CLR_GRAY$message$CLR_RESET"
+}
+start_live_installation(){
+if ! command -v gum &>/dev/null;then
+log "WARNING: gum is not installed, live logs disabled"
+return 1
+fi
+LIVE_LOGS_ACTIVE=true
+if type show_progress &>/dev/null 2>&1;then
+eval "$(declare -f show_progress|sed '1s/show_progress/show_progress_original/')"
+fi
+show_progress(){
+live_show_progress "$@"
+}
+export -f show_progress 2>/dev/null||true
+calculate_log_area
+clear
+show_banner
+save_cursor_position
+tput civis
+trap 'tput cnorm' EXIT RETURN
+}
+finish_live_installation(){
+LIVE_LOGS_ACTIVE=false
+if type show_progress_original &>/dev/null 2>&1;then
+show_progress(){
+show_progress_original "$@"
+}
+fi
+tput cnorm
+echo ""
+}
+live_log_system_preparation(){
+add_log "$CLR_CYAN▼ Rescue System Preparation$CLR_RESET"
+}
+live_log_iso_download(){
+add_log ""
+add_log "$CLR_CYAN▼ Proxmox ISO Download$CLR_RESET"
+}
+live_log_proxmox_installation(){
+add_log ""
+add_log "$CLR_CYAN▼ Proxmox Installation$CLR_RESET"
+}
+live_log_system_configuration(){
+add_log ""
+add_log "$CLR_CYAN▼ System Configuration$CLR_RESET"
+}
+live_log_security_configuration(){
+if [[ ${INSTALL_TAILSCALE:-} == "yes" ]]||[[ ${FAIL2BAN_INSTALLED:-} == "yes" ]]||[[ ${INSTALL_AUDITD:-} == "yes" ]];then
+add_log ""
+add_log "$CLR_CYAN▼ Security Configuration$CLR_RESET"
+fi
+}
+live_log_ssl_configuration(){
+if [[ ${SSL_TYPE:-} == "letsencrypt" ]];then
+add_log ""
+add_log "$CLR_CYAN▼ SSL Configuration$CLR_RESET"
+fi
+}
+live_log_validation_finalization(){
+add_log ""
+add_log "$CLR_CYAN▼ Validation & Finalization$CLR_RESET"
+}
+live_log_installation_complete(){
+add_log ""
+add_log "$CLR_CYAN━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━$CLR_RESET"
+add_log "$CLR_CYAN✓ Installation completed successfully!$CLR_RESET"
+add_log "$CLR_CYAN━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━$CLR_RESET"
+add_log ""
+}
+LIVE_LOGS_ACTIVE=false
+live_show_progress(){
+local pid=$1
+local message="${2:-Processing}"
+local done_message="${3:-$message}"
+local silent=false
+[[ ${3:-} == "--silent" || ${4:-} == "--silent" ]]&&silent=true
+[[ ${3:-} == "--silent" ]]&&done_message="$message"
+start_task "  $CLR_GRAY├─$CLR_RESET $message"
+local task_idx=$TASK_INDEX
+while kill -0 "$pid" 2>/dev/null;do
+sleep 0.3
+local dots_count=$((($(date +%s)%3)+1))
+local dots
+dots=$(printf '.%.0s' $(seq 1 $dots_count))
+LOG_LINES[task_idx]="  $CLR_GRAY├─$CLR_RESET $message$dots"
+render_logs
+done
+wait "$pid" 2>/dev/null
+local exit_code=$?
+if [[ $exit_code -eq 0 ]];then
+if [[ $silent != true ]];then
+complete_task "$task_idx" "  $CLR_GRAY├─$CLR_RESET $done_message"
+else
+unset 'LOG_LINES[task_idx]'
+LOG_LINES=("${LOG_LINES[@]}")
+((LOG_COUNT--))
+render_logs
+fi
+else
+LOG_LINES[task_idx]="  $CLR_GRAY├─$CLR_RESET $message $CLR_RED✗$CLR_RESET"
+render_logs
+fi
+return $exit_code
+}
+live_log_task_complete(){
+local message="$1"
+add_log "  $CLR_GRAY├─$CLR_RESET $message $CLR_CYAN✓$CLR_RESET"
+}
+live_log_subtask(){
+local message="$1"
+add_subtask_log "$message"
+}
 _wiz_read_key(){
 local key
 IFS= read -rsn1 key
@@ -3920,12 +4080,21 @@ make_templates
 configure_base_system
 configure_shell
 configure_system_services
+if type live_log_security_configuration &>/dev/null 2>&1;then
+live_log_security_configuration
+fi
 configure_tailscale
 configure_fail2ban
 configure_auditd
 configure_yazi
 configure_nvim
+if type live_log_ssl_configuration &>/dev/null 2>&1;then
+live_log_ssl_configuration
+fi
 configure_ssl_certificate
+if type live_log_validation_finalization &>/dev/null 2>&1;then
+live_log_validation_finalization
+fi
 configure_ssh_hardening
 validate_installation
 finalize_vm
@@ -4258,16 +4427,22 @@ log "Step: show_gum_config_editor"
 show_gum_config_editor
 echo ""
 show_timed_progress "Configuring..." 5
+start_live_installation||{
+log "WARNING: Failed to start live installation display, falling back to regular mode"
 clear
 show_banner
+}
+live_log_system_preparation
 log "Step: prepare_packages"
 prepare_packages
+live_log_iso_download
 log "Step: download_proxmox_iso"
 download_proxmox_iso
 log "Step: make_answer_toml"
 make_answer_toml
 log "Step: make_autoinstall_iso"
 make_autoinstall_iso
+live_log_proxmox_installation
 log "Step: install_proxmox"
 install_proxmox
 log "Step: boot_proxmox_with_port_forwarding"
@@ -4275,8 +4450,11 @@ boot_proxmox_with_port_forwarding||{
 log "ERROR: Failed to boot Proxmox with port forwarding"
 exit 1
 }
+live_log_system_configuration
 log "Step: configure_proxmox_via_ssh"
 configure_proxmox_via_ssh
+live_log_installation_complete
+finish_live_installation
 INSTALL_COMPLETED=true
 log "Step: reboot_to_main_os"
 reboot_to_main_os
