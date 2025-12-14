@@ -19,7 +19,7 @@ HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 HEX_NONE="7"
 MENU_BOX_WIDTH=60
-VERSION="2.0.108-pr.21"
+VERSION="2.0.109-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -1007,48 +1007,6 @@ printf "$CLR_RED✗$CLR_RESET %s\n" "$message"
 fi
 return $exit_code
 }
-wait_with_progress(){
-local message="$1"
-local timeout="$2"
-local check_cmd="$3"
-local interval="${4:-5}"
-local done_message="${5:-$message}"
-local result_file
-result_file=$(mktemp)
-echo "running" >"$result_file"
-(local start_time
-start_time=$(date +%s)
-while true;do
-local elapsed=$(($(date +%s)-start_time))
-if eval "$check_cmd" 2>/dev/null;then
-echo "success" >"$result_file"
-exit 0
-fi
-if [ $elapsed -ge $timeout ];then
-echo "timeout" >"$result_file"
-exit 1
-fi
-sleep "$interval"
-done) \
-&
-local wait_pid=$!
-gum spin --spinner meter --spinner.foreground "#ff8700" --title "$message" -- bash -c "
-    while kill -0 $wait_pid 2>/dev/null; do
-      sleep 0.2
-    done
-  "
-wait "$wait_pid" 2>/dev/null
-local result
-result=$(cat "$result_file")
-rm -f "$result_file"
-if [[ $result == "success" ]];then
-printf "$CLR_CYAN✓$CLR_RESET %s\n" "$done_message"
-return 0
-else
-printf "$CLR_RED✗$CLR_RESET %s timed out\n" "$message"
-return 1
-fi
-}
 show_timed_progress(){
 local message="$1"
 local duration="${2:-$((5+RANDOM%3))}"
@@ -1144,9 +1102,18 @@ return 1
 fi
 local passfile
 passfile=$(create_passfile)
-wait_with_progress "Waiting for SSH to be ready" "$timeout" \
-"sshpass -f \"$passfile\" ssh -p \"$SSH_PORT\" $SSH_OPTS root@localhost 'echo ready' >/dev/null 2>&1" \
-2 "SSH connection established"
+(local elapsed=0
+while ((elapsed<timeout));do
+if sshpass -f "$passfile" ssh -p "$SSH_PORT" $SSH_OPTS root@localhost 'echo ready' >/dev/null 2>&1;then
+exit 0
+fi
+sleep 2
+((elapsed+=2))
+done
+exit 1) \
+&
+local wait_pid=$!
+show_progress $wait_pid "Waiting for SSH to be ready" "SSH connection established"
 local exit_code=$?
 secure_cleanup_passfile "$passfile"
 return $exit_code
@@ -4104,7 +4071,19 @@ fi
 finalize_vm(){
 remote_exec "poweroff" >/dev/null 2>&1&
 show_progress $! "Powering off the VM"
-wait_with_progress "Waiting for QEMU process to exit" 120 "! kill -0 $QEMU_PID 2>/dev/null" 1 "QEMU process exited"
+(local timeout=120
+local elapsed=0
+while ((elapsed<timeout));do
+if ! kill -0 "$QEMU_PID" 2>/dev/null;then
+exit 0
+fi
+sleep 1
+((elapsed+=1))
+done
+exit 1) \
+&
+local wait_pid=$!
+show_progress $wait_pid "Waiting for QEMU process to exit" "QEMU process exited"
 local exit_code=$?
 if [[ $exit_code -ne 0 ]];then
 log "WARNING: QEMU process did not exit cleanly within 120 seconds"
