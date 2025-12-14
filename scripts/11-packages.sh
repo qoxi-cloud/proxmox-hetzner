@@ -12,11 +12,6 @@ prepare_packages() {
   log "Adding Proxmox repository"
   echo "deb http://download.proxmox.com/debian/pve bookworm pve-no-subscription" >/etc/apt/sources.list.d/pve.list
 
-  # Add live log subtask
-  if type live_log_subtask &>/dev/null 2>&1; then
-    live_log_subtask "Configuring APT sources"
-  fi
-
   # Download Proxmox GPG key
   log "Downloading Proxmox GPG key"
   curl -fsSL -o /etc/apt/trusted.gpg.d/proxmox-release-bookworm.gpg https://enterprise.proxmox.com/debian/proxmox-release-bookworm.gpg >>"$LOG_FILE" 2>&1 &
@@ -30,9 +25,9 @@ prepare_packages() {
   fi
   log "Proxmox GPG key downloaded successfully"
 
-  # Add live log subtask
+  # Add live log subtask after completion
   if type live_log_subtask &>/dev/null 2>&1; then
-    live_log_subtask "Downloading package lists"
+    live_log_subtask "Configuring APT sources"
   fi
 
   # Update package lists
@@ -48,10 +43,9 @@ prepare_packages() {
   fi
   log "Package lists updated successfully"
 
-  # Add live log subtasks for packages being installed
+  # Add live log subtask after completion
   if type live_log_subtask &>/dev/null 2>&1; then
-    live_log_subtask "Installing proxmox-auto-install-assistant"
-    live_log_subtask "Installing xorriso and ovmf"
+    live_log_subtask "Downloading package lists"
   fi
 
   # Install packages
@@ -65,6 +59,12 @@ prepare_packages() {
     exit 1
   fi
   log "Required packages installed successfully"
+
+  # Add live log subtasks after completion
+  if type live_log_subtask &>/dev/null 2>&1; then
+    live_log_subtask "Installing proxmox-auto-install-assistant"
+    live_log_subtask "Installing xorriso and ovmf"
+  fi
 }
 
 # Cache for ISO list (populated by prefetch_proxmox_iso_info)
@@ -410,12 +410,6 @@ make_autoinstall_iso() {
   log "Files in current directory:"
   ls -la >>"$LOG_FILE" 2>&1
 
-  # Add live log subtasks
-  if type live_log_subtask &>/dev/null 2>&1; then
-    live_log_subtask "Creating answer.toml"
-    live_log_subtask "Packing ISO with xorriso"
-  fi
-
   # Run ISO creation with full logging
   proxmox-auto-install-assistant prepare-iso pve.iso --fetch-from iso --answer-file answer.toml --output pve-autoinstall.iso >>"$LOG_FILE" 2>&1 &
   show_progress $! "Creating autoinstall ISO" "Autoinstall ISO created"
@@ -434,6 +428,12 @@ make_autoinstall_iso() {
   fi
 
   log "Autoinstall ISO created successfully: $(stat -c%s pve-autoinstall.iso 2>/dev/null | awk '{printf "%.1fM", $1/1024/1024}')"
+
+  # Add live log subtasks after completion
+  if type live_log_subtask &>/dev/null 2>&1; then
+    live_log_subtask "Creating answer.toml"
+    live_log_subtask "Packing ISO with xorriso"
+  fi
 
   # Remove original ISO to save disk space (only autoinstall ISO is needed)
   log "Removing original ISO to save disk space"
