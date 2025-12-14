@@ -128,8 +128,9 @@ finish_live_installation() {
 # Installation process sections
 # =============================================================================
 
-# Rescue System Preparation section (first section, no empty line before)
+# Rescue System Preparation section (first section)
 live_log_system_preparation() {
+  add_log ""
   add_log "${CLR_CYAN}▼ Rescue System Preparation${CLR_RESET}"
 }
 
