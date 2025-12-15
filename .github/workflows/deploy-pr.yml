@@ -155,7 +155,7 @@ jobs:
 
           echo "Waiting for ${SCRIPT_URL} to be available..."
 
-          MAX_ATTEMPTS=30
+          MAX_ATTEMPTS=90
           ATTEMPT=0
 
           while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
