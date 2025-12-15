@@ -19,7 +19,7 @@ HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 HEX_NONE="7"
 MENU_BOX_WIDTH=60
-VERSION="2.0.127-pr.21"
+VERSION="2.0.128-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -3186,35 +3186,25 @@ _kill_drive_holders
 log "Drives released"
 }
 install_proxmox(){
-local qemu_pid_file qemu_config_file
-qemu_pid_file=$(mktemp)
+local qemu_config_file
 qemu_config_file=$(mktemp)
 (setup_qemu_config
 cat >"$qemu_config_file" <<EOF
 QEMU_CORES=$QEMU_CORES
 QEMU_RAM=$QEMU_RAM
 UEFI_MODE=$(is_uefi_mode&&echo "yes"||echo "no")
+KVM_OPTS='$KVM_OPTS'
+UEFI_OPTS='$UEFI_OPTS'
+CPU_OPTS='$CPU_OPTS'
+DRIVE_ARGS='$DRIVE_ARGS'
 EOF
 if [[ ! -f "./pve-autoinstall.iso" ]];then
 print_error "Autoinstall ISO not found!"
 exit 1
 fi
-release_drives
-nohup qemu-system-x86_64 $KVM_OPTS $UEFI_OPTS \
-$CPU_OPTS -smp "$QEMU_CORES" -m "$QEMU_RAM" \
--boot d -cdrom ./pve-autoinstall.iso \
-$DRIVE_ARGS -no-reboot >qemu_install.log 2>&1&
-local qemu_pid=$!
-echo "$qemu_pid" >"$qemu_pid_file"
-sleep 2
-if ! kill -0 $qemu_pid 2>/dev/null;then
-log "ERROR: QEMU failed to start"
-log "QEMU install log:"
-cat qemu_install.log >>"$LOG_FILE" 2>&1
-exit 1
-fi) \
+release_drives) \
 &
-local startup_pid=$!
+local prep_pid=$!
 local timeout=10
 while [[ ! -s $qemu_config_file ]]&&((timeout>0));do
 sleep 0.1
@@ -3224,7 +3214,7 @@ if [[ -s $qemu_config_file ]];then
 source "$qemu_config_file"
 rm -f "$qemu_config_file"
 fi
-show_progress $startup_pid "Starting QEMU ($QEMU_CORES vCPUs, ${QEMU_RAM}MB RAM)" "QEMU started ($QEMU_CORES vCPUs, ${QEMU_RAM}MB RAM)"
+show_progress $prep_pid "Preparing QEMU ($QEMU_CORES vCPUs, ${QEMU_RAM}MB RAM)" "QEMU prepared ($QEMU_CORES vCPUs, ${QEMU_RAM}MB RAM)"
 if [[ $UEFI_MODE == "yes" ]];then
 live_log_subtask "UEFI mode detected"
 else
@@ -3232,9 +3222,18 @@ live_log_subtask "Legacy BIOS mode"
 fi
 live_log_subtask "KVM acceleration enabled"
 live_log_subtask "Configured $QEMU_CORES vCPUs, ${QEMU_RAM}MB RAM"
-local qemu_pid
-qemu_pid=$(cat "$qemu_pid_file")
-rm -f "$qemu_pid_file"
+qemu-system-x86_64 $KVM_OPTS $UEFI_OPTS \
+$CPU_OPTS -smp "$QEMU_CORES" -m "$QEMU_RAM" \
+-boot d -cdrom ./pve-autoinstall.iso \
+$DRIVE_ARGS -no-reboot >qemu_install.log 2>&1&
+local qemu_pid=$!
+sleep 2
+if ! kill -0 $qemu_pid 2>/dev/null;then
+log "ERROR: QEMU failed to start"
+log "QEMU install log:"
+cat qemu_install.log >>"$LOG_FILE" 2>&1
+exit 1
+fi
 show_progress "$qemu_pid" "Installing Proxmox VE" "Proxmox VE installed"
 local exit_code=$?
 if [[ $exit_code -ne 0 ]];then
