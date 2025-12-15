@@ -35,15 +35,15 @@ collect_system_info() {
 
   # Add Charm repo for gum if needed (not in default Debian repos)
   if [[ $need_charm_repo == true ]]; then
-    mkdir -p /etc/apt/keyrings
-    curl -fsSL https://repo.charm.sh/apt/gpg.key | gpg --dearmor -o /etc/apt/keyrings/charm.gpg 2>/dev/null
-    echo "deb [signed-by=/etc/apt/keyrings/charm.gpg] https://repo.charm.sh/apt/ * *" >/etc/apt/sources.list.d/charm.list
+    mkdir -p /etc/apt/keyrings 2>/dev/null
+    curl -fsSL https://repo.charm.sh/apt/gpg.key 2>/dev/null | gpg --dearmor -o /etc/apt/keyrings/charm.gpg >/dev/null 2>&1
+    echo "deb [signed-by=/etc/apt/keyrings/charm.gpg] https://repo.charm.sh/apt/ * *" >/etc/apt/sources.list.d/charm.list 2>/dev/null
   fi
 
   if [[ -n $packages_to_install ]]; then
     apt-get update -qq >/dev/null 2>&1
     # shellcheck disable=SC2086
-    apt-get install -qq -y $packages_to_install >/dev/null 2>&1
+    DEBIAN_FRONTEND=noninteractive apt-get install -qq -y $packages_to_install >/dev/null 2>&1
   fi
 
   # Check if running as root

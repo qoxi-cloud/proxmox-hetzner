@@ -143,6 +143,11 @@ show_banner_animated_start() {
     # Trap to ensure clean exit
     trap 'exit 0' TERM INT
 
+    # Redirect any stray output to /dev/null
+    exec 3>&1
+    exec 1>/dev/tty
+    exec 2>/dev/null
+
     while true; do
       _show_banner_frame "$current_letter"
       sleep "$frame_delay"
