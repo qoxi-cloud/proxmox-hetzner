@@ -59,12 +59,18 @@ log "Step: collect_system_info"
 # Start animated banner in background
 show_banner_animated_start 0.1
 
+# Create temporary file for sharing variables between processes
+SYSTEM_INFO_CACHE=$(mktemp)
+
 # Run system checks and prefetch Proxmox ISO info in background job
 # All output suppressed to prevent interference with animation
 {
   collect_system_info
   log "Step: prefetch_proxmox_iso_info"
   prefetch_proxmox_iso_info
+
+  # Export all PREFLIGHT_* and other important variables to temp file
+  declare -p | grep -E "^declare -[^ ]* (PREFLIGHT_|DRIVES|INTERFACE_|_ISO_|_CHECKSUM_)" > "$SYSTEM_INFO_CACHE"
 } >/dev/null 2>&1 &
 
 # Wait for background tasks to complete
@@ -72,6 +78,13 @@ wait $!
 
 # Stop animation and show static banner with system info
 show_banner_animated_stop
+
+# Import variables from background job
+if [[ -s $SYSTEM_INFO_CACHE ]]; then
+  # shellcheck disable=SC1090
+  source "$SYSTEM_INFO_CACHE"
+  rm -f "$SYSTEM_INFO_CACHE"
+fi
 
 log "Step: show_system_status"
 show_system_status
