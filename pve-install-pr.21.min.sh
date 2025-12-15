@@ -19,7 +19,7 @@ HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 HEX_NONE="7"
 MENU_BOX_WIDTH=60
-VERSION="2.0.128-pr.21"
+VERSION="2.0.129-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -3186,14 +3186,14 @@ _kill_drive_holders
 log "Drives released"
 }
 install_proxmox(){
-local qemu_pid_file
-qemu_pid_file=$(mktemp)
-(setup_qemu_config
+setup_qemu_config
 if [[ ! -f "./pve-autoinstall.iso" ]];then
 print_error "Autoinstall ISO not found!"
 exit 1
 fi
-release_drives
+local qemu_pid_file
+qemu_pid_file=$(mktemp)
+(release_drives
 qemu-system-x86_64 $KVM_OPTS $UEFI_OPTS \
 $CPU_OPTS -smp "$QEMU_CORES" -m "$QEMU_RAM" \
 -boot d -cdrom ./pve-autoinstall.iso \
