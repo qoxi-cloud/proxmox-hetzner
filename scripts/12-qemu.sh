@@ -348,16 +348,16 @@ boot_proxmox_with_port_forwarding() {
     local timeout=300
     local elapsed=0
     while ((elapsed < timeout)); do
-      # Redirect both stdout and stderr to /dev/null to suppress connection errors
+      # Suppress all connection errors by redirecting to /dev/null
       if exec 3<>/dev/tcp/localhost/5555 2>/dev/null; then
         exec 3<&- # Close the file descriptor
         exit 0
-      fi
+      fi 2>/dev/null
       sleep 3
       ((elapsed += 3))
     done
     exit 1
-  ) &
+  ) 2>/dev/null &
   local wait_pid=$!
 
   show_progress $wait_pid "Booting installed Proxmox" "Proxmox booted"
@@ -368,11 +368,6 @@ boot_proxmox_with_port_forwarding() {
     log "QEMU output log:"
     cat qemu_output.log >>"$LOG_FILE" 2>&1
     return 1
-  fi
-
-  # Add live log for SSH connection established
-  if type live_log_subtask &>/dev/null 2>&1; then
-    live_log_subtask "SSH connection established"
   fi
 
   # Wait for SSH to be fully ready (handles key exchange timing)
