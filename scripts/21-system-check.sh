@@ -322,8 +322,7 @@ detect_drives() {
     DRIVE_MODELS+=("$model")
   done
 
-  # Note: ZFS_RAID defaults are set in 07-input.sh during input collection
-  # Only preserve ZFS_RAID if it was explicitly set by user via environment
+  # Note: ZFS_RAID defaults can be overridden by user via environment variable
 
 }
 

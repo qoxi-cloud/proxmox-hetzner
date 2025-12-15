@@ -4,6 +4,30 @@
 # Protects SSH and Proxmox API from brute-force attacks
 # =============================================================================
 
+# Installation function for Fail2Ban
+_install_fail2ban() {
+  run_remote "Installing Fail2Ban" '
+    export DEBIAN_FRONTEND=noninteractive
+    apt-get update -qq
+    apt-get install -yqq fail2ban
+  ' "Fail2Ban installed"
+}
+
+# Configuration function for Fail2Ban
+_config_fail2ban() {
+  # Apply template variables
+  apply_template_vars "./templates/fail2ban-jail.local" \
+    "EMAIL=${EMAIL}" \
+    "HOSTNAME=${PVE_HOSTNAME}"
+
+  # Copy configurations to VM
+  remote_copy "templates/fail2ban-jail.local" "/etc/fail2ban/jail.local" || exit 1
+  remote_copy "templates/fail2ban-proxmox.conf" "/etc/fail2ban/filter.d/proxmox.conf" || exit 1
+
+  # Enable and start Fail2Ban
+  remote_exec "systemctl enable fail2ban && systemctl restart fail2ban" || exit 1
+}
+
 # Installs and configures Fail2Ban for brute-force protection.
 # Only installs when Tailscale is not used (Tailscale provides its own security).
 # Configures jails for SSH and Proxmox API protection.
@@ -18,33 +42,17 @@ configure_fail2ban() {
 
   log "Installing Fail2Ban (no Tailscale)"
 
-  # Install Fail2Ban package
-  run_remote "Installing Fail2Ban" '
-        export DEBIAN_FRONTEND=noninteractive
-        apt-get update -qq
-        apt-get install -yqq fail2ban
-    ' "Fail2Ban installed"
-
-  # Deploy configuration templates (already downloaded in make_templates)
+  # Install and configure using helper (with background progress)
   (
-    # Apply template variables
-    apply_template_vars "./templates/fail2ban-jail.local" \
-      "EMAIL=${EMAIL}" \
-      "HOSTNAME=${PVE_HOSTNAME}"
-
-    # Copy configurations to VM
-    remote_copy "templates/fail2ban-jail.local" "/etc/fail2ban/jail.local" || exit 1
-    remote_copy "templates/fail2ban-proxmox.conf" "/etc/fail2ban/filter.d/proxmox.conf" || exit 1
-
-    # Enable and start Fail2Ban
-    remote_exec "systemctl enable fail2ban && systemctl restart fail2ban" || exit 1
+    _install_fail2ban || exit 1
+    _config_fail2ban || exit 1
   ) >/dev/null 2>&1 &
-  show_progress $! "Configuring Fail2Ban" "Fail2Ban configured"
+  show_progress $! "Installing and configuring Fail2Ban" "Fail2Ban configured"
 
   local exit_code=$?
   if [[ $exit_code -ne 0 ]]; then
-    log "WARNING: Fail2Ban configuration failed"
-    print_warning "Fail2Ban configuration failed - continuing without it"
+    log "WARNING: Fail2Ban setup failed"
+    print_warning "Fail2Ban setup failed - continuing without it"
     return 0 # Non-fatal error
   fi
 

@@ -28,8 +28,9 @@ The git hooks will automatically validate your commit messages before each commi
 proxmox-hetzner/
 ├── scripts/           # Source scripts (numbered for concatenation order)
 │   ├── 00-init.sh     # Initialization, colors, version, constants
-│   ├── 00a-cli.sh     # CLI argument parsing
-│   ├── 00b-config.sh  # Configuration file handling
+│   ├── 01-cli.sh      # CLI argument parsing
+│   ├── 02-logging.sh  # Logging system
+│   ├── 03-banner.sh   # ASCII banner display
 │   ├── ...
 │   └── 99-main.sh     # Main execution flow
 ├── templates/         # Configuration templates (.tmpl extension)
@@ -51,14 +52,14 @@ git checkout -b fix/bug-description
 
 ### 2. Edit Scripts
 
-Scripts are in `scripts/` directory, numbered for execution order:
-- `00-0x` - Initialization and configuration
-- `01-05` - UI and utilities
-- `06-07` - System detection
-- `08-10` - Input collection
-- `11-12` - Installation
-- `13-18` - Post-install configuration
-- `99` - Main flow
+Scripts are in `scripts/` directory, organized by number ranges:
+- `00-09` - Initialization (init, cli, logging, banner)
+- `10-19` - Utilities & Display (UI, downloads, templates, ssh, helpers)
+- `20-29` - Validation & System Checks (validation, system info, live logs)
+- `30-39` - User Interaction (wizard: core, ui, editors)
+- `40-49` - Installation (packages, qemu, templates)
+- `50-59` - Post-Install Configuration (base, tailscale, fail2ban, auditd, yazi, nvim, ssl, finalize)
+- `90-99` - Main flow
 
 ### 3. Edit Templates
 
@@ -246,10 +247,11 @@ echo "Tests run: $TESTS_RUN"
 ## Versioning
 
 The project uses semantic versioning:
-- **MAJOR** - Set in `scripts/00-init.sh`
+- **MAJOR** - Set in `scripts/00-init.sh` (MAJOR_VERSION variable)
 - **MINOR** - Count of git tags
 - **PATCH** - Commits since last tag
 
+Version is injected during build by CI pipeline.
 PR builds get a `-pr.{number}` suffix.
 
 ## Getting Help

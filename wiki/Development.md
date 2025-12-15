@@ -64,17 +64,17 @@ Edit `VERSION="2"` in `scripts/00-init.sh`. The MINOR and PATCH will reset based
 
 ## Script Structure
 
-Scripts are numbered and concatenated in order:
+Scripts are numbered and concatenated in order. Number ranges provide logical grouping:
 
 | Range | Purpose | Files |
 |-------|---------|-------|
-| 00-00d | Initialization | init, cli, config, logging, banner |
-| 01-05 | UI and utilities | display, utils, ssh, menu, validation |
-| 06-07 | System detection | system-check, network |
-| 09-10 | Input collection | interactive, main |
-| 11-12 | Installation | packages, qemu |
-| 13-18 | Post-install | templates, configure-*, validate |
-| 99 | Main flow | main |
+| 00-09 | Initialization | init, cli, logging, banner |
+| 10-19 | Utilities & Display | display, downloads, utils, templates, ssh, async-helpers, feature-installer, template-helpers, remote-helpers, password-utils, validation-helpers |
+| 20-29 | Validation & System Checks | validation, system-check, live-logs |
+| 30-39 | User Interaction (Wizard) | wizard-core, wizard-ui, wizard-basic, wizard-proxmox, wizard-network, wizard-storage, wizard-services, wizard-ssh |
+| 40-49 | Installation | packages, qemu, templates |
+| 50-59 | Post-Install Configuration | configure-base, configure-tailscale, configure-fail2ban, configure-auditd, configure-yazi, configure-nvim, configure-ssl, configure-finalize |
+| 90-99 | Main Flow | main |
 
 ## Code Conventions
 

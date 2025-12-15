@@ -131,27 +131,33 @@ finish_live_installation() {
 # Installation process sections
 # =============================================================================
 
-# Rescue System Preparation section (first section)
+# Generic section header function
+# Parameters:
+#   $1 - Section name
+#   $2 - Optional: "first" to skip empty line before section
+live_log_section() {
+  local section_name="$1"
+  local first="${2:-}"
+
+  [[ $first != "first" ]] && add_log ""
+  add_log "${CLR_CYAN}▼ $section_name${CLR_RESET}"
+}
+
+# Convenience wrappers for sections (for backward compatibility)
 live_log_system_preparation() {
-  add_log "${CLR_CYAN}▼ Rescue System Preparation${CLR_RESET}"
+  live_log_section "Rescue System Preparation" "first"
 }
 
-# Proxmox ISO Download section
 live_log_iso_download() {
-  add_log ""
-  add_log "${CLR_CYAN}▼ Proxmox ISO Download${CLR_RESET}"
+  live_log_section "Proxmox ISO Download"
 }
 
-# Proxmox Installation section
 live_log_proxmox_installation() {
-  add_log ""
-  add_log "${CLR_CYAN}▼ Proxmox Installation${CLR_RESET}"
+  live_log_section "Proxmox Installation"
 }
 
-# System Configuration section - always shown when configuring via SSH
 live_log_system_configuration() {
-  add_log ""
-  add_log "${CLR_CYAN}▼ System Configuration${CLR_RESET}"
+  live_log_section "System Configuration"
 }
 
 # Security Configuration section - shown conditionally
@@ -173,8 +179,7 @@ live_log_ssl_configuration() {
 
 # Validation & Finalization section
 live_log_validation_finalization() {
-  add_log ""
-  add_log "${CLR_CYAN}▼ Validation & Finalization${CLR_RESET}"
+  live_log_section "Validation & Finalization"
 }
 
 # Installation complete message

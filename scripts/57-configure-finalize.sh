@@ -27,6 +27,48 @@ configure_ssh_hardening() {
   fi
 }
 
+# Validates that core Proxmox services are installed and running.
+# Performs basic sanity checks before finalization.
+validate_installation() {
+  (
+    remote_exec '
+      # Check if Proxmox VE packages are installed
+      if ! dpkg -l | grep -q "proxmox-ve"; then
+        echo "ERROR: Proxmox VE package not found"
+        exit 1
+      fi
+
+      # Check if pveproxy service is running (Proxmox web interface)
+      if ! systemctl is-active --quiet pveproxy; then
+        echo "ERROR: pveproxy service is not running"
+        exit 1
+      fi
+
+      # Check if pvedaemon is running (Proxmox API daemon)
+      if ! systemctl is-active --quiet pvedaemon; then
+        echo "ERROR: pvedaemon service is not running"
+        exit 1
+      fi
+
+      # Check if ZFS pool exists
+      if ! zpool list | grep -q "rpool"; then
+        echo "ERROR: ZFS root pool (rpool) not found"
+        exit 1
+      fi
+
+      exit 0
+    ' || exit 1
+  ) >/dev/null 2>&1 &
+  show_progress $! "Validating installation" "Installation validated"
+
+  local exit_code=$?
+  if [[ $exit_code -ne 0 ]]; then
+    log "ERROR: Installation validation failed"
+    print_error "Installation validation failed - review logs for details"
+    exit 1
+  fi
+}
+
 # Finalizes VM by powering it off and waiting for QEMU to exit.
 finalize_vm() {
   # Power off the VM
