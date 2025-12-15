@@ -19,7 +19,7 @@ HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 HEX_NONE="7"
 MENU_BOX_WIDTH=60
-VERSION="2.0.137-pr.21"
+VERSION="2.0.138-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -3901,7 +3901,7 @@ SYSTEM_INFO_CACHE=$(mktemp)
 collect_system_info
 log "Step: prefetch_proxmox_iso_info"
 prefetch_proxmox_iso_info
-declare -p|grep -E "^declare -[^ ]* (PREFLIGHT_|DRIVES|INTERFACE_|_ISO_|_CHECKSUM_)" >"$SYSTEM_INFO_CACHE"
+declare -p|grep -E "^declare -[^ ]* (PREFLIGHT_|DRIVE_|INTERFACE_|CURRENT_INTERFACE|PREDICTABLE_NAME|DEFAULT_INTERFACE|AVAILABLE_|MAC_ADDRESS|_ISO_|_CHECKSUM_)" >"$SYSTEM_INFO_CACHE"
 } >/dev/null 2>&1&
 wait $!
 show_banner_animated_stop
