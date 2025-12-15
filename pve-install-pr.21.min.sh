@@ -19,7 +19,7 @@ HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 HEX_NONE="7"
 MENU_BOX_WIDTH=60
-VERSION="2.0.131-pr.21"
+VERSION="2.0.132-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -3206,7 +3206,16 @@ log "DEBUG: CPU_OPTS='$CPU_OPTS'"
 log "DEBUG: QEMU_CORES='$QEMU_CORES'"
 log "DEBUG: QEMU_RAM='$QEMU_RAM'"
 log "DEBUG: DRIVE_ARGS='$DRIVE_ARGS'"
-qemu-system-x86_64 $KVM_OPTS $UEFI_OPTS \
+log "DEBUG: which qemu-system-x86_64: $(which qemu-system-x86_64 2>&1||echo 'NOT FOUND')"
+log "DEBUG: PATH=$PATH"
+local qemu_bin
+qemu_bin=$(command -v qemu-system-x86_64||echo "")
+if [[ -z $qemu_bin ]];then
+log "ERROR: qemu-system-x86_64 not found in PATH"
+exit 1
+fi
+log "DEBUG: Using QEMU binary: $qemu_bin"
+"$qemu_bin" $KVM_OPTS $UEFI_OPTS \
 $CPU_OPTS -smp "$QEMU_CORES" -m "$QEMU_RAM" \
 -boot d -cdrom ./pve-autoinstall.iso \
 $DRIVE_ARGS -no-reboot -display none >qemu_install.log 2>&1&
