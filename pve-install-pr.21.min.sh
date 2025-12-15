@@ -19,7 +19,7 @@ HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 HEX_NONE="7"
 MENU_BOX_WIDTH=60
-VERSION="2.0.131-pr.21"
+VERSION="2.0.132-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -727,7 +727,7 @@ local line6="$M"
 [[ $h -eq 6 ]]&&line6+=" $A/_/\\_\\$M"||line6+=' /_/\_\'
 line6+="$R"
 local line_hetzner="$CLR_HETZNER            Hetzner ${M}Automated Installer$R"
-printf '\033[H'
+printf '\033[H\033[J'
 printf '%s\n' \
 "" \
 "$line1" \
