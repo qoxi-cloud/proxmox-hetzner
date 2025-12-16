@@ -19,7 +19,7 @@ HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 HEX_NONE="7"
 MENU_BOX_WIDTH=60
-VERSION="2.0.146-pr.21"
+VERSION="2.0.147-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -3193,7 +3193,7 @@ gum style --foreground "$HEX_GRAY" "Please configure DNS A record:"
 gum style --foreground "$HEX_GRAY" "  $CLR_ORANGE$FQDN$CLR_RESET → $CLR_ORANGE$MAIN_IPV4$CLR_RESET"
 echo ""
 gum style --foreground "$HEX_GRAY" "Falling back to self-signed certificate."
-sleep 4
+sleep 5
 SSL_TYPE="self-signed"
 return
 elif [[ $dns_result -eq 2 ]];then
@@ -3205,13 +3205,13 @@ echo ""
 gum style --foreground "$HEX_GRAY" "Please update DNS A record to point to $CLR_ORANGE$MAIN_IPV4$CLR_RESET"
 echo ""
 gum style --foreground "$HEX_GRAY" "Falling back to self-signed certificate."
-sleep 4
+sleep 5
 SSL_TYPE="self-signed"
 return
 else
-gum style --foreground "$HEX_GREEN" "✓ DNS resolution successful"
-gum style --foreground "$HEX_GRAY" "  $CLR_ORANGE$FQDN$CLR_RESET → $CLR_GREEN$DNS_RESOLVED_IP$CLR_RESET"
-sleep 1
+gum style --foreground "$HEX_CYAN" "✓ DNS resolution successful"
+gum style --foreground "$HEX_GRAY" "  $CLR_ORANGE$FQDN$CLR_RESET → $CLR_CYAN$DNS_RESOLVED_IP$CLR_RESET"
+sleep 3
 SSL_TYPE="$ssl_type"
 fi
 else
