@@ -148,7 +148,7 @@ _edit_ssl() {
       gum style --foreground "$HEX_GRAY" "  ${CLR_ORANGE}${FQDN}${CLR_RESET} → ${CLR_ORANGE}${MAIN_IPV4}${CLR_RESET}"
       echo ""
       gum style --foreground "$HEX_GRAY" "Falling back to self-signed certificate."
-      sleep 4
+      sleep 5
       SSL_TYPE="self-signed"
       return
     elif [[ $dns_result -eq 2 ]]; then
@@ -161,14 +161,14 @@ _edit_ssl() {
       gum style --foreground "$HEX_GRAY" "Please update DNS A record to point to ${CLR_ORANGE}${MAIN_IPV4}${CLR_RESET}"
       echo ""
       gum style --foreground "$HEX_GRAY" "Falling back to self-signed certificate."
-      sleep 4
+      sleep 5
       SSL_TYPE="self-signed"
       return
     else
       # Success
-      gum style --foreground "$HEX_GREEN" "✓ DNS resolution successful"
-      gum style --foreground "$HEX_GRAY" "  ${CLR_ORANGE}${FQDN}${CLR_RESET} → ${CLR_GREEN}${DNS_RESOLVED_IP}${CLR_RESET}"
-      sleep 1
+      gum style --foreground "$HEX_CYAN" "✓ DNS resolution successful"
+      gum style --foreground "$HEX_GRAY" "  ${CLR_ORANGE}${FQDN}${CLR_RESET} → ${CLR_CYAN}${DNS_RESOLVED_IP}${CLR_RESET}"
+      sleep 3
       SSL_TYPE="$ssl_type"
     fi
   else
