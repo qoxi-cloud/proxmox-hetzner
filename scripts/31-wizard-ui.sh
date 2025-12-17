@@ -44,12 +44,13 @@ _wiz_show_cursor() { printf '\033[?25h'; }
 
 # Clear screen in alternate buffer (faster than clear)
 _wiz_clear() {
-  printf '\033[H\033[J\n'
+  printf '\033[H\033[J'
 }
 
 # Clear screen and show banner (common pattern in editors)
 _wiz_start_edit() {
   _wiz_clear
+  printf '\n'
   show_banner
 }
 
