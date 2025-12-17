@@ -5,7 +5,7 @@
 # =============================================================================
 
 _edit_tailscale() {
-  clear
+  _wiz_clear
   show_banner
   echo ""
 
@@ -73,7 +73,7 @@ _edit_tailscale() {
 }
 
 _edit_ssl() {
-  clear
+  _wiz_clear
   show_banner
   echo ""
 
@@ -177,7 +177,7 @@ _edit_ssl() {
 }
 
 _edit_shell() {
-  clear
+  _wiz_clear
   show_banner
   echo ""
 
@@ -203,7 +203,7 @@ _edit_shell() {
 }
 
 _edit_power_profile() {
-  clear
+  _wiz_clear
   show_banner
   echo ""
 
@@ -232,7 +232,7 @@ _edit_power_profile() {
 }
 
 _edit_features() {
-  clear
+  _wiz_clear
   show_banner
   echo ""
 
@@ -292,7 +292,7 @@ _edit_features() {
 # =============================================================================
 
 _edit_api_token() {
-  clear
+  _wiz_clear
   show_banner
   echo ""
 

@@ -5,7 +5,7 @@
 # =============================================================================
 
 _edit_interface() {
-  clear
+  _wiz_clear
   show_banner
   echo ""
 
@@ -30,7 +30,7 @@ _edit_interface() {
 }
 
 _edit_bridge_mode() {
-  clear
+  _wiz_clear
   show_banner
   echo ""
 
@@ -57,7 +57,7 @@ _edit_bridge_mode() {
 }
 
 _edit_private_subnet() {
-  clear
+  _wiz_clear
   show_banner
   echo ""
 
@@ -122,7 +122,7 @@ _edit_private_subnet() {
 }
 
 _edit_ipv6() {
-  clear
+  _wiz_clear
   show_banner
   echo ""
 

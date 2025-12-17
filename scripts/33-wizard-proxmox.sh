@@ -5,7 +5,7 @@
 # =============================================================================
 
 _edit_iso_version() {
-  clear
+  _wiz_clear
   show_banner
   echo ""
 
@@ -35,7 +35,7 @@ _edit_iso_version() {
 }
 
 _edit_repository() {
-  clear
+  _wiz_clear
   show_banner
   echo ""
 

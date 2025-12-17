@@ -5,7 +5,7 @@
 # =============================================================================
 
 _edit_hostname() {
-  clear
+  _wiz_clear
   show_banner
   echo ""
   _show_input_footer
@@ -32,7 +32,7 @@ _edit_hostname() {
   fi
 
   # Edit domain
-  clear
+  _wiz_clear
   show_banner
   echo ""
   _show_input_footer
@@ -55,7 +55,7 @@ _edit_hostname() {
 }
 
 _edit_email() {
-  clear
+  _wiz_clear
   show_banner
   echo ""
   _show_input_footer
@@ -163,7 +163,7 @@ _edit_password() {
 }
 
 _edit_timezone() {
-  clear
+  _wiz_clear
   show_banner
   echo ""
 
@@ -187,7 +187,7 @@ _edit_timezone() {
 }
 
 _edit_keyboard() {
-  clear
+  _wiz_clear
   show_banner
   echo ""
 
@@ -211,7 +211,7 @@ _edit_keyboard() {
 }
 
 _edit_country() {
-  clear
+  _wiz_clear
   show_banner
   echo ""
 

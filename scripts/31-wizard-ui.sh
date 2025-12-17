@@ -42,6 +42,12 @@ _wiz_read_key() {
 _wiz_hide_cursor() { printf '\033[?25l'; }
 _wiz_show_cursor() { printf '\033[?25h'; }
 
+# Clear screen in alternate buffer (faster than clear)
+_wiz_clear() {
+  tput cup 0 0
+  tput ed
+}
+
 # Format value for display - shows placeholder if empty
 # Parameters:
 #   $1 - value to display
