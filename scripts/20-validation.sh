@@ -365,7 +365,7 @@ validate_ssh_key() {
       log "INFO: SSH key validated (ED25519)"
       return 0
       ;;
-    ssh-rsa|ecdsa-*)
+    ssh-rsa | ecdsa-*)
       local bits
       bits=$(echo "$key" | ssh-keygen -l -f - 2>/dev/null | awk '{print $1}')
       if [[ $bits -ge 2048 ]]; then
