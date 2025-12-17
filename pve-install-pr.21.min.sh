@@ -19,7 +19,7 @@ HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 HEX_NONE="7"
 MENU_BOX_WIDTH=60
-VERSION="2.0.162-pr.21"
+VERSION="2.0.163-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -2378,8 +2378,7 @@ _wiz_hide_cursor
 ;;
 start)return 0
 ;;
-quit|esc)tput cup 0 0
-tput ed
+quit|esc)_wiz_clear
 echo ""
 echo ""
 echo ""
@@ -2434,8 +2433,7 @@ if [[ $INSTALL_TAILSCALE != "yes" ]];then
 fi
 if [[ $missing_count -gt 0 ]];then
 _wiz_show_cursor
-tput cup 0 0
-tput ed
+_wiz_clear
 show_banner
 echo ""
 gum style --foreground "$HEX_RED" --bold "Configuration incomplete!"
@@ -2685,8 +2683,7 @@ _add_field "SSH Key          " "$(_wiz_fmt "$ssh_display")" "ssh_key"
 _WIZ_FIELD_COUNT=$field_idx
 output+="\n"
 output+="$CLR_GRAY[$CLR_ORANGE↑↓$CLR_GRAY] navigate  [${CLR_ORANGE}Enter$CLR_GRAY] edit  [${CLR_ORANGE}S$CLR_GRAY] start  [${CLR_ORANGE}Q$CLR_GRAY] quit$CLR_RESET"
-tput cup 0 0
-tput ed
+_wiz_clear
 printf '%b' "$output"
 }
 _edit_hostname(){
@@ -2758,7 +2755,7 @@ fi
 }
 _edit_password(){
 while true;do
-clear
+_wiz_clear
 show_banner
 echo ""
 _show_input_footer "filter" 3
@@ -2776,7 +2773,7 @@ fi
 case "$choice" in
 "Generate password")NEW_ROOT_PASSWORD=$(generate_password "$DEFAULT_PASSWORD_LENGTH")
 PASSWORD_GENERATED="yes"
-clear
+_wiz_clear
 show_banner
 echo ""
 gum style --foreground "$HEX_YELLOW" "Please save this password - it will be required for login"
@@ -2787,7 +2784,7 @@ echo -e "${CLR_GRAY}Press any key to continue...$CLR_RESET"
 read -n 1 -s -r
 break
 ;;
-"Manual entry")clear
+"Manual entry")_wiz_clear
 show_banner
 echo ""
 _show_input_footer
@@ -2919,7 +2916,7 @@ case "$selected" in
 esac
 PVE_REPO_TYPE="$repo_type"
 if [[ $repo_type == "enterprise" ]];then
-clear
+_wiz_clear
 show_banner
 echo ""
 gum style --foreground "$HEX_GRAY" "Enter Proxmox subscription key (optional)"
@@ -2997,7 +2994,7 @@ return
 fi
 if [[ $selected == "Custom" ]];then
 while true;do
-clear
+_wiz_clear
 show_banner
 echo ""
 gum style --foreground "$HEX_GRAY" "Enter private subnet in CIDR notation"
@@ -3055,7 +3052,7 @@ esac
 IPV6_MODE="$ipv6_mode"
 if [[ $ipv6_mode == "manual" ]];then
 while true;do
-clear
+_wiz_clear
 show_banner
 echo ""
 gum style --foreground "$HEX_GRAY" "Enter IPv6 address in CIDR notation"
@@ -3087,7 +3084,7 @@ sleep 2
 fi
 done
 while true;do
-clear
+_wiz_clear
 show_banner
 echo ""
 gum style --foreground "$HEX_GRAY" "Enter IPv6 gateway address"
@@ -3177,7 +3174,7 @@ selected=$(echo -e "Disabled\nEnabled"|gum choose \
 --selected.foreground "$HEX_WHITE" \
 --no-show-help)
 case "$selected" in
-Enabled)clear
+Enabled)_wiz_clear
 show_banner
 echo ""
 gum style --foreground "$HEX_GRAY" "Enter Tailscale authentication key"
@@ -3238,7 +3235,7 @@ case "$selected" in
 esac
 if [[ $ssl_type == "letsencrypt" ]];then
 if [[ -z $FQDN ]];then
-clear
+_wiz_clear
 show_banner
 echo ""
 gum style --foreground "$HEX_RED" "Error: Hostname not configured!"
@@ -3250,7 +3247,7 @@ SSL_TYPE="self-signed"
 return
 fi
 if [[ $FQDN == *.local ]]||! validate_fqdn "$FQDN";then
-clear
+_wiz_clear
 show_banner
 echo ""
 gum style --foreground "$HEX_RED" "Error: Invalid domain name!"
@@ -3262,7 +3259,7 @@ sleep 3
 SSL_TYPE="self-signed"
 return
 fi
-clear
+_wiz_clear
 show_banner
 echo ""
 gum style --foreground "$HEX_CYAN" "Validating DNS resolution..."
@@ -3405,7 +3402,7 @@ selected=$(echo -e "Disabled\nEnabled"|gum choose \
 --selected.foreground "$HEX_WHITE" \
 --no-show-help)
 case "$selected" in
-Enabled)clear
+Enabled)_wiz_clear
 show_banner
 echo ""
 gum style --foreground "$HEX_GRAY" "Enter API token name (default: automation)"
@@ -3434,7 +3431,7 @@ esac
 }
 _edit_ssh_key(){
 while true;do
-clear
+_wiz_clear
 show_banner
 echo ""
 local detected_key
@@ -3466,7 +3463,7 @@ break
 "Enter different key")
 esac
 fi
-clear
+_wiz_clear
 show_banner
 echo ""
 gum style --foreground "$HEX_GRAY" "Paste your SSH public key (ssh-rsa, ssh-ed25519, etc.)"
