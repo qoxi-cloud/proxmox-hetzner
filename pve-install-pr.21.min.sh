@@ -3470,12 +3470,20 @@ clear
 show_banner
 echo ""
 local options=""
+local preselected=()
 for i in "${!DRIVES[@]}";do
 if [[ -z $BOOT_DISK || ${DRIVES[$i]} != "$BOOT_DISK" ]];then
 local disk_name="${DRIVE_NAMES[$i]}"
 local disk_size="${DRIVE_SIZES[$i]}"
 local disk_model="${DRIVE_MODELS[$i]:0:25}"
-options+="$disk_name - $disk_size  $disk_model\n"
+local disk_label="$disk_name - $disk_size  $disk_model"
+options+="$disk_label\n"
+for pool_disk in "${ZFS_POOL_DISKS[@]}";do
+if [[ $pool_disk == "/dev/$disk_name" ]];then
+preselected+=("$disk_label")
+break
+fi
+done
 fi
 done
 options="${options%\\n}"
@@ -3485,14 +3493,23 @@ available_count=$((DRIVE_COUNT-1))
 else
 available_count=$DRIVE_COUNT
 fi
-_show_input_footer "checkbox" "$available_count"
-local selected
-selected=$(echo -e "$options"|gum choose \
---header="ZFS pool disks (min 1):" \
---header.foreground "$HEX_CYAN" \
---cursor "$CLR_ORANGE›$CLR_RESET " \
---limit "$available_count" \
+_show_input_footer "checkbox" "$((available_count+1))"
+local gum_args=(
+--no-limit
+--header="ZFS pool disks (min 1):"
+--header.foreground "$HEX_CYAN"
+--cursor "$CLR_ORANGE›$CLR_RESET "
+--cursor.foreground "$HEX_NONE"
+--cursor-prefix "◦ "
+--selected.foreground "$HEX_WHITE"
+--selected-prefix "$CLR_CYAN✓$CLR_RESET "
+--unselected-prefix "◦ "
 --no-show-help)
+for item in "${preselected[@]}";do
+gum_args+=(--selected "$item")
+done
+local selected
+selected=$(echo -e "$options"|gum choose "${gum_args[@]}")
 if [[ -n $selected ]];then
 ZFS_POOL_DISKS=()
 while IFS= read -r line;do
