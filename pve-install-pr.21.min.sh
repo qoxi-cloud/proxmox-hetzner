@@ -19,7 +19,7 @@ HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 HEX_NONE="7"
 MENU_BOX_WIDTH=60
-VERSION="2.0.174-pr.21"
+VERSION="2.0.175-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -4799,9 +4799,7 @@ echo ""
 }
 reboot_to_main_os(){
 finish_live_installation
-clear
-echo ""
-show_banner
+_wiz_start_edit
 echo ""
 print_info "Installation completed successfully!"
 echo ""
