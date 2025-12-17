@@ -7,7 +7,6 @@
 _edit_ssh_key() {
   while true; do
     _wiz_start_edit
-    echo ""
 
     # Detect SSH key from Rescue System
     local detected_key

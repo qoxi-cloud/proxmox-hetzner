@@ -49,8 +49,8 @@ reboot_to_main_os() {
 
   # Clear screen and show banner
   clear
+  echo ""
   show_banner
-
   echo ""
 
   # Show success message

@@ -6,7 +6,6 @@
 
 _edit_hostname() {
   _wiz_start_edit
-  echo ""
   _show_input_footer
 
   local new_hostname
@@ -32,7 +31,6 @@ _edit_hostname() {
 
   # Edit domain
   _wiz_start_edit
-  echo ""
   _show_input_footer
 
   local new_domain
@@ -54,7 +52,6 @@ _edit_hostname() {
 
 _edit_email() {
   _wiz_start_edit
-  echo ""
   _show_input_footer
 
   local new_email
@@ -82,7 +79,6 @@ _edit_email() {
 _edit_password() {
   while true; do
     _wiz_start_edit
-    echo ""
 
     # 1 header + 2 options (Manual/Generate)
     _show_input_footer "filter" 3
@@ -107,7 +103,6 @@ _edit_password() {
         PASSWORD_GENERATED="yes"
 
         _wiz_start_edit
-        echo ""
         gum style --foreground "$HEX_YELLOW" "Please save this password - it will be required for login"
         echo ""
         echo -e "${CLR_CYAN}Generated password:${CLR_RESET} ${CLR_ORANGE}${NEW_ROOT_PASSWORD}${CLR_RESET}"
@@ -118,7 +113,6 @@ _edit_password() {
         ;;
       "Manual entry")
         _wiz_start_edit
-        echo ""
         _show_input_footer
 
         local new_password
@@ -158,7 +152,6 @@ _edit_password() {
 
 _edit_timezone() {
   _wiz_start_edit
-  echo ""
 
   # Footer for filter: height=5 items + 1 input line = 6 lines for component
   _show_input_footer "filter" 6
@@ -181,7 +174,6 @@ _edit_timezone() {
 
 _edit_keyboard() {
   _wiz_start_edit
-  echo ""
 
   # Footer for filter: height=5 items + 1 input line = 6 lines for component
   _show_input_footer "filter" 6
@@ -204,7 +196,6 @@ _edit_keyboard() {
 
 _edit_country() {
   _wiz_start_edit
-  echo ""
 
   # Footer for filter: height=5 items + 1 input line = 6 lines for component
   _show_input_footer "filter" 6

@@ -5,10 +5,7 @@
 # =============================================================================
 
 _edit_boot_disk() {
-  clear
-  echo ""
-  show_banner
-  echo ""
+  _wiz_start_edit
 
   # Options: "None (all in pool)" + all drives
   local options="None (all in pool)"
@@ -42,10 +39,7 @@ _edit_boot_disk() {
 }
 
 _edit_pool_disks() {
-  clear
-  echo ""
-  show_banner
-  echo ""
+  _wiz_start_edit
 
   # Build options (exclude boot if set) and preselected items
   local options=""
