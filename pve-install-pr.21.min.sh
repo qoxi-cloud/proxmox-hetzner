@@ -19,7 +19,7 @@ HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 HEX_NONE="7"
 MENU_BOX_WIDTH=60
-VERSION="2.0.152-pr.21"
+VERSION="2.0.153-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -2497,7 +2497,7 @@ _WIZ_FIELD_MAP=()
 _wiz_render_menu(){
 local selection="$1"
 local output=""
-clear
+printf '\033[H\033[J'
 show_banner
 echo ""
 local pass_display=""
