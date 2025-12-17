@@ -19,7 +19,7 @@ HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 HEX_NONE="7"
 MENU_BOX_WIDTH=60
-VERSION="2.0.148-pr.21"
+VERSION="2.0.151-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -842,6 +842,10 @@ TAILSCALE_SSH=""
 TAILSCALE_WEBUI=""
 TAILSCALE_DISABLE_SSH=""
 STEALTH_MODE=""
+INSTALL_API_TOKEN=""
+API_TOKEN_NAME="automation"
+API_TOKEN_VALUE=""
+API_TOKEN_ID=""
 show_help(){
 cat <<EOF
 Proxmox VE Automated Installer for Hetzner v$VERSION
@@ -2367,6 +2371,7 @@ ssl)_edit_ssl;;
 shell)_edit_shell;;
 power_profile)_edit_power_profile;;
 features)_edit_features;;
+api_token)_edit_api_token;;
 ssh_key)_edit_ssh_key
 esac
 _wiz_hide_cursor
@@ -2591,6 +2596,14 @@ features_display=""
 [[ $INSTALL_NVIM == "yes" ]]&&features_display+="${features_display:+, }nvim"
 [[ -z $features_display ]]&&features_display="none"
 fi
+local api_token_display=""
+if [[ -n $INSTALL_API_TOKEN ]];then
+case "$INSTALL_API_TOKEN" in
+yes)api_token_display="Yes ($API_TOKEN_NAME)";;
+no)api_token_display="No";;
+*)api_token_display=""
+esac
+fi
 local ssh_display=""
 if [[ -n $SSH_PUBLIC_KEY ]];then
 ssh_display="${SSH_PUBLIC_KEY:0:20}..."
@@ -2656,6 +2669,7 @@ _add_section "Optional"
 _add_field "Shell            " "$(_wiz_fmt "$shell_display")" "shell"
 _add_field "Power profile    " "$(_wiz_fmt "$power_display")" "power_profile"
 _add_field "Features         " "$(_wiz_fmt "$features_display")" "features"
+_add_field "API Token        " "$(_wiz_fmt "$api_token_display")" "api_token"
 _add_section "SSH"
 _add_field "SSH Key          " "$(_wiz_fmt "$ssh_display")" "ssh_key"
 _WIZ_FIELD_COUNT=$field_idx
@@ -3363,6 +3377,31 @@ INSTALL_YAZI="yes"
 fi
 if echo "$selected"|grep -q "nvim";then
 INSTALL_NVIM="yes"
+fi
+}
+_edit_api_token(){
+_show_input_footer "filter" 2
+local choice
+choice=$(gum choose \
+--header="Create Proxmox API token (privileged, no expiration)?" \
+"Yes - Create API token" \
+"No - Skip API token")
+if [[ $choice == "Yes"* ]];then
+INSTALL_API_TOKEN="yes"
+_show_input_footer "input"
+local token_name
+token_name=$(gum input \
+--placeholder="automation" \
+--header="API token name (default: automation)" \
+--value="${API_TOKEN_NAME:-automation}")
+if [[ -n $token_name && $token_name =~ ^[a-zA-Z0-9_-]+$ ]];then
+API_TOKEN_NAME="$token_name"
+else
+print_error "Invalid token name, using default: automation"
+API_TOKEN_NAME="automation"
+fi
+else
+INSTALL_API_TOKEN="no"
 fi
 }
 _edit_ssh_key(){
@@ -4733,12 +4772,82 @@ if type live_log_ssl_configuration &>/dev/null 2>&1;then
 live_log_ssl_configuration
 fi
 configure_ssl_certificate
+if [[ $INSTALL_API_TOKEN == "yes" ]];then
+(source "$SCRIPT_DIR/58-configure-api-token.sh"
+create_api_token||exit 1) > \
+/dev/null 2>&1&
+show_progress $! "Creating API token" "API token created"
+fi
 if type live_log_validation_finalization &>/dev/null 2>&1;then
 live_log_validation_finalization
 fi
 configure_ssh_hardening
 validate_installation
 finalize_vm
+}
+create_api_token(){
+[[ $INSTALL_API_TOKEN != "yes" ]]&&return 0
+log "INFO: Creating Proxmox API token: $API_TOKEN_NAME"
+local existing
+existing=$(remote_exec "pveum user token list root@pam 2>/dev/null | grep -q '$API_TOKEN_NAME' && echo 'exists' || echo ''"||true)
+if [[ $existing == "exists" ]];then
+log "WARNING: Token $API_TOKEN_NAME exists, removing first"
+remote_exec "pveum user token remove root@pam $API_TOKEN_NAME"||true
+fi
+local output
+output=$(remote_exec "pveum user token add root@pam $API_TOKEN_NAME --privsep 0 --expire 0 --output-format json 2>&1"||true)
+if [[ -z $output ]];then
+log "ERROR: Failed to create API token - empty output"
+print_warning "API token creation failed - continuing without it"
+return 1
+fi
+local token_value
+token_value=$(echo "$output"|jq -r '.value // empty' 2>/dev/null||true)
+if [[ -z $token_value ]];then
+log "ERROR: Failed to extract token value from pveum output"
+log "DEBUG: pveum output: $output"
+print_warning "API token creation failed - continuing without it"
+return 1
+fi
+API_TOKEN_VALUE="$token_value"
+API_TOKEN_ID="root@pam!$API_TOKEN_NAME"
+cat >/tmp/pve-install-api-token.env <<EOF
+API_TOKEN_VALUE=$token_value
+API_TOKEN_ID=$API_TOKEN_ID
+API_TOKEN_NAME=$API_TOKEN_NAME
+EOF
+log "INFO: API token created successfully: $API_TOKEN_ID"
+return 0
+}
+_show_credentials_info(){
+echo ""
+print_info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "$CLR_YELLOW${CLR_BOLD}Access Credentials$CLR_RESET $CLR_RED(SAVE THIS!)$CLR_RESET"
+print_info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "$CLR_CYAN${CLR_BOLD}Root Access:$CLR_RESET"
+echo "$CLR_CYAN  Hostname:$CLR_RESET  $PVE_HOSTNAME.$DOMAIN_SUFFIX"
+echo "$CLR_CYAN  Username:$CLR_RESET  root"
+echo "$CLR_CYAN  Password:$CLR_RESET  $NEW_ROOT_PASSWORD"
+echo "$CLR_CYAN  Web UI:$CLR_RESET    https://$MAIN_IPV4:8006"
+if [[ -f /tmp/pve-install-api-token.env ]];then
+source /tmp/pve-install-api-token.env
+if [[ -n $API_TOKEN_VALUE ]];then
+echo ""
+echo "$CLR_CYAN${CLR_BOLD}API Token:$CLR_RESET"
+echo "$CLR_CYAN  Token ID:$CLR_RESET  $API_TOKEN_ID"
+echo "$CLR_CYAN  Secret:$CLR_RESET    $API_TOKEN_VALUE"
+echo ""
+echo "$CLR_DIM  Usage (curl):$CLR_RESET"
+echo "$CLR_DIM    curl -k -H \"Authorization: PVEAPIToken=$API_TOKEN_ID=$API_TOKEN_VALUE\" \\$CLR_RESET"
+echo "$CLR_DIM         https://$MAIN_IPV4:8006/api2/json/nodes$CLR_RESET"
+echo ""
+echo "$CLR_DIM  Properties: privileged (full root@pam rights), never expires$CLR_RESET"
+echo "$CLR_DIM  Revoke via: pveum user token remove $API_TOKEN_ID$CLR_RESET"
+fi
+fi
+print_info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
 }
 reboot_to_main_os(){
 finish_live_installation
@@ -4747,6 +4856,7 @@ show_banner
 echo ""
 print_info "Installation completed successfully!"
 echo ""
+_show_credentials_info
 if gum confirm "Reboot the system now?" \
 --affirmative "Yes" \
 --negative "No" \
