@@ -19,7 +19,7 @@ HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 HEX_NONE="7"
 MENU_BOX_WIDTH=60
-VERSION="2.0.151-pr.21"
+VERSION="2.0.152-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -3380,29 +3380,45 @@ INSTALL_NVIM="yes"
 fi
 }
 _edit_api_token(){
-_show_input_footer "filter" 2
-local choice
-choice=$(gum choose \
---header="Create Proxmox API token (privileged, no expiration)?" \
-"Yes - Create API token" \
-"No - Skip API token")
-if [[ $choice == "Yes"* ]];then
-INSTALL_API_TOKEN="yes"
-_show_input_footer "input"
+clear
+show_banner
+echo ""
+_show_input_footer "filter" 3
+local selected
+selected=$(echo -e "Disabled\nEnabled"|gum choose \
+--header="API Token (privileged, no expiration):" \
+--header.foreground "$HEX_CYAN" \
+--cursor "$CLR_ORANGE›$CLR_RESET " \
+--cursor.foreground "$HEX_NONE" \
+--selected.foreground "$HEX_WHITE" \
+--no-show-help)
+case "$selected" in
+Enabled)clear
+show_banner
+echo ""
+gum style --foreground "$HEX_GRAY" "Enter API token name (default: automation)"
+echo ""
+_show_input_footer
 local token_name
 token_name=$(gum input \
---placeholder="automation" \
---header="API token name (default: automation)" \
+--placeholder "automation" \
+--prompt "Token name: " \
+--prompt.foreground "$HEX_CYAN" \
+--cursor.foreground "$HEX_ORANGE" \
+--width 40 \
+--no-show-help \
 --value="${API_TOKEN_NAME:-automation}")
 if [[ -n $token_name && $token_name =~ ^[a-zA-Z0-9_-]+$ ]];then
 API_TOKEN_NAME="$token_name"
+INSTALL_API_TOKEN="yes"
 else
-print_error "Invalid token name, using default: automation"
 API_TOKEN_NAME="automation"
+INSTALL_API_TOKEN="yes"
 fi
-else
-INSTALL_API_TOKEN="no"
-fi
+;;
+Disabled)INSTALL_API_TOKEN="no"
+API_TOKEN_NAME="automation"
+esac
 }
 _edit_ssh_key(){
 while true;do
