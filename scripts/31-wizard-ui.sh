@@ -50,7 +50,6 @@ _wiz_clear() {
 # Clear screen and show banner (common pattern in editors)
 _wiz_start_edit() {
   _wiz_clear
-  printf '\n'
   show_banner
 }
 
