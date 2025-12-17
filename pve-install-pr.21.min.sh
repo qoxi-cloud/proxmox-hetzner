@@ -19,7 +19,7 @@ HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 HEX_NONE="7"
 MENU_BOX_WIDTH=60
-VERSION="2.0.206-pr.21"
+VERSION="2.0.207-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -3825,7 +3825,6 @@ log "Files in current directory:"
 ls -la >>"$LOG_FILE" 2>&1
 proxmox-auto-install-assistant prepare-iso pve.iso --fetch-from iso --answer-file answer.toml --output pve-autoinstall.iso >>"$LOG_FILE" 2>&1&
 show_progress $! "Creating autoinstall ISO" "Autoinstall ISO created"
-wait $!
 local exit_code=$?
 if [[ $exit_code -ne 0 ]];then
 log "WARNING: proxmox-auto-install-assistant exited with code $exit_code"
