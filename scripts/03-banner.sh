@@ -7,10 +7,6 @@
 # Banner letter count for animation (P=0, r=1, o=2, x=3, m=4, o=5, x=6)
 BANNER_LETTER_COUNT=7
 
-# ANSI escape codes for banner animation
-ANSI_CURSOR_HIDE=$'\033[?25l'
-ANSI_CURSOR_SHOW=$'\033[?25h'
-
 # Display main ASCII banner
 # Usage: show_banner
 show_banner() {
@@ -130,7 +126,7 @@ show_banner_animated_start() {
   show_banner_animated_stop 2>/dev/null
 
   # Hide cursor
-  printf '%s' "$ANSI_CURSOR_HIDE"
+  _wiz_hide_cursor
 
   # Clear screen once
   clear
@@ -189,7 +185,7 @@ show_banner_animated_stop() {
   show_banner
 
   # Restore cursor
-  printf '%s' "$ANSI_CURSOR_SHOW"
+  _wiz_show_cursor
 }
 
 # =============================================================================
