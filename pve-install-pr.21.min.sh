@@ -19,7 +19,7 @@ HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 HEX_NONE="7"
 MENU_BOX_WIDTH=60
-VERSION="2.0.188-pr.21"
+VERSION="2.0.189-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -1612,6 +1612,7 @@ echo "$password"
 }
 show_validation_error(){
 local message="$1"
+_wiz_hide_cursor
 _wiz_error "$message"
 sleep 3
 }
@@ -2420,8 +2421,8 @@ if [[ $INSTALL_TAILSCALE != "yes" ]];then
 [[ -z $SSL_TYPE ]]&&missing_fields+=("SSL Certificate")&&((missing_count++))
 fi
 if [[ $missing_count -gt 0 ]];then
-_wiz_show_cursor
 _wiz_start_edit
+_wiz_hide_cursor
 _wiz_error --bold "Configuration incomplete!"
 _wiz_blank_line
 _wiz_warn "Please configure the following required fields:"
@@ -2430,6 +2431,7 @@ for field in "${missing_fields[@]}";do
 echo "  $CLR_CYAN•$CLR_RESET $field"
 done
 _wiz_blank_line
+_wiz_show_cursor
 _wiz_confirm "Return to configuration?" --default=true||exit 1
 _wiz_hide_cursor
 return 1
@@ -2773,6 +2775,7 @@ case "$choice" in
 "Generate password")NEW_ROOT_PASSWORD=$(generate_password "$DEFAULT_PASSWORD_LENGTH")
 PASSWORD_GENERATED="yes"
 _wiz_start_edit
+_wiz_hide_cursor
 _wiz_warn "Please save this password - it will be required for login"
 _wiz_blank_line
 echo -e "${CLR_CYAN}Generated password:$CLR_RESET $CLR_ORANGE$NEW_ROOT_PASSWORD$CLR_RESET"
@@ -2859,6 +2862,7 @@ _wiz_start_edit
 local iso_list
 iso_list=$(get_available_proxmox_isos 5)
 if [[ -z $iso_list ]];then
+_wiz_hide_cursor
 _wiz_error "Failed to fetch ISO list"
 sleep 2
 return
@@ -3104,6 +3108,7 @@ esac
 if [[ $ssl_type == "letsencrypt" ]];then
 if [[ -z $FQDN ]];then
 _wiz_start_edit
+_wiz_hide_cursor
 _wiz_error "Error: Hostname not configured!"
 _wiz_blank_line
 _wiz_dim "Let's Encrypt requires a fully qualified domain name."
@@ -3114,6 +3119,7 @@ return
 fi
 if [[ $FQDN == *.local ]]||! validate_fqdn "$FQDN";then
 _wiz_start_edit
+_wiz_hide_cursor
 _wiz_error "Error: Invalid domain name!"
 _wiz_blank_line
 _wiz_dim "Current hostname: $CLR_ORANGE$FQDN$CLR_RESET"
@@ -3124,6 +3130,7 @@ SSL_TYPE="self-signed"
 return
 fi
 _wiz_start_edit
+_wiz_hide_cursor
 _wiz_info "Validating DNS resolution..."
 _wiz_blank_line
 _wiz_dim "Domain: $CLR_ORANGE$FQDN$CLR_RESET"
@@ -3133,6 +3140,7 @@ local dns_result
 validate_dns_resolution "$FQDN" "$MAIN_IPV4"
 dns_result=$?
 if [[ $dns_result -eq 1 ]];then
+_wiz_hide_cursor
 _wiz_error "✗ Domain does not resolve to any IP address"
 _wiz_blank_line
 _wiz_dim "Please configure DNS A record:"
@@ -3143,6 +3151,7 @@ sleep 5
 SSL_TYPE="self-signed"
 return
 elif [[ $dns_result -eq 2 ]];then
+_wiz_hide_cursor
 _wiz_error "✗ Domain resolves to wrong IP address"
 _wiz_blank_line
 _wiz_dim "Current DNS: $CLR_ORANGE$FQDN$CLR_RESET → $CLR_RED$DNS_RESOLVED_IP$CLR_RESET"
@@ -3267,6 +3276,7 @@ local detected_key
 detected_key=$(get_rescue_ssh_key)
 if [[ -n $detected_key ]];then
 parse_ssh_key "$detected_key"
+_wiz_hide_cursor
 _wiz_warn "Detected SSH key from Rescue System:"
 _wiz_blank_line
 echo -e "${CLR_GRAY}Type:$CLR_RESET    $SSH_KEY_TYPE"
