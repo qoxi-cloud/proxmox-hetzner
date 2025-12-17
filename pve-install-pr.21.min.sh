@@ -19,7 +19,7 @@ HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 HEX_NONE="7"
 MENU_BOX_WIDTH=60
-VERSION="2.0.216-pr.21"
+VERSION="2.0.217-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -3796,14 +3796,19 @@ declare -A VIRTIO_MAP
 if [[ -f /tmp/virtio_map.env ]];then
 source /tmp/virtio_map.env
 fi
-local pool_count=${#ZFS_POOL_DISKS[@]}
-local vdev_letters=(a b c d e f g h i j k l m n o p q r s t u v w x y z)
+local all_disks=()
+[[ -n $BOOT_DISK ]]&&all_disks+=("$BOOT_DISK")
+all_disks+=("${ZFS_POOL_DISKS[@]}")
 DISK_LIST="["
-for i in "${!ZFS_POOL_DISKS[@]}";do
-local phys_disk="${ZFS_POOL_DISKS[$i]}"
-local vdev="${VIRTIO_MAP[$phys_disk]:-vd${vdev_letters[$i]}}"
+for i in "${!all_disks[@]}";do
+local phys_disk="${all_disks[$i]}"
+local vdev="${VIRTIO_MAP[$phys_disk]}"
+if [[ -z $vdev ]];then
+log "ERROR: No virtio mapping for $phys_disk"
+exit 1
+fi
 DISK_LIST+="\"/dev/$vdev\""
-[[ $i -lt $((pool_count-1)) ]]&&DISK_LIST+=", "
+[[ $i -lt $((${#all_disks[@]}-1)) ]]&&DISK_LIST+=", "
 done
 DISK_LIST+="]"
 log "DISK_LIST=$DISK_LIST"
