@@ -19,7 +19,7 @@ HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 HEX_NONE="7"
 MENU_BOX_WIDTH=60
-VERSION="2.0.192-pr.21"
+VERSION="2.0.193-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -2534,7 +2534,7 @@ banner_output=$(show_banner)
 output="\n$banner_output\n\n"
 local pass_display=""
 if [[ -n $NEW_ROOT_PASSWORD ]];then
-pass_display=$([[ $PASSWORD_GENERATED == "yes" ]]&&echo "(auto-generated)"||echo "********")
+pass_display="********"
 fi
 local ipv6_display=""
 if [[ -n $IPV6_MODE ]];then
