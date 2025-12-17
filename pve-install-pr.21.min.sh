@@ -19,7 +19,7 @@ HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 HEX_NONE="7"
 MENU_BOX_WIDTH=60
-VERSION="2.0.159-pr.21"
+VERSION="2.0.160-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -2499,10 +2499,9 @@ _WIZ_FIELD_MAP=()
 _wiz_render_menu(){
 local selection="$1"
 local output=""
-tput cup 0 0
-tput ed
-show_banner
-echo ""
+local banner_output
+banner_output=$(show_banner)
+output="$banner_output\n\n"
 local pass_display=""
 if [[ -n $NEW_ROOT_PASSWORD ]];then
 pass_display=$([[ $PASSWORD_GENERATED == "yes" ]]&&echo "(auto-generated)"||echo "********")
@@ -2678,7 +2677,9 @@ _add_field "SSH Key          " "$(_wiz_fmt "$ssh_display")" "ssh_key"
 _WIZ_FIELD_COUNT=$field_idx
 output+="\n"
 output+="$CLR_GRAY[$CLR_ORANGE↑↓$CLR_GRAY] navigate  [${CLR_ORANGE}Enter$CLR_GRAY] edit  [${CLR_ORANGE}S$CLR_GRAY] start  [${CLR_ORANGE}Q$CLR_GRAY] quit$CLR_RESET"
-echo -e "$output"
+tput cup 0 0
+tput ed
+printf '%b' "$output"
 }
 _edit_hostname(){
 clear
