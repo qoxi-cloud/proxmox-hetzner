@@ -19,7 +19,7 @@ HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 HEX_NONE="7"
 MENU_BOX_WIDTH=60
-VERSION="2.0.161-pr.21"
+VERSION="2.0.162-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -2489,6 +2489,10 @@ fi
 }
 _wiz_hide_cursor(){ printf '\033[?25l';}
 _wiz_show_cursor(){ printf '\033[?25h';}
+_wiz_clear(){
+tput cup 0 0
+tput ed
+}
 _wiz_fmt(){
 local value="$1"
 local placeholder="${2:-→ set value}"
@@ -2686,7 +2690,7 @@ tput ed
 printf '%b' "$output"
 }
 _edit_hostname(){
-clear
+_wiz_clear
 show_banner
 echo ""
 _show_input_footer
@@ -2709,7 +2713,7 @@ sleep 1
 return
 fi
 fi
-clear
+_wiz_clear
 show_banner
 echo ""
 _show_input_footer
@@ -2728,7 +2732,7 @@ fi
 FQDN="$PVE_HOSTNAME.$DOMAIN_SUFFIX"
 }
 _edit_email(){
-clear
+_wiz_clear
 show_banner
 echo ""
 _show_input_footer
@@ -2815,7 +2819,7 @@ esac
 done
 }
 _edit_timezone(){
-clear
+_wiz_clear
 show_banner
 echo ""
 _show_input_footer "filter" 6
@@ -2834,7 +2838,7 @@ TIMEZONE="$selected"
 fi
 }
 _edit_keyboard(){
-clear
+_wiz_clear
 show_banner
 echo ""
 _show_input_footer "filter" 6
@@ -2853,7 +2857,7 @@ KEYBOARD="$selected"
 fi
 }
 _edit_country(){
-clear
+_wiz_clear
 show_banner
 echo ""
 _show_input_footer "filter" 6
@@ -2872,7 +2876,7 @@ COUNTRY="$selected"
 fi
 }
 _edit_iso_version(){
-clear
+_wiz_clear
 show_banner
 echo ""
 local iso_list
@@ -2894,7 +2898,7 @@ selected=$(echo "$iso_list"|gum choose \
 [[ -n $selected ]]&&PROXMOX_ISO_VERSION="$selected"
 }
 _edit_repository(){
-clear
+_wiz_clear
 show_banner
 echo ""
 _show_input_footer "filter" 4
@@ -2937,7 +2941,7 @@ fi
 fi
 }
 _edit_interface(){
-clear
+_wiz_clear
 show_banner
 echo ""
 local interface_count=${INTERFACE_COUNT:-1}
@@ -2955,7 +2959,7 @@ selected=$(echo "$available_interfaces"|gum choose \
 [[ -n $selected ]]&&INTERFACE_NAME="$selected"
 }
 _edit_bridge_mode(){
-clear
+_wiz_clear
 show_banner
 echo ""
 _show_input_footer "filter" 4
@@ -2976,7 +2980,7 @@ esac
 fi
 }
 _edit_private_subnet(){
-clear
+_wiz_clear
 show_banner
 echo ""
 _show_input_footer "filter" 5
@@ -3027,7 +3031,7 @@ PRIVATE_SUBNET="$selected"
 fi
 }
 _edit_ipv6(){
-clear
+_wiz_clear
 show_banner
 echo ""
 _show_input_footer "filter" 4
@@ -3123,7 +3127,7 @@ IPV6_GATEWAY="${IPV6_GATEWAY:-$DEFAULT_IPV6_GATEWAY}"
 fi
 }
 _edit_zfs_mode(){
-clear
+_wiz_clear
 show_banner
 echo ""
 local pool_count=${#ZFS_POOL_DISKS[@]}
@@ -3160,7 +3164,7 @@ esac
 fi
 }
 _edit_tailscale(){
-clear
+_wiz_clear
 show_banner
 echo ""
 _show_input_footer "filter" 3
@@ -3215,7 +3219,7 @@ SSL_TYPE=""
 esac
 }
 _edit_ssl(){
-clear
+_wiz_clear
 show_banner
 echo ""
 _show_input_footer "filter" 3
@@ -3302,7 +3306,7 @@ else
 fi
 }
 _edit_shell(){
-clear
+_wiz_clear
 show_banner
 echo ""
 _show_input_footer "filter" 3
@@ -3322,7 +3326,7 @@ esac
 fi
 }
 _edit_power_profile(){
-clear
+_wiz_clear
 show_banner
 echo ""
 _show_input_footer "filter" 6
@@ -3345,7 +3349,7 @@ esac
 fi
 }
 _edit_features(){
-clear
+_wiz_clear
 show_banner
 echo ""
 _show_input_footer "checkbox" 5
@@ -3388,7 +3392,7 @@ INSTALL_NVIM="yes"
 fi
 }
 _edit_api_token(){
-clear
+_wiz_clear
 show_banner
 echo ""
 _show_input_footer "filter" 3
