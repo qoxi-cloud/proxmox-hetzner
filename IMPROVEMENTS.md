@@ -110,32 +110,6 @@ fi
 
 ---
 
-### 5. Disk Space Check Missing
-**File:** `scripts/21-system-check.sh`
-**Issue:** No validation that rescue system has space for ISO (3.5GB) + overhead
-
-**Add:**
-```bash
-# Add to system checks
-check_disk_space() {
-  local min_space_mb=3000  # ISO + QEMU + overhead
-  local available_mb=$(df /root | awk 'NR==2 {print int($4/1024)}')
-
-  if [[ $available_mb -lt $min_space_mb ]]; then
-    print_error "Insufficient disk space: ${available_mb}MB available, ${min_space_mb}MB required"
-    return 1
-  fi
-
-  log "INFO: Disk space OK: ${available_mb}MB available"
-  return 0
-}
-
-# Call before ISO download
-check_disk_space || exit 1
-```
-
----
-
 ## 🟠 High Priority Issues
 
 ### 6. Network Performance Tuning
@@ -451,7 +425,7 @@ log() {
 ### Phase 1: Critical Security (20 mins)
 - [ ] Add security packages to `SYSTEM_UTILITIES`
 - [ ] Add kernel hardening parameters to `99-proxmox.conf.tmpl`
-- [ ] Add disk space validation to `21-system-check.sh`
+- [x] Add disk space validation to `21-system-check.sh`
 
 ### Phase 2: Validation & Error Handling (2 hrs)
 - [ ] Add SSH key validation function
