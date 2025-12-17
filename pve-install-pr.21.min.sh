@@ -19,7 +19,7 @@ HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 HEX_NONE="7"
 MENU_BOX_WIDTH=60
-VERSION="2.0.168-pr.21"
+VERSION="2.0.169-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -951,7 +951,6 @@ ANSI_CURSOR_HIDE=$'\033[?25l'
 ANSI_CURSOR_SHOW=$'\033[?25h'
 show_banner(){
 printf '%s\n' \
-"" \
 "$CLR_GRAY _____                                             $CLR_RESET" \
 "$CLR_GRAY|  __ \\                                            $CLR_RESET" \
 "$CLR_GRAY| |__) | _ __   ___  ${CLR_ORANGE}__  __$CLR_GRAY  _ __ ___    ___  ${CLR_ORANGE}__  __$CLR_RESET" \
@@ -1010,8 +1009,7 @@ local line6="$M"
 line6+="$R"
 local line_hetzner="$CLR_HETZNER            Hetzner ${M}Automated Installer$R"
 local frame
-frame=$(printf '\033[H\033[J%s\n%s\n%s\n%s\n%s\n%s\n%s\n\n%s\n' \
-"" \
+frame=$(printf '\033[H\033[J%s\n%s\n%s\n%s\n%s\n%s\n\n%s\n' \
 "$line1" \
 "$line2" \
 "$line3" \
@@ -2163,6 +2161,7 @@ print_info "Installation cancelled by user"
 exit 0
 fi
 clear
+echo ""
 show_banner
 echo ""
 fi
@@ -2231,6 +2230,7 @@ live_show_progress "$@"
 export -f show_progress 2>/dev/null||true
 calculate_log_area
 clear
+echo ""
 show_banner
 save_cursor_position
 tput civis
@@ -2379,6 +2379,7 @@ _wiz_hide_cursor
 start)return 0
 ;;
 quit|esc)_wiz_clear
+echo ""
 show_banner
 echo ""
 echo ""
@@ -2435,6 +2436,7 @@ fi
 if [[ $missing_count -gt 0 ]];then
 _wiz_show_cursor
 _wiz_clear
+echo ""
 show_banner
 echo ""
 gum style --foreground "$HEX_RED" --bold "Configuration incomplete!"
@@ -2494,6 +2496,7 @@ tput ed
 }
 _wiz_start_edit(){
 _wiz_clear
+echo ""
 show_banner
 }
 _wiz_input_screen(){
@@ -2521,7 +2524,7 @@ local selection="$1"
 local output=""
 local banner_output
 banner_output=$(show_banner)
-output="$banner_output\n\n"
+output="\n$banner_output\n\n"
 local pass_display=""
 if [[ -n $NEW_ROOT_PASSWORD ]];then
 pass_display=$([[ $PASSWORD_GENERATED == "yes" ]]&&echo "(auto-generated)"||echo "********")
@@ -3455,6 +3458,7 @@ done
 }
 _edit_boot_disk(){
 clear
+echo ""
 show_banner
 echo ""
 local options="None (all in pool)"
@@ -3485,6 +3489,7 @@ fi
 }
 _edit_pool_disks(){
 clear
+echo ""
 show_banner
 echo ""
 local options=""
