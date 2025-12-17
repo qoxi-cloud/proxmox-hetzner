@@ -68,8 +68,11 @@ _wiz_render_menu() {
   local selection="$1"
   local output=""
 
-  # Move cursor to home and clear screen (prevents flickering)
-  printf '\033[H\033[J'
+  # Use alternate screen buffer to prevent flickering
+  # Save cursor position, clear from cursor, restore position
+  tput sc  # save cursor
+  tput cup 0 0  # move to top
+  tput ed  # clear to end of screen
   show_banner
   echo ""
 
