@@ -494,6 +494,5 @@ Status,Item,Value
 
     # Clear screen and show logo after Start is pressed
     _wiz_start_edit
-    echo ""
   fi
 }
