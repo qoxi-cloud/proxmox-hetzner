@@ -5,64 +5,85 @@
 # =============================================================================
 
 _edit_hostname() {
-  _wiz_start_edit
-  _show_input_footer
+  # Hostname input loop
+  while true; do
+    _wiz_start_edit
+    _show_input_footer
 
-  local new_hostname
-  new_hostname=$(
-    _wiz_input \
-      --placeholder "e.g., pve, proxmox, node1" \
-      --value "$PVE_HOSTNAME" \
-      --prompt "Hostname: "
-  )
+    local new_hostname
+    new_hostname=$(
+      _wiz_input \
+        --placeholder "e.g., pve, proxmox, node1" \
+        --value "$PVE_HOSTNAME" \
+        --prompt "Hostname: "
+    )
 
-  if [[ -n $new_hostname ]]; then
-    if validate_hostname "$new_hostname"; then
-      PVE_HOSTNAME="$new_hostname"
-    else
-      show_validation_error "Invalid hostname format"
+    # If empty (cancelled), return to menu
+    if [[ -z $new_hostname ]]; then
       return
     fi
-  fi
 
-  # Edit domain
-  _wiz_start_edit
-  _show_input_footer
+    # Validate hostname
+    if validate_hostname "$new_hostname"; then
+      PVE_HOSTNAME="$new_hostname"
+      break
+    else
+      show_validation_error "Invalid hostname format"
+    fi
+  done
 
-  local new_domain
-  new_domain=$(
-    _wiz_input \
-      --placeholder "e.g., local, example.com" \
-      --value "$DOMAIN_SUFFIX" \
-      --prompt "Domain: "
-  )
+  # Domain input loop
+  while true; do
+    _wiz_start_edit
+    _show_input_footer
 
-  if [[ -n $new_domain ]]; then
+    local new_domain
+    new_domain=$(
+      _wiz_input \
+        --placeholder "e.g., local, example.com" \
+        --value "$DOMAIN_SUFFIX" \
+        --prompt "Domain: "
+    )
+
+    # If empty (cancelled), return to menu
+    if [[ -z $new_domain ]]; then
+      return
+    fi
+
+    # Accept any non-empty domain (validation happens later if Let's Encrypt selected)
     DOMAIN_SUFFIX="$new_domain"
-  fi
+    break
+  done
 
   FQDN="${PVE_HOSTNAME}.${DOMAIN_SUFFIX}"
 }
 
 _edit_email() {
-  _wiz_start_edit
-  _show_input_footer
+  while true; do
+    _wiz_start_edit
+    _show_input_footer
 
-  local new_email
-  new_email=$(
-    _wiz_input \
-      --placeholder "admin@example.com" \
-      --value "$EMAIL" \
-      --prompt "Email: "
-  )
+    local new_email
+    new_email=$(
+      _wiz_input \
+        --placeholder "admin@example.com" \
+        --value "$EMAIL" \
+        --prompt "Email: "
+    )
 
-  if [[ -n $new_email ]]; then
+    # If empty (cancelled), return to menu
+    if [[ -z $new_email ]]; then
+      return
+    fi
+
+    # Validate email
     if validate_email "$new_email"; then
       EMAIL="$new_email"
+      break
     else
       show_validation_error "Invalid email format"
     fi
-  fi
+  done
 }
 
 _edit_password() {
