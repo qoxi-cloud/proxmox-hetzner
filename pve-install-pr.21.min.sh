@@ -19,7 +19,7 @@ HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 HEX_NONE="7"
 MENU_BOX_WIDTH=60
-VERSION="2.0.208-pr.21"
+VERSION="2.0.212-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -2468,6 +2468,7 @@ local missing_count=0
 [[ -z $COUNTRY ]]&&missing_fields+=("Country")&&((missing_count++))
 [[ -z $PROXMOX_ISO_VERSION ]]&&missing_fields+=("Proxmox Version")&&((missing_count++))
 [[ -z $PVE_REPO_TYPE ]]&&missing_fields+=("Repository")&&((missing_count++))
+[[ -z $INTERFACE_NAME ]]&&missing_fields+=("Network Interface")&&((missing_count++))
 [[ -z $BRIDGE_MODE ]]&&missing_fields+=("Bridge mode")&&((missing_count++))
 [[ -z $PRIVATE_SUBNET ]]&&missing_fields+=("Private subnet")&&((missing_count++))
 [[ -z $IPV6_MODE ]]&&missing_fields+=("IPv6")&&((missing_count++))
@@ -2476,6 +2477,7 @@ local missing_count=0
 [[ -z $SHELL_TYPE ]]&&missing_fields+=("Shell")&&((missing_count++))
 [[ -z $CPU_GOVERNOR ]]&&missing_fields+=("Power profile")&&((missing_count++))
 [[ -z $SSH_PUBLIC_KEY ]]&&missing_fields+=("SSH Key")&&((missing_count++))
+[[ ${#ZFS_POOL_DISKS[@]} -eq 0 ]]&&missing_fields+=("Pool disks")&&((missing_count++))
 if [[ $INSTALL_TAILSCALE != "yes" ]];then
 [[ -z $SSL_TYPE ]]&&missing_fields+=("SSL Certificate")&&((missing_count++))
 fi
@@ -3449,6 +3451,7 @@ local selected
 selected=$(echo -e "$options"|_wiz_choose \
 --header="Boot disk:")
 if [[ -n $selected ]];then
+local old_boot_disk="$BOOT_DISK"
 if [[ $selected == "None (all in pool)" ]];then
 BOOT_DISK=""
 else
@@ -3456,6 +3459,18 @@ local disk_name="${selected%% -*}"
 BOOT_DISK="/dev/$disk_name"
 fi
 _rebuild_pool_disks
+if [[ ${#ZFS_POOL_DISKS[@]} -eq 0 ]];then
+_wiz_start_edit
+_wiz_hide_cursor
+_wiz_error "✗ Cannot use this boot disk: No disks left for ZFS pool"
+_wiz_blank_line
+_wiz_dim "At least one disk must remain for the ZFS pool."
+_wiz_blank_line
+_wiz_dim "Press any key to continue..."
+read -r -n 1
+BOOT_DISK="$old_boot_disk"
+_rebuild_pool_disks
+fi
 fi
 }
 _edit_pool_disks(){
@@ -3501,14 +3516,21 @@ gum_args+=(--selected "$item")
 done
 local selected
 selected=$(echo -e "$options"|_wiz_choose "${gum_args[@]}")
-if [[ -n $selected ]];then
+if [[ -z $selected ]];then
+_wiz_start_edit
+_wiz_hide_cursor
+_wiz_error "✗ At least one disk must be selected for ZFS pool"
+_wiz_blank_line
+_wiz_dim "Press any key to select disks..."
+read -r -n 1
+return 1
+fi
 ZFS_POOL_DISKS=()
 while IFS= read -r line;do
 local disk_name="${line%% -*}"
 ZFS_POOL_DISKS+=("/dev/$disk_name")
 done <<<"$selected"
 _update_zfs_mode_options
-fi
 }
 _rebuild_pool_disks(){
 ZFS_POOL_DISKS=()
@@ -3769,7 +3791,8 @@ return 0
 make_answer_toml(){
 log "Creating answer.toml for autoinstall"
 log "ZFS_RAID=$ZFS_RAID, BOOT_DISK=$BOOT_DISK"
-log "ZFS_POOL_DISKS=(${ZFS_POOL_DISKS[*]:-})"
+log "ZFS_POOL_DISKS=(${ZFS_POOL_DISKS[*]})"
+declare -A VIRTIO_MAP
 if [[ -f /tmp/virtio_map.env ]];then
 source /tmp/virtio_map.env
 fi
