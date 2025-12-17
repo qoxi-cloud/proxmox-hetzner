@@ -19,7 +19,7 @@ HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 HEX_NONE="7"
 MENU_BOX_WIDTH=60
-VERSION="2.0.182-pr.21"
+VERSION="2.0.185-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -804,7 +804,6 @@ fi
 fi
 tput cnorm 2>/dev/null||true
 if [[ $INSTALL_COMPLETED != "true" && $exit_code -ne 0 ]];then
-echo ""
 echo -e "$CLR_RED*** INSTALLATION FAILED ***$CLR_RESET"
 echo ""
 echo -e "${CLR_YELLOW}An error occurred and the installation was aborted.$CLR_RESET"
@@ -1613,7 +1612,6 @@ echo "$password"
 }
 show_validation_error(){
 local message="$1"
-echo ""
 gum style --foreground "$HEX_RED" "$message"
 sleep 1
 }
@@ -2375,9 +2373,7 @@ start)return 0
 ;;
 quit|esc)_wiz_start_edit
 _wiz_show_cursor
-if gum confirm "Quit installation?" --default=false \
---prompt.foreground "$HEX_ORANGE" \
---selected.background "$HEX_ORANGE";then
+if _wiz_confirm "Quit installation?" --default=false;then
 exit 0
 fi
 _wiz_hide_cursor
@@ -2389,9 +2385,9 @@ local type="${1:-input}"
 local component_lines="${2:-1}"
 local i
 for ((i=0; i<component_lines; i++));do
-echo ""
+_wiz_blank_line
 done
-echo ""
+_wiz_blank_line
 case "$type" in
 filter)echo -e "$CLR_GRAY[$CLR_ORANGE↑↓$CLR_GRAY] navigate  [${CLR_ORANGE}Enter$CLR_GRAY] select  [${CLR_ORANGE}Esc$CLR_GRAY] cancel$CLR_RESET"
 ;;
@@ -2426,17 +2422,15 @@ fi
 if [[ $missing_count -gt 0 ]];then
 _wiz_show_cursor
 _wiz_start_edit
-gum style --foreground "$HEX_RED" --bold "Configuration incomplete!"
-echo ""
-gum style --foreground "$HEX_YELLOW" "Please configure the following required fields:"
-echo ""
+_wiz_error --bold "Configuration incomplete!"
+_wiz_blank_line
+_wiz_warn "Please configure the following required fields:"
+_wiz_blank_line
 for field in "${missing_fields[@]}";do
 echo "  $CLR_CYAN•$CLR_RESET $field"
 done
-echo ""
-gum confirm "Return to configuration?" --default=true \
---prompt.foreground "$HEX_ORANGE" \
---selected.background "$HEX_ORANGE"||exit 1
+_wiz_blank_line
+_wiz_confirm "Return to configuration?" --default=true||exit 1
 _wiz_hide_cursor
 return 1
 fi
@@ -2477,18 +2471,44 @@ fi
 }
 _wiz_hide_cursor(){ printf '\033[?25l';}
 _wiz_show_cursor(){ printf '\033[?25h';}
+_wiz_blank_line(){ echo "";}
+_wiz_error(){ gum style --foreground "$HEX_RED" "$@";}
+_wiz_warn(){ gum style --foreground "$HEX_YELLOW" "$@";}
+_wiz_info(){ gum style --foreground "$HEX_CYAN" "$@";}
+_wiz_dim(){ gum style --foreground "$HEX_GRAY" "$@";}
+_wiz_confirm(){
+gum confirm "$@" \
+--prompt.foreground "$HEX_ORANGE" \
+--selected.background "$HEX_ORANGE"
+}
+_wiz_choose(){
+gum choose \
+--header.foreground "$HEX_CYAN" \
+--cursor "$CLR_ORANGE›$CLR_RESET " \
+--cursor.foreground "$HEX_NONE" \
+--selected.foreground "$HEX_WHITE" \
+--no-show-help \
+"$@"
+}
+_wiz_input(){
+gum input \
+--prompt.foreground "$HEX_CYAN" \
+--cursor.foreground "$HEX_ORANGE" \
+--no-show-help \
+"$@"
+}
 _wiz_clear(){
 printf '\033[H\033[J'
 }
 _wiz_start_edit(){
 _wiz_clear
 show_banner
-echo ""
+_wiz_blank_line
 }
 _wiz_input_screen(){
 _wiz_start_edit
 for line in "$@";do
-gum style --foreground "$HEX_GRAY" "$line"
+_wiz_dim "$line"
 done
 [[ $# -gt 0 ]]&&echo ""
 _show_input_footer
@@ -2699,20 +2719,16 @@ _edit_hostname(){
 _wiz_start_edit
 _show_input_footer
 local new_hostname
-new_hostname=$(gum input \
+new_hostname=$(_wiz_input \
 --placeholder "e.g., pve, proxmox, node1" \
 --value "$PVE_HOSTNAME" \
---prompt "Hostname: " \
---prompt.foreground "$HEX_CYAN" \
---cursor.foreground "$HEX_ORANGE" \
---width 40 \
---no-show-help)
+--prompt "Hostname: " \  --width 40)
 if [[ -n $new_hostname ]];then
 if validate_hostname "$new_hostname";then
 PVE_HOSTNAME="$new_hostname"
 else
-echo ""
-gum style --foreground "$HEX_RED" "Invalid hostname format"
+_wiz_blank_line
+_wiz_error "Invalid hostname format"
 sleep 1
 return
 fi
@@ -2720,14 +2736,10 @@ fi
 _wiz_start_edit
 _show_input_footer
 local new_domain
-new_domain=$(gum input \
+new_domain=$(_wiz_input \
 --placeholder "e.g., local, example.com" \
 --value "$DOMAIN_SUFFIX" \
---prompt "Domain: " \
---prompt.foreground "$HEX_CYAN" \
---cursor.foreground "$HEX_ORANGE" \
---width 40 \
---no-show-help)
+--prompt "Domain: " \  --width 40)
 if [[ -n $new_domain ]];then
 DOMAIN_SUFFIX="$new_domain"
 fi
@@ -2737,21 +2749,17 @@ _edit_email(){
 _wiz_start_edit
 _show_input_footer
 local new_email
-new_email=$(gum input \
+new_email=$(_wiz_input \
 --placeholder "admin@example.com" \
 --value "$EMAIL" \
---prompt "Email: " \
---prompt.foreground "$HEX_CYAN" \
---cursor.foreground "$HEX_ORANGE" \
---width 50 \
---no-show-help)
+--prompt "Email: " \  --width 50)
 if [[ -n $new_email ]];then
 if validate_email "$new_email";then
 EMAIL="$new_email"
 else
-echo ""
-echo ""
-gum style --foreground "$HEX_RED" "Invalid email format"
+_wiz_blank_line
+_wiz_blank_line
+_wiz_error "Invalid email format"
 sleep 1
 fi
 fi
@@ -2761,13 +2769,8 @@ while true;do
 _wiz_start_edit
 _show_input_footer "filter" 3
 local choice
-choice=$(echo -e "Manual entry\nGenerate password"|gum choose \
---header="Password:" \
---header.foreground "$HEX_CYAN" \
---cursor "$CLR_ORANGE›$CLR_RESET " \
---cursor.foreground "$HEX_NONE" \
---selected.foreground "$HEX_WHITE" \
---no-show-help)
+choice=$(echo -e "Manual entry\nGenerate password"|_wiz_choose \
+--header="Password:")
 if [[ -z $choice ]];then
 return
 fi
@@ -2775,10 +2778,10 @@ case "$choice" in
 "Generate password")NEW_ROOT_PASSWORD=$(generate_password "$DEFAULT_PASSWORD_LENGTH")
 PASSWORD_GENERATED="yes"
 _wiz_start_edit
-gum style --foreground "$HEX_YELLOW" "Please save this password - it will be required for login"
-echo ""
+_wiz_warn "Please save this password - it will be required for login"
+_wiz_blank_line
 echo -e "${CLR_CYAN}Generated password:$CLR_RESET $CLR_ORANGE$NEW_ROOT_PASSWORD$CLR_RESET"
-echo ""
+_wiz_blank_line
 echo -e "${CLR_GRAY}Press any key to continue...$CLR_RESET"
 read -n 1 -s -r
 break
@@ -2786,23 +2789,19 @@ break
 "Manual entry")_wiz_start_edit
 _show_input_footer
 local new_password
-new_password=$(gum input \
+new_password=$(_wiz_input \
 --password \
 --placeholder "Enter password" \
---prompt "Password: " \
---prompt.foreground "$HEX_CYAN" \
---cursor.foreground "$HEX_ORANGE" \
---width 40 \
---no-show-help)
+--prompt "Password: " \  --width 40)
 if [[ -z $new_password ]];then
 continue
 fi
 local password_error
 password_error=$(get_password_error "$new_password")
 if [[ -n $password_error ]];then
-echo ""
-echo ""
-gum style --foreground "$HEX_RED" "$password_error"
+_wiz_blank_line
+_wiz_blank_line
+_wiz_error "$password_error"
 sleep 2
 continue
 fi
@@ -2868,32 +2867,22 @@ _wiz_start_edit
 local iso_list
 iso_list=$(get_available_proxmox_isos 5)
 if [[ -z $iso_list ]];then
-gum style --foreground "$HEX_RED" "Failed to fetch ISO list"
+_wiz_error "Failed to fetch ISO list"
 sleep 2
 return
 fi
 _show_input_footer "filter" 6
 local selected
-selected=$(echo "$iso_list"|gum choose \
---header="Proxmox Version:" \
---header.foreground "$HEX_CYAN" \
---cursor "$CLR_ORANGE›$CLR_RESET " \
---cursor.foreground "$HEX_NONE" \
---selected.foreground "$HEX_WHITE" \
---no-show-help)
+selected=$(echo "$iso_list"|_wiz_choose \
+--header="Proxmox Version:")
 [[ -n $selected ]]&&PROXMOX_ISO_VERSION="$selected"
 }
 _edit_repository(){
 _wiz_start_edit
 _show_input_footer "filter" 4
 local selected
-selected=$(echo "$WIZ_REPO_TYPES"|gum choose \
---header="Repository:" \
---header.foreground "$HEX_CYAN" \
---cursor "$CLR_ORANGE›$CLR_RESET " \
---cursor.foreground "$HEX_NONE" \
---selected.foreground "$HEX_WHITE" \
---no-show-help)
+selected=$(echo "$WIZ_REPO_TYPES"|_wiz_choose \
+--header="Repository:")
 if [[ -n $selected ]];then
 local repo_type=""
 case "$selected" in
@@ -2905,14 +2894,10 @@ PVE_REPO_TYPE="$repo_type"
 if [[ $repo_type == "enterprise" ]];then
 _wiz_input_screen "Enter Proxmox subscription key (optional)"
 local sub_key
-sub_key=$(gum input \
+sub_key=$(_wiz_input \
 --placeholder "pve2c-..." \
 --value "$PVE_SUBSCRIPTION_KEY" \
---prompt "Subscription Key: " \
---prompt.foreground "$HEX_CYAN" \
---cursor.foreground "$HEX_ORANGE" \
---width 60 \
---no-show-help)
+--prompt "Subscription Key: " \  --width 60)
 PVE_SUBSCRIPTION_KEY="$sub_key"
 else
 PVE_SUBSCRIPTION_KEY=""
@@ -2926,26 +2911,16 @@ local available_interfaces=${AVAILABLE_INTERFACES:-$INTERFACE_NAME}
 local footer_size=$((interface_count+1))
 _show_input_footer "filter" "$footer_size"
 local selected
-selected=$(echo "$available_interfaces"|gum choose \
---header="Network Interface:" \
---header.foreground "$HEX_CYAN" \
---cursor "$CLR_ORANGE›$CLR_RESET " \
---cursor.foreground "$HEX_NONE" \
---selected.foreground "$HEX_WHITE" \
---no-show-help)
+selected=$(echo "$available_interfaces"|_wiz_choose \
+--header="Network Interface:")
 [[ -n $selected ]]&&INTERFACE_NAME="$selected"
 }
 _edit_bridge_mode(){
 _wiz_start_edit
 _show_input_footer "filter" 4
 local selected
-selected=$(echo "$WIZ_BRIDGE_MODES"|gum choose \
---header="Bridge mode:" \
---header.foreground "$HEX_CYAN" \
---cursor "$CLR_ORANGE›$CLR_RESET " \
---cursor.foreground "$HEX_NONE" \
---selected.foreground "$HEX_WHITE" \
---no-show-help)
+selected=$(echo "$WIZ_BRIDGE_MODES"|_wiz_choose \
+--header="Bridge mode:")
 if [[ -n $selected ]];then
 case "$selected" in
 "External bridge")BRIDGE_MODE="external";;
@@ -2958,13 +2933,8 @@ _edit_private_subnet(){
 _wiz_start_edit
 _show_input_footer "filter" 5
 local selected
-selected=$(echo "$WIZ_PRIVATE_SUBNETS"|gum choose \
---header="Private subnet:" \
---header.foreground "$HEX_CYAN" \
---cursor "$CLR_ORANGE›$CLR_RESET " \
---cursor.foreground "$HEX_NONE" \
---selected.foreground "$HEX_WHITE" \
---no-show-help)
+selected=$(echo "$WIZ_PRIVATE_SUBNETS"|_wiz_choose \
+--header="Private subnet:")
 if [[ -z $selected ]];then
 return
 fi
@@ -2974,14 +2944,10 @@ _wiz_input_screen \
 "Enter private subnet in CIDR notation" \
 "Example: 10.0.0.0/24"
 local new_subnet
-new_subnet=$(gum input \
+new_subnet=$(_wiz_input \
 --placeholder "e.g., 10.10.10.0/24" \
 --value "$PRIVATE_SUBNET" \
---prompt "Private subnet: " \
---prompt.foreground "$HEX_CYAN" \
---cursor.foreground "$HEX_ORANGE" \
---width 40 \
---no-show-help)
+--prompt "Private subnet: " \  --width 40)
 if [[ -z $new_subnet ]];then
 return
 fi
@@ -2989,9 +2955,9 @@ if validate_subnet "$new_subnet";then
 PRIVATE_SUBNET="$new_subnet"
 break
 else
-echo ""
-echo ""
-gum style --foreground "$HEX_RED" "Invalid subnet format. Use CIDR notation like: 10.0.0.0/24"
+_wiz_blank_line
+_wiz_blank_line
+_wiz_error "Invalid subnet format. Use CIDR notation like: 10.0.0.0/24"
 sleep 2
 fi
 done
@@ -3003,13 +2969,8 @@ _edit_ipv6(){
 _wiz_start_edit
 _show_input_footer "filter" 4
 local selected
-selected=$(echo "$WIZ_IPV6_MODES"|gum choose \
---header="IPv6:" \
---header.foreground "$HEX_CYAN" \
---cursor "$CLR_ORANGE›$CLR_RESET " \
---cursor.foreground "$HEX_NONE" \
---selected.foreground "$HEX_WHITE" \
---no-show-help)
+selected=$(echo "$WIZ_IPV6_MODES"|_wiz_choose \
+--header="IPv6:")
 if [[ -z $selected ]];then
 return
 fi
@@ -3026,14 +2987,10 @@ _wiz_input_screen \
 "Enter IPv6 address in CIDR notation" \
 "Example: 2001:db8::1/64"
 local ipv6_addr
-ipv6_addr=$(gum input \
+ipv6_addr=$(_wiz_input \
 --placeholder "2001:db8::1/64" \
---prompt "IPv6 Address: " \
---prompt.foreground "$HEX_CYAN" \
---cursor.foreground "$HEX_ORANGE" \
---width 50 \
---value "${IPV6_ADDRESS:-${MAIN_IPV6:+$MAIN_IPV6/64}}" \
---no-show-help)
+--prompt "IPv6 Address: " \  --width 50 \
+--value "${IPV6_ADDRESS:-${MAIN_IPV6:+$MAIN_IPV6/64}}")
 if [[ -z $ipv6_addr ]];then
 IPV6_MODE=""
 return
@@ -3043,9 +3000,9 @@ IPV6_ADDRESS="$ipv6_addr"
 MAIN_IPV6="${ipv6_addr%/*}"
 break
 else
-echo ""
-echo ""
-gum style --foreground "$HEX_RED" "Invalid IPv6 CIDR notation. Use format like: 2001:db8::1/64"
+_wiz_blank_line
+_wiz_blank_line
+_wiz_error "Invalid IPv6 CIDR notation. Use format like: 2001:db8::1/64"
 sleep 2
 fi
 done
@@ -3054,14 +3011,10 @@ _wiz_input_screen \
 "Enter IPv6 gateway address" \
 "Default for Hetzner: fe80::1 (link-local)"
 local ipv6_gw
-ipv6_gw=$(gum input \
+ipv6_gw=$(_wiz_input \
 --placeholder "fe80::1" \
---prompt "Gateway: " \
---prompt.foreground "$HEX_CYAN" \
---cursor.foreground "$HEX_ORANGE" \
---width 50 \
---value "${IPV6_GATEWAY:-$DEFAULT_IPV6_GATEWAY}" \
---no-show-help)
+--prompt "Gateway: " \  --width 50 \
+--value "${IPV6_GATEWAY:-$DEFAULT_IPV6_GATEWAY}")
 if [[ -z $ipv6_gw ]];then
 IPV6_GATEWAY="$DEFAULT_IPV6_GATEWAY"
 break
@@ -3070,9 +3023,9 @@ if validate_ipv6_gateway "$ipv6_gw";then
 IPV6_GATEWAY="$ipv6_gw"
 break
 else
-echo ""
-echo ""
-gum style --foreground "$HEX_RED" "Invalid IPv6 gateway address"
+_wiz_blank_line
+_wiz_blank_line
+_wiz_error "Invalid IPv6 gateway address"
 sleep 2
 fi
 done
@@ -3102,13 +3055,8 @@ local item_count
 item_count=$(echo -e "$options"|wc -l)
 _show_input_footer "filter" "$((item_count+1))"
 local selected
-selected=$(echo -e "$options"|gum choose \
---header="ZFS mode ($pool_count disks in pool):" \
---header.foreground "$HEX_CYAN" \
---cursor "$CLR_ORANGE›$CLR_RESET " \
---cursor.foreground "$HEX_NONE" \
---selected.foreground "$HEX_WHITE" \
---no-show-help)
+selected=$(echo -e "$options"|_wiz_choose \
+--header="ZFS mode ($pool_count disks in pool):")
 if [[ -n $selected ]];then
 case "$selected" in
 "Single disk")ZFS_RAID="single";;
@@ -3124,23 +3072,14 @@ _edit_tailscale(){
 _wiz_start_edit
 _show_input_footer "filter" 3
 local selected
-selected=$(echo -e "Disabled\nEnabled"|gum choose \
---header="Tailscale:" \
---header.foreground "$HEX_CYAN" \
---cursor "$CLR_ORANGE›$CLR_RESET " \
---cursor.foreground "$HEX_NONE" \
---selected.foreground "$HEX_WHITE" \
---no-show-help)
+selected=$(echo -e "Disabled\nEnabled"|_wiz_choose \
+--header="Tailscale:")
 case "$selected" in
 Enabled)_wiz_input_screen "Enter Tailscale authentication key"
 local auth_key
-auth_key=$(gum input \
+auth_key=$(_wiz_input \
 --placeholder "tskey-auth-..." \
---prompt "Auth Key: " \
---prompt.foreground "$HEX_CYAN" \
---cursor.foreground "$HEX_ORANGE" \
---width 60 \
---no-show-help)
+--prompt "Auth Key: " \  --width 60)
 if [[ -n $auth_key ]];then
 INSTALL_TAILSCALE="yes"
 TAILSCALE_AUTH_KEY="$auth_key"
@@ -3172,13 +3111,8 @@ _edit_ssl(){
 _wiz_start_edit
 _show_input_footer "filter" 3
 local selected
-selected=$(echo "$WIZ_SSL_TYPES"|gum choose \
---header="SSL Certificate:" \
---header.foreground "$HEX_CYAN" \
---cursor "$CLR_ORANGE›$CLR_RESET " \
---cursor.foreground "$HEX_NONE" \
---selected.foreground "$HEX_WHITE" \
---no-show-help)
+selected=$(echo "$WIZ_SSL_TYPES"|_wiz_choose \
+--header="SSL Certificate:")
 local ssl_type=""
 case "$selected" in
 "Self-signed")ssl_type="self-signed";;
@@ -3187,59 +3121,59 @@ esac
 if [[ $ssl_type == "letsencrypt" ]];then
 if [[ -z $FQDN ]];then
 _wiz_start_edit
-gum style --foreground "$HEX_RED" "Error: Hostname not configured!"
-echo ""
-gum style --foreground "$HEX_GRAY" "Let's Encrypt requires a fully qualified domain name."
-gum style --foreground "$HEX_GRAY" "Please configure hostname first."
+_wiz_error "Error: Hostname not configured!"
+_wiz_blank_line
+_wiz_dim "Let's Encrypt requires a fully qualified domain name."
+_wiz_dim "Please configure hostname first."
 sleep 3
 SSL_TYPE="self-signed"
 return
 fi
 if [[ $FQDN == *.local ]]||! validate_fqdn "$FQDN";then
 _wiz_start_edit
-gum style --foreground "$HEX_RED" "Error: Invalid domain name!"
-echo ""
-gum style --foreground "$HEX_GRAY" "Current hostname: $CLR_ORANGE$FQDN$CLR_RESET"
-gum style --foreground "$HEX_GRAY" "Let's Encrypt requires a valid public FQDN (e.g., pve.example.com)."
-gum style --foreground "$HEX_GRAY" "Domains ending with .local are not supported."
+_wiz_error "Error: Invalid domain name!"
+_wiz_blank_line
+_wiz_dim "Current hostname: $CLR_ORANGE$FQDN$CLR_RESET"
+_wiz_dim "Let's Encrypt requires a valid public FQDN (e.g., pve.example.com)."
+_wiz_dim "Domains ending with .local are not supported."
 sleep 3
 SSL_TYPE="self-signed"
 return
 fi
 _wiz_start_edit
-gum style --foreground "$HEX_CYAN" "Validating DNS resolution..."
-echo ""
-gum style --foreground "$HEX_GRAY" "Domain: $CLR_ORANGE$FQDN$CLR_RESET"
-gum style --foreground "$HEX_GRAY" "Expected IP: $CLR_ORANGE$MAIN_IPV4$CLR_RESET"
-echo ""
+_wiz_info "Validating DNS resolution..."
+_wiz_blank_line
+_wiz_dim "Domain: $CLR_ORANGE$FQDN$CLR_RESET"
+_wiz_dim "Expected IP: $CLR_ORANGE$MAIN_IPV4$CLR_RESET"
+_wiz_blank_line
 local dns_result
 validate_dns_resolution "$FQDN" "$MAIN_IPV4"
 dns_result=$?
 if [[ $dns_result -eq 1 ]];then
-gum style --foreground "$HEX_RED" "✗ Domain does not resolve to any IP address"
-echo ""
-gum style --foreground "$HEX_GRAY" "Please configure DNS A record:"
-gum style --foreground "$HEX_GRAY" "  $CLR_ORANGE$FQDN$CLR_RESET → $CLR_ORANGE$MAIN_IPV4$CLR_RESET"
-echo ""
-gum style --foreground "$HEX_GRAY" "Falling back to self-signed certificate."
+_wiz_error "✗ Domain does not resolve to any IP address"
+_wiz_blank_line
+_wiz_dim "Please configure DNS A record:"
+_wiz_dim "  $CLR_ORANGE$FQDN$CLR_RESET → $CLR_ORANGE$MAIN_IPV4$CLR_RESET"
+_wiz_blank_line
+_wiz_dim "Falling back to self-signed certificate."
 sleep 5
 SSL_TYPE="self-signed"
 return
 elif [[ $dns_result -eq 2 ]];then
-gum style --foreground "$HEX_RED" "✗ Domain resolves to wrong IP address"
-echo ""
-gum style --foreground "$HEX_GRAY" "Current DNS: $CLR_ORANGE$FQDN$CLR_RESET → $CLR_RED$DNS_RESOLVED_IP$CLR_RESET"
-gum style --foreground "$HEX_GRAY" "Expected:    $CLR_ORANGE$FQDN$CLR_RESET → $CLR_ORANGE$MAIN_IPV4$CLR_RESET"
-echo ""
-gum style --foreground "$HEX_GRAY" "Please update DNS A record to point to $CLR_ORANGE$MAIN_IPV4$CLR_RESET"
-echo ""
-gum style --foreground "$HEX_GRAY" "Falling back to self-signed certificate."
+_wiz_error "✗ Domain resolves to wrong IP address"
+_wiz_blank_line
+_wiz_dim "Current DNS: $CLR_ORANGE$FQDN$CLR_RESET → $CLR_RED$DNS_RESOLVED_IP$CLR_RESET"
+_wiz_dim "Expected:    $CLR_ORANGE$FQDN$CLR_RESET → $CLR_ORANGE$MAIN_IPV4$CLR_RESET"
+_wiz_blank_line
+_wiz_dim "Please update DNS A record to point to $CLR_ORANGE$MAIN_IPV4$CLR_RESET"
+_wiz_blank_line
+_wiz_dim "Falling back to self-signed certificate."
 sleep 5
 SSL_TYPE="self-signed"
 return
 else
-gum style --foreground "$HEX_CYAN" "✓ DNS resolution successful"
-gum style --foreground "$HEX_GRAY" "  $CLR_ORANGE$FQDN$CLR_RESET → $CLR_CYAN$DNS_RESOLVED_IP$CLR_RESET"
+_wiz_info "✓ DNS resolution successful"
+_wiz_dim "  $CLR_ORANGE$FQDN$CLR_RESET → $CLR_CYAN$DNS_RESOLVED_IP$CLR_RESET"
 sleep 3
 SSL_TYPE="$ssl_type"
 fi
@@ -3251,13 +3185,8 @@ _edit_shell(){
 _wiz_start_edit
 _show_input_footer "filter" 3
 local selected
-selected=$(echo "$WIZ_SHELL_OPTIONS"|gum choose \
---header="Shell:" \
---header.foreground "$HEX_CYAN" \
---cursor "$CLR_ORANGE›$CLR_RESET " \
---cursor.foreground "$HEX_NONE" \
---selected.foreground "$HEX_WHITE" \
---no-show-help)
+selected=$(echo "$WIZ_SHELL_OPTIONS"|_wiz_choose \
+--header="Shell:")
 if [[ -n $selected ]];then
 case "$selected" in
 "ZSH")SHELL_TYPE="zsh";;
@@ -3269,13 +3198,8 @@ _edit_power_profile(){
 _wiz_start_edit
 _show_input_footer "filter" 6
 local selected
-selected=$(echo "$WIZ_CPU_GOVERNORS"|gum choose \
---header="Power profile:" \
---header.foreground "$HEX_CYAN" \
---cursor "$CLR_ORANGE›$CLR_RESET " \
---cursor.foreground "$HEX_NONE" \
---selected.foreground "$HEX_WHITE" \
---no-show-help)
+selected=$(echo "$WIZ_CPU_GOVERNORS"|_wiz_choose \
+--header="Power profile:")
 if [[ -n $selected ]];then
 case "$selected" in
 "Performance")CPU_GOVERNOR="performance";;
@@ -3309,7 +3233,7 @@ local gum_args=(
 for item in "${preselected[@]}";do
 gum_args+=(--selected "$item")
 done
-selected=$(echo "$WIZ_OPTIONAL_FEATURES"|gum choose "${gum_args[@]}")
+selected=$(echo "$WIZ_OPTIONAL_FEATURES"|_wiz_choose "${gum_args[@]}")
 INSTALL_VNSTAT="no"
 INSTALL_AUDITD="no"
 INSTALL_YAZI="no"
@@ -3331,22 +3255,14 @@ _edit_api_token(){
 _wiz_start_edit
 _show_input_footer "filter" 3
 local selected
-selected=$(echo -e "Disabled\nEnabled"|gum choose \
---header="API Token (privileged, no expiration):" \
---header.foreground "$HEX_CYAN" \
---cursor "$CLR_ORANGE›$CLR_RESET " \
---cursor.foreground "$HEX_NONE" \
---selected.foreground "$HEX_WHITE" \
---no-show-help)
+selected=$(echo -e "Disabled\nEnabled"|_wiz_choose \
+--header="API Token (privileged, no expiration):")
 case "$selected" in
 Enabled)_wiz_input_screen "Enter API token name (default: automation)"
 local token_name
-token_name=$(gum input \
+token_name=$(_wiz_input \
 --placeholder "automation" \
---prompt "Token name: " \
---prompt.foreground "$HEX_CYAN" \
---cursor.foreground "$HEX_ORANGE" \
---width 40 \
+--prompt "Token name: " \  --width 40 \
 --no-show-help \
 --value="${API_TOKEN_NAME:-automation}")
 if [[ -n $token_name && $token_name =~ ^[a-zA-Z0-9_-]+$ ]];then
@@ -3368,21 +3284,16 @@ local detected_key
 detected_key=$(get_rescue_ssh_key)
 if [[ -n $detected_key ]];then
 parse_ssh_key "$detected_key"
-gum style --foreground "$HEX_YELLOW" "Detected SSH key from Rescue System:"
-echo ""
+_wiz_warn "Detected SSH key from Rescue System:"
+_wiz_blank_line
 echo -e "${CLR_GRAY}Type:$CLR_RESET    $SSH_KEY_TYPE"
 echo -e "${CLR_GRAY}Key:$CLR_RESET     $SSH_KEY_SHORT"
 [[ -n $SSH_KEY_COMMENT ]]&&echo -e "${CLR_GRAY}Comment:$CLR_RESET $SSH_KEY_COMMENT"
-echo ""
+_wiz_blank_line
 _show_input_footer "filter" 3
 local choice
-choice=$(echo -e "Use detected key\nEnter different key"|gum choose \
---header="SSH Key:" \
---header.foreground "$HEX_CYAN" \
---cursor "$CLR_ORANGE›$CLR_RESET " \
---cursor.foreground "$HEX_NONE" \
---selected.foreground "$HEX_WHITE" \
---no-show-help)
+choice=$(echo -e "Use detected key\nEnter different key"|_wiz_choose \
+--header="SSH Key:")
 if [[ -z $choice ]];then
 return
 fi
@@ -3395,14 +3306,10 @@ esac
 fi
 _wiz_input_screen "Paste your SSH public key (ssh-rsa, ssh-ed25519, etc.)"
 local new_key
-new_key=$(gum input \
+new_key=$(_wiz_input \
 --placeholder "ssh-ed25519 AAAA... user@host" \
 --value "$SSH_PUBLIC_KEY" \
---prompt "SSH Key: " \
---prompt.foreground "$HEX_CYAN" \
---cursor.foreground "$HEX_ORANGE" \
---width 60 \
---no-show-help)
+--prompt "SSH Key: " \  --width 60)
 if [[ -z $new_key ]];then
 if [[ -n $detected_key ]];then
 continue
@@ -3414,9 +3321,9 @@ if validate_ssh_key "$new_key";then
 SSH_PUBLIC_KEY="$new_key"
 break
 else
-echo ""
-echo ""
-gum style --foreground "$HEX_RED" "Invalid SSH key format"
+_wiz_blank_line
+_wiz_blank_line
+_wiz_error "Invalid SSH key format"
 sleep 1
 if [[ -n $detected_key ]];then
 continue
@@ -3435,13 +3342,8 @@ options+="\n$disk_name - $disk_size  $disk_model"
 done
 _show_input_footer "filter" "$((DRIVE_COUNT+2))"
 local selected
-selected=$(echo -e "$options"|gum choose \
---header="Boot disk:" \
---header.foreground "$HEX_CYAN" \
---cursor "$CLR_ORANGE›$CLR_RESET " \
---cursor.foreground "$HEX_NONE" \
---selected.foreground "$HEX_WHITE" \
---no-show-help)
+selected=$(echo -e "$options"|_wiz_choose \
+--header="Boot disk:")
 if [[ -n $selected ]];then
 if [[ $selected == "None (all in pool)" ]];then
 BOOT_DISK=""
@@ -3494,7 +3396,7 @@ for item in "${preselected[@]}";do
 gum_args+=(--selected "$item")
 done
 local selected
-selected=$(echo -e "$options"|gum choose "${gum_args[@]}")
+selected=$(echo -e "$options"|_wiz_choose "${gum_args[@]}")
 if [[ -n $selected ]];then
 ZFS_POOL_DISKS=()
 while IFS= read -r line;do
