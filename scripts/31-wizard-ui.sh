@@ -67,12 +67,13 @@ _WIZ_FIELD_MAP=()
 _wiz_render_menu() {
   local selection="$1"
   local output=""
+  local banner_output
 
-  # Move cursor to top-left and clear screen
-  tput cup 0 0
-  tput ed
-  show_banner
-  echo ""
+  # Capture banner output
+  banner_output=$(show_banner)
+
+  # Start building full screen output
+  output="${banner_output}\n\n"
 
   # Build display values
   local pass_display=""
@@ -299,6 +300,8 @@ _wiz_render_menu() {
   # Footer
   output+="${CLR_GRAY}[${CLR_ORANGE}↑↓${CLR_GRAY}] navigate  [${CLR_ORANGE}Enter${CLR_GRAY}] edit  [${CLR_ORANGE}S${CLR_GRAY}] start  [${CLR_ORANGE}Q${CLR_GRAY}] quit${CLR_RESET}"
 
-  # Output everything at once
-  echo -e "$output"
+  # Clear screen and output everything atomically
+  tput cup 0 0
+  tput ed
+  printf '%b' "$output"
 }
