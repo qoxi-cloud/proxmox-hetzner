@@ -5,9 +5,7 @@
 # =============================================================================
 
 _edit_interface() {
-  _wiz_clear
-  show_banner
-  echo ""
+  _wiz_start_edit
 
   # Get available interfaces (use cached value)
   local interface_count=${INTERFACE_COUNT:-1}
@@ -30,9 +28,7 @@ _edit_interface() {
 }
 
 _edit_bridge_mode() {
-  _wiz_clear
-  show_banner
-  echo ""
+  _wiz_start_edit
 
   # 1 header + 3 items for gum choose
   _show_input_footer "filter" 4
@@ -57,9 +53,7 @@ _edit_bridge_mode() {
 }
 
 _edit_private_subnet() {
-  _wiz_clear
-  show_banner
-  echo ""
+  _wiz_start_edit
 
   # 1 header + 4 items for gum choose
   _show_input_footer "filter" 5
@@ -81,9 +75,7 @@ _edit_private_subnet() {
   # Handle custom subnet input
   if [[ $selected == "Custom" ]]; then
     while true; do
-      _wiz_clear
-      show_banner
-      echo ""
+      _wiz_start_edit
       gum style --foreground "$HEX_GRAY" "Enter private subnet in CIDR notation"
       gum style --foreground "$HEX_GRAY" "Example: 10.0.0.0/24"
       echo ""
@@ -122,9 +114,7 @@ _edit_private_subnet() {
 }
 
 _edit_ipv6() {
-  _wiz_clear
-  show_banner
-  echo ""
+  _wiz_start_edit
 
   # 1 header + 3 items for gum choose
   _show_input_footer "filter" 4
@@ -157,9 +147,7 @@ _edit_ipv6() {
   if [[ $ipv6_mode == "manual" ]]; then
     # IPv6 Address input
     while true; do
-      _wiz_clear
-      show_banner
-      echo ""
+      _wiz_start_edit
       gum style --foreground "$HEX_GRAY" "Enter IPv6 address in CIDR notation"
       gum style --foreground "$HEX_GRAY" "Example: 2001:db8::1/64"
       echo ""
@@ -196,9 +184,7 @@ _edit_ipv6() {
 
     # IPv6 Gateway input
     while true; do
-      _wiz_clear
-      show_banner
-      echo ""
+      _wiz_start_edit
       gum style --foreground "$HEX_GRAY" "Enter IPv6 gateway address"
       gum style --foreground "$HEX_GRAY" "Default for Hetzner: fe80::1 (link-local)"
       echo ""

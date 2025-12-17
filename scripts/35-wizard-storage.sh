@@ -5,9 +5,7 @@
 # =============================================================================
 
 _edit_zfs_mode() {
-  _wiz_clear
-  show_banner
-  echo ""
+  _wiz_start_edit
 
   # Use pool disk count, not total DRIVE_COUNT
   local pool_count=${#ZFS_POOL_DISKS[@]}

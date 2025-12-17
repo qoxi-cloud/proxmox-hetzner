@@ -5,9 +5,7 @@
 # =============================================================================
 
 _edit_tailscale() {
-  _wiz_clear
-  show_banner
-  echo ""
+  _wiz_start_edit
 
   # 1 header + 2 items for gum choose
   _show_input_footer "filter" 3
@@ -24,9 +22,7 @@ _edit_tailscale() {
   case "$selected" in
     Enabled)
       # Request auth key (required for Tailscale)
-      _wiz_clear
-      show_banner
-      echo ""
+      _wiz_start_edit
       gum style --foreground "$HEX_GRAY" "Enter Tailscale authentication key"
       echo ""
       _show_input_footer
@@ -73,9 +69,7 @@ _edit_tailscale() {
 }
 
 _edit_ssl() {
-  _wiz_clear
-  show_banner
-  echo ""
+  _wiz_start_edit
 
   # 1 header + 2 items for gum choose
   _show_input_footer "filter" 3
@@ -100,9 +94,7 @@ _edit_ssl() {
   if [[ $ssl_type == "letsencrypt" ]]; then
     # Check if FQDN is set and is a valid domain
     if [[ -z $FQDN ]]; then
-      _wiz_clear
-      show_banner
-      echo ""
+      _wiz_start_edit
       gum style --foreground "$HEX_RED" "Error: Hostname not configured!"
       echo ""
       gum style --foreground "$HEX_GRAY" "Let's Encrypt requires a fully qualified domain name."
@@ -113,9 +105,7 @@ _edit_ssl() {
     fi
 
     if [[ $FQDN == *.local ]] || ! validate_fqdn "$FQDN"; then
-      _wiz_clear
-      show_banner
-      echo ""
+      _wiz_start_edit
       gum style --foreground "$HEX_RED" "Error: Invalid domain name!"
       echo ""
       gum style --foreground "$HEX_GRAY" "Current hostname: ${CLR_ORANGE}${FQDN}${CLR_RESET}"
@@ -127,9 +117,7 @@ _edit_ssl() {
     fi
 
     # Check DNS resolution
-    _wiz_clear
-    show_banner
-    echo ""
+    _wiz_start_edit
     gum style --foreground "$HEX_CYAN" "Validating DNS resolution..."
     echo ""
     gum style --foreground "$HEX_GRAY" "Domain: ${CLR_ORANGE}${FQDN}${CLR_RESET}"
@@ -177,9 +165,7 @@ _edit_ssl() {
 }
 
 _edit_shell() {
-  _wiz_clear
-  show_banner
-  echo ""
+  _wiz_start_edit
 
   # 1 header + 2 items for gum choose
   _show_input_footer "filter" 3
@@ -203,9 +189,7 @@ _edit_shell() {
 }
 
 _edit_power_profile() {
-  _wiz_clear
-  show_banner
-  echo ""
+  _wiz_start_edit
 
   # 1 header + 5 items for gum choose
   _show_input_footer "filter" 6
@@ -232,9 +216,7 @@ _edit_power_profile() {
 }
 
 _edit_features() {
-  _wiz_clear
-  show_banner
-  echo ""
+  _wiz_start_edit
 
   # 1 header + 4 items for multi-select checkbox
   _show_input_footer "checkbox" 5
@@ -292,9 +274,7 @@ _edit_features() {
 # =============================================================================
 
 _edit_api_token() {
-  _wiz_clear
-  show_banner
-  echo ""
+  _wiz_start_edit
 
   # 1 header + 2 items for gum choose
   _show_input_footer "filter" 3
@@ -311,9 +291,7 @@ _edit_api_token() {
   case "$selected" in
     Enabled)
       # Request token name
-      _wiz_clear
-      show_banner
-      echo ""
+      _wiz_start_edit
       gum style --foreground "$HEX_GRAY" "Enter API token name (default: automation)"
       echo ""
       _show_input_footer

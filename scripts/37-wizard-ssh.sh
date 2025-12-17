@@ -6,9 +6,7 @@
 
 _edit_ssh_key() {
   while true; do
-    _wiz_clear
-    show_banner
-    echo ""
+    _wiz_start_edit
 
     # Detect SSH key from Rescue System
     local detected_key
@@ -55,9 +53,7 @@ _edit_ssh_key() {
     fi
 
     # Manual entry
-    _wiz_clear
-    show_banner
-    echo ""
+    _wiz_start_edit
     gum style --foreground "$HEX_GRAY" "Paste your SSH public key (ssh-rsa, ssh-ed25519, etc.)"
     echo ""
     _show_input_footer

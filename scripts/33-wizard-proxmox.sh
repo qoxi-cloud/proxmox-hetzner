@@ -5,9 +5,7 @@
 # =============================================================================
 
 _edit_iso_version() {
-  _wiz_clear
-  show_banner
-  echo ""
+  _wiz_start_edit
 
   # Get available ISO versions (last 5, uses cached data from prefetch)
   local iso_list
@@ -35,9 +33,7 @@ _edit_iso_version() {
 }
 
 _edit_repository() {
-  _wiz_clear
-  show_banner
-  echo ""
+  _wiz_start_edit
 
   # 1 header + 3 items for gum choose
   _show_input_footer "filter" 4
@@ -64,9 +60,7 @@ _edit_repository() {
 
     # If enterprise selected, optionally ask for subscription key
     if [[ $repo_type == "enterprise" ]]; then
-      _wiz_clear
-      show_banner
-      echo ""
+      _wiz_start_edit
       gum style --foreground "$HEX_GRAY" "Enter Proxmox subscription key (optional)"
       echo ""
       _show_input_footer

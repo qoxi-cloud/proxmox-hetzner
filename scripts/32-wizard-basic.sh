@@ -5,9 +5,7 @@
 # =============================================================================
 
 _edit_hostname() {
-  _wiz_clear
-  show_banner
-  echo ""
+  _wiz_start_edit
   _show_input_footer
 
   local new_hostname
@@ -32,9 +30,7 @@ _edit_hostname() {
   fi
 
   # Edit domain
-  _wiz_clear
-  show_banner
-  echo ""
+  _wiz_start_edit
   _show_input_footer
 
   local new_domain
@@ -55,9 +51,7 @@ _edit_hostname() {
 }
 
 _edit_email() {
-  _wiz_clear
-  show_banner
-  echo ""
+  _wiz_start_edit
   _show_input_footer
 
   local new_email
@@ -84,9 +78,7 @@ _edit_email() {
 
 _edit_password() {
   while true; do
-    _wiz_clear
-    show_banner
-    echo ""
+    _wiz_start_edit
 
     # 1 header + 2 options (Manual/Generate)
     _show_input_footer "filter" 3
@@ -110,9 +102,7 @@ _edit_password() {
         NEW_ROOT_PASSWORD=$(generate_password "$DEFAULT_PASSWORD_LENGTH")
         PASSWORD_GENERATED="yes"
 
-        _wiz_clear
-        show_banner
-        echo ""
+        _wiz_start_edit
         gum style --foreground "$HEX_YELLOW" "Please save this password - it will be required for login"
         echo ""
         echo -e "${CLR_CYAN}Generated password:${CLR_RESET} ${CLR_ORANGE}${NEW_ROOT_PASSWORD}${CLR_RESET}"
@@ -122,9 +112,7 @@ _edit_password() {
         break
         ;;
       "Manual entry")
-        _wiz_clear
-        show_banner
-        echo ""
+        _wiz_start_edit
         _show_input_footer
 
         local new_password
@@ -163,9 +151,7 @@ _edit_password() {
 }
 
 _edit_timezone() {
-  _wiz_clear
-  show_banner
-  echo ""
+  _wiz_start_edit
 
   # Footer for filter: height=5 items + 1 input line = 6 lines for component
   _show_input_footer "filter" 6
@@ -187,9 +173,7 @@ _edit_timezone() {
 }
 
 _edit_keyboard() {
-  _wiz_clear
-  show_banner
-  echo ""
+  _wiz_start_edit
 
   # Footer for filter: height=5 items + 1 input line = 6 lines for component
   _show_input_footer "filter" 6
@@ -211,9 +195,7 @@ _edit_keyboard() {
 }
 
 _edit_country() {
-  _wiz_clear
-  show_banner
-  echo ""
+  _wiz_start_edit
 
   # Footer for filter: height=5 items + 1 input line = 6 lines for component
   _show_input_footer "filter" 6
