@@ -1612,7 +1612,6 @@ echo "$password"
 }
 show_validation_error(){
 local message="$1"
-tput cud 2
 _wiz_blank_line
 _wiz_error "$message"
 sleep 3
