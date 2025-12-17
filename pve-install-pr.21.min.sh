@@ -19,7 +19,7 @@ HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 HEX_NONE="7"
 MENU_BOX_WIDTH=60
-VERSION="2.0.217-pr.21"
+VERSION="2.0.218-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -3797,8 +3797,34 @@ if [[ -f /tmp/virtio_map.env ]];then
 source /tmp/virtio_map.env
 fi
 local all_disks=()
-[[ -n $BOOT_DISK ]]&&all_disks+=("$BOOT_DISK")
+if [[ -n $BOOT_DISK ]];then
+all_disks+=("$BOOT_DISK")
 all_disks+=("${ZFS_POOL_DISKS[@]}")
+else
+all_disks=("${ZFS_POOL_DISKS[@]}")
+fi
+local disk_count=${#all_disks[@]}
+case "$ZFS_RAID" in
+single)if
+[[ $disk_count -ne 1 ]]
+then
+log "WARNING: Single disk RAID requires exactly 1 disk, have $disk_count"
+fi
+;;
+raid1)if
+[[ $disk_count -lt 2 ]]
+then
+log "ERROR: RAID1 requires at least 2 disks, have $disk_count"
+exit 1
+fi
+;;
+raid10)if
+[[ $disk_count -lt 4 ]]||[[ $((disk_count%2)) -ne 0 ]]
+then
+log "ERROR: RAID10 requires even number of disks (min 4), have $disk_count"
+exit 1
+fi
+esac
 DISK_LIST="["
 for i in "${!all_disks[@]}";do
 local phys_disk="${all_disks[$i]}"
@@ -3811,7 +3837,7 @@ DISK_LIST+="\"/dev/$vdev\""
 [[ $i -lt $((${#all_disks[@]}-1)) ]]&&DISK_LIST+=", "
 done
 DISK_LIST+="]"
-log "DISK_LIST=$DISK_LIST"
+log "DISK_LIST=$DISK_LIST ($disk_count disks for ZFS $ZFS_RAID)"
 local zfs_raid_value
 case "$ZFS_RAID" in
 single)zfs_raid_value="raid0";;
