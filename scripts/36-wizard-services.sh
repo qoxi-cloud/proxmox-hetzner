@@ -22,10 +22,7 @@ _edit_tailscale() {
   case "$selected" in
     Enabled)
       # Request auth key (required for Tailscale)
-      _wiz_start_edit
-      gum style --foreground "$HEX_GRAY" "Enter Tailscale authentication key"
-      echo ""
-      _show_input_footer
+      _wiz_input_screen "Enter Tailscale authentication key"
 
       local auth_key
       auth_key=$(gum input \
@@ -291,10 +288,7 @@ _edit_api_token() {
   case "$selected" in
     Enabled)
       # Request token name
-      _wiz_start_edit
-      gum style --foreground "$HEX_GRAY" "Enter API token name (default: automation)"
-      echo ""
-      _show_input_footer
+      _wiz_input_screen "Enter API token name (default: automation)"
 
       local token_name
       token_name=$(gum input \

@@ -55,6 +55,18 @@ _wiz_start_edit() {
   echo ""
 }
 
+# Show input screen with optional description
+# Usage: _wiz_input_screen "Description line 1" "Description line 2" ...
+_wiz_input_screen() {
+  _wiz_start_edit
+  # Show description lines if provided
+  for line in "$@"; do
+    gum style --foreground "$HEX_GRAY" "$line"
+  done
+  [[ $# -gt 0 ]] && echo ""
+  _show_input_footer
+}
+
 # Format value for display - shows placeholder if empty
 # Parameters:
 #   $1 - value to display

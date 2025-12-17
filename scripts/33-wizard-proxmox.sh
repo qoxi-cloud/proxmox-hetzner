@@ -60,10 +60,7 @@ _edit_repository() {
 
     # If enterprise selected, optionally ask for subscription key
     if [[ $repo_type == "enterprise" ]]; then
-      _wiz_start_edit
-      gum style --foreground "$HEX_GRAY" "Enter Proxmox subscription key (optional)"
-      echo ""
-      _show_input_footer
+      _wiz_input_screen "Enter Proxmox subscription key (optional)"
 
       local sub_key
       sub_key=$(gum input \

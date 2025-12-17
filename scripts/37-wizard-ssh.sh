@@ -53,10 +53,7 @@ _edit_ssh_key() {
     fi
 
     # Manual entry
-    _wiz_start_edit
-    gum style --foreground "$HEX_GRAY" "Paste your SSH public key (ssh-rsa, ssh-ed25519, etc.)"
-    echo ""
-    _show_input_footer
+    _wiz_input_screen "Paste your SSH public key (ssh-rsa, ssh-ed25519, etc.)"
 
     local new_key
     new_key=$(gum input \
