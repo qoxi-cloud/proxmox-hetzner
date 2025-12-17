@@ -19,7 +19,7 @@ HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 HEX_NONE="7"
 MENU_BOX_WIDTH=60
-VERSION="2.0.191-pr.21"
+VERSION="2.0.192-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -2718,6 +2718,7 @@ _wiz_clear
 printf '%b' "$output"
 }
 _edit_hostname(){
+while true;do
 _wiz_start_edit
 _show_input_footer
 local new_hostname
@@ -2725,14 +2726,17 @@ new_hostname=$(_wiz_input \
 --placeholder "e.g., pve, proxmox, node1" \
 --value "$PVE_HOSTNAME" \
 --prompt "Hostname: ")
-if [[ -n $new_hostname ]];then
-if validate_hostname "$new_hostname";then
-PVE_HOSTNAME="$new_hostname"
-else
-show_validation_error "Invalid hostname format"
+if [[ -z $new_hostname ]];then
 return
 fi
+if validate_hostname "$new_hostname";then
+PVE_HOSTNAME="$new_hostname"
+break
+else
+show_validation_error "Invalid hostname format"
 fi
+done
+while true;do
 _wiz_start_edit
 _show_input_footer
 local new_domain
@@ -2740,12 +2744,16 @@ new_domain=$(_wiz_input \
 --placeholder "e.g., local, example.com" \
 --value "$DOMAIN_SUFFIX" \
 --prompt "Domain: ")
-if [[ -n $new_domain ]];then
-DOMAIN_SUFFIX="$new_domain"
+if [[ -z $new_domain ]];then
+return
 fi
+DOMAIN_SUFFIX="$new_domain"
+break
+done
 FQDN="$PVE_HOSTNAME.$DOMAIN_SUFFIX"
 }
 _edit_email(){
+while true;do
 _wiz_start_edit
 _show_input_footer
 local new_email
@@ -2753,13 +2761,16 @@ new_email=$(_wiz_input \
 --placeholder "admin@example.com" \
 --value "$EMAIL" \
 --prompt "Email: ")
-if [[ -n $new_email ]];then
+if [[ -z $new_email ]];then
+return
+fi
 if validate_email "$new_email";then
 EMAIL="$new_email"
+break
 else
 show_validation_error "Invalid email format"
 fi
-fi
+done
 }
 _edit_password(){
 while true;do
