@@ -68,8 +68,8 @@ _wiz_render_menu() {
   local selection="$1"
   local output=""
 
-  # Always clear and redraw (simple approach for maximum compatibility)
-  clear
+  # Move cursor to home and clear screen (prevents flickering)
+  printf '\033[H\033[J'
   show_banner
   echo ""
 
