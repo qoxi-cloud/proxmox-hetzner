@@ -132,6 +132,7 @@ _validate_config() {
   [[ -z $COUNTRY ]] && missing_fields+=("Country") && ((missing_count++))
   [[ -z $PROXMOX_ISO_VERSION ]] && missing_fields+=("Proxmox Version") && ((missing_count++))
   [[ -z $PVE_REPO_TYPE ]] && missing_fields+=("Repository") && ((missing_count++))
+  [[ -z $INTERFACE_NAME ]] && missing_fields+=("Network Interface") && ((missing_count++))
   [[ -z $BRIDGE_MODE ]] && missing_fields+=("Bridge mode") && ((missing_count++))
   [[ -z $PRIVATE_SUBNET ]] && missing_fields+=("Private subnet") && ((missing_count++))
   [[ -z $IPV6_MODE ]] && missing_fields+=("IPv6") && ((missing_count++))
