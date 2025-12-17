@@ -62,14 +62,19 @@ _wizard_main() {
         return 0
         ;;
       quit | esc)
-        _wiz_show_cursor
+        # Clear screen and show confirmation in center
+        tput cup 0 0
+        tput ed
         echo ""
+        echo ""
+        echo ""
+        _wiz_show_cursor
         if gum confirm "Quit installation?" --default=false \
           --prompt.foreground "$HEX_ORANGE" \
           --selected.background "$HEX_ORANGE"; then
           exit 0
         fi
-        # Hide cursor again
+        # Hide cursor and continue (menu will be redrawn on next iteration)
         _wiz_hide_cursor
         ;;
     esac
