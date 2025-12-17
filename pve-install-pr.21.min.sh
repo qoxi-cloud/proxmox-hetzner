@@ -19,7 +19,7 @@ HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 HEX_NONE="7"
 MENU_BOX_WIDTH=60
-VERSION="2.0.186-pr.21"
+VERSION="2.0.187-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -2727,9 +2727,7 @@ if [[ -n $new_hostname ]];then
 if validate_hostname "$new_hostname";then
 PVE_HOSTNAME="$new_hostname"
 else
-_wiz_blank_line
-_wiz_error "Invalid hostname format"
-sleep 1
+show_validation_error "Invalid hostname format"
 return
 fi
 fi
@@ -2757,10 +2755,7 @@ if [[ -n $new_email ]];then
 if validate_email "$new_email";then
 EMAIL="$new_email"
 else
-_wiz_blank_line
-_wiz_blank_line
-_wiz_error "Invalid email format"
-sleep 1
+show_validation_error "Invalid email format"
 fi
 fi
 }
@@ -2799,10 +2794,7 @@ fi
 local password_error
 password_error=$(get_password_error "$new_password")
 if [[ -n $password_error ]];then
-_wiz_blank_line
-_wiz_blank_line
-_wiz_error "$password_error"
-sleep 2
+show_validation_error "$password_error"
 continue
 fi
 NEW_ROOT_PASSWORD="$new_password"
@@ -2955,10 +2947,7 @@ if validate_subnet "$new_subnet";then
 PRIVATE_SUBNET="$new_subnet"
 break
 else
-_wiz_blank_line
-_wiz_blank_line
-_wiz_error "Invalid subnet format. Use CIDR notation like: 10.0.0.0/24"
-sleep 2
+show_validation_error "Invalid subnet format. Use CIDR notation like: 10.0.0.0/24"
 fi
 done
 else
@@ -3000,10 +2989,7 @@ IPV6_ADDRESS="$ipv6_addr"
 MAIN_IPV6="${ipv6_addr%/*}"
 break
 else
-_wiz_blank_line
-_wiz_blank_line
-_wiz_error "Invalid IPv6 CIDR notation. Use format like: 2001:db8::1/64"
-sleep 2
+show_validation_error "Invalid IPv6 CIDR notation. Use format like: 2001:db8::1/64"
 fi
 done
 while true;do
@@ -3023,10 +3009,7 @@ if validate_ipv6_gateway "$ipv6_gw";then
 IPV6_GATEWAY="$ipv6_gw"
 break
 else
-_wiz_blank_line
-_wiz_blank_line
-_wiz_error "Invalid IPv6 gateway address"
-sleep 2
+show_validation_error "Invalid IPv6 gateway address"
 fi
 done
 elif [[ $ipv6_mode == "disabled" ]];then
@@ -3321,10 +3304,7 @@ if validate_ssh_key "$new_key";then
 SSH_PUBLIC_KEY="$new_key"
 break
 else
-_wiz_blank_line
-_wiz_blank_line
-_wiz_error "Invalid SSH key format"
-sleep 1
+show_validation_error "Invalid SSH key format"
 if [[ -n $detected_key ]];then
 continue
 fi
