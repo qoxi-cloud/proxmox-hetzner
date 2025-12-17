@@ -19,7 +19,7 @@ HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 HEX_NONE="7"
 MENU_BOX_WIDTH=60
-VERSION="2.0.175-pr.21"
+VERSION="2.0.176-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -2229,13 +2229,14 @@ live_show_progress "$@"
 }
 export -f show_progress 2>/dev/null||true
 calculate_log_area
-clear
+tput smcup
+_wiz_clear
 echo ""
 show_banner
 save_cursor_position
 tput civis
 add_log ""
-trap 'tput cnorm' EXIT RETURN
+trap 'tput cnorm; tput rmcup' EXIT RETURN
 }
 finish_live_installation(){
 LIVE_LOGS_ACTIVE=false
@@ -2245,7 +2246,7 @@ show_progress_original "$@"
 }
 fi
 tput cnorm
-echo ""
+tput rmcup
 }
 live_log_section(){
 local section_name="$1"
