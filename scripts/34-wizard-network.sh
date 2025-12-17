@@ -88,10 +88,7 @@ _edit_private_subnet() {
         PRIVATE_SUBNET="$new_subnet"
         break
       else
-        _wiz_blank_line
-        _wiz_blank_line
-        _wiz_error "Invalid subnet format. Use CIDR notation like: 10.0.0.0/24"
-        sleep 2
+        show_validation_error "Invalid subnet format. Use CIDR notation like: 10.0.0.0/24"
       fi
     done
   else
@@ -155,10 +152,7 @@ _edit_ipv6() {
         MAIN_IPV6="${ipv6_addr%/*}"
         break
       else
-        _wiz_blank_line
-        _wiz_blank_line
-        _wiz_error "Invalid IPv6 CIDR notation. Use format like: 2001:db8::1/64"
-        sleep 2
+        show_validation_error "Invalid IPv6 CIDR notation. Use format like: 2001:db8::1/64"
       fi
     done
 
@@ -187,10 +181,7 @@ _edit_ipv6() {
         IPV6_GATEWAY="$ipv6_gw"
         break
       else
-        _wiz_blank_line
-        _wiz_blank_line
-        _wiz_error "Invalid IPv6 gateway address"
-        sleep 2
+        show_validation_error "Invalid IPv6 gateway address"
       fi
     done
   elif [[ $ipv6_mode == "disabled" ]]; then

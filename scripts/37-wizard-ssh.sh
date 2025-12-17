@@ -76,10 +76,7 @@ _edit_ssh_key() {
       SSH_PUBLIC_KEY="$new_key"
       break
     else
-      _wiz_blank_line
-      _wiz_blank_line
-      _wiz_error "Invalid SSH key format"
-      sleep 1
+      show_validation_error "Invalid SSH key format"
       # If we had a detected key, return to menu, otherwise retry manual entry
       if [[ -n $detected_key ]]; then
         continue

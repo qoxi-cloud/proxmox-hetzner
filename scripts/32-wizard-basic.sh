@@ -20,9 +20,7 @@ _edit_hostname() {
     if validate_hostname "$new_hostname"; then
       PVE_HOSTNAME="$new_hostname"
     else
-      _wiz_blank_line
-      _wiz_error "Invalid hostname format"
-      sleep 1
+      show_validation_error "Invalid hostname format"
       return
     fi
   fi
@@ -62,10 +60,7 @@ _edit_email() {
     if validate_email "$new_email"; then
       EMAIL="$new_email"
     else
-      _wiz_blank_line
-      _wiz_blank_line
-      _wiz_error "Invalid email format"
-      sleep 1
+      show_validation_error "Invalid email format"
     fi
   fi
 }
@@ -123,10 +118,7 @@ _edit_password() {
         local password_error
         password_error=$(get_password_error "$new_password")
         if [[ -n $password_error ]]; then
-          _wiz_blank_line
-          _wiz_blank_line
-          _wiz_error "$password_error"
-          sleep 2
+          show_validation_error "$password_error"
           continue
         fi
 
