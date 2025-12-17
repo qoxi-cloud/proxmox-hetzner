@@ -21,7 +21,7 @@ auto {{INTERFACE_NAME}}
 iface {{INTERFACE_NAME}} inet static
     address {{MAIN_IPV4}}/32
     gateway {{MAIN_IPV4_GW}}
-    up sysctl -p
+    up sysctl --system
 
 iface {{INTERFACE_NAME}} inet6 static
     address {{MAIN_IPV6}}/128
@@ -37,7 +37,6 @@ iface vmbr0 inet static
     bridge-stp off
     bridge-fd 0
     mtu {{BRIDGE_MTU}}
-    post-up   echo 1 > /proc/sys/net/ipv4/ip_forward
     post-up   iptables -t nat -A POSTROUTING -s '{{PRIVATE_SUBNET}}' -o {{INTERFACE_NAME}} -j MASQUERADE
     post-down iptables -t nat -D POSTROUTING -s '{{PRIVATE_SUBNET}}' -o {{INTERFACE_NAME}} -j MASQUERADE
     post-up   iptables -t raw -I PREROUTING -i fwbr+ -j CT --zone 1

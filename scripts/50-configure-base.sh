@@ -237,15 +237,10 @@ configure_system_services() {
   ) >/dev/null 2>&1 &
   show_progress $! "Configuring Unattended Upgrades" "Unattended Upgrades configured"
 
-  # Configure nf_conntrack
+  # Configure nf_conntrack module (sysctl params already in 99-proxmox.conf.tmpl)
   run_remote "Configuring nf_conntrack" '
         if ! grep -q "nf_conntrack" /etc/modules 2>/dev/null; then
             echo "nf_conntrack" >> /etc/modules
-        fi
-
-        if ! grep -q "nf_conntrack_max" /etc/sysctl.d/99-proxmox.conf 2>/dev/null; then
-            echo "net.netfilter.nf_conntrack_max=1048576" >> /etc/sysctl.d/99-proxmox.conf
-            echo "net.netfilter.nf_conntrack_tcp_timeout_established=28800" >> /etc/sysctl.d/99-proxmox.conf
         fi
     ' "nf_conntrack configured"
 

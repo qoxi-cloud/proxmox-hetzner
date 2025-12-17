@@ -29,7 +29,7 @@ iface vmbr0 inet static
     bridge-ports {{INTERFACE_NAME}}
     bridge-stp off
     bridge-fd 0
-    up sysctl -p
+    up sysctl --system
 
 iface vmbr0 inet6 static
     address {{MAIN_IPV6}}/128

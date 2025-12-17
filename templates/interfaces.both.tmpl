@@ -29,7 +29,7 @@ iface vmbr0 inet static
     bridge-ports {{INTERFACE_NAME}}
     bridge-stp off
     bridge-fd 0
-    up sysctl -p
+    up sysctl --system
 
 iface vmbr0 inet6 static
     address {{MAIN_IPV6}}/128
@@ -45,7 +45,6 @@ iface vmbr1 inet static
     bridge-stp off
     bridge-fd 0
     mtu {{BRIDGE_MTU}}
-    post-up   echo 1 > /proc/sys/net/ipv4/ip_forward
     post-up   iptables -t nat -A POSTROUTING -s '{{PRIVATE_SUBNET}}' -o vmbr0 -j MASQUERADE
     post-down iptables -t nat -D POSTROUTING -s '{{PRIVATE_SUBNET}}' -o vmbr0 -j MASQUERADE
     post-up   iptables -t raw -I PREROUTING -i fwbr+ -j CT --zone 1
