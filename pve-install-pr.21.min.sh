@@ -19,7 +19,7 @@ HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 HEX_NONE="7"
 MENU_BOX_WIDTH=60
-VERSION="2.0.185-pr.21"
+VERSION="2.0.186-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -1612,6 +1612,8 @@ echo "$password"
 }
 show_validation_error(){
 local message="$1"
+tput cud 2
+_wiz_blank_line
 gum style --foreground "$HEX_RED" "$message"
 sleep 1
 }
