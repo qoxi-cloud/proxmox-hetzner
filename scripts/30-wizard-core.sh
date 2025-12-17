@@ -92,11 +92,11 @@ _show_input_footer() {
   # Print empty lines for component space
   local i
   for ((i = 0; i < component_lines; i++)); do
-    echo ""
+    _wiz_blank_line
   done
 
   # Blank line + footer
-  echo ""
+  _wiz_blank_line
   case "$type" in
     filter)
       echo -e "${CLR_GRAY}[${CLR_ORANGE}↑↓${CLR_GRAY}] navigate  [${CLR_ORANGE}Enter${CLR_GRAY}] select  [${CLR_ORANGE}Esc${CLR_GRAY}] cancel${CLR_RESET}"
@@ -150,14 +150,14 @@ _validate_config() {
   if [[ $missing_count -gt 0 ]]; then
     _wiz_show_cursor
     _wiz_start_edit
-    gum style --foreground "$HEX_RED" --bold "Configuration incomplete!"
-    echo ""
-    gum style --foreground "$HEX_YELLOW" "Please configure the following required fields:"
-    echo ""
+    _wiz_error --bold "Configuration incomplete!"
+    _wiz_blank_line
+    _wiz_warn "Please configure the following required fields:"
+    _wiz_blank_line
     for field in "${missing_fields[@]}"; do
       echo "  ${CLR_CYAN}•${CLR_RESET} $field"
     done
-    echo ""
+    _wiz_blank_line
     gum confirm "Return to configuration?" --default=true \
       --prompt.foreground "$HEX_ORANGE" \
       --selected.background "$HEX_ORANGE" || exit 1

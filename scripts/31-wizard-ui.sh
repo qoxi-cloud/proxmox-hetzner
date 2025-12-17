@@ -42,6 +42,15 @@ _wiz_read_key() {
 _wiz_hide_cursor() { printf '\033[?25l'; }
 _wiz_show_cursor() { printf '\033[?25h'; }
 
+# Blank line helper
+_wiz_blank_line() { echo ""; }
+
+# Text styling helpers
+_wiz_error() { _wiz_error "$@"; }
+_wiz_warn() { _wiz_warn "$@"; }
+_wiz_info() { _wiz_info "$@"; }
+_wiz_dim() { _wiz_dim "$@"; }
+
 # Clear screen in alternate buffer (faster than clear)
 _wiz_clear() {
   printf '\033[H\033[J'
@@ -51,7 +60,7 @@ _wiz_clear() {
 _wiz_start_edit() {
   _wiz_clear
   show_banner
-  echo ""
+  _wiz_blank_line
 }
 
 # Show input screen with optional description
@@ -60,7 +69,7 @@ _wiz_input_screen() {
   _wiz_start_edit
   # Show description lines if provided
   for line in "$@"; do
-    gum style --foreground "$HEX_GRAY" "$line"
+    _wiz_dim "$line"
   done
   [[ $# -gt 0 ]] && echo ""
   _show_input_footer

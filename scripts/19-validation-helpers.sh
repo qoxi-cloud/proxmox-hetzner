@@ -9,7 +9,6 @@
 # Side effects: Outputs to stdout, pauses for 1 second
 show_validation_error() {
   local message="$1"
-  echo ""
   gum style --foreground "$HEX_RED" "$message"
   sleep 1
 }

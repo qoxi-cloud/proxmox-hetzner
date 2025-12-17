@@ -17,12 +17,12 @@ _edit_ssh_key() {
       # Parse detected key for display
       parse_ssh_key "$detected_key"
 
-      gum style --foreground "$HEX_YELLOW" "Detected SSH key from Rescue System:"
-      echo ""
+      _wiz_warn "Detected SSH key from Rescue System:"
+      _wiz_blank_line
       echo -e "${CLR_GRAY}Type:${CLR_RESET}    ${SSH_KEY_TYPE}"
       echo -e "${CLR_GRAY}Key:${CLR_RESET}     ${SSH_KEY_SHORT}"
       [[ -n $SSH_KEY_COMMENT ]] && echo -e "${CLR_GRAY}Comment:${CLR_RESET} ${SSH_KEY_COMMENT}"
-      echo ""
+      _wiz_blank_line
 
       # 1 header + 2 options
       _show_input_footer "filter" 3
@@ -81,9 +81,9 @@ _edit_ssh_key() {
       SSH_PUBLIC_KEY="$new_key"
       break
     else
-      echo ""
-      echo ""
-      gum style --foreground "$HEX_RED" "Invalid SSH key format"
+      _wiz_blank_line
+      _wiz_blank_line
+      _wiz_error "Invalid SSH key format"
       sleep 1
       # If we had a detected key, return to menu, otherwise retry manual entry
       if [[ -n $detected_key ]]; then

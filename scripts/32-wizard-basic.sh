@@ -22,8 +22,8 @@ _edit_hostname() {
     if validate_hostname "$new_hostname"; then
       PVE_HOSTNAME="$new_hostname"
     else
-      echo ""
-      gum style --foreground "$HEX_RED" "Invalid hostname format"
+      _wiz_blank_line
+      _wiz_error "Invalid hostname format"
       sleep 1
       return
     fi
@@ -68,9 +68,9 @@ _edit_email() {
     if validate_email "$new_email"; then
       EMAIL="$new_email"
     else
-      echo ""
-      echo ""
-      gum style --foreground "$HEX_RED" "Invalid email format"
+      _wiz_blank_line
+      _wiz_blank_line
+      _wiz_error "Invalid email format"
       sleep 1
     fi
   fi
@@ -103,10 +103,10 @@ _edit_password() {
         PASSWORD_GENERATED="yes"
 
         _wiz_start_edit
-        gum style --foreground "$HEX_YELLOW" "Please save this password - it will be required for login"
-        echo ""
+        _wiz_warn "Please save this password - it will be required for login"
+        _wiz_blank_line
         echo -e "${CLR_CYAN}Generated password:${CLR_RESET} ${CLR_ORANGE}${NEW_ROOT_PASSWORD}${CLR_RESET}"
-        echo ""
+        _wiz_blank_line
         echo -e "${CLR_GRAY}Press any key to continue...${CLR_RESET}"
         read -n 1 -s -r
         break
@@ -134,9 +134,9 @@ _edit_password() {
         local password_error
         password_error=$(get_password_error "$new_password")
         if [[ -n $password_error ]]; then
-          echo ""
-          echo ""
-          gum style --foreground "$HEX_RED" "$password_error"
+          _wiz_blank_line
+          _wiz_blank_line
+          _wiz_error "$password_error"
           sleep 2
           continue
         fi

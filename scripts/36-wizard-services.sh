@@ -92,10 +92,10 @@ _edit_ssl() {
     # Check if FQDN is set and is a valid domain
     if [[ -z $FQDN ]]; then
       _wiz_start_edit
-      gum style --foreground "$HEX_RED" "Error: Hostname not configured!"
-      echo ""
-      gum style --foreground "$HEX_GRAY" "Let's Encrypt requires a fully qualified domain name."
-      gum style --foreground "$HEX_GRAY" "Please configure hostname first."
+      _wiz_error "Error: Hostname not configured!"
+      _wiz_blank_line
+      _wiz_dim "Let's Encrypt requires a fully qualified domain name."
+      _wiz_dim "Please configure hostname first."
       sleep 3
       SSL_TYPE="self-signed"
       return
@@ -103,11 +103,11 @@ _edit_ssl() {
 
     if [[ $FQDN == *.local ]] || ! validate_fqdn "$FQDN"; then
       _wiz_start_edit
-      gum style --foreground "$HEX_RED" "Error: Invalid domain name!"
-      echo ""
-      gum style --foreground "$HEX_GRAY" "Current hostname: ${CLR_ORANGE}${FQDN}${CLR_RESET}"
-      gum style --foreground "$HEX_GRAY" "Let's Encrypt requires a valid public FQDN (e.g., pve.example.com)."
-      gum style --foreground "$HEX_GRAY" "Domains ending with .local are not supported."
+      _wiz_error "Error: Invalid domain name!"
+      _wiz_blank_line
+      _wiz_dim "Current hostname: ${CLR_ORANGE}${FQDN}${CLR_RESET}"
+      _wiz_dim "Let's Encrypt requires a valid public FQDN (e.g., pve.example.com)."
+      _wiz_dim "Domains ending with .local are not supported."
       sleep 3
       SSL_TYPE="self-signed"
       return
@@ -115,11 +115,11 @@ _edit_ssl() {
 
     # Check DNS resolution
     _wiz_start_edit
-    gum style --foreground "$HEX_CYAN" "Validating DNS resolution..."
-    echo ""
-    gum style --foreground "$HEX_GRAY" "Domain: ${CLR_ORANGE}${FQDN}${CLR_RESET}"
-    gum style --foreground "$HEX_GRAY" "Expected IP: ${CLR_ORANGE}${MAIN_IPV4}${CLR_RESET}"
-    echo ""
+    _wiz_info "Validating DNS resolution..."
+    _wiz_blank_line
+    _wiz_dim "Domain: ${CLR_ORANGE}${FQDN}${CLR_RESET}"
+    _wiz_dim "Expected IP: ${CLR_ORANGE}${MAIN_IPV4}${CLR_RESET}"
+    _wiz_blank_line
 
     local dns_result
     validate_dns_resolution "$FQDN" "$MAIN_IPV4"
@@ -127,32 +127,32 @@ _edit_ssl() {
 
     if [[ $dns_result -eq 1 ]]; then
       # No DNS resolution
-      gum style --foreground "$HEX_RED" "✗ Domain does not resolve to any IP address"
-      echo ""
-      gum style --foreground "$HEX_GRAY" "Please configure DNS A record:"
-      gum style --foreground "$HEX_GRAY" "  ${CLR_ORANGE}${FQDN}${CLR_RESET} → ${CLR_ORANGE}${MAIN_IPV4}${CLR_RESET}"
-      echo ""
-      gum style --foreground "$HEX_GRAY" "Falling back to self-signed certificate."
+      _wiz_error "✗ Domain does not resolve to any IP address"
+      _wiz_blank_line
+      _wiz_dim "Please configure DNS A record:"
+      _wiz_dim "  ${CLR_ORANGE}${FQDN}${CLR_RESET} → ${CLR_ORANGE}${MAIN_IPV4}${CLR_RESET}"
+      _wiz_blank_line
+      _wiz_dim "Falling back to self-signed certificate."
       sleep 5
       SSL_TYPE="self-signed"
       return
     elif [[ $dns_result -eq 2 ]]; then
       # Wrong IP
-      gum style --foreground "$HEX_RED" "✗ Domain resolves to wrong IP address"
-      echo ""
-      gum style --foreground "$HEX_GRAY" "Current DNS: ${CLR_ORANGE}${FQDN}${CLR_RESET} → ${CLR_RED}${DNS_RESOLVED_IP}${CLR_RESET}"
-      gum style --foreground "$HEX_GRAY" "Expected:    ${CLR_ORANGE}${FQDN}${CLR_RESET} → ${CLR_ORANGE}${MAIN_IPV4}${CLR_RESET}"
-      echo ""
-      gum style --foreground "$HEX_GRAY" "Please update DNS A record to point to ${CLR_ORANGE}${MAIN_IPV4}${CLR_RESET}"
-      echo ""
-      gum style --foreground "$HEX_GRAY" "Falling back to self-signed certificate."
+      _wiz_error "✗ Domain resolves to wrong IP address"
+      _wiz_blank_line
+      _wiz_dim "Current DNS: ${CLR_ORANGE}${FQDN}${CLR_RESET} → ${CLR_RED}${DNS_RESOLVED_IP}${CLR_RESET}"
+      _wiz_dim "Expected:    ${CLR_ORANGE}${FQDN}${CLR_RESET} → ${CLR_ORANGE}${MAIN_IPV4}${CLR_RESET}"
+      _wiz_blank_line
+      _wiz_dim "Please update DNS A record to point to ${CLR_ORANGE}${MAIN_IPV4}${CLR_RESET}"
+      _wiz_blank_line
+      _wiz_dim "Falling back to self-signed certificate."
       sleep 5
       SSL_TYPE="self-signed"
       return
     else
       # Success
-      gum style --foreground "$HEX_CYAN" "✓ DNS resolution successful"
-      gum style --foreground "$HEX_GRAY" "  ${CLR_ORANGE}${FQDN}${CLR_RESET} → ${CLR_CYAN}${DNS_RESOLVED_IP}${CLR_RESET}"
+      _wiz_info "✓ DNS resolution successful"
+      _wiz_dim "  ${CLR_ORANGE}${FQDN}${CLR_RESET} → ${CLR_CYAN}${DNS_RESOLVED_IP}${CLR_RESET}"
       sleep 3
       SSL_TYPE="$ssl_type"
     fi
