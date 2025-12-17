@@ -136,7 +136,7 @@ _wiz_render_menu() {
   # Build display values
   local pass_display=""
   if [[ -n $NEW_ROOT_PASSWORD ]]; then
-    pass_display=$([[ $PASSWORD_GENERATED == "yes" ]] && echo "(auto-generated)" || echo "********")
+    pass_display="********"
   fi
 
   local ipv6_display=""
