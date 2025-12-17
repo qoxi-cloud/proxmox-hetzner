@@ -24,7 +24,7 @@ _show_credentials_info() {
     # shellcheck disable=SC1091
     source /tmp/pve-install-api-token.env
 
-    if [[ -n "$API_TOKEN_VALUE" ]]; then
+    if [[ -n $API_TOKEN_VALUE ]]; then
       echo ""
       echo "${CLR_CYAN}${CLR_BOLD}API Token:${CLR_RESET}"
       echo "${CLR_CYAN}  Token ID:${CLR_RESET}  ${API_TOKEN_ID}"

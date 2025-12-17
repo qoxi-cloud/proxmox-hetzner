@@ -300,7 +300,7 @@ _edit_api_token() {
     "Yes - Create API token" \
     "No - Skip API token")
 
-  if [[ "$choice" == "Yes"* ]]; then
+  if [[ $choice == "Yes"* ]]; then
     INSTALL_API_TOKEN="yes"
 
     _show_input_footer "input"
@@ -313,7 +313,7 @@ _edit_api_token() {
       --value="${API_TOKEN_NAME:-automation}")
 
     # Validate: alphanumeric, dash, underscore only
-    if [[ -n "$token_name" && "$token_name" =~ ^[a-zA-Z0-9_-]+$ ]]; then
+    if [[ -n $token_name && $token_name =~ ^[a-zA-Z0-9_-]+$ ]]; then
       API_TOKEN_NAME="$token_name"
     else
       print_error "Invalid token name, using default: automation"

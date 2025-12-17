@@ -129,7 +129,7 @@ configure_proxmox_via_ssh() {
   configure_ssl_certificate
 
   # Create API token (non-fatal if fails)
-  if [[ "$INSTALL_API_TOKEN" == "yes" ]]; then
+  if [[ $INSTALL_API_TOKEN == "yes" ]]; then
     (
       # shellcheck disable=SC1091
       source "$SCRIPT_DIR/58-configure-api-token.sh"
