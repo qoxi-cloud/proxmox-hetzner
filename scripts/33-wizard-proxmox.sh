@@ -62,7 +62,8 @@ _edit_repository() {
         _wiz_input \
           --placeholder "pve2c-..." \
           --value "$PVE_SUBSCRIPTION_KEY" \
-          --prompt "Subscription Key: " \  --width 60
+          --prompt "Subscription Key: " \
+          --width 60
       )
 
       PVE_SUBSCRIPTION_KEY="$sub_key"

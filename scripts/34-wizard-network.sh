@@ -75,7 +75,8 @@ _edit_private_subnet() {
         _wiz_input \
           --placeholder "e.g., 10.10.10.0/24" \
           --value "$PRIVATE_SUBNET" \
-          --prompt "Private subnet: " \  --width 40
+          --prompt "Private subnet: " \
+          --width 40
       )
 
       # If empty or cancelled, return to menu
@@ -136,7 +137,8 @@ _edit_ipv6() {
       ipv6_addr=$(
         _wiz_input \
           --placeholder "2001:db8::1/64" \
-          --prompt "IPv6 Address: " \  --width 50 \
+          --prompt "IPv6 Address: " \
+          --width 50 \
           --value "${IPV6_ADDRESS:-${MAIN_IPV6:+${MAIN_IPV6}/64}}"
       )
 
@@ -166,7 +168,8 @@ _edit_ipv6() {
       ipv6_gw=$(
         _wiz_input \
           --placeholder "fe80::1" \
-          --prompt "Gateway: " \  --width 50 \
+          --prompt "Gateway: " \
+          --width 50 \
           --value "${IPV6_GATEWAY:-$DEFAULT_IPV6_GATEWAY}"
       )
 

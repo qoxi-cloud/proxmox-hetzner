@@ -13,7 +13,8 @@ _edit_hostname() {
     _wiz_input \
       --placeholder "e.g., pve, proxmox, node1" \
       --value "$PVE_HOSTNAME" \
-      --prompt "Hostname: " \  --width 40
+      --prompt "Hostname: " \
+      --width 40
   )
 
   if [[ -n $new_hostname ]]; then
@@ -34,7 +35,8 @@ _edit_hostname() {
     _wiz_input \
       --placeholder "e.g., local, example.com" \
       --value "$DOMAIN_SUFFIX" \
-      --prompt "Domain: " \  --width 40
+      --prompt "Domain: " \
+      --width 40
   )
 
   if [[ -n $new_domain ]]; then
@@ -53,7 +55,8 @@ _edit_email() {
     _wiz_input \
       --placeholder "admin@example.com" \
       --value "$EMAIL" \
-      --prompt "Email: " \  --width 50
+      --prompt "Email: " \
+      --width 50
   )
 
   if [[ -n $new_email ]]; then
@@ -107,7 +110,8 @@ _edit_password() {
           _wiz_input \
             --password \
             --placeholder "Enter password" \
-            --prompt "Password: " \  --width 40
+            --prompt "Password: " \
+            --width 40
         )
 
         # If empty or cancelled, return to menu
