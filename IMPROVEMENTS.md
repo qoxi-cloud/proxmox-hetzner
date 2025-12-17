@@ -194,45 +194,7 @@ resolve_hostname() {
 
 ---
 
-### 8. ZFS ARC Memory Configuration
-**File:** `scripts/50-configure-base.sh` or new `scripts/58-configure-zfs.sh`
-**Issue:** ZFS ARC defaults to 50% of RAM, can be too aggressive on smaller systems
-
-**Create script:**
-```bash
-#!/bin/bash
-# Configure ZFS ARC based on system RAM
-
-configure_zfs_arc() {
-  local total_ram_mb=$(free -m | awk 'NR==2 {print $2}')
-  local arc_max_mb
-
-  # Conservative ARC sizing:
-  # < 16GB: 25% of RAM
-  # 16-64GB: 40% of RAM
-  # > 64GB: 50% of RAM
-  if [[ $total_ram_mb -lt 16384 ]]; then
-    arc_max_mb=$((total_ram_mb * 25 / 100))
-  elif [[ $total_ram_mb -lt 65536 ]]; then
-    arc_max_mb=$((total_ram_mb * 40 / 100))
-  else
-    arc_max_mb=$((total_ram_mb / 2))
-  fi
-
-  local arc_max_bytes=$((arc_max_mb * 1024 * 1024))
-
-  echo "options zfs zfs_arc_max=${arc_max_bytes}" > /etc/modprobe.d/zfs.conf
-  echo "${arc_max_bytes}" > /sys/module/zfs/parameters/zfs_arc_max 2>/dev/null || true
-
-  log "INFO: ZFS ARC configured: ${arc_max_mb}MB (Total RAM: ${total_ram_mb}MB)"
-}
-
-configure_zfs_arc
-```
-
----
-
-### 9. Template Variable Validation Missing
+### 8. Template Variable Validation Missing
 **File:** `scripts/42-templates.sh`
 **Issue:** sed substitution silently fails on special characters
 
@@ -263,7 +225,7 @@ validate_template "/target/etc/ssh/sshd_config" || exit 1
 
 ---
 
-### 10. AppArmor Not Configured
+### 9. AppArmor Not Configured
 **File:** `scripts/50-configure-base.sh`
 **Issue:** No mandatory access control (Debian standard is AppArmor)
 
@@ -504,7 +466,6 @@ log() {
 
 ### Phase 4: Enhancements (2 hrs)
 - [ ] Add AppArmor configuration
-- [ ] Add wizard config summary
 - [ ] Add unattended-upgrades auto-reboot option
 - [ ] Add Fail2Ban recidive jail
 
