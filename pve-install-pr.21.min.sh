@@ -19,7 +19,7 @@ HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 HEX_NONE="7"
 MENU_BOX_WIDTH=60
-VERSION="2.0.193-pr.21"
+VERSION="2.0.194-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -759,6 +759,9 @@ readonly WIZ_PRIVATE_SUBNETS="10.0.0.0/24
 Custom"
 readonly WIZ_ZFS_MODES="Single disk
 RAID-1 (mirror)"
+readonly WIZ_ZFS_ARC_MODES="VM-focused (4GB fixed)
+Balanced (25-40% of RAM)
+Storage-focused (50% of RAM)"
 readonly WIZ_SSL_TYPES="Self-signed
 Let's Encrypt"
 readonly WIZ_SHELL_OPTIONS="ZSH
@@ -827,6 +830,7 @@ COUNTRY="us"
 FAIL2BAN_INSTALLED=""
 INSTALL_AUDITD=""
 CPU_GOVERNOR=""
+ZFS_ARC_MODE=""
 AUDITD_INSTALLED=""
 INSTALL_VNSTAT=""
 VNSTAT_INSTALLED=""
@@ -2360,6 +2364,7 @@ ipv6)_edit_ipv6;;
 boot_disk)_edit_boot_disk;;
 pool_disks)_edit_pool_disks;;
 zfs_mode)_edit_zfs_mode;;
+zfs_arc)_edit_zfs_arc;;
 tailscale)_edit_tailscale;;
 ssl)_edit_ssl;;
 shell)_edit_shell;;
@@ -2414,6 +2419,7 @@ local missing_count=0
 [[ -z $PRIVATE_SUBNET ]]&&missing_fields+=("Private subnet")&&((missing_count++))
 [[ -z $IPV6_MODE ]]&&missing_fields+=("IPv6")&&((missing_count++))
 [[ -z $ZFS_RAID ]]&&missing_fields+=("ZFS mode")&&((missing_count++))
+[[ -z $ZFS_ARC_MODE ]]&&missing_fields+=("ZFS ARC")&&((missing_count++))
 [[ -z $SHELL_TYPE ]]&&missing_fields+=("Shell")&&((missing_count++))
 [[ -z $CPU_GOVERNOR ]]&&missing_fields+=("Power profile")&&((missing_count++))
 [[ -z $SSH_PUBLIC_KEY ]]&&missing_fields+=("SSH Key")&&((missing_count++))
@@ -2600,6 +2606,15 @@ raid10)zfs_display="RAID-10 (striped mirrors)";;
 *)zfs_display="$ZFS_RAID"
 esac
 fi
+local zfs_arc_display=""
+if [[ -n $ZFS_ARC_MODE ]];then
+case "$ZFS_ARC_MODE" in
+vm-focused)zfs_arc_display="VM-focused (4GB)";;
+balanced)zfs_arc_display="Balanced (25-40%)";;
+storage-focused)zfs_arc_display="Storage-focused (50%)";;
+*)zfs_arc_display="$ZFS_ARC_MODE"
+esac
+fi
 local shell_display=""
 if [[ -n $SHELL_TYPE ]];then
 case "$SHELL_TYPE" in
@@ -2698,6 +2713,7 @@ local pool_display="${#ZFS_POOL_DISKS[@]} disks"
 _add_field "Pool disks       " "$(_wiz_fmt "$pool_display")" "pool_disks"
 fi
 _add_field "ZFS mode         " "$(_wiz_fmt "$zfs_display")" "zfs_mode"
+_add_field "ZFS ARC          " "$(_wiz_fmt "$zfs_arc_display")" "zfs_arc"
 _add_section "VPN"
 _add_field "Tailscale        " "$(_wiz_fmt "$tailscale_display")" "tailscale"
 if [[ $INSTALL_TAILSCALE != "yes" ]];then
@@ -3063,6 +3079,20 @@ case "$selected" in
 "RAID-Z1 (parity)")ZFS_RAID="raidz1";;
 "RAID-Z2 (double parity)")ZFS_RAID="raidz2";;
 "RAID-10 (striped mirrors)")ZFS_RAID="raid10"
+esac
+fi
+}
+_edit_zfs_arc(){
+_wiz_start_edit
+_show_input_footer "filter" 4
+local selected
+selected=$(echo "$WIZ_ZFS_ARC_MODES"|_wiz_choose \
+--header="ZFS ARC memory strategy:")
+if [[ -n $selected ]];then
+case "$selected" in
+"VM-focused (4GB fixed)")ZFS_ARC_MODE="vm-focused";;
+"Balanced (25-40% of RAM)")ZFS_ARC_MODE="balanced";;
+"Storage-focused (50% of RAM)")ZFS_ARC_MODE="storage-focused"
 esac
 fi
 }
@@ -4668,6 +4698,41 @@ EOF
 log "INFO: API token created successfully: $API_TOKEN_ID"
 return 0
 }
+configure_zfs_arc(){
+log "INFO: Configuring ZFS ARC memory allocation (mode: $ZFS_ARC_MODE)"
+local total_ram_mb
+total_ram_mb=$(free -m|awk 'NR==2 {print $2}')
+local arc_max_mb
+case "$ZFS_ARC_MODE" in
+vm-focused)arc_max_mb=4096
+log "INFO: ZFS ARC mode: VM-focused - setting fixed 4GB limit"
+;;
+balanced)if
+[[ $total_ram_mb -lt 16384 ]]
+then
+arc_max_mb=$((total_ram_mb*25/100))
+elif [[ $total_ram_mb -lt 65536 ]];then
+arc_max_mb=$((total_ram_mb*40/100))
+else
+arc_max_mb=$((total_ram_mb/2))
+fi
+log "INFO: ZFS ARC mode: Balanced - calculated ${arc_max_mb}MB (Total RAM: ${total_ram_mb}MB)"
+;;
+storage-focused)arc_max_mb=$((total_ram_mb/2))
+log "INFO: ZFS ARC mode: Storage-focused - using 50% of RAM (${arc_max_mb}MB)"
+;;
+*)log "ERROR: Invalid ZFS_ARC_MODE: $ZFS_ARC_MODE"
+return 1
+esac
+local arc_max_bytes=$((arc_max_mb*1024*1024))
+echo "options zfs zfs_arc_max=$arc_max_bytes" >/target/etc/modprobe.d/zfs.conf
+if [[ -f /target/sys/module/zfs/parameters/zfs_arc_max ]];then
+echo "$arc_max_bytes" >/target/sys/module/zfs/parameters/zfs_arc_max 2>/dev/null||true
+fi
+log "INFO: ZFS ARC configured: ${arc_max_mb}MB (Total RAM: ${total_ram_mb}MB)"
+print_success "ZFS ARC memory limit configured"
+}
+configure_zfs_arc
 _show_credentials_info(){
 echo ""
 print_info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
