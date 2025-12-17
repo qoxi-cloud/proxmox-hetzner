@@ -19,7 +19,7 @@ HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 HEX_NONE="7"
 MENU_BOX_WIDTH=60
-VERSION="2.0.181-pr.21"
+VERSION="2.0.182-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -947,8 +947,6 @@ log_debug "Exit code: $exit_code"
 return $exit_code
 }
 BANNER_LETTER_COUNT=7
-ANSI_CURSOR_HIDE=$'\033[?25l'
-ANSI_CURSOR_SHOW=$'\033[?25h'
 show_banner(){
 printf '%s\n' \
 "$CLR_GRAY _____                                             $CLR_RESET" \
@@ -1024,7 +1022,7 @@ show_banner_animated_start(){
 local frame_delay="${1:-0.1}"
 [[ ! -t 1 ]]&&return
 show_banner_animated_stop 2>/dev/null
-printf '%s' "$ANSI_CURSOR_HIDE"
+_wiz_hide_cursor
 clear
 (local direction=1
 local current_letter=0
@@ -1061,7 +1059,7 @@ BANNER_ANIMATION_PID=""
 fi
 clear
 show_banner
-printf '%s' "$ANSI_CURSOR_SHOW"
+_wiz_show_cursor
 }
 print_success(){
 if [[ $# -eq 2 ]];then
