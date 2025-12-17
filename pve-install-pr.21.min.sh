@@ -19,7 +19,7 @@ HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 HEX_NONE="7"
 MENU_BOX_WIDTH=60
-VERSION="2.0.189-pr.21"
+VERSION="2.0.190-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -2724,7 +2724,8 @@ local new_hostname
 new_hostname=$(_wiz_input \
 --placeholder "e.g., pve, proxmox, node1" \
 --value "$PVE_HOSTNAME" \
---prompt "Hostname: " \  --width 40)
+--prompt "Hostname: " \
+--width 40)
 if [[ -n $new_hostname ]];then
 if validate_hostname "$new_hostname";then
 PVE_HOSTNAME="$new_hostname"
@@ -2739,7 +2740,8 @@ local new_domain
 new_domain=$(_wiz_input \
 --placeholder "e.g., local, example.com" \
 --value "$DOMAIN_SUFFIX" \
---prompt "Domain: " \  --width 40)
+--prompt "Domain: " \
+--width 40)
 if [[ -n $new_domain ]];then
 DOMAIN_SUFFIX="$new_domain"
 fi
@@ -2752,7 +2754,8 @@ local new_email
 new_email=$(_wiz_input \
 --placeholder "admin@example.com" \
 --value "$EMAIL" \
---prompt "Email: " \  --width 50)
+--prompt "Email: " \
+--width 50)
 if [[ -n $new_email ]];then
 if validate_email "$new_email";then
 EMAIL="$new_email"
@@ -2790,7 +2793,8 @@ local new_password
 new_password=$(_wiz_input \
 --password \
 --placeholder "Enter password" \
---prompt "Password: " \  --width 40)
+--prompt "Password: " \
+--width 40)
 if [[ -z $new_password ]];then
 continue
 fi
@@ -2893,7 +2897,8 @@ local sub_key
 sub_key=$(_wiz_input \
 --placeholder "pve2c-..." \
 --value "$PVE_SUBSCRIPTION_KEY" \
---prompt "Subscription Key: " \  --width 60)
+--prompt "Subscription Key: " \
+--width 60)
 PVE_SUBSCRIPTION_KEY="$sub_key"
 else
 PVE_SUBSCRIPTION_KEY=""
@@ -2943,7 +2948,8 @@ local new_subnet
 new_subnet=$(_wiz_input \
 --placeholder "e.g., 10.10.10.0/24" \
 --value "$PRIVATE_SUBNET" \
---prompt "Private subnet: " \  --width 40)
+--prompt "Private subnet: " \
+--width 40)
 if [[ -z $new_subnet ]];then
 return
 fi
@@ -2982,7 +2988,8 @@ _wiz_input_screen \
 local ipv6_addr
 ipv6_addr=$(_wiz_input \
 --placeholder "2001:db8::1/64" \
---prompt "IPv6 Address: " \  --width 50 \
+--prompt "IPv6 Address: " \
+--width 50 \
 --value "${IPV6_ADDRESS:-${MAIN_IPV6:+$MAIN_IPV6/64}}")
 if [[ -z $ipv6_addr ]];then
 IPV6_MODE=""
@@ -3003,7 +3010,8 @@ _wiz_input_screen \
 local ipv6_gw
 ipv6_gw=$(_wiz_input \
 --placeholder "fe80::1" \
---prompt "Gateway: " \  --width 50 \
+--prompt "Gateway: " \
+--width 50 \
 --value "${IPV6_GATEWAY:-$DEFAULT_IPV6_GATEWAY}")
 if [[ -z $ipv6_gw ]];then
 IPV6_GATEWAY="$DEFAULT_IPV6_GATEWAY"
@@ -3066,7 +3074,8 @@ Enabled)_wiz_input_screen "Enter Tailscale authentication key"
 local auth_key
 auth_key=$(_wiz_input \
 --placeholder "tskey-auth-..." \
---prompt "Auth Key: " \  --width 60)
+--prompt "Auth Key: " \
+--width 60)
 if [[ -n $auth_key ]];then
 INSTALL_TAILSCALE="yes"
 TAILSCALE_AUTH_KEY="$auth_key"
@@ -3254,7 +3263,8 @@ Enabled)_wiz_input_screen "Enter API token name (default: automation)"
 local token_name
 token_name=$(_wiz_input \
 --placeholder "automation" \
---prompt "Token name: " \  --width 40 \
+--prompt "Token name: " \
+--width 40 \
 --no-show-help \
 --value="${API_TOKEN_NAME:-automation}")
 if [[ -n $token_name && $token_name =~ ^[a-zA-Z0-9_-]+$ ]];then
@@ -3302,7 +3312,8 @@ local new_key
 new_key=$(_wiz_input \
 --placeholder "ssh-ed25519 AAAA... user@host" \
 --value "$SSH_PUBLIC_KEY" \
---prompt "SSH Key: " \  --width 60)
+--prompt "SSH Key: " \
+--width 60)
 if [[ -z $new_key ]];then
 if [[ -n $detected_key ]];then
 continue
