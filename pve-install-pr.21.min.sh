@@ -19,7 +19,7 @@ HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 HEX_NONE="7"
 MENU_BOX_WIDTH=60
-VERSION="2.0.271-pr.21"
+VERSION="2.0.272-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -3642,6 +3642,9 @@ else
 log "WARNING: Could not find checksum for $ISO_FILENAME"
 print_warning "Could not find checksum for $ISO_FILENAME"
 fi
+log "Cleaning up temporary files in /tmp"
+rm -rf /tmp/tmp.* /tmp/pve-* /tmp/checksum_result 2>/dev/null||true
+log "Temporary files cleaned"
 }
 validate_answer_toml(){
 local file="$1"
