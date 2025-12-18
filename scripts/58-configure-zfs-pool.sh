@@ -64,6 +64,11 @@ configure_zfs_pool() {
         log "WARNING: RAIDZ2 recommended for 4+ disks, have $vdev_count"
       fi
       ;;
+    raidz3)
+      if [[ $vdev_count -lt 5 ]]; then
+        log "WARNING: RAIDZ3 recommended for 5+ disks, have $vdev_count"
+      fi
+      ;;
     raid10)
       if [[ $vdev_count -lt 4 ]] || [[ $((vdev_count % 2)) -ne 0 ]]; then
         log "ERROR: RAID10 requires even number of disks (min 4), have $vdev_count"
@@ -89,6 +94,9 @@ configure_zfs_pool() {
       ;;
     raidz2)
       pool_cmd+=" raidz2 ${vdevs[*]}"
+      ;;
+    raidz3)
+      pool_cmd+=" raidz3 ${vdevs[*]}"
       ;;
     raid10)
       # RAID10: pair up disks for striped mirrors

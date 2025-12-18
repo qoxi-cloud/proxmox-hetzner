@@ -437,37 +437,79 @@ make_answer_toml() {
 
   log "FILESYSTEM=$FILESYSTEM, DISK_LIST=$DISK_LIST"
 
-  # Map ZFS_RAID to answer.toml format
-  local zfs_raid_value
-  case "$ZFS_RAID" in
-    single) zfs_raid_value="raid0" ;; # Single disk uses raid0
-    raid0) zfs_raid_value="raid0" ;;
-    raid1) zfs_raid_value="raid1" ;;
-    raidz1) zfs_raid_value="raidz-1" ;;
-    raidz2) zfs_raid_value="raidz-2" ;;
-    raid5) zfs_raid_value="raidz-1" ;; # legacy → raidz-1
-    raid10) zfs_raid_value="raid10" ;;
-    *) zfs_raid_value="raid0" ;;
-  esac
-  log "Using ZFS raid: $zfs_raid_value"
+  # Generate answer.toml dynamically based on filesystem type
+  # This allows conditional sections (ZFS vs LVM parameters)
+  log "Generating answer.toml for autoinstall"
 
-  # Download and process answer.toml template
-  if ! download_template "./answer.toml" "answer.toml"; then
-    log "ERROR: Failed to download answer.toml template"
-    exit 1
+  # Prepare SSH keys array (TOML multiline array format)
+  local ssh_keys_toml=""
+  if [[ -n $SSH_PUBLIC_KEY ]]; then
+    # Escape the SSH key for TOML (escape backslashes and quotes)
+    local escaped_key="${SSH_PUBLIC_KEY//\\/\\\\}"
+    escaped_key="${escaped_key//\"/\\\"}"
+    ssh_keys_toml="root_ssh_keys = [\"$escaped_key\"]"
   fi
 
-  # Apply variable substitutions
-  apply_template_vars "./answer.toml" \
-    "FQDN=$FQDN" \
-    "EMAIL=$EMAIL" \
-    "TIMEZONE=$TIMEZONE" \
-    "KEYBOARD=$KEYBOARD" \
-    "COUNTRY=$COUNTRY" \
-    "ROOT_PASSWORD=$NEW_ROOT_PASSWORD" \
-    "FILESYSTEM=$FILESYSTEM" \
-    "ZFS_RAID=$zfs_raid_value" \
-    "DISK_LIST=$DISK_LIST"
+  # Generate [global] section
+  cat >./answer.toml <<EOF
+[global]
+    keyboard = "$KEYBOARD"
+    country = "$COUNTRY"
+    fqdn = "$FQDN"
+    mailto = "$EMAIL"
+    timezone = "$TIMEZONE"
+    root_password = "$NEW_ROOT_PASSWORD"
+    reboot_on_error = false
+EOF
+
+  # Add SSH keys if available
+  if [[ -n $ssh_keys_toml ]]; then
+    echo "    $ssh_keys_toml" >>./answer.toml
+  fi
+
+  # Generate [network] section
+  cat >>./answer.toml <<EOF
+
+[network]
+    source = "from-dhcp"
+
+[disk-setup]
+    filesystem = "$FILESYSTEM"
+    disk_list = $DISK_LIST
+EOF
+
+  # Add filesystem-specific parameters
+  if [[ $FILESYSTEM == "zfs" ]]; then
+    # Map ZFS_RAID to answer.toml format
+    local zfs_raid_value
+    case "$ZFS_RAID" in
+      single) zfs_raid_value="raid0" ;; # Single disk uses raid0
+      raid0) zfs_raid_value="raid0" ;;
+      raid1) zfs_raid_value="raid1" ;;
+      raidz1) zfs_raid_value="raidz-1" ;;
+      raidz2) zfs_raid_value="raidz-2" ;;
+      raidz3) zfs_raid_value="raidz-3" ;;
+      raid5) zfs_raid_value="raidz-1" ;; # legacy → raidz-1
+      raid10) zfs_raid_value="raid10" ;;
+      *) zfs_raid_value="raid0" ;;
+    esac
+    log "Using ZFS raid: $zfs_raid_value"
+
+    # Add ZFS parameters
+    cat >>./answer.toml <<EOF
+    zfs.raid = "$zfs_raid_value"
+    zfs.compress = "lz4"
+    zfs.checksum = "on"
+EOF
+  elif [[ $FILESYSTEM == "ext4" ]] || [[ $FILESYSTEM == "xfs" ]]; then
+    # Add LVM parameters for ext4/xfs
+    # swapsize: Use 0 for no swap (we'll rely on zswap or user can add later)
+    # hdsize: Don't limit disk usage
+    cat >>./answer.toml <<EOF
+    lvm.swapsize = 0
+    lvm.maxvz = 0
+EOF
+  fi
 
   # Validate the generated file
   if ! validate_answer_toml "./answer.toml"; then

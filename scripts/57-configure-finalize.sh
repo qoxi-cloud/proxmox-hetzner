@@ -4,20 +4,18 @@
 # =============================================================================
 
 # Configures SSH hardening with key-based authentication only.
-# Deploys SSH public key and hardens sshd_config.
+# Deploys hardened sshd_config (SSH key already added via answer.toml).
 # Side effects: Disables password authentication on remote system
 configure_ssh_hardening() {
   # Deploy SSH hardening LAST (after all other operations)
   # CRITICAL: This must succeed - if it fails, system remains with password auth enabled
-  # NOTE: SSH key already validated in wizard (validate_ssh_key in 20-validation.sh)
-
-  # Escape single quotes in SSH key to prevent injection
-  local escaped_ssh_key="${SSH_PUBLIC_KEY//\'/\'\\\'\'}"
+  # NOTE: SSH key was already deployed via answer.toml root_ssh_keys parameter
 
   (
-    remote_exec "mkdir -p /root/.ssh && chmod 700 /root/.ssh" || exit 1
-    remote_exec "echo '${escaped_ssh_key}' >> /root/.ssh/authorized_keys && chmod 600 /root/.ssh/authorized_keys" || exit 1
+    # Deploy hardened sshd_config (disables password auth, etc.)
     remote_copy "templates/sshd_config" "/etc/ssh/sshd_config" || exit 1
+    # Ensure correct permissions on SSH directory (should already be set by installer)
+    remote_exec "chmod 700 /root/.ssh && chmod 600 /root/.ssh/authorized_keys" || exit 1
   ) >/dev/null 2>&1 &
   show_progress $! "Deploying SSH hardening" "Security hardening configured"
   local exit_code=$?

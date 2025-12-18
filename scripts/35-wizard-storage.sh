@@ -18,8 +18,10 @@ _edit_zfs_mode() {
     options="RAID-0 (striped)\nRAID-1 (mirror)"
   elif [[ $pool_count -eq 3 ]]; then
     options="RAID-0 (striped)\nRAID-1 (mirror)\nRAID-Z1 (parity)"
-  elif [[ $pool_count -ge 4 ]]; then
+  elif [[ $pool_count -eq 4 ]]; then
     options="RAID-0 (striped)\nRAID-1 (mirror)\nRAID-Z1 (parity)\nRAID-Z2 (double parity)\nRAID-10 (striped mirrors)"
+  elif [[ $pool_count -ge 5 ]]; then
+    options="RAID-0 (striped)\nRAID-1 (mirror)\nRAID-Z1 (parity)\nRAID-Z2 (double parity)\nRAID-Z3 (triple parity)\nRAID-10 (striped mirrors)"
   fi
 
   local item_count
@@ -39,6 +41,7 @@ _edit_zfs_mode() {
       "RAID-1 (mirror)") ZFS_RAID="raid1" ;;
       "RAID-Z1 (parity)") ZFS_RAID="raidz1" ;;
       "RAID-Z2 (double parity)") ZFS_RAID="raidz2" ;;
+      "RAID-Z3 (triple parity)") ZFS_RAID="raidz3" ;;
       "RAID-10 (striped mirrors)") ZFS_RAID="raid10" ;;
     esac
   fi
