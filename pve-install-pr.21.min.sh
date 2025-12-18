@@ -19,7 +19,7 @@ HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 HEX_NONE="7"
 MENU_BOX_WIDTH=60
-VERSION="2.0.228-pr.21"
+VERSION="2.0.229-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -2710,6 +2710,15 @@ _wiz_error(){ gum style --foreground "$HEX_RED" "$@";}
 _wiz_warn(){ gum style --foreground "$HEX_YELLOW" "$@";}
 _wiz_info(){ gum style --foreground "$HEX_CYAN" "$@";}
 _wiz_dim(){ gum style --foreground "$HEX_GRAY" "$@";}
+_wiz_description(){
+local output=""
+for line in "$@";do
+line="${line//\{\{cyan:/$CLR_CYAN}"
+line="${line//\}\}/$CLR_GRAY}"
+output+="$CLR_GRAY$line$CLR_RESET\n"
+done
+printf '%b' "$output"
+}
 _wiz_confirm(){
 gum confirm "$@" \
 --prompt.foreground "$HEX_ORANGE" \
@@ -3613,12 +3622,12 @@ done
 }
 _edit_boot_disk(){
 _wiz_start_edit
-printf '%b\n' \
-"${CLR_GRAY}Separate boot disk selection (auto-detected by disk size):$CLR_RESET" \
+_wiz_description \
+"Separate boot disk selection (auto-detected by disk size):" \
 "" \
-"$CLR_GRAY  ${CLR_CYAN}None$CLR_GRAY: All disks in ZFS rpool (system + VMs)$CLR_RESET" \
-"$CLR_GRAY  ${CLR_CYAN}Disk$CLR_GRAY: Boot disk uses ext4 (system + ISO/templates)$CLR_RESET" \
-"$CLR_GRAY       Pool disks use ZFS tank (VMs only)$CLR_RESET" \
+"  {{cyan:None}}: All disks in ZFS rpool (system + VMs)" \
+"  {{cyan:Disk}}: Boot disk uses ext4 (system + ISO/templates)" \
+"       Pool disks use ZFS tank (VMs only)" \
 ""
 local options="None (all in pool)"
 for i in "${!DRIVES[@]}";do
