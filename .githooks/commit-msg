@@ -1,69 +1,92 @@
-#!/usr/bin/env bash
-# =============================================================================
-# Git commit-msg hook - validates commit message format
-# =============================================================================
-
-set -euo pipefail
-
-COMMIT_MSG_FILE="$1"
-COMMIT_MSG=$(head -1 "$COMMIT_MSG_FILE")
-
-# Colors
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[0;33m'
-NC='\033[0m'
-
-# Skip merge commits
-if [[ "$COMMIT_MSG" =~ ^Merge ]]; then
-    exit 0
-fi
-
-# Skip fixup/squash commits
-if [[ "$COMMIT_MSG" =~ ^(fixup|squash)! ]]; then
-    exit 0
-fi
+#!/usr/bin/env python3
+"""
+Pre-commit hook to validate commit message format and block Claude Code footer.
+"""
+import sys
+import re
 
 # Valid emoji prefixes (with and without variation selector)
-VALID_EMOJIS="✨|🐛|🔒️|🔒|♻️|📝|🔧|⚡️|⚡|🩹|🚑️|🚑|✅|🏗️|🏗|👷"
+VALID_EMOJIS = r'✨|🐛|🔒️|🔒|♻️|📝|🔧|⚡️|⚡|🩹|🚑️|🚑|✅|🏗️|🏗|👷'
 
 # Valid types
-VALID_TYPES="feat|fix|security|refactor|docs|chore|perf|hotfix|test|build|ci"
+VALID_TYPES = r'feat|fix|security|refactor|docs|chore|perf|hotfix|test|build|ci'
 
 # Pattern: <emoji> <type>: <description>
-PATTERN="^($VALID_EMOJIS) ($VALID_TYPES): .+"
+COMMIT_PATTERN = rf'^({VALID_EMOJIS}) ({VALID_TYPES}): .+'
 
-if [[ "$COMMIT_MSG" =~ $PATTERN ]]; then
-    echo -e "${GREEN}✓${NC} Commit message format is valid"
-    exit 0
-else
-    echo -e "${RED}✗${NC} Invalid commit message format"
-    echo ""
-    echo -e "${YELLOW}Your message:${NC}"
-    echo "  $COMMIT_MSG"
-    echo ""
-    echo -e "${YELLOW}Expected format:${NC}"
-    echo "  <emoji> <type>: <short description>"
-    echo ""
-    echo -e "${YELLOW}Valid emojis:${NC}"
-    echo "  ✨ feat      - New features"
-    echo "  🐛 fix       - Bug fixes"
-    echo "  🔒️ security  - Security fixes"
-    echo "  ♻️ refactor  - Code restructuring"
-    echo "  📝 docs      - Documentation"
-    echo "  🔧 chore     - Configuration, tooling"
-    echo "  ⚡️ perf      - Performance improvements"
-    echo "  🩹 fix       - Simple non-critical fixes"
-    echo "  🚑️ hotfix    - Critical hotfixes"
-    echo "  ✅ test      - Adding or updating tests"
-    echo "  🏗️ build     - Build system changes"
-    echo "  👷 ci        - CI/CD changes"
-    echo ""
-    echo -e "${YELLOW}Examples:${NC}"
-    echo "  ✨ feat: add IPv6 support for network bridges"
-    echo "  🐛 fix: correct DNS resolution timeout"
-    echo "  📝 docs: update installation guide"
-    echo ""
-    echo "See CONTRIBUTING.md for full guidelines."
-    exit 1
-fi
+EMOJI_REFERENCE = """
+  ✨ feat      - New features
+  🐛 fix       - Bug fixes
+  🔒️ security  - Security fixes
+  ♻️ refactor  - Code restructuring
+  📝 docs      - Documentation
+  🔧 chore     - Configuration, tooling
+  ⚡️ perf      - Performance improvements
+  🩹 fix       - Simple non-critical fixes
+  🚑️ hotfix    - Critical hotfixes
+  ✅ test      - Adding or updating tests
+  🏗️ build     - Build system changes
+  👷 ci        - CI/CD changes
+"""
+
+
+def check_commit_message(commit_msg_file):
+    with open(commit_msg_file, 'r') as f:
+        message = f.read()
+
+    first_line = message.split('\n')[0]
+
+    # Skip merge commits
+    if first_line.startswith('Merge'):
+        sys.exit(0)
+
+    # Skip fixup/squash commits
+    if re.match(r'^(fixup|squash)!', first_line):
+        sys.exit(0)
+
+    # Check for blocked patterns (Claude Code footer)
+    blocked_patterns = [
+        r'🤖 Generated with \[Claude Code\]',
+        r'Co-Authored-By: Claude <noreply@anthropic\.com>',
+    ]
+
+    for pattern in blocked_patterns:
+        if re.search(pattern, message):
+            print(f"\n❌ ERROR: Commit message contains blocked pattern: {pattern}")
+            print("\nThe following lines are not allowed in commit messages:")
+            print("  - 🤖 Generated with [Claude Code](...)")
+            print("  - Co-Authored-By: Claude <noreply@anthropic.com>")
+            print("\nPlease remove these lines from your commit message.\n")
+            sys.exit(1)
+
+    # Validate commit message format
+    if re.match(COMMIT_PATTERN, first_line):
+        print("✓ Commit message format is valid")
+        sys.exit(0)
+    else:
+        print("❌ Invalid commit message format")
+        print("")
+        print("Your message:")
+        print(f"  {first_line}")
+        print("")
+        print("Expected format:")
+        print("  <emoji> <type>: <short description>")
+        print("")
+        print("Valid emojis:")
+        print(EMOJI_REFERENCE)
+        print("")
+        print("Examples:")
+        print("  ✨ feat: add IPv6 support for network bridges")
+        print("  🐛 fix: correct DNS resolution timeout")
+        print("  📝 docs: update installation guide")
+        print("")
+        print("See CONTRIBUTING.md for full guidelines.")
+        sys.exit(1)
+
+
+if __name__ == '__main__':
+    if len(sys.argv) < 2:
+        print("Usage: commit-msg <commit-msg-file>")
+        sys.exit(1)
+
+    check_commit_message(sys.argv[1])
