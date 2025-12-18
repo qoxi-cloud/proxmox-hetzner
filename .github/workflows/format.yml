@@ -23,10 +23,10 @@ jobs:
 
       - name: Check formatting with shfmt
         run: |
-          # Check if scripts are properly formatted (2-space indent, simplify)
-          if ! shfmt -i 2 -ci -s -d scripts/*.sh; then
+          # Check if scripts are properly formatted (uses .editorconfig)
+          if ! shfmt -d scripts/*.sh; then
             echo ""
-            echo "::error::Scripts are not properly formatted. Run: shfmt -i 2 -ci -s -w scripts/*.sh"
+            echo "::error::Scripts are not properly formatted. Run: shfmt -w scripts/*.sh"
             exit 1
           fi
           echo "✓ All scripts are properly formatted"
