@@ -19,7 +19,7 @@ HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 HEX_NONE="7"
 MENU_BOX_WIDTH=60
-VERSION="2.0.241-pr.21"
+VERSION="2.0.242-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -1318,7 +1318,7 @@ log "ERROR: Template $remote_file corrupted - invalid shell script"
 return 1
 fi
 ;;
-*.conf|*.sources|*.service)if
+*.conf|*.sources|*.service|*.timer)if
 [[ $(wc -l <"$local_path" 2>/dev/null||echo 0) -lt 2 ]]
 then
 print_error "Template $remote_file appears corrupted (too short)"
