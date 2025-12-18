@@ -261,6 +261,13 @@ configure_system_services() {
   ) >/dev/null 2>&1 &
   show_progress $! "Configuring CPU governor (${governor})" "CPU governor configured"
 
+  # Configure I/O scheduler udev rules (NVMe: none, SSD: mq-deadline, HDD: bfq)
+  (
+    remote_copy "templates/60-io-scheduler.rules" "/etc/udev/rules.d/60-io-scheduler.rules"
+    remote_exec "udevadm control --reload-rules && udevadm trigger"
+  ) >/dev/null 2>&1 &
+  show_progress $! "Configuring I/O scheduler" "I/O scheduler configured"
+
   # Remove Proxmox subscription notice (only for non-enterprise)
   if [[ ${PVE_REPO_TYPE:-no-subscription} != "enterprise" ]]; then
     log "configure_system_services: removing subscription notice (non-enterprise)"
