@@ -19,7 +19,7 @@ HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 HEX_NONE="7"
 MENU_BOX_WIDTH=60
-VERSION="2.0.229-pr.21"
+VERSION="2.0.230-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -3137,6 +3137,13 @@ selected=$(echo "$iso_list"|_wiz_choose \
 }
 _edit_repository(){
 _wiz_start_edit
+_wiz_description \
+"Proxmox VE package repository:" \
+"" \
+"  {{cyan:No-subscription}}: Free updates, community tested" \
+"  {{cyan:Enterprise}}:      Stable updates, requires license" \
+"  {{cyan:Test}}:            Latest builds, may be unstable" \
+""
 _show_input_footer "filter" 4
 local selected
 selected=$(echo "$WIZ_REPO_TYPES"|_wiz_choose \
@@ -3175,6 +3182,13 @@ selected=$(echo "$available_interfaces"|_wiz_choose \
 }
 _edit_bridge_mode(){
 _wiz_start_edit
+_wiz_description \
+"Network bridge configuration for VMs:" \
+"" \
+"  {{cyan:External}}: VMs get public IPs directly (routed mode)" \
+"  {{cyan:Internal}}: Private network with NAT (10.x.x.x)" \
+"  {{cyan:Both}}:     External + Internal bridges" \
+""
 _show_input_footer "filter" 4
 local selected
 selected=$(echo "$WIZ_BRIDGE_MODES"|_wiz_choose \
@@ -3322,6 +3336,13 @@ fi
 }
 _edit_zfs_arc(){
 _wiz_start_edit
+_wiz_description \
+"ZFS Adaptive Replacement Cache (ARC) memory allocation:" \
+"" \
+"  {{cyan:VM-focused}}:      Fixed 4GB for ARC (more RAM for VMs)" \
+"  {{cyan:Balanced}}:        25-40% of RAM based on total size" \
+"  {{cyan:Storage-focused}}: 50% of RAM (maximize ZFS caching)" \
+""
 _show_input_footer "filter" 4
 local selected
 selected=$(echo "$WIZ_ZFS_ARC_MODES"|_wiz_choose \
@@ -3336,6 +3357,14 @@ fi
 }
 _edit_tailscale(){
 _wiz_start_edit
+_wiz_description \
+"Tailscale VPN with stealth mode:" \
+"" \
+"  {{cyan:Enabled}}:  Access via Tailscale only (blocks public SSH)" \
+"  {{cyan:Disabled}}: Standard access via public IP" \
+"" \
+"  Stealth mode blocks ALL incoming traffic on public IP." \
+""
 _show_input_footer "filter" 3
 local selected
 selected=$(echo -e "Disabled\nEnabled"|_wiz_choose \
@@ -3375,6 +3404,12 @@ esac
 }
 _edit_ssl(){
 _wiz_start_edit
+_wiz_description \
+"SSL certificate for Proxmox web interface:" \
+"" \
+"  {{cyan:Self-signed}}:   Works always, browser shows warning" \
+"  {{cyan:Let's Encrypt}}: Trusted cert, requires public DNS" \
+""
 _show_input_footer "filter" 3
 local selected
 selected=$(echo "$WIZ_SSL_TYPES"|_wiz_choose \
@@ -3482,6 +3517,15 @@ fi
 }
 _edit_power_profile(){
 _wiz_start_edit
+_wiz_description \
+"CPU frequency scaling governor:" \
+"" \
+"  {{cyan:Performance}}:  Max frequency always (highest power)" \
+"  {{cyan:Balanced}}:     Scale based on load (ondemand)" \
+"  {{cyan:Adaptive}}:     Kernel-managed scaling (schedutil)" \
+"  {{cyan:Power saving}}: Prefer low frequency (powersave)" \
+"  {{cyan:Conservative}}: Gradual frequency changes" \
+""
 _show_input_footer "filter" 6
 local selected
 selected=$(echo "$WIZ_CPU_GOVERNORS"|_wiz_choose \
@@ -3498,6 +3542,15 @@ fi
 }
 _edit_features(){
 _wiz_start_edit
+_wiz_description \
+"Optional features (use Space to toggle):" \
+"" \
+"  {{cyan:vnstat}}:     Network traffic monitoring" \
+"  {{cyan:auditd}}:     Security audit logging" \
+"  {{cyan:prometheus}}: Node exporter for metrics (port 9100)" \
+"  {{cyan:yazi}}:       Terminal file manager" \
+"  {{cyan:nvim}}:       Neovim as default editor" \
+""
 _show_input_footer "checkbox" 6
 local preselected=()
 [[ $INSTALL_VNSTAT == "yes" ]]&&preselected+=("vnstat")
