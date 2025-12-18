@@ -1,0 +1,12 @@
+[Unit]
+Description=Daily AIDE file integrity check
+Documentation=man:aide(1)
+
+[Timer]
+# Run daily at 5:00 AM
+OnCalendar=*-*-* 05:00:00
+RandomizedDelaySec=30min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

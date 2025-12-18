@@ -866,6 +866,7 @@ Conservative"
 readonly WIZ_OPTIONAL_FEATURES="vnstat (network stats)
 apparmor (mandatory access control)
 auditd (audit logging)
+aide (file integrity)
 prometheus (metrics exporter)
 yazi (file manager)
 nvim (text editor)"
@@ -987,6 +988,9 @@ FAIL2BAN_INSTALLED=""
 # Auditd installation setting (yes/no, default: no)
 INSTALL_AUDITD=""
 
+# AIDE file integrity monitoring (yes/no, default: no)
+INSTALL_AIDE=""
+
 # AppArmor installation setting (yes/no, default: no)
 INSTALL_APPARMOR=""
 
@@ -999,6 +1003,10 @@ ZFS_ARC_MODE=""
 # Auditd installation flag (set by configure_auditd)
 # shellcheck disable=SC2034
 AUDITD_INSTALLED=""
+
+# AIDE installation flag (set by configure_aide)
+# shellcheck disable=SC2034
+AIDE_INSTALLED=""
 
 # AppArmor installation flag (set by configure_apparmor)
 # shellcheck disable=SC2034

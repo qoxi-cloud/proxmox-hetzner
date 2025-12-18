@@ -122,6 +122,7 @@ configure_proxmox_via_ssh() {
   configure_apparmor
   configure_fail2ban
   configure_auditd
+  configure_aide
   configure_prometheus
   configure_yazi
   configure_nvim
