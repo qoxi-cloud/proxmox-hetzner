@@ -19,7 +19,7 @@ HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 HEX_NONE="7"
 MENU_BOX_WIDTH=60
-VERSION="2.0.223-pr.21"
+VERSION="2.0.227-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -1452,10 +1452,6 @@ SSH_KEY_SHORT="$SSH_KEY_DATA"
 fi
 return 0
 }
-validate_ssh_key(){
-local key="$1"
-[[ $key =~ ^ssh-(rsa|ed25519|ecdsa)[[:space:]] ]]
-}
 get_rescue_ssh_key(){
 if [[ -f /root/.ssh/authorized_keys ]];then
 grep -E "^ssh-(rsa|ed25519|ecdsa)" /root/.ssh/authorized_keys 2>/dev/null|head -1
@@ -1616,6 +1612,156 @@ fi
 done
 echo "" >&2
 echo "$password"
+}
+validate_zfs_raid_disk_count(){
+local raid_type="$1"
+local disk_count="$2"
+case "$raid_type" in
+single)if
+[[ $disk_count -ne 1 ]]
+then
+log "WARNING: Single disk RAID expects 1 disk, have $disk_count"
+return 2
+fi
+;;
+raid0)
+;;
+raid1)if
+[[ $disk_count -lt 2 ]]
+then
+log "ERROR: RAID1 requires at least 2 disks, have $disk_count"
+return 1
+fi
+;;
+raidz1)if
+[[ $disk_count -lt 3 ]]
+then
+log "WARNING: RAIDZ1 recommended for 3+ disks, have $disk_count"
+return 2
+fi
+;;
+raidz2)if
+[[ $disk_count -lt 4 ]]
+then
+log "WARNING: RAIDZ2 recommended for 4+ disks, have $disk_count"
+return 2
+fi
+;;
+raidz3)if
+[[ $disk_count -lt 5 ]]
+then
+log "WARNING: RAIDZ3 recommended for 5+ disks, have $disk_count"
+return 2
+fi
+;;
+raid10)if
+[[ $disk_count -lt 4 ]]||[[ $((disk_count%2)) -ne 0 ]]
+then
+log "ERROR: RAID10 requires even number of disks (min 4), have $disk_count"
+return 1
+fi
+;;
+*)log "ERROR: Unknown RAID type: $raid_type"
+return 1
+esac
+return 0
+}
+load_virtio_mapping(){
+declare -g -A VIRTIO_MAP
+if [[ -f /tmp/virtio_map.env ]];then
+source /tmp/virtio_map.env
+return 0
+else
+log "WARNING: VIRTIO_MAP file not found at /tmp/virtio_map.env"
+return 1
+fi
+}
+map_disks_to_virtio(){
+local format="$1"
+shift
+local disks=("$@")
+if [[ ${#disks[@]} -eq 0 ]];then
+log "ERROR: No disks provided to map_disks_to_virtio"
+return 1
+fi
+local vdevs=()
+for disk in "${disks[@]}";do
+local vdev="${VIRTIO_MAP[$disk]}"
+if [[ -z $vdev ]];then
+log "ERROR: No virtio mapping for disk $disk"
+return 1
+fi
+vdevs+=("/dev/$vdev")
+done
+case "$format" in
+toml_array)local result="["
+for i in "${!vdevs[@]}";do
+local short_name="${vdevs[$i]#/dev/}"
+result+="\"$short_name\""
+[[ $i -lt $((${#vdevs[@]}-1)) ]]&&result+=", "
+done
+result+="]"
+echo "$result"
+;;
+bash_array)echo "(${vdevs[*]})"
+;;
+space_separated)echo "${vdevs[*]}"
+;;
+*)log "ERROR: Unknown format: $format"
+return 1
+esac
+}
+build_zpool_command(){
+local pool_name="$1"
+local raid_type="$2"
+shift 2
+local vdevs=("$@")
+if [[ -z $pool_name ]];then
+log "ERROR: Pool name not provided"
+return 1
+fi
+if [[ ${#vdevs[@]} -eq 0 ]];then
+log "ERROR: No vdevs provided to build_zpool_command"
+return 1
+fi
+local cmd="zpool create -f $pool_name"
+case "$raid_type" in
+single)cmd+=" ${vdevs[0]}"
+;;
+raid0)cmd+=" ${vdevs[*]}"
+;;
+raid1)cmd+=" mirror ${vdevs[*]}"
+;;
+raidz1)cmd+=" raidz ${vdevs[*]}"
+;;
+raidz2)cmd+=" raidz2 ${vdevs[*]}"
+;;
+raidz3)cmd+=" raidz3 ${vdevs[*]}"
+;;
+raid10)local vdev_count=${#vdevs[@]}
+for ((i=0; i<vdev_count; i+=2));do
+cmd+=" mirror ${vdevs[$i]} ${vdevs[$((i+1))]}"
+done
+;;
+*)log "ERROR: Unknown RAID type: $raid_type"
+return 1
+esac
+echo "$cmd"
+}
+map_raid_to_toml(){
+local raid="$1"
+case "$raid" in
+single)echo "raid0";;
+raid0)echo "raid0";;
+raid1)echo "raid1";;
+raidz1)echo "raidz-1";;
+raidz2)echo "raidz-2";;
+raidz3)echo "raidz-3";;
+raid5)echo "raidz-1";;
+raid10)echo "raid10";;
+*)log "WARNING: Unknown RAID type '$raid', defaulting to raid0"
+echo "raid0"
+esac
 }
 show_validation_error(){
 local message="$1"
@@ -1824,7 +1970,7 @@ log "ERROR: Failed to resolve $fqdn after $max_attempts attempts"
 DNS_RESOLVED_IP=""
 return 1
 }
-validate_ssh_key(){
+validate_ssh_key_secure(){
 local key="$1"
 if ! echo "$key"|ssh-keygen -l -f - >/dev/null 2>&1;then
 log "ERROR: Invalid SSH public key format"
@@ -3429,7 +3575,7 @@ else
 return
 fi
 fi
-if validate_ssh_key "$new_key";then
+if validate_ssh_key_secure "$new_key";then
 SSH_PUBLIC_KEY="$new_key"
 break
 else
@@ -3813,9 +3959,9 @@ make_answer_toml(){
 log "Creating answer.toml for autoinstall"
 log "ZFS_RAID=$ZFS_RAID, BOOT_DISK=$BOOT_DISK"
 log "ZFS_POOL_DISKS=(${ZFS_POOL_DISKS[*]})"
-declare -A VIRTIO_MAP
-if [[ -f /tmp/virtio_map.env ]];then
-source /tmp/virtio_map.env
+if ! load_virtio_mapping;then
+log "ERROR: Failed to load virtio mapping"
+exit 1
 fi
 local FILESYSTEM
 local all_disks=()
@@ -3830,42 +3976,13 @@ log "Boot disk mode: ext4 on boot disk, ZFS 'tank' pool will be created from ${#
 else
 FILESYSTEM="zfs"
 all_disks=("${ZFS_POOL_DISKS[@]}")
-local disk_count=${#all_disks[@]}
-case "$ZFS_RAID" in
-single)if
-[[ $disk_count -ne 1 ]]
-then
-log "WARNING: Single disk RAID requires exactly 1 disk, have $disk_count"
+log "All-ZFS mode: ${#all_disks[@]} disk(s) in ZFS rpool ($ZFS_RAID)"
 fi
-;;
-raid1)if
-[[ $disk_count -lt 2 ]]
-then
-log "ERROR: RAID1 requires at least 2 disks, have $disk_count"
+DISK_LIST=$(map_disks_to_virtio "toml_array" "${all_disks[@]}")
+if [[ -z $DISK_LIST ]];then
+log "ERROR: Failed to map disks to virtio devices"
 exit 1
 fi
-;;
-raid10)if
-[[ $disk_count -lt 4 ]]||[[ $((disk_count%2)) -ne 0 ]]
-then
-log "ERROR: RAID10 requires even number of disks (min 4), have $disk_count"
-exit 1
-fi
-esac
-log "All-ZFS mode: $disk_count disk(s) in ZFS rpool ($ZFS_RAID)"
-fi
-DISK_LIST="["
-for i in "${!all_disks[@]}";do
-local phys_disk="${all_disks[$i]}"
-local vdev="${VIRTIO_MAP[$phys_disk]}"
-if [[ -z $vdev ]];then
-log "ERROR: No virtio mapping for $phys_disk"
-exit 1
-fi
-DISK_LIST+="\"/dev/$vdev\""
-[[ $i -lt $((${#all_disks[@]}-1)) ]]&&DISK_LIST+=", "
-done
-DISK_LIST+="]"
 log "FILESYSTEM=$FILESYSTEM, DISK_LIST=$DISK_LIST"
 log "Generating answer.toml for autoinstall"
 local ssh_keys_toml=""
@@ -3900,17 +4017,7 @@ cat >>./answer.toml <<EOF
 EOF
 if [[ $FILESYSTEM == "zfs" ]];then
 local zfs_raid_value
-case "$ZFS_RAID" in
-single)zfs_raid_value="raid0";;
-raid0)zfs_raid_value="raid0";;
-raid1)zfs_raid_value="raid1";;
-raidz1)zfs_raid_value="raidz-1";;
-raidz2)zfs_raid_value="raidz-2";;
-raidz3)zfs_raid_value="raidz-3";;
-raid5)zfs_raid_value="raidz-1";;
-raid10)zfs_raid_value="raid10";;
-*)zfs_raid_value="raid0"
-esac
+zfs_raid_value=$(map_raid_to_toml "$ZFS_RAID")
 log "Using ZFS raid: $zfs_raid_value"
 cat >>./answer.toml <<EOF
     zfs.raid = "$zfs_raid_value"
@@ -4886,85 +4993,24 @@ log "INFO: BOOT_DISK not set, skipping separate ZFS pool creation (all-ZFS mode)
 return 0
 fi
 log "INFO: Creating separate ZFS pool 'tank' from pool disks"
-declare -A VIRTIO_MAP
-if [[ -f /tmp/virtio_map.env ]];then
-source /tmp/virtio_map.env
-else
-log "ERROR: VIRTIO_MAP not found, cannot map pool disks"
+if ! load_virtio_mapping;then
+log "ERROR: Failed to load virtio mapping"
 return 1
 fi
-local vdevs=()
-for disk in "${ZFS_POOL_DISKS[@]}";do
-local vdev="${VIRTIO_MAP[$disk]}"
-if [[ -z $vdev ]];then
-log "ERROR: No virtio mapping for pool disk $disk"
+local vdevs_str
+vdevs_str=$(map_disks_to_virtio "space_separated" "${ZFS_POOL_DISKS[@]}")
+if [[ -z $vdevs_str ]];then
+log "ERROR: Failed to map pool disks to virtio devices"
 return 1
 fi
-vdevs+=("/dev/$vdev")
-done
+read -ra vdevs <<<"$vdevs_str"
 log "INFO: Pool disks: ${vdevs[*]} (RAID: $ZFS_RAID)"
-local vdev_count=${#vdevs[@]}
-case "$ZFS_RAID" in
-single)if
-[[ $vdev_count -ne 1 ]]
-then
-log "WARNING: Single disk RAID expects 1 disk, have $vdev_count"
-fi
-;;
-raid1)if
-[[ $vdev_count -lt 2 ]]
-then
-log "ERROR: RAID1 requires at least 2 disks, have $vdev_count"
+local pool_cmd
+pool_cmd=$(build_zpool_command "tank" "$ZFS_RAID" "${vdevs[@]}")
+if [[ -z $pool_cmd ]];then
+log "ERROR: Failed to build zpool create command"
 return 1
 fi
-;;
-raidz1)if
-[[ $vdev_count -lt 3 ]]
-then
-log "WARNING: RAIDZ1 recommended for 3+ disks, have $vdev_count"
-fi
-;;
-raidz2)if
-[[ $vdev_count -lt 4 ]]
-then
-log "WARNING: RAIDZ2 recommended for 4+ disks, have $vdev_count"
-fi
-;;
-raidz3)if
-[[ $vdev_count -lt 5 ]]
-then
-log "WARNING: RAIDZ3 recommended for 5+ disks, have $vdev_count"
-fi
-;;
-raid10)if
-[[ $vdev_count -lt 4 ]]||[[ $((vdev_count%2)) -ne 0 ]]
-then
-log "ERROR: RAID10 requires even number of disks (min 4), have $vdev_count"
-return 1
-fi
-esac
-local pool_cmd="zpool create -f tank"
-case "$ZFS_RAID" in
-single)pool_cmd+=" ${vdevs[0]}"
-;;
-raid0)pool_cmd+=" ${vdevs[*]}"
-;;
-raid1)pool_cmd+=" mirror ${vdevs[*]}"
-;;
-raidz1)pool_cmd+=" raidz ${vdevs[*]}"
-;;
-raidz2)pool_cmd+=" raidz2 ${vdevs[*]}"
-;;
-raidz3)pool_cmd+=" raidz3 ${vdevs[*]}"
-;;
-raid10)pool_cmd+=""
-for ((i=0; i<vdev_count; i+=2));do
-pool_cmd+=" mirror ${vdevs[$i]} ${vdevs[$((i+1))]}"
-done
-;;
-*)log "ERROR: Unknown ZFS_RAID type: $ZFS_RAID"
-return 1
-esac
 log "INFO: ZFS pool command: $pool_cmd"
 if ! run_remote "Creating ZFS pool 'tank'" "
     set -e
