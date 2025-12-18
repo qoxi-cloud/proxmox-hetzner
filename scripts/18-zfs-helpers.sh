@@ -90,8 +90,8 @@ create_virtio_mapping() {
     ((virtio_idx++))
   done
 
-  # Export mapping to file
-  declare -p VIRTIO_MAP >/tmp/virtio_map.env
+  # Export mapping to file (use -gA so it creates global when sourced)
+  declare -p VIRTIO_MAP | sed 's/declare -A/declare -gA/' >/tmp/virtio_map.env
   log "Virtio mapping saved to /tmp/virtio_map.env"
 }
 
@@ -100,8 +100,6 @@ create_virtio_mapping() {
 # Sets global VIRTIO_MAP associative array.
 # Returns: 0 on success, 1 on failure
 load_virtio_mapping() {
-  declare -g -A VIRTIO_MAP
-
   # Create mapping if file doesn't exist
   if [[ ! -f /tmp/virtio_map.env ]]; then
     create_virtio_mapping
