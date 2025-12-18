@@ -367,11 +367,20 @@ make_answer_toml() {
   log "ZFS_RAID=$ZFS_RAID, BOOT_DISK=$BOOT_DISK"
   log "ZFS_POOL_DISKS=(${ZFS_POOL_DISKS[*]})"
 
-  # Load virtio mapping from QEMU setup
-  if ! load_virtio_mapping; then
+  # Load virtio mapping (creates if not exists)
+  (
+    if ! load_virtio_mapping; then
+      log "ERROR: Failed to load virtio mapping"
+      exit 1
+    fi
+  ) &
+  show_progress $! "Creating disk mapping" "Disk mapping created"
+
+  # Reload in main process
+  load_virtio_mapping || {
     log "ERROR: Failed to load virtio mapping"
     exit 1
-  fi
+  }
 
   # Determine filesystem and disk list based on BOOT_DISK mode:
   # - BOOT_DISK set: ext4 on boot disk only, ZFS pool created post-install
@@ -486,6 +495,14 @@ EOF
 
   log "answer.toml created and validated:"
   cat answer.toml >>"$LOG_FILE"
+
+  # Add subtasks for live log display
+  if type live_log_subtask &>/dev/null 2>&1; then
+    local total_disks=${#ZFS_POOL_DISKS[@]}
+    [[ -n $BOOT_DISK ]] && ((total_disks++))
+    live_log_subtask "Mapped $total_disks disk(s) to virtio"
+    live_log_subtask "Generated answer.toml ($FILESYSTEM)"
+  fi
 }
 
 # Creates autoinstall ISO from Proxmox ISO and answer.toml.
@@ -518,8 +535,7 @@ make_autoinstall_iso() {
 
   # Add live log subtasks after completion
   if type live_log_subtask &>/dev/null 2>&1; then
-    live_log_subtask "Creating answer.toml"
-    live_log_subtask "Packing ISO with xorriso"
+    live_log_subtask "Packed ISO with xorriso"
   fi
 
   # Remove original ISO to save disk space (only autoinstall ISO is needed)

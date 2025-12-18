@@ -60,36 +60,23 @@ setup_qemu_config() {
 
   log "QEMU config: $QEMU_CORES vCPUs, ${QEMU_RAM}MB RAM"
 
-  # Drive configuration - map boot first, then pool disks
-  DRIVE_ARGS=""
-  local virtio_idx=0
-  declare -A VIRTIO_MAP
+  # Create/load virtio mapping (shared with make_answer_toml)
+  load_virtio_mapping
 
-  # Virtio device names: vda, vdb, vdc, ...
-  local vdev_letters=(a b c d e f g h i j k l m n o p q r s t u v w x y z)
+  # Build DRIVE_ARGS from virtio mapping
+  DRIVE_ARGS=""
 
   # Add boot disk first (if separate)
   if [[ -n $BOOT_DISK ]]; then
-    local vdev="vd${vdev_letters[$virtio_idx]}"
     DRIVE_ARGS="$DRIVE_ARGS -drive file=$BOOT_DISK,format=raw,media=disk,if=virtio"
-    VIRTIO_MAP["$BOOT_DISK"]="$vdev"
-    log "Mapped $BOOT_DISK → /dev/$vdev (boot)"
-    ((virtio_idx++))
   fi
 
   # Add pool disks
   for drive in "${ZFS_POOL_DISKS[@]}"; do
-    local vdev="vd${vdev_letters[$virtio_idx]}"
     DRIVE_ARGS="$DRIVE_ARGS -drive file=$drive,format=raw,media=disk,if=virtio"
-    VIRTIO_MAP["$drive"]="$vdev"
-    log "Mapped $drive → /dev/$vdev (pool)"
-    ((virtio_idx++))
   done
 
   log "Drive args: $DRIVE_ARGS"
-
-  # Export mapping for answer.toml
-  declare -p VIRTIO_MAP >/tmp/virtio_map.env
 }
 
 # =============================================================================

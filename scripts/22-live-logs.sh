@@ -153,6 +153,10 @@ live_log_iso_download() {
   live_log_section "Proxmox ISO Download"
 }
 
+live_log_autoinstall_preparation() {
+  live_log_section "Autoinstall Preparation"
+}
+
 live_log_proxmox_installation() {
   live_log_section "Proxmox Installation"
 }

@@ -156,6 +156,12 @@ live_log_iso_download
 
 log "Step: download_proxmox_iso"
 download_proxmox_iso
+
+# ============================================================================
+# Autoinstall Preparation
+# ============================================================================
+live_log_autoinstall_preparation
+
 log "Step: make_answer_toml"
 make_answer_toml
 log "Step: make_autoinstall_iso"
