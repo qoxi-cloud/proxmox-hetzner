@@ -56,3 +56,33 @@ configure_zfs_arc() {
 
   log "INFO: ZFS ARC memory limit configured: ${arc_max_mb}MB"
 }
+
+# =============================================================================
+# Configure ZFS scrub scheduling
+# =============================================================================
+
+configure_zfs_scrub() {
+  log "INFO: Configuring ZFS scrub schedule"
+
+  # Deploy systemd service and timer templates
+  deploy_template "zfs-scrub.service" "/etc/systemd/system/zfs-scrub@.service"
+  deploy_template "zfs-scrub.timer" "/etc/systemd/system/zfs-scrub@.timer"
+
+  run_remote "Enabling ZFS scrub timers" "
+    systemctl daemon-reload
+
+    # Enable scrub timer for rpool (boot/system pool)
+    if zpool list rpool &>/dev/null; then
+      systemctl enable --now zfs-scrub@rpool.timer
+      echo 'Enabled scrub timer for rpool'
+    fi
+
+    # Enable scrub timer for tank (data pool) if exists
+    if zpool list tank &>/dev/null; then
+      systemctl enable --now zfs-scrub@tank.timer
+      echo 'Enabled scrub timer for tank'
+    fi
+  "
+
+  log "INFO: ZFS scrub schedule configured (monthly, 1st Sunday at 2:00 AM)"
+}

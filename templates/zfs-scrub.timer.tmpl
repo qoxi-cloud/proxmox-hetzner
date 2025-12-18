@@ -1,0 +1,12 @@
+[Unit]
+Description=Monthly ZFS scrub on %i
+Documentation=man:zpool-scrub(8)
+
+[Timer]
+# Run on 1st Sunday of each month at 2:00 AM
+OnCalendar=Sun *-*-1..7 02:00:00
+RandomizedDelaySec=1h
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -110,6 +110,7 @@ configure_proxmox_via_ssh() {
   configure_base_system
   configure_zfs_arc
   configure_zfs_pool
+  configure_zfs_scrub
   configure_shell
   configure_system_services
 
