@@ -19,7 +19,7 @@ HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 HEX_NONE="7"
 MENU_BOX_WIDTH=60
-VERSION="2.0.251-pr.21"
+VERSION="2.0.252-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -4815,6 +4815,10 @@ remote_exec "
         ") > \
 /dev/null 2>&1&
 show_progress $! "Configuring CPU governor ($governor)" "CPU governor configured"
+(remote_copy "templates/60-io-scheduler.rules" "/etc/udev/rules.d/60-io-scheduler.rules"
+remote_exec "udevadm control --reload-rules && udevadm trigger") > \
+/dev/null 2>&1&
+show_progress $! "Configuring I/O scheduler" "I/O scheduler configured"
 if [[ ${PVE_REPO_TYPE:-no-subscription} != "enterprise" ]];then
 log "configure_system_services: removing subscription notice (non-enterprise)"
 (remote_copy "templates/remove-subscription-nag.sh" "/tmp/remove-subscription-nag.sh"
