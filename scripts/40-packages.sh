@@ -452,6 +452,10 @@ make_answer_toml() {
     ssh_keys_toml="root-ssh-keys = [\"$escaped_key\"]"
   fi
 
+  # Escape password for TOML (critical for user-entered passwords)
+  local escaped_password="${NEW_ROOT_PASSWORD//\\/\\\\}"  # Escape backslashes first
+  escaped_password="${escaped_password//\"/\\\"}"          # Then escape quotes
+
   # Generate [global] section
   # IMPORTANT: Use kebab-case for all keys (root-password, reboot-on-error)
   cat >./answer.toml <<EOF
@@ -461,7 +465,7 @@ make_answer_toml() {
     fqdn = "$FQDN"
     mailto = "$EMAIL"
     timezone = "$TIMEZONE"
-    root-password = "$NEW_ROOT_PASSWORD"
+    root-password = "$escaped_password"
     reboot-on-error = false
 EOF
 
