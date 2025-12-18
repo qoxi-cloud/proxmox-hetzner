@@ -1,0 +1,34 @@
+# Netdata configuration
+# Web interface available at http://hostname:19999
+
+[global]
+    # Run as netdata user
+    run as user = netdata
+
+    # Memory mode: ram (faster) or dbengine (persistent)
+    memory mode = dbengine
+
+    # Data retention (seconds) - 7 days
+    history = 604800
+
+[web]
+    # Bind to localhost only by default (use reverse proxy for external access)
+    # Change to 0.0.0.0 to allow external connections
+    bind to = 127.0.0.1
+
+    # Default port
+    default port = 19999
+
+[plugins]
+    # Enable common plugins
+    proc = yes
+    diskspace = yes
+    cgroups = yes
+    tc = no
+
+[plugin:proc]
+    # Monitor network interfaces
+    /proc/net/dev = yes
+
+    # Monitor disk I/O
+    /proc/diskstats = yes

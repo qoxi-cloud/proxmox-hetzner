@@ -267,13 +267,14 @@ _edit_features() {
     "  {{cyan:chkrootkit}}:  Weekly rootkit scanning" \
     "  {{cyan:lynis}}:       Weekly security auditing" \
     "  {{cyan:needrestart}}: Auto-restart services after updates" \
+    "  {{cyan:netdata}}:     Real-time monitoring (port 19999)" \
     "  {{cyan:prometheus}}:  Node exporter for metrics (port 9100)" \
     "  {{cyan:yazi}}:        Terminal file manager" \
     "  {{cyan:nvim}}:        Neovim as default editor" \
     ""
 
-  # 1 header + 10 items for multi-select checkbox
-  _show_input_footer "checkbox" 11
+  # 1 header + 11 items for multi-select checkbox
+  _show_input_footer "checkbox" 12
 
   # Build pre-selected items based on current configuration
   local preselected=()
@@ -284,6 +285,7 @@ _edit_features() {
   [[ $INSTALL_CHKROOTKIT == "yes" ]] && preselected+=("chkrootkit")
   [[ $INSTALL_LYNIS == "yes" ]] && preselected+=("lynis")
   [[ $INSTALL_NEEDRESTART == "yes" ]] && preselected+=("needrestart")
+  [[ $INSTALL_NETDATA == "yes" ]] && preselected+=("netdata")
   [[ $INSTALL_PROMETHEUS == "yes" ]] && preselected+=("prometheus")
   [[ $INSTALL_YAZI == "yes" ]] && preselected+=("yazi")
   [[ $INSTALL_NVIM == "yes" ]] && preselected+=("nvim")
@@ -318,6 +320,7 @@ _edit_features() {
   INSTALL_CHKROOTKIT="no"
   INSTALL_LYNIS="no"
   INSTALL_NEEDRESTART="no"
+  INSTALL_NETDATA="no"
   INSTALL_PROMETHEUS="no"
   INSTALL_YAZI="no"
   INSTALL_NVIM="no"
@@ -341,6 +344,9 @@ _edit_features() {
   fi
   if echo "$selected" | grep -q "needrestart"; then
     INSTALL_NEEDRESTART="yes"
+  fi
+  if echo "$selected" | grep -q "netdata"; then
+    INSTALL_NETDATA="yes"
   fi
   if echo "$selected" | grep -q "prometheus"; then
     INSTALL_PROMETHEUS="yes"

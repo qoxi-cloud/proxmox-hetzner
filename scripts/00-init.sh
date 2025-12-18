@@ -870,6 +870,7 @@ aide (file integrity)
 chkrootkit (rootkit scanner)
 lynis (security audit)
 needrestart (auto service restart)
+netdata (real-time monitoring)
 prometheus (metrics exporter)
 yazi (file manager)
 nvim (text editor)"
@@ -1031,6 +1032,13 @@ INSTALL_NEEDRESTART=""
 # needrestart installation flag (set by configure_needrestart)
 # shellcheck disable=SC2034
 NEEDRESTART_INSTALLED=""
+
+# Netdata real-time monitoring (yes/no, default: no)
+INSTALL_NETDATA=""
+
+# Netdata installation flag (set by configure_netdata)
+# shellcheck disable=SC2034
+NETDATA_INSTALLED=""
 
 # AppArmor installation flag (set by configure_apparmor)
 # shellcheck disable=SC2034
