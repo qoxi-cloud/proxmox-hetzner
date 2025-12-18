@@ -19,7 +19,7 @@ HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 HEX_NONE="7"
 MENU_BOX_WIDTH=60
-VERSION="2.0.250-pr.21"
+VERSION="2.0.251-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -5616,7 +5616,12 @@ run_remote "Installing netdata" '
   ' "netdata installed"
 }
 _config_netdata(){
-deploy_template "netdata.conf" "/etc/netdata/netdata.conf"
+local bind_to="127.0.0.1"
+if [[ $INSTALL_TAILSCALE == "yes" ]];then
+bind_to="127.0.0.1 100.*"
+fi
+export NETDATA_BIND_TO="$bind_to"
+deploy_template "netdata.conf" "/etc/netdata/netdata.conf" NETDATA_BIND_TO
 remote_exec '
     # Enable and start netdata service
     systemctl daemon-reload
