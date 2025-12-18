@@ -19,7 +19,7 @@ HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 HEX_NONE="7"
 MENU_BOX_WIDTH=60
-VERSION="2.0.253-pr.21"
+VERSION="2.0.256-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -50,426 +50,6 @@ DEFAULT_PASSWORD_LENGTH=16
 QEMU_MIN_RAM_RESERVE=2048
 DNS_LOOKUP_TIMEOUT=5
 DNS_RETRY_DELAY=10
-readonly WIZ_TIMEZONES="Africa/Abidjan
-Africa/Accra
-Africa/Addis_Ababa
-Africa/Algiers
-Africa/Asmara
-Africa/Bamako
-Africa/Bangui
-Africa/Banjul
-Africa/Bissau
-Africa/Blantyre
-Africa/Brazzaville
-Africa/Bujumbura
-Africa/Cairo
-Africa/Casablanca
-Africa/Ceuta
-Africa/Conakry
-Africa/Dakar
-Africa/Dar_es_Salaam
-Africa/Djibouti
-Africa/Douala
-Africa/El_Aaiun
-Africa/Freetown
-Africa/Gaborone
-Africa/Harare
-Africa/Johannesburg
-Africa/Juba
-Africa/Kampala
-Africa/Khartoum
-Africa/Kigali
-Africa/Kinshasa
-Africa/Lagos
-Africa/Libreville
-Africa/Lome
-Africa/Luanda
-Africa/Lubumbashi
-Africa/Lusaka
-Africa/Malabo
-Africa/Maputo
-Africa/Maseru
-Africa/Mbabane
-Africa/Mogadishu
-Africa/Monrovia
-Africa/Nairobi
-Africa/Ndjamena
-Africa/Niamey
-Africa/Nouakchott
-Africa/Ouagadougou
-Africa/Porto-Novo
-Africa/Sao_Tome
-Africa/Tripoli
-Africa/Tunis
-Africa/Windhoek
-America/Adak
-America/Anchorage
-America/Anguilla
-America/Antigua
-America/Araguaina
-America/Argentina/Buenos_Aires
-America/Argentina/Catamarca
-America/Argentina/Cordoba
-America/Argentina/Jujuy
-America/Argentina/La_Rioja
-America/Argentina/Mendoza
-America/Argentina/Rio_Gallegos
-America/Argentina/Salta
-America/Argentina/San_Juan
-America/Argentina/San_Luis
-America/Argentina/Tucuman
-America/Argentina/Ushuaia
-America/Aruba
-America/Asuncion
-America/Atikokan
-America/Bahia
-America/Bahia_Banderas
-America/Barbados
-America/Belem
-America/Belize
-America/Blanc-Sablon
-America/Boa_Vista
-America/Bogota
-America/Boise
-America/Cambridge_Bay
-America/Campo_Grande
-America/Cancun
-America/Caracas
-America/Cayenne
-America/Cayman
-America/Chicago
-America/Chihuahua
-America/Ciudad_Juarez
-America/Costa_Rica
-America/Creston
-America/Cuiaba
-America/Curacao
-America/Danmarkshavn
-America/Dawson
-America/Dawson_Creek
-America/Denver
-America/Detroit
-America/Dominica
-America/Edmonton
-America/Eirunepe
-America/El_Salvador
-America/Fort_Nelson
-America/Fortaleza
-America/Glace_Bay
-America/Goose_Bay
-America/Grand_Turk
-America/Grenada
-America/Guadeloupe
-America/Guatemala
-America/Guayaquil
-America/Guyana
-America/Halifax
-America/Havana
-America/Hermosillo
-America/Indiana/Indianapolis
-America/Indiana/Knox
-America/Indiana/Marengo
-America/Indiana/Petersburg
-America/Indiana/Tell_City
-America/Indiana/Vevay
-America/Indiana/Vincennes
-America/Indiana/Winamac
-America/Inuvik
-America/Iqaluit
-America/Jamaica
-America/Juneau
-America/Kentucky/Louisville
-America/Kentucky/Monticello
-America/Kralendijk
-America/La_Paz
-America/Lima
-America/Los_Angeles
-America/Lower_Princes
-America/Maceio
-America/Managua
-America/Manaus
-America/Marigot
-America/Martinique
-America/Matamoros
-America/Mazatlan
-America/Menominee
-America/Merida
-America/Metlakatla
-America/Mexico_City
-America/Miquelon
-America/Moncton
-America/Monterrey
-America/Montevideo
-America/Montserrat
-America/Nassau
-America/New_York
-America/Nome
-America/Noronha
-America/North_Dakota/Beulah
-America/North_Dakota/Center
-America/North_Dakota/New_Salem
-America/Nuuk
-America/Ojinaga
-America/Panama
-America/Paramaribo
-America/Phoenix
-America/Port-au-Prince
-America/Port_of_Spain
-America/Porto_Velho
-America/Puerto_Rico
-America/Punta_Arenas
-America/Rankin_Inlet
-America/Recife
-America/Regina
-America/Resolute
-America/Rio_Branco
-America/Santarem
-America/Santiago
-America/Santo_Domingo
-America/Sao_Paulo
-America/Scoresbysund
-America/Sitka
-America/St_Barthelemy
-America/St_Johns
-America/St_Kitts
-America/St_Lucia
-America/St_Thomas
-America/St_Vincent
-America/Swift_Current
-America/Tegucigalpa
-America/Thule
-America/Tijuana
-America/Toronto
-America/Tortola
-America/Vancouver
-America/Whitehorse
-America/Winnipeg
-America/Yakutat
-Antarctica/Casey
-Antarctica/Davis
-Antarctica/DumontDUrville
-Antarctica/Macquarie
-Antarctica/Mawson
-Antarctica/McMurdo
-Antarctica/Palmer
-Antarctica/Rothera
-Antarctica/Syowa
-Antarctica/Troll
-Antarctica/Vostok
-Arctic/Longyearbyen
-Asia/Aden
-Asia/Almaty
-Asia/Amman
-Asia/Anadyr
-Asia/Aqtau
-Asia/Aqtobe
-Asia/Ashgabat
-Asia/Atyrau
-Asia/Baghdad
-Asia/Bahrain
-Asia/Baku
-Asia/Bangkok
-Asia/Barnaul
-Asia/Beirut
-Asia/Bishkek
-Asia/Brunei
-Asia/Chita
-Asia/Choibalsan
-Asia/Colombo
-Asia/Damascus
-Asia/Dhaka
-Asia/Dili
-Asia/Dubai
-Asia/Dushanbe
-Asia/Famagusta
-Asia/Gaza
-Asia/Hebron
-Asia/Ho_Chi_Minh
-Asia/Hong_Kong
-Asia/Hovd
-Asia/Irkutsk
-Asia/Istanbul
-Asia/Jakarta
-Asia/Jayapura
-Asia/Jerusalem
-Asia/Kabul
-Asia/Kamchatka
-Asia/Karachi
-Asia/Kathmandu
-Asia/Khandyga
-Asia/Kolkata
-Asia/Krasnoyarsk
-Asia/Kuala_Lumpur
-Asia/Kuching
-Asia/Kuwait
-Asia/Macau
-Asia/Magadan
-Asia/Makassar
-Asia/Manila
-Asia/Muscat
-Asia/Nicosia
-Asia/Novokuznetsk
-Asia/Novosibirsk
-Asia/Omsk
-Asia/Oral
-Asia/Phnom_Penh
-Asia/Pontianak
-Asia/Pyongyang
-Asia/Qatar
-Asia/Qostanay
-Asia/Qyzylorda
-Asia/Riyadh
-Asia/Sakhalin
-Asia/Samarkand
-Asia/Seoul
-Asia/Shanghai
-Asia/Singapore
-Asia/Srednekolymsk
-Asia/Taipei
-Asia/Tashkent
-Asia/Tbilisi
-Asia/Tehran
-Asia/Thimphu
-Asia/Tokyo
-Asia/Tomsk
-Asia/Ulaanbaatar
-Asia/Urumqi
-Asia/Ust-Nera
-Asia/Vientiane
-Asia/Vladivostok
-Asia/Yakutsk
-Asia/Yangon
-Asia/Yekaterinburg
-Asia/Yerevan
-Atlantic/Azores
-Atlantic/Bermuda
-Atlantic/Canary
-Atlantic/Cape_Verde
-Atlantic/Faroe
-Atlantic/Madeira
-Atlantic/Reykjavik
-Atlantic/South_Georgia
-Atlantic/St_Helena
-Atlantic/Stanley
-Australia/Adelaide
-Australia/Brisbane
-Australia/Broken_Hill
-Australia/Darwin
-Australia/Eucla
-Australia/Hobart
-Australia/Lindeman
-Australia/Lord_Howe
-Australia/Melbourne
-Australia/Perth
-Australia/Sydney
-Europe/Amsterdam
-Europe/Andorra
-Europe/Astrakhan
-Europe/Athens
-Europe/Belgrade
-Europe/Berlin
-Europe/Bratislava
-Europe/Brussels
-Europe/Bucharest
-Europe/Budapest
-Europe/Busingen
-Europe/Chisinau
-Europe/Copenhagen
-Europe/Dublin
-Europe/Gibraltar
-Europe/Guernsey
-Europe/Helsinki
-Europe/Isle_of_Man
-Europe/Istanbul
-Europe/Jersey
-Europe/Kaliningrad
-Europe/Kirov
-Europe/Kyiv
-Europe/Lisbon
-Europe/Ljubljana
-Europe/London
-Europe/Luxembourg
-Europe/Madrid
-Europe/Malta
-Europe/Mariehamn
-Europe/Minsk
-Europe/Monaco
-Europe/Moscow
-Europe/Oslo
-Europe/Paris
-Europe/Podgorica
-Europe/Prague
-Europe/Riga
-Europe/Rome
-Europe/Samara
-Europe/San_Marino
-Europe/Sarajevo
-Europe/Saratov
-Europe/Simferopol
-Europe/Skopje
-Europe/Sofia
-Europe/Stockholm
-Europe/Tallinn
-Europe/Tirane
-Europe/Ulyanovsk
-Europe/Vaduz
-Europe/Vatican
-Europe/Vienna
-Europe/Vilnius
-Europe/Volgograd
-Europe/Warsaw
-Europe/Zagreb
-Europe/Zurich
-Indian/Antananarivo
-Indian/Chagos
-Indian/Christmas
-Indian/Cocos
-Indian/Comoro
-Indian/Kerguelen
-Indian/Mahe
-Indian/Maldives
-Indian/Mauritius
-Indian/Mayotte
-Indian/Reunion
-Pacific/Apia
-Pacific/Auckland
-Pacific/Bougainville
-Pacific/Chatham
-Pacific/Chuuk
-Pacific/Easter
-Pacific/Efate
-Pacific/Fakaofo
-Pacific/Fiji
-Pacific/Funafuti
-Pacific/Galapagos
-Pacific/Gambier
-Pacific/Guadalcanal
-Pacific/Guam
-Pacific/Honolulu
-Pacific/Kanton
-Pacific/Kiritimati
-Pacific/Kosrae
-Pacific/Kwajalein
-Pacific/Majuro
-Pacific/Marquesas
-Pacific/Midway
-Pacific/Nauru
-Pacific/Niue
-Pacific/Norfolk
-Pacific/Noumea
-Pacific/Pago_Pago
-Pacific/Palau
-Pacific/Pitcairn
-Pacific/Pohnpei
-Pacific/Port_Moresby
-Pacific/Rarotonga
-Pacific/Saipan
-Pacific/Tahiti
-Pacific/Tarawa
-Pacific/Tongatapu
-Pacific/Wake
-Pacific/Wallis
-UTC"
 readonly WIZ_KEYBOARD_LAYOUTS="de
 de-ch
 dk
@@ -495,255 +75,6 @@ pt-br
 se
 si
 tr"
-readonly WIZ_COUNTRIES="ad
-ae
-af
-ag
-ai
-al
-am
-ao
-aq
-ar
-as
-at
-au
-aw
-ax
-az
-ba
-bb
-bd
-be
-bf
-bg
-bh
-bi
-bj
-bl
-bm
-bn
-bo
-bq
-br
-bs
-bt
-bv
-bw
-by
-bz
-ca
-cc
-cd
-cf
-cg
-ch
-ci
-ck
-cl
-cm
-cn
-co
-cr
-cu
-cv
-cw
-cx
-cy
-cz
-de
-dj
-dk
-dm
-do
-dz
-ec
-ee
-eg
-eh
-er
-es
-et
-fi
-fj
-fk
-fm
-fo
-fr
-ga
-gb
-gd
-ge
-gf
-gg
-gh
-gi
-gl
-gm
-gn
-gp
-gq
-gr
-gs
-gt
-gu
-gw
-gy
-hk
-hm
-hn
-hr
-ht
-hu
-id
-ie
-il
-im
-in
-io
-iq
-ir
-is
-it
-je
-jm
-jo
-jp
-ke
-kg
-kh
-ki
-km
-kn
-kp
-kr
-kw
-ky
-kz
-la
-lb
-lc
-li
-lk
-lr
-ls
-lt
-lu
-lv
-ly
-ma
-mc
-md
-me
-mf
-mg
-mh
-mk
-ml
-mm
-mn
-mo
-mp
-mq
-mr
-ms
-mt
-mu
-mv
-mw
-mx
-my
-mz
-na
-nc
-ne
-nf
-ng
-ni
-nl
-no
-np
-nr
-nu
-nz
-om
-pa
-pe
-pf
-pg
-ph
-pk
-pl
-pm
-pn
-pr
-ps
-pt
-pw
-py
-qa
-re
-ro
-rs
-ru
-rw
-sa
-sb
-sc
-sd
-se
-sg
-sh
-si
-sj
-sk
-sl
-sm
-sn
-so
-sr
-ss
-st
-sv
-sx
-sy
-sz
-tc
-td
-tf
-tg
-th
-tj
-tk
-tl
-tm
-tn
-to
-tr
-tt
-tv
-tw
-tz
-ua
-ug
-um
-us
-uy
-uz
-va
-vc
-ve
-vg
-vi
-vn
-vu
-wf
-ws
-ye
-yt
-za
-zm
-zw"
 readonly WIZ_REPO_TYPES="No-subscription (free)
 Enterprise
 Test/Development"
@@ -773,6 +104,10 @@ Balanced
 Power saving
 Adaptive
 Conservative"
+readonly WIZ_FIREWALL_MODES="Stealth (Tailscale only)
+Strict (SSH only)
+Standard (SSH + Web UI)
+Disabled"
 readonly WIZ_OPTIONAL_FEATURES="vnstat (network stats)
 ringbuffer (network tuning)
 apparmor (mandatory access control)
@@ -870,12 +205,14 @@ TAILSCALE_AUTH_KEY=""
 TAILSCALE_SSH=""
 TAILSCALE_WEBUI=""
 TAILSCALE_DISABLE_SSH=""
-STEALTH_MODE=""
 BRIDGE_MTU=""
 INSTALL_API_TOKEN=""
 API_TOKEN_NAME="automation"
 API_TOKEN_VALUE=""
 API_TOKEN_ID=""
+INSTALL_FIREWALL=""
+FIREWALL_MODE=""
+FIREWALL_INSTALLED=""
 show_help(){
 cat <<EOF
 Proxmox VE Automated Installer for Hetzner v$VERSION
@@ -2310,6 +1647,38 @@ if command -v ip &>/dev/null;then
 IPV6_GATEWAY=$(ip -6 route 2>/dev/null|grep default|awk '{print $3}'|head -n1)
 fi
 fi
+_load_wizard_data
+}
+_load_timezones(){
+if command -v timedatectl &>/dev/null;then
+WIZ_TIMEZONES=$(timedatectl list-timezones 2>/dev/null)
+else
+WIZ_TIMEZONES=$(find /usr/share/zoneinfo -type f 2>/dev/null|sed 's|/usr/share/zoneinfo/||'|grep -E '^(Africa|America|Antarctica|Asia|Atlantic|Australia|Europe|Indian|Pacific)/'|sort)
+fi
+WIZ_TIMEZONES+=$'\nUTC'
+}
+_load_countries(){
+local iso_file="/usr/share/iso-codes/json/iso_3166-1.json"
+if [[ -f $iso_file ]];then
+WIZ_COUNTRIES=$(grep -oP '"alpha_2":\s*"\K[^"]+' "$iso_file"|tr '[:upper:]' '[:lower:]'|sort)
+else
+WIZ_COUNTRIES=$(locale -a 2>/dev/null|grep -oP '^[a-z]{2}(?=_)'|sort -u)
+fi
+}
+_build_tz_to_country(){
+declare -gA TZ_TO_COUNTRY
+local zone_tab="/usr/share/zoneinfo/zone.tab"
+[[ -f $zone_tab ]]||return 0
+while IFS=$'\t' read -r country _ tz _;do
+[[ $country == \#* ]]&&continue
+[[ -z $tz ]]&&continue
+TZ_TO_COUNTRY["$tz"]="${country,,}"
+done <"$zone_tab"
+}
+_load_wizard_data(){
+_load_timezones
+_load_countries
+_build_tz_to_country
 }
 detect_drives(){
 mapfile -t DRIVES < <(lsblk -d -n -o NAME,TYPE|grep nvme|grep disk|awk '{print "/dev/"$1}'|sort)
@@ -2659,6 +2028,7 @@ bridge_mode)_edit_bridge_mode;;
 private_subnet)_edit_private_subnet;;
 bridge_mtu)_edit_bridge_mtu;;
 ipv6)_edit_ipv6;;
+firewall)_edit_firewall;;
 boot_disk)_edit_boot_disk;;
 pool_disks)_edit_pool_disks;;
 zfs_mode)_edit_zfs_mode;;
@@ -2966,6 +2336,19 @@ local ssh_display=""
 if [[ -n $SSH_PUBLIC_KEY ]];then
 ssh_display="${SSH_PUBLIC_KEY:0:20}..."
 fi
+local firewall_display=""
+if [[ -n $INSTALL_FIREWALL ]];then
+if [[ $INSTALL_FIREWALL == "yes" ]];then
+case "$FIREWALL_MODE" in
+stealth)firewall_display="Stealth (Tailscale only)";;
+strict)firewall_display="Strict (SSH only)";;
+standard)firewall_display="Standard (SSH + Web UI)";;
+*)firewall_display="$FIREWALL_MODE"
+esac
+else
+firewall_display="Disabled"
+fi
+fi
 local iso_version_display=""
 if [[ -n $PROXMOX_ISO_VERSION ]];then
 iso_version_display=$(get_iso_version "$PROXMOX_ISO_VERSION")
@@ -3013,6 +2396,7 @@ local mtu_display="${BRIDGE_MTU:-9000}"
 _add_field "Bridge MTU       " "$(_wiz_fmt "$mtu_display")" "bridge_mtu"
 fi
 _add_field "IPv6             " "$(_wiz_fmt "$ipv6_display")" "ipv6"
+_add_field "Firewall         " "$(_wiz_fmt "$firewall_display")" "firewall"
 _add_section "Storage"
 if [[ $DRIVE_COUNT -gt 1 ]];then
 local boot_display="All in pool"
@@ -3164,6 +2548,10 @@ selected=$(echo "$WIZ_TIMEZONES"|gum filter \
 --match.foreground "$HEX_ORANGE")
 if [[ -n $selected ]];then
 TIMEZONE="$selected"
+local country_code="${TZ_TO_COUNTRY[$selected]:-}"
+if [[ -n $country_code ]];then
+COUNTRY="$country_code"
+fi
 fi
 }
 _edit_keyboard(){
@@ -3399,6 +2787,38 @@ elif [[ $ipv6_mode == "auto" ]];then
 IPV6_GATEWAY="${IPV6_GATEWAY:-$DEFAULT_IPV6_GATEWAY}"
 fi
 }
+_edit_firewall(){
+_wiz_start_edit
+_wiz_description \
+"Host firewall (nftables):" \
+"" \
+"  {{cyan:Stealth}}:  Blocks ALL incoming (Tailscale/bridges only)" \
+"  {{cyan:Strict}}:   Allows SSH only (port 22)" \
+"  {{cyan:Standard}}: Allows SSH + Proxmox Web UI (8006)" \
+"  {{cyan:Disabled}}: No firewall rules" \
+"" \
+"  Note: VMs always have full network access via bridges." \
+""
+_show_input_footer "filter" 5
+local selected
+selected=$(echo "$WIZ_FIREWALL_MODES"|_wiz_choose \
+--header="Firewall mode:")
+if [[ -n $selected ]];then
+case "$selected" in
+"Stealth (Tailscale only)")INSTALL_FIREWALL="yes"
+FIREWALL_MODE="stealth"
+;;
+"Strict (SSH only)")INSTALL_FIREWALL="yes"
+FIREWALL_MODE="strict"
+;;
+"Standard (SSH + Web UI)")INSTALL_FIREWALL="yes"
+FIREWALL_MODE="standard"
+;;
+"Disabled")INSTALL_FIREWALL="no"
+FIREWALL_MODE=""
+esac
+fi
+}
 _edit_zfs_mode(){
 _wiz_start_edit
 local pool_count=${#ZFS_POOL_DISKS[@]}
@@ -3479,15 +2899,17 @@ TAILSCALE_AUTH_KEY="$auth_key"
 TAILSCALE_SSH="yes"
 TAILSCALE_WEBUI="yes"
 TAILSCALE_DISABLE_SSH="yes"
-STEALTH_MODE="yes"
 SSL_TYPE="self-signed"
+if [[ -z $INSTALL_FIREWALL ]];then
+INSTALL_FIREWALL="yes"
+FIREWALL_MODE="stealth"
+fi
 else
 INSTALL_TAILSCALE="no"
 TAILSCALE_AUTH_KEY=""
 TAILSCALE_SSH=""
 TAILSCALE_WEBUI=""
 TAILSCALE_DISABLE_SSH=""
-STEALTH_MODE=""
 SSL_TYPE=""
 fi
 ;;
@@ -3496,8 +2918,11 @@ TAILSCALE_AUTH_KEY=""
 TAILSCALE_SSH=""
 TAILSCALE_WEBUI=""
 TAILSCALE_DISABLE_SSH=""
-STEALTH_MODE=""
 SSL_TYPE=""
+if [[ -z $INSTALL_FIREWALL ]];then
+INSTALL_FIREWALL="yes"
+FIREWALL_MODE="standard"
+fi
 esac
 }
 _edit_ssl(){
@@ -4613,7 +4038,7 @@ download_template "./templates/fail2ban-proxmox.conf"||exit 1
 download_template "./templates/auditd-rules"||exit 1
 download_template "./templates/apparmor-grub.cfg"||exit 1
 download_template "./templates/disable-openssh.service"||exit 1
-download_template "./templates/stealth-firewall.service"||exit 1
+download_template "./templates/nftables.conf"||exit 1
 download_template "./templates/yazi-theme.toml"||exit 1
 download_template "./templates/prometheus-node-exporter"||exit 1
 download_template "./templates/proxmox-metrics.sh"||exit 1
@@ -4886,18 +4311,6 @@ show_progress $! "Configuring OpenSSH disable on boot" "OpenSSH disable configur
 else
 log "Skipping disable-openssh.service (TAILSCALE_SSH=$TAILSCALE_SSH, TAILSCALE_DISABLE_SSH=$TAILSCALE_DISABLE_SSH)"
 fi
-if [[ $STEALTH_MODE == "yes" ]];then
-log "Deploying stealth-firewall.service (STEALTH_MODE=$STEALTH_MODE)"
-(log "Using pre-downloaded stealth-firewall.service, size: $(wc -c <./templates/stealth-firewall.service 2>/dev/null||echo 'failed')"
-remote_copy "templates/stealth-firewall.service" "/etc/systemd/system/stealth-firewall.service"||exit 1
-log "Copied stealth-firewall.service to VM"
-remote_exec "systemctl daemon-reload && systemctl enable stealth-firewall.service" >/dev/null 2>&1||exit 1
-log "Enabled stealth-firewall.service") \
-&
-show_progress $! "Configuring stealth firewall" "Stealth firewall configured"
-else
-log "Skipping stealth-firewall.service (STEALTH_MODE=$STEALTH_MODE)"
-fi
 else
 TAILSCALE_IP="not authenticated"
 TAILSCALE_HOSTNAME=""
@@ -5073,6 +4486,176 @@ print_warning "Fail2Ban setup failed - continuing without it"
 return 0
 fi
 FAIL2BAN_INSTALLED="yes"
+}
+_install_nftables(){
+run_remote "Installing nftables" '
+    export DEBIAN_FRONTEND=noninteractive
+    apt-get update -qq
+    apt-get install -yqq nftables
+    # Disable iptables-nft compatibility layer if present
+    update-alternatives --set iptables /usr/sbin/iptables-nft 2>/dev/null || true
+    update-alternatives --set ip6tables /usr/sbin/ip6tables-nft 2>/dev/null || true
+  ' "nftables installed"
+}
+_generate_port_rules(){
+local mode="$1"
+local rules=""
+case "$mode" in
+stealth)rules="# Stealth mode: all public ports blocked
+        # Access only via Tailscale VPN or VM bridges"
+;;
+strict)rules="# SSH access (port 22)
+        tcp dport 22 ct state new accept"
+;;
+standard)rules="# SSH access (port 22)
+        tcp dport 22 ct state new accept
+
+        # Proxmox Web UI (port 8006)
+        tcp dport 8006 ct state new accept"
+;;
+*)log "WARNING: Unknown firewall mode: $mode, using standard"
+rules="# SSH access (port 22)
+        tcp dport 22 ct state new accept
+
+        # Proxmox Web UI (port 8006)
+        tcp dport 8006 ct state new accept"
+esac
+echo "$rules"
+}
+_generate_bridge_input_rules(){
+local mode="${BRIDGE_MODE:-internal}"
+local rules=""
+case "$mode" in
+internal)rules='# Allow traffic from internal bridge (vmbr0 - private NAT network)
+        iifname "vmbr0" accept'
+;;
+external)rules='# Allow traffic from external bridge (vmbr1 - public IPs)
+        iifname "vmbr1" accept'
+;;
+both)rules='# Allow traffic from internal bridge (vmbr0 - private NAT network)
+        iifname "vmbr0" accept
+
+        # Allow traffic from external bridge (vmbr1 - public IPs)
+        iifname "vmbr1" accept'
+;;
+*)log "WARNING: Unknown bridge mode: $mode, using internal"
+rules='# Allow traffic from internal bridge (vmbr0 - private NAT network)
+        iifname "vmbr0" accept'
+esac
+echo "$rules"
+}
+_generate_bridge_forward_rules(){
+local mode="${BRIDGE_MODE:-internal}"
+local rules=""
+case "$mode" in
+internal)rules='# Allow forwarding for internal bridge (VM traffic)
+        iifname "vmbr0" accept
+        oifname "vmbr0" accept'
+;;
+external)rules='# Allow forwarding for external bridge (VM traffic)
+        iifname "vmbr1" accept
+        oifname "vmbr1" accept'
+;;
+both)rules='# Allow forwarding for both bridges (VM traffic)
+        iifname "vmbr0" accept
+        iifname "vmbr1" accept
+        oifname "vmbr0" accept
+        oifname "vmbr1" accept'
+;;
+*)rules='# Allow forwarding for internal bridge (VM traffic)
+        iifname "vmbr0" accept
+        oifname "vmbr0" accept'
+esac
+echo "$rules"
+}
+_generate_tailscale_rules(){
+if [[ $INSTALL_TAILSCALE == "yes" ]];then
+echo '# Allow Tailscale VPN interface
+        iifname "tailscale0" accept'
+else
+echo "# Tailscale not installed"
+fi
+}
+_generate_nat_rules(){
+local mode="${BRIDGE_MODE:-internal}"
+local subnet="${PRIVATE_SUBNET:-10.0.0.0/24}"
+local rules=""
+case "$mode" in
+internal|both)rules="# Masquerade traffic from private subnet to internet
+        oifname != \"lo\" ip saddr $subnet masquerade"
+local subnet_base="${subnet%%.*}"
+case "$subnet_base" in
+10)
+;;
+172)
+;;
+192)
+esac
+;;
+external)rules="# External mode: no NAT needed (VMs have public IPs)"
+esac
+echo "$rules"
+}
+_config_nftables(){
+local template_content
+template_content=$(cat "./templates/nftables.conf")
+local port_rules bridge_input_rules bridge_forward_rules nat_rules tailscale_rules
+port_rules=$(_generate_port_rules "$FIREWALL_MODE")
+bridge_input_rules=$(_generate_bridge_input_rules)
+bridge_forward_rules=$(_generate_bridge_forward_rules)
+nat_rules=$(_generate_nat_rules)
+tailscale_rules=$(_generate_tailscale_rules)
+local nftables_conf="$template_content"
+nftables_conf="${nftables_conf//\{\{BRIDGE_MODE\}\}/$BRIDGE_MODE}"
+nftables_conf=$(echo "$nftables_conf"|sed "/# === FIREWALL_RULES_START ===/,/# === FIREWALL_RULES_END ===/c\\
+        # === FIREWALL_RULES_START ===\\
+$port_rules\\
+        # === FIREWALL_RULES_END ===")
+nftables_conf=$(echo "$nftables_conf"|sed "/# === BRIDGE_INPUT_RULES ===/c\\
+$bridge_input_rules")
+nftables_conf=$(echo "$nftables_conf"|sed "/# === TAILSCALE_RULES ===/c\\
+$tailscale_rules")
+nftables_conf=$(echo "$nftables_conf"|sed "/# === BRIDGE_FORWARD_RULES ===/c\\
+$bridge_forward_rules")
+nftables_conf=$(echo "$nftables_conf"|sed "/# === NAT_RULES ===/c\\
+$nat_rules")
+echo "$nftables_conf" >"./templates/nftables.conf.generated"
+log "Generated nftables config:"
+log "  Bridge mode: $BRIDGE_MODE"
+log "  Firewall mode: $FIREWALL_MODE"
+log "  Private subnet: ${PRIVATE_SUBNET:-N/A}"
+remote_copy "templates/nftables.conf.generated" "/etc/nftables.conf"||exit 1
+remote_exec "systemctl enable nftables && systemctl restart nftables"||exit 1
+remote_exec "nft list ruleset | grep -q 'table inet filter'"||{
+log "ERROR: nftables rules not loaded properly"
+exit 1
+}
+rm -f "./templates/nftables.conf.generated"
+}
+configure_firewall(){
+if [[ $INSTALL_FIREWALL != "yes" ]];then
+log "Skipping firewall configuration (INSTALL_FIREWALL=$INSTALL_FIREWALL)"
+return 0
+fi
+log "Configuring nftables firewall (mode: $FIREWALL_MODE, bridge: $BRIDGE_MODE)"
+(_install_nftables||exit 1
+_config_nftables||exit 1) > \
+/dev/null 2>&1&
+local mode_display=""
+case "$FIREWALL_MODE" in
+stealth)mode_display="stealth (Tailscale only)";;
+strict)mode_display="strict (SSH only)";;
+standard)mode_display="standard (SSH + Web UI)";;
+*)mode_display="$FIREWALL_MODE"
+esac
+show_progress $! "Configuring nftables firewall" "Firewall configured ($mode_display)"
+local exit_code=$?
+if [[ $exit_code -ne 0 ]];then
+log "WARNING: Firewall setup failed"
+print_warning "Firewall setup failed - continuing without it"
+return 0
+fi
+FIREWALL_INSTALLED="yes"
 }
 _install_lynis(){
 run_remote "Installing lynis" '
@@ -5478,6 +5061,7 @@ if type live_log_security_configuration &>/dev/null 2>&1;then
 live_log_security_configuration
 fi
 configure_tailscale
+configure_firewall
 configure_apparmor
 configure_fail2ban
 configure_auditd
@@ -5822,7 +5406,7 @@ SYSTEM_INFO_CACHE=$(mktemp)
 collect_system_info
 log "Step: prefetch_proxmox_iso_info"
 prefetch_proxmox_iso_info
-declare -p|grep -E "^declare -[^ ]* (PREFLIGHT_|DRIVE_|INTERFACE_|CURRENT_INTERFACE|PREDICTABLE_NAME|DEFAULT_INTERFACE|AVAILABLE_|MAC_ADDRESS|MAIN_IPV|IPV6_|FIRST_IPV6_|_ISO_|_CHECKSUM_)" >"$SYSTEM_INFO_CACHE"
+declare -p|grep -E "^declare -[^ ]* (PREFLIGHT_|DRIVE_|INTERFACE_|CURRENT_INTERFACE|PREDICTABLE_NAME|DEFAULT_INTERFACE|AVAILABLE_|MAC_ADDRESS|MAIN_IPV|IPV6_|FIRST_IPV6_|_ISO_|_CHECKSUM_|WIZ_TIMEZONES|WIZ_COUNTRIES|TZ_TO_COUNTRY)" >"$SYSTEM_INFO_CACHE"
 } >/dev/null 2>&1&
 wait $!
 show_banner_animated_stop
