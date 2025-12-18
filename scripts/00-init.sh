@@ -867,6 +867,7 @@ readonly WIZ_OPTIONAL_FEATURES="vnstat (network stats)
 apparmor (mandatory access control)
 auditd (audit logging)
 aide (file integrity)
+chkrootkit (rootkit scanner)
 prometheus (metrics exporter)
 yazi (file manager)
 nvim (text editor)"
@@ -1007,6 +1008,13 @@ AUDITD_INSTALLED=""
 # AIDE installation flag (set by configure_aide)
 # shellcheck disable=SC2034
 AIDE_INSTALLED=""
+
+# chkrootkit scheduled scanning (yes/no, default: no)
+INSTALL_CHKROOTKIT=""
+
+# chkrootkit installation flag (set by configure_chkrootkit)
+# shellcheck disable=SC2034
+CHKROOTKIT_INSTALLED=""
 
 # AppArmor installation flag (set by configure_apparmor)
 # shellcheck disable=SC2034

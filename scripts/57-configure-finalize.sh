@@ -123,6 +123,7 @@ configure_proxmox_via_ssh() {
   configure_fail2ban
   configure_auditd
   configure_aide
+  configure_chkrootkit
   configure_prometheus
   configure_vnstat
   configure_yazi
