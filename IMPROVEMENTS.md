@@ -225,38 +225,6 @@ Unattended-Upgrade::MailReport "only-on-error";
 
 ---
 
-### 13. Installation Metrics Collection
-**File:** `scripts/99-main.sh`
-**Enhancement:** Log timing metrics for troubleshooting
-
-**Add:**
-```bash
-# At start of main()
-INSTALL_START_TIME=$(date +%s)
-
-# After each major step:
-log_metric() {
-  local step="$1"
-  local duration=$(($(date +%s) - INSTALL_START_TIME))
-  log "METRIC: ${step}_completed_at=${duration}s"
-}
-
-# Usage:
-download_iso
-log_metric "iso_download"
-
-start_qemu
-log_metric "qemu_start"
-
-# At end:
-local total_time=$(($(date +%s) - INSTALL_START_TIME))
-log "METRIC: total_installation_time=${total_time}s"
-```
-
-**Benefits:** Performance analysis, identify slow steps
-
----
-
 ## 🟢 Nice-to-Have
 
 ### 14. MTU Configuration

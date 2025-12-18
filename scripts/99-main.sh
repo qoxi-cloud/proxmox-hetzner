@@ -91,6 +91,9 @@ log "QEMU_CORES_OVERRIDE=$QEMU_CORES_OVERRIDE"
 log "PVE_REPO_TYPE=${PVE_REPO_TYPE:-no-subscription}"
 log "SSL_TYPE=${SSL_TYPE:-self-signed}"
 
+# Start installation metrics
+metrics_start
+
 # Collect system info with animated banner
 log "Step: collect_system_info"
 
@@ -128,10 +131,12 @@ fi
 
 log "Step: show_system_status"
 show_system_status
+log_metric "system_info"
 
 # Show interactive configuration editor (replaces get_system_inputs)
 log "Step: show_gum_config_editor"
 show_gum_config_editor
+log_metric "config_wizard"
 
 # Start live installation display
 start_live_installation || {
@@ -148,6 +153,7 @@ live_log_system_preparation
 
 log "Step: prepare_packages"
 prepare_packages
+log_metric "packages"
 
 # ============================================================================
 # Proxmox ISO Download
@@ -156,6 +162,7 @@ live_log_iso_download
 
 log "Step: download_proxmox_iso"
 download_proxmox_iso
+log_metric "iso_download"
 
 # ============================================================================
 # Autoinstall Preparation
@@ -166,6 +173,7 @@ log "Step: make_answer_toml"
 make_answer_toml
 log "Step: make_autoinstall_iso"
 make_autoinstall_iso
+log_metric "autoinstall_prep"
 
 # ============================================================================
 # Proxmox Installation
@@ -174,12 +182,14 @@ live_log_proxmox_installation
 
 log "Step: install_proxmox"
 install_proxmox
+log_metric "proxmox_install"
 
 log "Step: boot_proxmox_with_port_forwarding"
 boot_proxmox_with_port_forwarding || {
   log "ERROR: Failed to boot Proxmox with port forwarding"
   exit 1
 }
+log_metric "qemu_boot"
 
 # ============================================================================
 # System Configuration
@@ -188,6 +198,7 @@ live_log_system_configuration
 
 log "Step: configure_proxmox_via_ssh"
 configure_proxmox_via_ssh
+log_metric "system_config"
 
 # ============================================================================
 # Installation Complete
@@ -196,6 +207,9 @@ live_log_installation_complete
 
 # Finish live installation display
 finish_live_installation
+
+# Log final metrics
+metrics_finish
 
 # Mark installation as completed (disables error handler message)
 INSTALL_COMPLETED=true
