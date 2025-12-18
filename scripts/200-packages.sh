@@ -380,6 +380,11 @@ download_proxmox_iso() {
     log "WARNING: Could not find checksum for $ISO_FILENAME"
     print_warning "Could not find checksum for $ISO_FILENAME"
   fi
+
+  # Clean up /tmp to free memory (rescue system uses tmpfs)
+  log "Cleaning up temporary files in /tmp"
+  rm -rf /tmp/tmp.* /tmp/pve-* /tmp/checksum_result 2>/dev/null || true
+  log "Temporary files cleaned"
 }
 
 # Validates answer.toml has all required fields and correct format.
