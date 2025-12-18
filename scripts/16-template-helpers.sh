@@ -38,6 +38,12 @@ deploy_template() {
     fi
   fi
 
+  # Validate no unfilled variables remain
+  if ! validate_template_vars "$local_template"; then
+    log "ERROR: Template has unfilled variables: $template_name"
+    return 1
+  fi
+
   # Copy to remote system
   if ! remote_copy "$local_template" "$dest_path"; then
     log "ERROR: Failed to copy template to remote: $template_name → $dest_path"

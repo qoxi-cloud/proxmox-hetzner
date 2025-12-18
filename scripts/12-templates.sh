@@ -3,6 +3,28 @@
 # Template processing utilities
 # =============================================================================
 
+# Validates that no unfilled template variables remain in file.
+# Parameters:
+#   $1 - File path to check
+# Returns: 0 if clean, 1 if found unsubstituted {{...}}
+validate_template_vars() {
+  local file="$1"
+  local unfilled
+
+  if [[ ! -f $file ]]; then
+    log "ERROR: Cannot validate - file not found: $file"
+    return 1
+  fi
+
+  unfilled=$(grep -oE '\{\{[A-Z0-9_]+\}\}' "$file" 2>/dev/null | sort -u | tr '\n' ' ')
+
+  if [[ -n $unfilled ]]; then
+    log "ERROR: Unfilled template variables in $file: $unfilled"
+    return 1
+  fi
+  return 0
+}
+
 # Applies template variable substitutions to a file.
 # Parameters:
 #   $1 - File path to modify

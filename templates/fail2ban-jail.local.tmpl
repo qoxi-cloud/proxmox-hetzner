@@ -43,3 +43,15 @@ backend = systemd
 maxretry = 3
 findtime = 1d
 bantime = 2h
+
+[recidive]
+enabled = true
+logpath = /var/log/fail2ban.log
+filter = recidive
+# Ban if banned 3+ times within 1 week
+maxretry = 3
+findtime = 1w
+# Ban for 2 weeks on recidive
+bantime = 2w
+# Block all ports for repeat offenders
+banaction = iptables-allports
