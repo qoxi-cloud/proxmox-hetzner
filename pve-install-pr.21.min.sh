@@ -19,7 +19,7 @@ HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 HEX_NONE="7"
 MENU_BOX_WIDTH=60
-VERSION="2.0.270-pr.21"
+VERSION="2.0.271-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -2085,6 +2085,9 @@ local missing_count=0
 [[ ${#ZFS_POOL_DISKS[@]} -eq 0 ]]&&missing_fields+=("Pool disks")&&((missing_count++))
 if [[ $INSTALL_TAILSCALE != "yes" ]];then
 [[ -z $SSL_TYPE ]]&&missing_fields+=("SSL Certificate")&&((missing_count++))
+fi
+if [[ $FIREWALL_MODE == "stealth" && $INSTALL_TAILSCALE != "yes" ]];then
+missing_fields+=("Tailscale (required for Stealth firewall)")&&((missing_count++))
 fi
 if [[ $missing_count -gt 0 ]];then
 _wiz_start_edit
