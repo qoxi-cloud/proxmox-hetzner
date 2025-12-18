@@ -453,8 +453,8 @@ make_answer_toml() {
   fi
 
   # Escape password for TOML (critical for user-entered passwords)
-  local escaped_password="${NEW_ROOT_PASSWORD//\\/\\\\}"  # Escape backslashes first
-  escaped_password="${escaped_password//\"/\\\"}"          # Then escape quotes
+  local escaped_password="${NEW_ROOT_PASSWORD//\\/\\\\}" # Escape backslashes first
+  escaped_password="${escaped_password//\"/\\\"}"        # Then escape quotes
 
   # Generate [global] section
   # IMPORTANT: Use kebab-case for all keys (root-password, reboot-on-error)
