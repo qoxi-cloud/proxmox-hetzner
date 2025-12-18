@@ -18,99 +18,36 @@ configure_zfs_pool() {
   log "INFO: Creating separate ZFS pool 'tank' from pool disks"
 
   # Load virtio mapping from QEMU setup
-  declare -A VIRTIO_MAP
-  if [[ -f /tmp/virtio_map.env ]]; then
-    # shellcheck disable=SC1091
-    source /tmp/virtio_map.env
-  else
-    log "ERROR: VIRTIO_MAP not found, cannot map pool disks"
+  if ! load_virtio_mapping; then
+    log "ERROR: Failed to load virtio mapping"
     return 1
   fi
 
   # Build vdev list from ZFS_POOL_DISKS using virtio mapping
-  local vdevs=()
-  for disk in "${ZFS_POOL_DISKS[@]}"; do
-    local vdev="${VIRTIO_MAP[$disk]}"
-    if [[ -z $vdev ]]; then
-      log "ERROR: No virtio mapping for pool disk $disk"
-      return 1
-    fi
-    vdevs+=("/dev/$vdev")
-  done
+  local vdevs_str
+  vdevs_str=$(map_disks_to_virtio "space_separated" "${ZFS_POOL_DISKS[@]}")
+  if [[ -z $vdevs_str ]]; then
+    log "ERROR: Failed to map pool disks to virtio devices"
+    return 1
+  fi
+  read -ra vdevs <<<"$vdevs_str"
 
   log "INFO: Pool disks: ${vdevs[*]} (RAID: $ZFS_RAID)"
 
   # Validate disk count vs RAID type
   local vdev_count=${#vdevs[@]}
-  case "$ZFS_RAID" in
-    single)
-      if [[ $vdev_count -ne 1 ]]; then
-        log "WARNING: Single disk RAID expects 1 disk, have $vdev_count"
-      fi
-      ;;
-    raid1)
-      if [[ $vdev_count -lt 2 ]]; then
-        log "ERROR: RAID1 requires at least 2 disks, have $vdev_count"
-        return 1
-      fi
-      ;;
-    raidz1)
-      if [[ $vdev_count -lt 3 ]]; then
-        log "WARNING: RAIDZ1 recommended for 3+ disks, have $vdev_count"
-      fi
-      ;;
-    raidz2)
-      if [[ $vdev_count -lt 4 ]]; then
-        log "WARNING: RAIDZ2 recommended for 4+ disks, have $vdev_count"
-      fi
-      ;;
-    raidz3)
-      if [[ $vdev_count -lt 5 ]]; then
-        log "WARNING: RAIDZ3 recommended for 5+ disks, have $vdev_count"
-      fi
-      ;;
-    raid10)
-      if [[ $vdev_count -lt 4 ]] || [[ $((vdev_count % 2)) -ne 0 ]]; then
-        log "ERROR: RAID10 requires even number of disks (min 4), have $vdev_count"
-        return 1
-      fi
-      ;;
-  esac
+  if ! validate_zfs_raid_disk_count "$ZFS_RAID" "$vdev_count"; then
+    log "ERROR: Invalid RAID configuration for ZFS pool: $ZFS_RAID with $vdev_count disk(s)"
+    return 1
+  fi
 
   # Build zpool create command based on RAID type
-  local pool_cmd="zpool create -f tank"
-  case "$ZFS_RAID" in
-    single)
-      pool_cmd+=" ${vdevs[0]}"
-      ;;
-    raid0)
-      pool_cmd+=" ${vdevs[*]}"
-      ;;
-    raid1)
-      pool_cmd+=" mirror ${vdevs[*]}"
-      ;;
-    raidz1)
-      pool_cmd+=" raidz ${vdevs[*]}"
-      ;;
-    raidz2)
-      pool_cmd+=" raidz2 ${vdevs[*]}"
-      ;;
-    raidz3)
-      pool_cmd+=" raidz3 ${vdevs[*]}"
-      ;;
-    raid10)
-      # RAID10: pair up disks for striped mirrors
-      # Example: mirror vdb vdc mirror vdd vde
-      pool_cmd+=""
-      for ((i = 0; i < vdev_count; i += 2)); do
-        pool_cmd+=" mirror ${vdevs[$i]} ${vdevs[$((i + 1))]}"
-      done
-      ;;
-    *)
-      log "ERROR: Unknown ZFS_RAID type: $ZFS_RAID"
-      return 1
-      ;;
-  esac
+  local pool_cmd
+  pool_cmd=$(build_zpool_command "tank" "$ZFS_RAID" "${vdevs[@]}")
+  if [[ -z $pool_cmd ]]; then
+    log "ERROR: Failed to build zpool create command"
+    return 1
+  fi
 
   log "INFO: ZFS pool command: $pool_cmd"
 

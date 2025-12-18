@@ -368,10 +368,9 @@ make_answer_toml() {
   log "ZFS_POOL_DISKS=(${ZFS_POOL_DISKS[*]})"
 
   # Load virtio mapping from QEMU setup
-  declare -A VIRTIO_MAP # Initialize as empty associative array
-  if [[ -f /tmp/virtio_map.env ]]; then
-    # shellcheck disable=SC1091
-    source /tmp/virtio_map.env
+  if ! load_virtio_mapping; then
+    log "ERROR: Failed to load virtio mapping"
+    exit 1
   fi
 
   # Determine filesystem and disk list based on BOOT_DISK mode:
@@ -399,42 +398,20 @@ make_answer_toml() {
 
     # Validate RAID vs disk count for all-ZFS mode
     local disk_count=${#all_disks[@]}
-    case "$ZFS_RAID" in
-      single)
-        if [[ $disk_count -ne 1 ]]; then
-          log "WARNING: Single disk RAID requires exactly 1 disk, have $disk_count"
-        fi
-        ;;
-      raid1)
-        if [[ $disk_count -lt 2 ]]; then
-          log "ERROR: RAID1 requires at least 2 disks, have $disk_count"
-          exit 1
-        fi
-        ;;
-      raid10)
-        if [[ $disk_count -lt 4 ]] || [[ $((disk_count % 2)) -ne 0 ]]; then
-          log "ERROR: RAID10 requires even number of disks (min 4), have $disk_count"
-          exit 1
-        fi
-        ;;
-    esac
+    if ! validate_zfs_raid_disk_count "$ZFS_RAID" "$disk_count"; then
+      log "ERROR: Invalid RAID configuration: $ZFS_RAID with $disk_count disk(s)"
+      exit 1
+    fi
 
     log "All-ZFS mode: ${disk_count} disk(s) in ZFS rpool (${ZFS_RAID})"
   fi
 
   # Build DISK_LIST from all_disks using virtio mapping
-  DISK_LIST="["
-  for i in "${!all_disks[@]}"; do
-    local phys_disk="${all_disks[$i]}"
-    local vdev="${VIRTIO_MAP[$phys_disk]}"
-    if [[ -z $vdev ]]; then
-      log "ERROR: No virtio mapping for $phys_disk"
-      exit 1
-    fi
-    DISK_LIST+="\"/dev/${vdev}\""
-    [[ $i -lt $((${#all_disks[@]} - 1)) ]] && DISK_LIST+=", "
-  done
-  DISK_LIST+="]"
+  DISK_LIST=$(map_disks_to_virtio "toml_array" "${all_disks[@]}")
+  if [[ -z $DISK_LIST ]]; then
+    log "ERROR: Failed to map disks to virtio devices"
+    exit 1
+  fi
 
   log "FILESYSTEM=$FILESYSTEM, DISK_LIST=$DISK_LIST"
 
@@ -489,17 +466,7 @@ EOF
   if [[ $FILESYSTEM == "zfs" ]]; then
     # Map ZFS_RAID to answer.toml format
     local zfs_raid_value
-    case "$ZFS_RAID" in
-      single) zfs_raid_value="raid0" ;; # Single disk uses raid0
-      raid0) zfs_raid_value="raid0" ;;
-      raid1) zfs_raid_value="raid1" ;;
-      raidz1) zfs_raid_value="raidz-1" ;;
-      raidz2) zfs_raid_value="raidz-2" ;;
-      raidz3) zfs_raid_value="raidz-3" ;;
-      raid5) zfs_raid_value="raidz-1" ;; # legacy → raidz-1
-      raid10) zfs_raid_value="raid10" ;;
-      *) zfs_raid_value="raid0" ;;
-    esac
+    zfs_raid_value=$(map_raid_to_toml "$ZFS_RAID")
     log "Using ZFS raid: $zfs_raid_value"
 
     # Add ZFS parameters
