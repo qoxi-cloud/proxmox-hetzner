@@ -318,6 +318,9 @@ KEYBOARD="en-us"
 # Country code (ISO 3166-1 alpha-2, default: us)
 COUNTRY="us"
 
+# Timezone (default: UTC)
+TIMEZONE="UTC"
+
 # Fail2Ban installation flag (set by configure_fail2ban)
 # shellcheck disable=SC2034
 FAIL2BAN_INSTALLED=""
