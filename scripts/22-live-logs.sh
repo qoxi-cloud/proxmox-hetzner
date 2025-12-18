@@ -168,7 +168,7 @@ live_log_system_configuration() {
 # Security Configuration section - shown conditionally
 live_log_security_configuration() {
   # Only show if any security feature is being configured
-  if [[ ${INSTALL_TAILSCALE:-} == "yes" ]] || [[ ${FAIL2BAN_INSTALLED:-} == "yes" ]] || [[ ${INSTALL_AUDITD:-} == "yes" ]]; then
+  if [[ ${INSTALL_TAILSCALE:-} == "yes" ]] || [[ ${INSTALL_APPARMOR:-} == "yes" ]] || [[ ${FAIL2BAN_INSTALLED:-} == "yes" ]] || [[ ${INSTALL_AUDITD:-} == "yes" ]]; then
     add_log ""
     add_log "${CLR_CYAN}▼ Security Configuration${CLR_RESET}"
   fi

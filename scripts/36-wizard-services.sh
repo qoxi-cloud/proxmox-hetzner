@@ -261,18 +261,20 @@ _edit_features() {
     "Optional features (use Space to toggle):" \
     "" \
     "  {{cyan:vnstat}}:     Network traffic monitoring" \
+    "  {{cyan:apparmor}}:   Mandatory access control (MAC)" \
     "  {{cyan:auditd}}:     Security audit logging" \
     "  {{cyan:prometheus}}: Node exporter for metrics (port 9100)" \
     "  {{cyan:yazi}}:       Terminal file manager" \
     "  {{cyan:nvim}}:       Neovim as default editor" \
     ""
 
-  # 1 header + 5 items for multi-select checkbox
-  _show_input_footer "checkbox" 6
+  # 1 header + 6 items for multi-select checkbox
+  _show_input_footer "checkbox" 7
 
   # Build pre-selected items based on current configuration
   local preselected=()
   [[ $INSTALL_VNSTAT == "yes" ]] && preselected+=("vnstat")
+  [[ $INSTALL_APPARMOR == "yes" ]] && preselected+=("apparmor")
   [[ $INSTALL_AUDITD == "yes" ]] && preselected+=("auditd")
   [[ $INSTALL_PROMETHEUS == "yes" ]] && preselected+=("prometheus")
   [[ $INSTALL_YAZI == "yes" ]] && preselected+=("yazi")
@@ -302,12 +304,16 @@ _edit_features() {
 
   # Parse selection
   INSTALL_VNSTAT="no"
+  INSTALL_APPARMOR="no"
   INSTALL_AUDITD="no"
   INSTALL_PROMETHEUS="no"
   INSTALL_YAZI="no"
   INSTALL_NVIM="no"
   if echo "$selected" | grep -q "vnstat"; then
     INSTALL_VNSTAT="yes"
+  fi
+  if echo "$selected" | grep -q "apparmor"; then
+    INSTALL_APPARMOR="yes"
   fi
   if echo "$selected" | grep -q "auditd"; then
     INSTALL_AUDITD="yes"

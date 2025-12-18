@@ -859,6 +859,7 @@ Conservative"
 # Optional features
 # shellcheck disable=SC2034
 readonly WIZ_OPTIONAL_FEATURES="vnstat (network stats)
+apparmor (mandatory access control)
 auditd (audit logging)
 prometheus (metrics exporter)
 yazi (file manager)
@@ -981,6 +982,9 @@ FAIL2BAN_INSTALLED=""
 # Auditd installation setting (yes/no, default: no)
 INSTALL_AUDITD=""
 
+# AppArmor installation setting (yes/no, default: no)
+INSTALL_APPARMOR=""
+
 # CPU governor setting
 CPU_GOVERNOR=""
 
@@ -990,6 +994,10 @@ ZFS_ARC_MODE=""
 # Auditd installation flag (set by configure_auditd)
 # shellcheck disable=SC2034
 AUDITD_INSTALLED=""
+
+# AppArmor installation flag (set by configure_apparmor)
+# shellcheck disable=SC2034
+APPARMOR_INSTALLED=""
 
 # vnstat bandwidth monitoring setting (yes/no, default: yes)
 INSTALL_VNSTAT=""

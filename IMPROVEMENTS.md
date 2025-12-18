@@ -199,36 +199,6 @@ validate_template "/target/etc/ssh/sshd_config" || exit 1
 
 ---
 
-### 9. AppArmor Not Configured
-**File:** `scripts/50-configure-base.sh`
-**Issue:** No mandatory access control (Debian standard is AppArmor)
-
-**Add:**
-```bash
-configure_apparmor() {
-  log "INFO: Installing AppArmor"
-
-  apt-get install -yqq apparmor apparmor-utils apparmor-profiles apparmor-profiles-extra
-
-  # Enable AppArmor on boot
-  sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="/GRUB_CMDLINE_LINUX_DEFAULT="apparmor=1 security=apparmor /' /etc/default/grub
-  update-grub
-
-  # Enforce critical profiles
-  aa-enforce /etc/apparmor.d/usr.sbin.sshd 2>/dev/null || true
-  aa-enforce /etc/apparmor.d/usr.bin.man 2>/dev/null || true
-
-  log "INFO: AppArmor configured (will be active after reboot)"
-}
-
-# Call in post-install
-configure_apparmor
-```
-
-**Impact:** Additional layer of defense against privilege escalation
-
----
-
 ## 🟡 Medium Priority Issues
 
 ### 11. Parallel Download Optimization
@@ -439,7 +409,7 @@ log() {
 - [ ] Add installation metrics logging
 
 ### Phase 4: Enhancements (2 hrs)
-- [ ] Add AppArmor configuration
+- [x] Add AppArmor configuration
 - [ ] Add unattended-upgrades auto-reboot option
 - [ ] Add Fail2Ban recidive jail
 

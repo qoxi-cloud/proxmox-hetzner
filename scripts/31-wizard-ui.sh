@@ -258,10 +258,12 @@ _wiz_render_menu() {
   fi
 
   local features_display="none"
-  if [[ -n $INSTALL_VNSTAT || -n $INSTALL_AUDITD || -n $INSTALL_YAZI || -n $INSTALL_NVIM ]]; then
+  if [[ -n $INSTALL_VNSTAT || -n $INSTALL_APPARMOR || -n $INSTALL_AUDITD || -n $INSTALL_PROMETHEUS || -n $INSTALL_YAZI || -n $INSTALL_NVIM ]]; then
     features_display=""
     [[ $INSTALL_VNSTAT == "yes" ]] && features_display+="vnstat"
+    [[ $INSTALL_APPARMOR == "yes" ]] && features_display+="${features_display:+, }apparmor"
     [[ $INSTALL_AUDITD == "yes" ]] && features_display+="${features_display:+, }auditd"
+    [[ $INSTALL_PROMETHEUS == "yes" ]] && features_display+="${features_display:+, }prometheus"
     [[ $INSTALL_YAZI == "yes" ]] && features_display+="${features_display:+, }yazi"
     [[ $INSTALL_NVIM == "yes" ]] && features_display+="${features_display:+, }nvim"
     [[ -z $features_display ]] && features_display="none"

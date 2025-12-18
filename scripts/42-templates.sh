@@ -51,6 +51,7 @@ make_templates() {
     download_template "./templates/fail2ban-jail.local" || exit 1
     download_template "./templates/fail2ban-proxmox.conf" || exit 1
     download_template "./templates/auditd-rules" || exit 1
+    download_template "./templates/apparmor-grub.cfg" || exit 1
     # Tailscale templates
     download_template "./templates/disable-openssh.service" || exit 1
     download_template "./templates/stealth-firewall.service" || exit 1

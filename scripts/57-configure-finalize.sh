@@ -118,6 +118,7 @@ configure_proxmox_via_ssh() {
     live_log_security_configuration
   fi
   configure_tailscale
+  configure_apparmor
   configure_fail2ban
   configure_auditd
   configure_prometheus
