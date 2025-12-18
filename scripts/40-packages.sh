@@ -328,7 +328,8 @@ validate_answer_toml() {
   local file="$1"
 
   # Basic field validation
-  local required_fields=("fqdn" "mailto" "timezone" "root_password")
+  # Note: Use kebab-case keys (root-password, not root_password)
+  local required_fields=("fqdn" "mailto" "timezone" "root-password")
   for field in "${required_fields[@]}"; do
     if ! grep -q "^\s*${field}\s*=" "$file" 2>/dev/null; then
       log "ERROR: Missing required field in answer.toml: $field"
@@ -442,15 +443,17 @@ make_answer_toml() {
   log "Generating answer.toml for autoinstall"
 
   # Prepare SSH keys array (TOML multiline array format)
+  # Note: Use kebab-case for TOML keys (root-ssh-keys, not root_ssh_keys)
   local ssh_keys_toml=""
   if [[ -n $SSH_PUBLIC_KEY ]]; then
     # Escape the SSH key for TOML (escape backslashes and quotes)
     local escaped_key="${SSH_PUBLIC_KEY//\\/\\\\}"
     escaped_key="${escaped_key//\"/\\\"}"
-    ssh_keys_toml="root_ssh_keys = [\"$escaped_key\"]"
+    ssh_keys_toml="root-ssh-keys = [\"$escaped_key\"]"
   fi
 
   # Generate [global] section
+  # IMPORTANT: Use kebab-case for all keys (root-password, reboot-on-error)
   cat >./answer.toml <<EOF
 [global]
     keyboard = "$KEYBOARD"
@@ -458,8 +461,8 @@ make_answer_toml() {
     fqdn = "$FQDN"
     mailto = "$EMAIL"
     timezone = "$TIMEZONE"
-    root_password = "$NEW_ROOT_PASSWORD"
-    reboot_on_error = false
+    root-password = "$NEW_ROOT_PASSWORD"
+    reboot-on-error = false
 EOF
 
   # Add SSH keys if available
@@ -475,7 +478,7 @@ EOF
 
 [disk-setup]
     filesystem = "$FILESYSTEM"
-    disk_list = $DISK_LIST
+    disk-list = $DISK_LIST
 EOF
 
   # Add filesystem-specific parameters
@@ -503,11 +506,11 @@ EOF
 EOF
   elif [[ $FILESYSTEM == "ext4" ]] || [[ $FILESYSTEM == "xfs" ]]; then
     # Add LVM parameters for ext4/xfs
-    # swapsize: Use 0 for no swap (we'll rely on zswap or user can add later)
-    # hdsize: Don't limit disk usage
+    # swapsize: Use 0 for no swap (rely on zswap for memory compression)
+    # maxvz: Omit to let Proxmox allocate remaining space for data volume (/var/lib/vz)
+    #        This is where ISO images, CT templates, and backups are stored
     cat >>./answer.toml <<EOF
     lvm.swapsize = 0
-    lvm.maxvz = 0
 EOF
   fi
 
