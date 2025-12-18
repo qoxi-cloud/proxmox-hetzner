@@ -814,6 +814,11 @@ readonly WIZ_BRIDGE_MODES="External bridge
 Internal NAT
 Both"
 
+# Bridge MTU options
+# shellcheck disable=SC2034
+readonly WIZ_BRIDGE_MTU="9000 (jumbo frames)
+1500 (standard)"
+
 # IPv6 configuration modes
 # shellcheck disable=SC2034
 readonly WIZ_IPV6_MODES="Auto
@@ -1037,6 +1042,9 @@ TAILSCALE_SSH=""
 TAILSCALE_WEBUI=""
 TAILSCALE_DISABLE_SSH=""
 STEALTH_MODE=""
+
+# Bridge MTU for private network (default: 9000 jumbo frames)
+BRIDGE_MTU=""
 
 # API Token settings
 INSTALL_API_TOKEN=""

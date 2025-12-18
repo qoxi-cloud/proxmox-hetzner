@@ -227,21 +227,6 @@ Unattended-Upgrade::MailReport "only-on-error";
 
 ## 🟢 Nice-to-Have
 
-### 14. MTU Configuration
-**File:** `templates/interfaces.both.tmpl:47`
-**Current:** Hardcoded `mtu 9000` for vmbr1
-
-**Make configurable:**
-```bash
-# In wizard or auto-detect:
-BRIDGE_MTU="${BRIDGE_MTU:-1500}"  # Safe default, can enable jumbo frames if supported
-
-# In template:
-    mtu {{BRIDGE_MTU}}
-```
-
----
-
 ### 16. Fail2Ban Recidive Jail
 **File:** `templates/fail2ban-jail.local.tmpl`
 **Enhancement:** Ban repeat offenders system-wide

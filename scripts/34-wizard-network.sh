@@ -1,7 +1,7 @@
 # shellcheck shell=bash
 # =============================================================================
 # Configuration Wizard - Network Settings Editors
-# interface, bridge_mode, private_subnet, ipv6
+# interface, bridge_mode, private_subnet, bridge_mtu, ipv6
 # =============================================================================
 
 _edit_interface() {
@@ -103,6 +103,31 @@ _edit_private_subnet() {
     # Use selected preset
     PRIVATE_SUBNET="$selected"
   fi
+}
+
+_edit_bridge_mtu() {
+  _wiz_start_edit
+
+  _wiz_description \
+    "MTU for private bridge (VM-to-VM traffic):" \
+    "" \
+    "  {{cyan:9000}}:  Jumbo frames (better VM performance)" \
+    "  {{cyan:1500}}:  Standard MTU (safe default)" \
+    ""
+
+  # 1 header + 2 items for gum choose
+  _show_input_footer "filter" 3
+
+  local selected
+  selected=$(
+    echo "$WIZ_BRIDGE_MTU" | _wiz_choose \
+      --header="Bridge MTU:"
+  )
+
+  case "$selected" in
+    "9000 (jumbo frames)") BRIDGE_MTU="9000" ;;
+    "1500 (standard)") BRIDGE_MTU="1500" ;;
+  esac
 }
 
 _edit_ipv6() {

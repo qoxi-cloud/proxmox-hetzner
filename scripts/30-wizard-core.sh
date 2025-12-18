@@ -42,6 +42,7 @@ _wizard_main() {
           interface) _edit_interface ;;
           bridge_mode) _edit_bridge_mode ;;
           private_subnet) _edit_private_subnet ;;
+          bridge_mtu) _edit_bridge_mtu ;;
           ipv6) _edit_ipv6 ;;
           boot_disk) _edit_boot_disk ;;
           pool_disks) _edit_pool_disks ;;

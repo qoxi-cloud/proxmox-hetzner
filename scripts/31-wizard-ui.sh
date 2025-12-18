@@ -338,7 +338,13 @@ _wiz_render_menu() {
     _add_field "Interface        " "$(_wiz_fmt "$INTERFACE_NAME")" "interface"
   fi
   _add_field "Bridge mode      " "$(_wiz_fmt "$bridge_display")" "bridge_mode"
-  _add_field "Private subnet   " "$(_wiz_fmt "$PRIVATE_SUBNET")" "private_subnet"
+  # Show private network options only for internal/both modes
+  if [[ $BRIDGE_MODE == "internal" ]] || [[ $BRIDGE_MODE == "both" ]]; then
+    _add_field "Private subnet   " "$(_wiz_fmt "$PRIVATE_SUBNET")" "private_subnet"
+    local mtu_display="${BRIDGE_MTU:-9000}"
+    [[ $mtu_display == "9000" ]] && mtu_display="9000 (jumbo)"
+    _add_field "Bridge MTU       " "$(_wiz_fmt "$mtu_display")" "bridge_mtu"
+  fi
   _add_field "IPv6             " "$(_wiz_fmt "$ipv6_display")" "ipv6"
 
   # --- Storage ---
