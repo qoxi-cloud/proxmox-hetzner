@@ -19,7 +19,7 @@ HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 HEX_NONE="7"
 MENU_BOX_WIDTH=60
-VERSION="2.0.236-pr.21"
+VERSION="2.0.237-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -1211,6 +1211,20 @@ fi
 print_error "$error_msg"
 done
 }
+validate_template_vars(){
+local file="$1"
+local unfilled
+if [[ ! -f $file ]];then
+log "ERROR: Cannot validate - file not found: $file"
+return 1
+fi
+unfilled=$(grep -oE '\{\{[A-Z0-9_]+\}\}' "$file" 2>/dev/null|sort -u|tr '\n' ' ')
+if [[ -n $unfilled ]];then
+log "ERROR: Unfilled template variables in $file: $unfilled"
+return 1
+fi
+return 0
+}
 apply_template_vars(){
 local file="$1"
 shift
@@ -1587,6 +1601,10 @@ if ! apply_common_template_vars "$local_template";then
 log "ERROR: Failed to apply common variables to template: $template_name"
 return 1
 fi
+fi
+if ! validate_template_vars "$local_template";then
+log "ERROR: Template has unfilled variables: $template_name"
+return 1
 fi
 if ! remote_copy "$local_template" "$dest_path";then
 log "ERROR: Failed to copy template to remote: $template_name → $dest_path"
