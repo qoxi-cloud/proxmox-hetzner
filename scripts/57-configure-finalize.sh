@@ -111,6 +111,7 @@ configure_proxmox_via_ssh() {
   make_templates
   configure_base_system
   configure_zfs_arc
+  configure_zfs_pool
   configure_shell
   configure_system_services
 

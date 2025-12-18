@@ -320,14 +320,15 @@ download_proxmox_iso() {
   fi
 }
 
-# Validates answer.toml has all required fields.
+# Validates answer.toml has all required fields and correct format.
 # Parameters:
 #   $1 - Path to answer.toml file
-# Returns: 0 if valid, 1 if missing required fields
+# Returns: 0 if valid, 1 if validation fails
 validate_answer_toml() {
   local file="$1"
-  local required_fields=("fqdn" "mailto" "timezone" "root_password")
 
+  # Basic field validation
+  local required_fields=("fqdn" "mailto" "timezone" "root_password")
   for field in "${required_fields[@]}"; do
     if ! grep -q "^\s*${field}\s*=" "$file" 2>/dev/null; then
       log "ERROR: Missing required field in answer.toml: $field"
@@ -338,6 +339,20 @@ validate_answer_toml() {
   if ! grep -q "\[global\]" "$file" 2>/dev/null; then
     log "ERROR: Missing [global] section in answer.toml"
     return 1
+  fi
+
+  # Validate using Proxmox auto-install assistant if available
+  if command -v proxmox-auto-install-assistant &>/dev/null; then
+    log "Validating answer.toml with proxmox-auto-install-assistant"
+    if ! proxmox-auto-install-assistant validate-answer "$file" >>"$LOG_FILE" 2>&1; then
+      log "ERROR: answer.toml validation failed"
+      # Show validation errors in log
+      proxmox-auto-install-assistant validate-answer "$file" >>"$LOG_FILE" 2>&1 || true
+      return 1
+    fi
+    log "answer.toml validation passed"
+  else
+    log "WARNING: proxmox-auto-install-assistant not found, skipping advanced validation"
   fi
 
   return 0
@@ -358,41 +373,55 @@ make_answer_toml() {
     source /tmp/virtio_map.env
   fi
 
-  # Build DISK_LIST: Proxmox autoinstaller uses first disk for boot + all disks for ZFS
-  # When BOOT_DISK is set, include it first in pool (Proxmox creates boot partitions on it)
-  # When BOOT_DISK is empty, all disks are already in ZFS_POOL_DISKS
+  # Determine filesystem and disk list based on BOOT_DISK mode:
+  # - BOOT_DISK set: ext4 on boot disk only, ZFS pool created post-install
+  # - BOOT_DISK empty: ZFS on all disks (existing behavior)
+  local FILESYSTEM
   local all_disks=()
+
   if [[ -n $BOOT_DISK ]]; then
-    # BOOT_DISK goes first, then pool disks
-    all_disks+=("$BOOT_DISK")
-    all_disks+=("${ZFS_POOL_DISKS[@]}")
+    # Separate boot disk mode: ext4 on boot disk, ZFS pool created later
+    FILESYSTEM="ext4"
+    all_disks=("$BOOT_DISK")
+
+    # Validate we have pool disks for post-install ZFS creation
+    if [[ ${#ZFS_POOL_DISKS[@]} -eq 0 ]]; then
+      log "ERROR: BOOT_DISK set but no pool disks for ZFS tank creation"
+      exit 1
+    fi
+
+    log "Boot disk mode: ext4 on boot disk, ZFS 'tank' pool will be created from ${#ZFS_POOL_DISKS[@]} pool disk(s)"
   else
-    # All disks already in pool
+    # All-ZFS mode: all disks in ZFS rpool
+    FILESYSTEM="zfs"
     all_disks=("${ZFS_POOL_DISKS[@]}")
+
+    # Validate RAID vs disk count for all-ZFS mode
+    local disk_count=${#all_disks[@]}
+    case "$ZFS_RAID" in
+      single)
+        if [[ $disk_count -ne 1 ]]; then
+          log "WARNING: Single disk RAID requires exactly 1 disk, have $disk_count"
+        fi
+        ;;
+      raid1)
+        if [[ $disk_count -lt 2 ]]; then
+          log "ERROR: RAID1 requires at least 2 disks, have $disk_count"
+          exit 1
+        fi
+        ;;
+      raid10)
+        if [[ $disk_count -lt 4 ]] || [[ $((disk_count % 2)) -ne 0 ]]; then
+          log "ERROR: RAID10 requires even number of disks (min 4), have $disk_count"
+          exit 1
+        fi
+        ;;
+    esac
+
+    log "All-ZFS mode: ${disk_count} disk(s) in ZFS rpool (${ZFS_RAID})"
   fi
 
-  # Validate RAID vs disk count
-  local disk_count=${#all_disks[@]}
-  case "$ZFS_RAID" in
-    single)
-      if [[ $disk_count -ne 1 ]]; then
-        log "WARNING: Single disk RAID requires exactly 1 disk, have $disk_count"
-      fi
-      ;;
-    raid1)
-      if [[ $disk_count -lt 2 ]]; then
-        log "ERROR: RAID1 requires at least 2 disks, have $disk_count"
-        exit 1
-      fi
-      ;;
-    raid10)
-      if [[ $disk_count -lt 4 ]] || [[ $((disk_count % 2)) -ne 0 ]]; then
-        log "ERROR: RAID10 requires even number of disks (min 4), have $disk_count"
-        exit 1
-      fi
-      ;;
-  esac
-
+  # Build DISK_LIST from all_disks using virtio mapping
   DISK_LIST="["
   for i in "${!all_disks[@]}"; do
     local phys_disk="${all_disks[$i]}"
@@ -406,7 +435,7 @@ make_answer_toml() {
   done
   DISK_LIST+="]"
 
-  log "DISK_LIST=$DISK_LIST (${disk_count} disks for ZFS ${ZFS_RAID})"
+  log "FILESYSTEM=$FILESYSTEM, DISK_LIST=$DISK_LIST"
 
   # Map ZFS_RAID to answer.toml format
   local zfs_raid_value
@@ -436,6 +465,7 @@ make_answer_toml() {
     "KEYBOARD=$KEYBOARD" \
     "COUNTRY=$COUNTRY" \
     "ROOT_PASSWORD=$NEW_ROOT_PASSWORD" \
+    "FILESYSTEM=$FILESYSTEM" \
     "ZFS_RAID=$zfs_raid_value" \
     "DISK_LIST=$DISK_LIST"
 

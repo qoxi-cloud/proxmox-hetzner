@@ -11,6 +11,6 @@
     source = "from-dhcp"
 
 [disk-setup]
-    filesystem = "zfs"
+    filesystem = "{{FILESYSTEM}}"
     zfs.raid = "{{ZFS_RAID}}"
     disk_list = {{DISK_LIST}}
