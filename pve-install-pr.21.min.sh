@@ -19,7 +19,7 @@ HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 HEX_NONE="7"
 MENU_BOX_WIDTH=60
-VERSION="2.0.245-pr.21"
+VERSION="2.0.246-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -777,6 +777,7 @@ readonly WIZ_OPTIONAL_FEATURES="vnstat (network stats)
 apparmor (mandatory access control)
 auditd (audit logging)
 aide (file integrity)
+chkrootkit (rootkit scanner)
 prometheus (metrics exporter)
 yazi (file manager)
 nvim (text editor)"
@@ -840,6 +841,8 @@ CPU_GOVERNOR=""
 ZFS_ARC_MODE=""
 AUDITD_INSTALLED=""
 AIDE_INSTALLED=""
+INSTALL_CHKROOTKIT=""
+CHKROOTKIT_INSTALLED=""
 APPARMOR_INSTALLED=""
 INSTALL_VNSTAT=""
 VNSTAT_INSTALLED=""
@@ -3632,16 +3635,18 @@ _wiz_description \
 "  {{cyan:apparmor}}:   Mandatory access control (MAC)" \
 "  {{cyan:auditd}}:     Security audit logging" \
 "  {{cyan:aide}}:       File integrity monitoring" \
+"  {{cyan:chkrootkit}}: Weekly rootkit scanning" \
 "  {{cyan:prometheus}}: Node exporter for metrics (port 9100)" \
 "  {{cyan:yazi}}:       Terminal file manager" \
 "  {{cyan:nvim}}:       Neovim as default editor" \
 ""
-_show_input_footer "checkbox" 8
+_show_input_footer "checkbox" 9
 local preselected=()
 [[ $INSTALL_VNSTAT == "yes" ]]&&preselected+=("vnstat")
 [[ $INSTALL_APPARMOR == "yes" ]]&&preselected+=("apparmor")
 [[ $INSTALL_AUDITD == "yes" ]]&&preselected+=("auditd")
 [[ $INSTALL_AIDE == "yes" ]]&&preselected+=("aide")
+[[ $INSTALL_CHKROOTKIT == "yes" ]]&&preselected+=("chkrootkit")
 [[ $INSTALL_PROMETHEUS == "yes" ]]&&preselected+=("prometheus")
 [[ $INSTALL_YAZI == "yes" ]]&&preselected+=("yazi")
 [[ $INSTALL_NVIM == "yes" ]]&&preselected+=("nvim")
@@ -3665,6 +3670,7 @@ INSTALL_VNSTAT="no"
 INSTALL_APPARMOR="no"
 INSTALL_AUDITD="no"
 INSTALL_AIDE="no"
+INSTALL_CHKROOTKIT="no"
 INSTALL_PROMETHEUS="no"
 INSTALL_YAZI="no"
 INSTALL_NVIM="no"
@@ -3679,6 +3685,9 @@ INSTALL_AUDITD="yes"
 fi
 if echo "$selected"|grep -q "aide";then
 INSTALL_AIDE="yes"
+fi
+if echo "$selected"|grep -q "chkrootkit";then
+INSTALL_CHKROOTKIT="yes"
 fi
 if echo "$selected"|grep -q "prometheus";then
 INSTALL_PROMETHEUS="yes"
@@ -4954,6 +4963,36 @@ return 0
 fi
 APPARMOR_INSTALLED="yes"
 }
+_config_chkrootkit(){
+deploy_template "chkrootkit-scan.service" "/etc/systemd/system/chkrootkit-scan.service"
+deploy_template "chkrootkit-scan.timer" "/etc/systemd/system/chkrootkit-scan.timer"
+remote_exec '
+    # Ensure log directory exists
+    mkdir -p /var/log/chkrootkit
+
+    # Enable weekly scan timer
+    systemctl daemon-reload
+    systemctl enable chkrootkit-scan.timer
+    systemctl start chkrootkit-scan.timer
+  '||exit 1
+}
+configure_chkrootkit(){
+if [[ $INSTALL_CHKROOTKIT != "yes" ]];then
+log "Skipping chkrootkit scheduling (not requested)"
+return 0
+fi
+log "Configuring chkrootkit scheduled scanning"
+(_config_chkrootkit||exit 1) > \
+/dev/null 2>&1&
+show_progress $! "Configuring chkrootkit" "chkrootkit configured"
+local exit_code=$?
+if [[ $exit_code -ne 0 ]];then
+log "WARNING: chkrootkit setup failed"
+print_warning "chkrootkit setup failed - continuing without it"
+return 0
+fi
+CHKROOTKIT_INSTALLED="yes"
+}
 _install_fail2ban(){
 run_remote "Installing Fail2Ban" '
     export DEBIAN_FRONTEND=noninteractive
@@ -5292,6 +5331,7 @@ configure_apparmor
 configure_fail2ban
 configure_auditd
 configure_aide
+configure_chkrootkit
 configure_prometheus
 configure_vnstat
 configure_yazi
