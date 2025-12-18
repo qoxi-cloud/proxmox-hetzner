@@ -129,6 +129,7 @@ configure_proxmox_via_ssh() {
   configure_netdata
   configure_prometheus
   configure_vnstat
+  configure_ringbuffer
   configure_yazi
   configure_nvim
 

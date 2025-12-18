@@ -1,0 +1,21 @@
+[Unit]
+Description=Network Ring Buffer Tuning
+After=network.target
+Wants=network.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+
+# Maximize ring buffer for primary interface
+# Get max values and apply them
+ExecStart=/bin/bash -c '\
+  IFACE="{{RINGBUFFER_INTERFACE}}"; \
+  if [ -n "$IFACE" ] && [ -d "/sys/class/net/$IFACE" ]; then \
+    MAX_RX=$(ethtool -g $IFACE 2>/dev/null | grep -A4 "Pre-set maximums" | grep "RX:" | awk "{print \$2}"); \
+    MAX_TX=$(ethtool -g $IFACE 2>/dev/null | grep -A4 "Pre-set maximums" | grep "TX:" | awk "{print \$2}"); \
+    [ -n "$MAX_RX" ] && [ -n "$MAX_TX" ] && ethtool -G $IFACE rx $MAX_RX tx $MAX_TX 2>/dev/null || true; \
+  fi'
+
+[Install]
+WantedBy=multi-user.target

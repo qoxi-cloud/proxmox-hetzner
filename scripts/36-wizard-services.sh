@@ -261,6 +261,7 @@ _edit_features() {
     "Optional features (use Space to toggle):" \
     "" \
     "  {{cyan:vnstat}}:      Network traffic monitoring" \
+    "  {{cyan:ringbuffer}}:  Network ring buffer tuning" \
     "  {{cyan:apparmor}}:    Mandatory access control (MAC)" \
     "  {{cyan:auditd}}:      Security audit logging" \
     "  {{cyan:aide}}:        File integrity monitoring" \
@@ -273,12 +274,13 @@ _edit_features() {
     "  {{cyan:nvim}}:        Neovim as default editor" \
     ""
 
-  # 1 header + 11 items for multi-select checkbox
-  _show_input_footer "checkbox" 12
+  # 1 header + 12 items for multi-select checkbox
+  _show_input_footer "checkbox" 13
 
   # Build pre-selected items based on current configuration
   local preselected=()
   [[ $INSTALL_VNSTAT == "yes" ]] && preselected+=("vnstat")
+  [[ $INSTALL_RINGBUFFER == "yes" ]] && preselected+=("ringbuffer")
   [[ $INSTALL_APPARMOR == "yes" ]] && preselected+=("apparmor")
   [[ $INSTALL_AUDITD == "yes" ]] && preselected+=("auditd")
   [[ $INSTALL_AIDE == "yes" ]] && preselected+=("aide")
@@ -314,6 +316,7 @@ _edit_features() {
 
   # Parse selection
   INSTALL_VNSTAT="no"
+  INSTALL_RINGBUFFER="no"
   INSTALL_APPARMOR="no"
   INSTALL_AUDITD="no"
   INSTALL_AIDE="no"
@@ -326,6 +329,9 @@ _edit_features() {
   INSTALL_NVIM="no"
   if echo "$selected" | grep -q "vnstat"; then
     INSTALL_VNSTAT="yes"
+  fi
+  if echo "$selected" | grep -q "ringbuffer"; then
+    INSTALL_RINGBUFFER="yes"
   fi
   if echo "$selected" | grep -q "apparmor"; then
     INSTALL_APPARMOR="yes"

@@ -864,6 +864,7 @@ Conservative"
 # Optional features
 # shellcheck disable=SC2034
 readonly WIZ_OPTIONAL_FEATURES="vnstat (network stats)
+ringbuffer (network tuning)
 apparmor (mandatory access control)
 auditd (audit logging)
 aide (file integrity)
@@ -1039,6 +1040,13 @@ INSTALL_NETDATA=""
 # Netdata installation flag (set by configure_netdata)
 # shellcheck disable=SC2034
 NETDATA_INSTALLED=""
+
+# Network ring buffer tuning (yes/no, default: no)
+INSTALL_RINGBUFFER=""
+
+# Ring buffer installation flag (set by configure_ringbuffer)
+# shellcheck disable=SC2034
+RINGBUFFER_INSTALLED=""
 
 # AppArmor installation flag (set by configure_apparmor)
 # shellcheck disable=SC2034
