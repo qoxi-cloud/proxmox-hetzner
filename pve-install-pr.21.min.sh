@@ -19,7 +19,7 @@ HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 HEX_NONE="7"
 MENU_BOX_WIDTH=60
-VERSION="2.0.218-pr.21"
+VERSION="2.0.219-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -3439,6 +3439,12 @@ done
 }
 _edit_boot_disk(){
 _wiz_start_edit
+_wiz_dim "Separate boot disk selection (auto-detected by disk size):"
+_wiz_blank_line
+_wiz_dim "  ${CLR_CYAN}None$CLR_RESET: All disks in ZFS rpool (system + VMs)"
+_wiz_dim "  ${CLR_CYAN}Disk$CLR_RESET: Boot disk uses ext4 (system + ISO/templates)"
+_wiz_dim "       Pool disks use ZFS tank (VMs only)"
+_wiz_blank_line
 local options="None (all in pool)"
 for i in "${!DRIVES[@]}";do
 local disk_name="${DRIVE_NAMES[$i]}"
@@ -3786,6 +3792,17 @@ if ! grep -q "\[global\]" "$file" 2>/dev/null;then
 log "ERROR: Missing [global] section in answer.toml"
 return 1
 fi
+if command -v proxmox-auto-install-assistant &>/dev/null;then
+log "Validating answer.toml with proxmox-auto-install-assistant"
+if ! proxmox-auto-install-assistant validate-answer "$file" >>"$LOG_FILE" 2>&1;then
+log "ERROR: answer.toml validation failed"
+proxmox-auto-install-assistant validate-answer "$file" >>"$LOG_FILE" 2>&1||true
+return 1
+fi
+log "answer.toml validation passed"
+else
+log "WARNING: proxmox-auto-install-assistant not found, skipping advanced validation"
+fi
 return 0
 }
 make_answer_toml(){
@@ -3796,13 +3813,19 @@ declare -A VIRTIO_MAP
 if [[ -f /tmp/virtio_map.env ]];then
 source /tmp/virtio_map.env
 fi
+local FILESYSTEM
 local all_disks=()
 if [[ -n $BOOT_DISK ]];then
-all_disks+=("$BOOT_DISK")
-all_disks+=("${ZFS_POOL_DISKS[@]}")
-else
-all_disks=("${ZFS_POOL_DISKS[@]}")
+FILESYSTEM="ext4"
+all_disks=("$BOOT_DISK")
+if [[ ${#ZFS_POOL_DISKS[@]} -eq 0 ]];then
+log "ERROR: BOOT_DISK set but no pool disks for ZFS tank creation"
+exit 1
 fi
+log "Boot disk mode: ext4 on boot disk, ZFS 'tank' pool will be created from ${#ZFS_POOL_DISKS[@]} pool disk(s)"
+else
+FILESYSTEM="zfs"
+all_disks=("${ZFS_POOL_DISKS[@]}")
 local disk_count=${#all_disks[@]}
 case "$ZFS_RAID" in
 single)if
@@ -3825,6 +3848,8 @@ log "ERROR: RAID10 requires even number of disks (min 4), have $disk_count"
 exit 1
 fi
 esac
+log "All-ZFS mode: $disk_count disk(s) in ZFS rpool ($ZFS_RAID)"
+fi
 DISK_LIST="["
 for i in "${!all_disks[@]}";do
 local phys_disk="${all_disks[$i]}"
@@ -3837,7 +3862,7 @@ DISK_LIST+="\"/dev/$vdev\""
 [[ $i -lt $((${#all_disks[@]}-1)) ]]&&DISK_LIST+=", "
 done
 DISK_LIST+="]"
-log "DISK_LIST=$DISK_LIST ($disk_count disks for ZFS $ZFS_RAID)"
+log "FILESYSTEM=$FILESYSTEM, DISK_LIST=$DISK_LIST"
 local zfs_raid_value
 case "$ZFS_RAID" in
 single)zfs_raid_value="raid0";;
@@ -3861,6 +3886,7 @@ apply_template_vars "./answer.toml" \
 "KEYBOARD=$KEYBOARD" \
 "COUNTRY=$COUNTRY" \
 "ROOT_PASSWORD=$NEW_ROOT_PASSWORD" \
+"FILESYSTEM=$FILESYSTEM" \
 "ZFS_RAID=$zfs_raid_value" \
 "DISK_LIST=$DISK_LIST"
 if ! validate_answer_toml "./answer.toml";then
@@ -4760,6 +4786,7 @@ log "Starting Proxmox configuration via SSH"
 make_templates
 configure_base_system
 configure_zfs_arc
+configure_zfs_pool
 configure_shell
 configure_system_services
 if type live_log_security_configuration &>/dev/null 2>&1;then
@@ -4820,6 +4847,119 @@ API_TOKEN_ID=$API_TOKEN_ID
 API_TOKEN_NAME=$API_TOKEN_NAME
 EOF
 log "INFO: API token created successfully: $API_TOKEN_ID"
+return 0
+}
+configure_zfs_pool(){
+if [[ -z $BOOT_DISK ]];then
+log "INFO: BOOT_DISK not set, skipping separate ZFS pool creation (all-ZFS mode)"
+return 0
+fi
+log "INFO: Creating separate ZFS pool 'tank' from pool disks"
+declare -A VIRTIO_MAP
+if [[ -f /tmp/virtio_map.env ]];then
+source /tmp/virtio_map.env
+else
+log "ERROR: VIRTIO_MAP not found, cannot map pool disks"
+return 1
+fi
+local vdevs=()
+for disk in "${ZFS_POOL_DISKS[@]}";do
+local vdev="${VIRTIO_MAP[$disk]}"
+if [[ -z $vdev ]];then
+log "ERROR: No virtio mapping for pool disk $disk"
+return 1
+fi
+vdevs+=("/dev/$vdev")
+done
+log "INFO: Pool disks: ${vdevs[*]} (RAID: $ZFS_RAID)"
+local vdev_count=${#vdevs[@]}
+case "$ZFS_RAID" in
+single)if
+[[ $vdev_count -ne 1 ]]
+then
+log "WARNING: Single disk RAID expects 1 disk, have $vdev_count"
+fi
+;;
+raid1)if
+[[ $vdev_count -lt 2 ]]
+then
+log "ERROR: RAID1 requires at least 2 disks, have $vdev_count"
+return 1
+fi
+;;
+raidz1)if
+[[ $vdev_count -lt 3 ]]
+then
+log "WARNING: RAIDZ1 recommended for 3+ disks, have $vdev_count"
+fi
+;;
+raidz2)if
+[[ $vdev_count -lt 4 ]]
+then
+log "WARNING: RAIDZ2 recommended for 4+ disks, have $vdev_count"
+fi
+;;
+raid10)if
+[[ $vdev_count -lt 4 ]]||[[ $((vdev_count%2)) -ne 0 ]]
+then
+log "ERROR: RAID10 requires even number of disks (min 4), have $vdev_count"
+return 1
+fi
+esac
+local pool_cmd="zpool create -f tank"
+case "$ZFS_RAID" in
+single)pool_cmd+=" ${vdevs[0]}"
+;;
+raid0)pool_cmd+=" ${vdevs[*]}"
+;;
+raid1)pool_cmd+=" mirror ${vdevs[*]}"
+;;
+raidz1)pool_cmd+=" raidz ${vdevs[*]}"
+;;
+raidz2)pool_cmd+=" raidz2 ${vdevs[*]}"
+;;
+raid10)pool_cmd+=""
+for ((i=0; i<vdev_count; i+=2));do
+pool_cmd+=" mirror ${vdevs[$i]} ${vdevs[$((i+1))]}"
+done
+;;
+*)log "ERROR: Unknown ZFS_RAID type: $ZFS_RAID"
+return 1
+esac
+log "INFO: ZFS pool command: $pool_cmd"
+if ! run_remote "Creating ZFS pool 'tank'" "
+    set -e
+
+    # Create ZFS pool with specified RAID configuration
+    $pool_cmd
+
+    # Set recommended ZFS properties
+    zfs set compression=lz4 tank
+    zfs set atime=off tank
+    zfs set relatime=on tank
+    zfs set xattr=sa tank
+    zfs set dnodesize=auto tank
+
+    # Create dataset for VM disks
+    zfs create tank/vm-disks
+
+    # Add tank pool to Proxmox storage config
+    pvesm add zfspool tank --pool tank/vm-disks --content images,rootdir
+
+    # Configure local storage (boot disk ext4) for ISO/templates/backups
+    pvesm set local --content iso,vztmpl,backup,snippets
+
+    # Verify pool was created
+    if ! zpool list | grep -q '^tank '; then
+      echo 'ERROR: ZFS pool tank not found after creation'
+      exit 1
+    fi
+  " "ZFS pool 'tank' created";then
+log "ERROR: Failed to create ZFS pool 'tank'"
+return 1
+fi
+log "INFO: ZFS pool 'tank' created successfully"
+log "INFO: Proxmox storage configured: tank (VMs), local (ISO/templates/backups)"
 return 0
 }
 configure_zfs_arc(){
