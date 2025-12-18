@@ -19,7 +19,7 @@ HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 HEX_NONE="7"
 MENU_BOX_WIDTH=60
-VERSION="2.0.230-pr.21"
+VERSION="2.0.234-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -772,6 +772,7 @@ Power saving
 Adaptive
 Conservative"
 readonly WIZ_OPTIONAL_FEATURES="vnstat (network stats)
+apparmor (mandatory access control)
 auditd (audit logging)
 prometheus (metrics exporter)
 yazi (file manager)
@@ -830,9 +831,11 @@ KEYBOARD="en-us"
 COUNTRY="us"
 FAIL2BAN_INSTALLED=""
 INSTALL_AUDITD=""
+INSTALL_APPARMOR=""
 CPU_GOVERNOR=""
 ZFS_ARC_MODE=""
 AUDITD_INSTALLED=""
+APPARMOR_INSTALLED=""
 INSTALL_VNSTAT=""
 VNSTAT_INSTALLED=""
 INSTALL_PROMETHEUS=""
@@ -951,6 +954,26 @@ log_debug "Executing: $*"
 local exit_code=$?
 log_debug "Exit code: $exit_code"
 return $exit_code
+}
+INSTALL_START_TIME=""
+metrics_start(){
+INSTALL_START_TIME=$(date +%s)
+log "METRIC: installation_started"
+}
+log_metric(){
+local step="$1"
+if [[ -n $INSTALL_START_TIME ]];then
+local elapsed=$(($(date +%s)-INSTALL_START_TIME))
+log "METRIC: ${step}_completed elapsed=${elapsed}s"
+fi
+}
+metrics_finish(){
+if [[ -n $INSTALL_START_TIME ]];then
+local total=$(($(date +%s)-INSTALL_START_TIME))
+local minutes=$((total/60))
+local seconds=$((total%60))
+log "METRIC: installation_completed total_time=${total}s (${minutes}m ${seconds}s)"
+fi
 }
 BANNER_LETTER_COUNT=7
 show_banner(){
@@ -2488,7 +2511,7 @@ live_log_system_configuration(){
 live_log_section "System Configuration"
 }
 live_log_security_configuration(){
-if [[ ${INSTALL_TAILSCALE:-} == "yes" ]]||[[ ${FAIL2BAN_INSTALLED:-} == "yes" ]]||[[ ${INSTALL_AUDITD:-} == "yes" ]];then
+if [[ ${INSTALL_TAILSCALE:-} == "yes" ]]||[[ ${INSTALL_APPARMOR:-} == "yes" ]]||[[ ${FAIL2BAN_INSTALLED:-} == "yes" ]]||[[ ${INSTALL_AUDITD:-} == "yes" ]];then
 add_log ""
 add_log "$CLR_CYAN▼ Security Configuration$CLR_RESET"
 fi
@@ -2870,10 +2893,12 @@ conservative)power_display="Conservative";;
 esac
 fi
 local features_display="none"
-if [[ -n $INSTALL_VNSTAT || -n $INSTALL_AUDITD || -n $INSTALL_YAZI || -n $INSTALL_NVIM ]];then
+if [[ -n $INSTALL_VNSTAT || -n $INSTALL_APPARMOR || -n $INSTALL_AUDITD || -n $INSTALL_PROMETHEUS || -n $INSTALL_YAZI || -n $INSTALL_NVIM ]];then
 features_display=""
 [[ $INSTALL_VNSTAT == "yes" ]]&&features_display+="vnstat"
+[[ $INSTALL_APPARMOR == "yes" ]]&&features_display+="${features_display:+, }apparmor"
 [[ $INSTALL_AUDITD == "yes" ]]&&features_display+="${features_display:+, }auditd"
+[[ $INSTALL_PROMETHEUS == "yes" ]]&&features_display+="${features_display:+, }prometheus"
 [[ $INSTALL_YAZI == "yes" ]]&&features_display+="${features_display:+, }yazi"
 [[ $INSTALL_NVIM == "yes" ]]&&features_display+="${features_display:+, }nvim"
 [[ -z $features_display ]]&&features_display="none"
@@ -3546,14 +3571,16 @@ _wiz_description \
 "Optional features (use Space to toggle):" \
 "" \
 "  {{cyan:vnstat}}:     Network traffic monitoring" \
+"  {{cyan:apparmor}}:   Mandatory access control (MAC)" \
 "  {{cyan:auditd}}:     Security audit logging" \
 "  {{cyan:prometheus}}: Node exporter for metrics (port 9100)" \
 "  {{cyan:yazi}}:       Terminal file manager" \
 "  {{cyan:nvim}}:       Neovim as default editor" \
 ""
-_show_input_footer "checkbox" 6
+_show_input_footer "checkbox" 7
 local preselected=()
 [[ $INSTALL_VNSTAT == "yes" ]]&&preselected+=("vnstat")
+[[ $INSTALL_APPARMOR == "yes" ]]&&preselected+=("apparmor")
 [[ $INSTALL_AUDITD == "yes" ]]&&preselected+=("auditd")
 [[ $INSTALL_PROMETHEUS == "yes" ]]&&preselected+=("prometheus")
 [[ $INSTALL_YAZI == "yes" ]]&&preselected+=("yazi")
@@ -3575,12 +3602,16 @@ gum_args+=(--selected "$item")
 done
 selected=$(echo "$WIZ_OPTIONAL_FEATURES"|_wiz_choose "${gum_args[@]}")
 INSTALL_VNSTAT="no"
+INSTALL_APPARMOR="no"
 INSTALL_AUDITD="no"
 INSTALL_PROMETHEUS="no"
 INSTALL_YAZI="no"
 INSTALL_NVIM="no"
 if echo "$selected"|grep -q "vnstat";then
 INSTALL_VNSTAT="yes"
+fi
+if echo "$selected"|grep -q "apparmor";then
+INSTALL_APPARMOR="yes"
 fi
 if echo "$selected"|grep -q "auditd";then
 INSTALL_AUDITD="yes"
@@ -3912,6 +3943,70 @@ log "aria2c will verify checksum automatically"
 fi
 aria2c "${aria2_args[@]}" "$url" >>"$LOG_FILE" 2>&1
 }
+_download_iso_parallel(){
+local url="$1"
+local output="$2"
+local checksum="$3"
+local temp_dir
+temp_dir=$(mktemp -d)
+local pids=()
+local methods=()
+log "Starting parallel download race"
+_cleanup_parallel_download(){
+for pid in "${pids[@]}";do
+kill "$pid" 2>/dev/null||true
+wait "$pid" 2>/dev/null||true
+done
+rm -rf "$temp_dir"
+rm -f "$output.aria2" "$output.curl" "$output.wget" 2>/dev/null
+}
+if command -v aria2c &>/dev/null;then
+(_download_iso_aria2c "$url" "$temp_dir/iso.aria2" "$checksum"&&mv "$temp_dir/iso.aria2" "$temp_dir/done.aria2") \
+&
+pids+=($!)
+methods+=("aria2c")
+log "Started aria2c downloader (PID: $!)"
+fi
+(_download_iso_curl "$url" "$temp_dir/iso.curl"&&mv "$temp_dir/iso.curl" "$temp_dir/done.curl") \
+&
+pids+=($!)
+methods+=("curl")
+log "Started curl downloader (PID: $!)"
+if command -v wget &>/dev/null;then
+(_download_iso_wget "$url" "$temp_dir/iso.wget"&&mv "$temp_dir/iso.wget" "$temp_dir/done.wget") \
+&
+pids+=($!)
+methods+=("wget")
+log "Started wget downloader (PID: $!)"
+fi
+while true;do
+for ext in aria2 curl wget;do
+if [[ -f "$temp_dir/done.$ext" ]]&&[[ -s "$temp_dir/done.$ext" ]];then
+log "Download completed by $ext"
+mv "$temp_dir/done.$ext" "$output"
+case "$ext" in
+aria2)DOWNLOAD_METHOD="aria2c";;
+*)DOWNLOAD_METHOD="$ext"
+esac
+_cleanup_parallel_download
+return 0
+fi
+done
+local all_dead=true
+for pid in "${pids[@]}";do
+if kill -0 "$pid" 2>/dev/null;then
+all_dead=false
+break
+fi
+done
+if $all_dead;then
+log "All download methods failed"
+_cleanup_parallel_download
+return 1
+fi
+sleep 1
+done
+}
 download_proxmox_iso(){
 log "Starting Proxmox ISO download"
 if [[ -f "pve.iso" ]];then
@@ -3932,64 +4027,23 @@ if [[ -n $_CHECKSUM_CACHE ]];then
 expected_checksum=$(echo "$_CHECKSUM_CACHE"|grep "$ISO_FILENAME"|awk '{print $1}')
 fi
 log "Expected checksum: ${expected_checksum:-not available}"
-log "Downloading ISO: $ISO_FILENAME"
-local download_success=false
-local download_method=""
-local exit_code
-if command -v aria2c &>/dev/null;then
-log "Attempting download with aria2c (conservative mode)"
-_download_iso_aria2c "$PROXMOX_ISO_URL" "pve.iso" "$expected_checksum"&
-show_progress $! "Downloading $ISO_FILENAME (aria2c)" "$ISO_FILENAME downloaded"
+log "Downloading ISO: $ISO_FILENAME (parallel mode)"
+DOWNLOAD_METHOD=""
+_download_iso_parallel "$PROXMOX_ISO_URL" "pve.iso" "$expected_checksum"&
+show_progress $! "Downloading $ISO_FILENAME" "$ISO_FILENAME downloaded"
 wait $!
-exit_code=$?
-if [[ $exit_code -eq 0 ]]&&[[ -s "pve.iso" ]];then
-download_success=true
-download_method="aria2c"
-log "aria2c download successful"
-else
-log "aria2c failed (exit code: $exit_code), trying curl fallback"
-rm -f pve.iso
-fi
-fi
-if [[ $download_success != "true" ]];then
-log "Attempting download with curl"
-_download_iso_curl "$PROXMOX_ISO_URL" "pve.iso"&
-show_progress $! "Downloading $ISO_FILENAME (curl)" "$ISO_FILENAME downloaded"
-wait $!
-exit_code=$?
-if [[ $exit_code -eq 0 ]]&&[[ -s "pve.iso" ]];then
-download_success=true
-download_method="curl"
-log "curl download successful"
-else
-log "curl failed (exit code: $exit_code), trying wget fallback"
-rm -f pve.iso
-fi
-fi
-if [[ $download_success != "true" ]]&&command -v wget &>/dev/null;then
-log "Attempting download with wget"
-_download_iso_wget "$PROXMOX_ISO_URL" "pve.iso"&
-show_progress $! "Downloading $ISO_FILENAME (wget)" "$ISO_FILENAME downloaded"
-wait $!
-exit_code=$?
-if [[ $exit_code -eq 0 ]]&&[[ -s "pve.iso" ]];then
-download_success=true
-download_method="wget"
-log "wget download successful"
-else
-rm -f pve.iso
-fi
-fi
-if [[ $download_success != "true" ]];then
+local exit_code=$?
+if [[ $exit_code -ne 0 ]]||[[ ! -s "pve.iso" ]];then
 log "ERROR: All download methods failed for Proxmox ISO"
 rm -f pve.iso
 exit 1
 fi
+log "Download successful via $DOWNLOAD_METHOD"
 local iso_size
 iso_size=$(stat -c%s pve.iso 2>/dev/null)||iso_size=0
 log "ISO file size: $(echo "$iso_size"|awk '{printf "%.1fG", $1/1024/1024/1024}')"
 if [[ -n $expected_checksum ]];then
-if [[ $download_method == "aria2c" ]];then
+if [[ $DOWNLOAD_METHOD == "aria2c" ]];then
 log "Checksum already verified by aria2c"
 if type live_log_subtask &>/dev/null 2>&1;then
 live_log_subtask "SHA256: OK (verified by aria2c)"
@@ -4448,6 +4502,7 @@ download_template "./templates/bat-config"||exit 1
 download_template "./templates/fail2ban-jail.local"||exit 1
 download_template "./templates/fail2ban-proxmox.conf"||exit 1
 download_template "./templates/auditd-rules"||exit 1
+download_template "./templates/apparmor-grub.cfg"||exit 1
 download_template "./templates/disable-openssh.service"||exit 1
 download_template "./templates/stealth-firewall.service"||exit 1
 download_template "./templates/yazi-theme.toml"||exit 1
@@ -4738,6 +4793,58 @@ print_info "  tailscale up --ssh"
 print_info "  tailscale serve --bg --https=443 https://127.0.0.1:8006"
 fi
 }
+_install_apparmor(){
+run_remote "Installing AppArmor" '
+    export DEBIAN_FRONTEND=noninteractive
+    apt-get update -qq
+    apt-get install -yqq apparmor apparmor-utils
+  ' "AppArmor installed"
+}
+_config_apparmor(){
+remote_exec '
+    if ! grep -q "Y" /sys/module/apparmor/parameters/enabled 2>/dev/null; then
+      if ! grep -q "apparmor=1" /etc/default/grub 2>/dev/null; then
+        mkdir -p /etc/default/grub.d
+      fi
+    fi
+  '
+remote_exec 'grep -q "Y" /sys/module/apparmor/parameters/enabled 2>/dev/null'||remote_copy "templates/apparmor-grub.cfg" "/etc/default/grub.d/apparmor.cfg"
+remote_exec '
+    # Update GRUB if config was added
+    if [[ -f /etc/default/grub.d/apparmor.cfg ]]; then
+      update-grub 2>/dev/null || true
+    fi
+
+    # Enable and start AppArmor service
+    systemctl enable apparmor.service
+    systemctl start apparmor.service 2>/dev/null || true
+
+    # Load profiles in enforce mode
+    if command -v aa-enforce >/dev/null 2>&1; then
+      for profile in /etc/apparmor.d/*; do
+        [[ -f "$profile" && ! -d "$profile" ]] && aa-enforce "$profile" 2>/dev/null || true
+      done
+    fi
+  '||exit 1
+}
+configure_apparmor(){
+if [[ ${INSTALL_APPARMOR:-} != "yes" ]];then
+log "Skipping AppArmor (not requested)"
+return 0
+fi
+log "Installing and configuring AppArmor"
+(_install_apparmor||exit 1
+_config_apparmor||exit 1) > \
+/dev/null 2>&1&
+show_progress $! "Installing and configuring AppArmor" "AppArmor configured"
+local exit_code=$?
+if [[ $exit_code -ne 0 ]];then
+log "WARNING: AppArmor setup failed"
+print_warning "AppArmor setup failed - continuing without it"
+return 0
+fi
+APPARMOR_INSTALLED="yes"
+}
 _install_fail2ban(){
 run_remote "Installing Fail2Ban" '
     export DEBIAN_FRONTEND=noninteractive
@@ -5023,6 +5130,7 @@ if type live_log_security_configuration &>/dev/null 2>&1;then
 live_log_security_configuration
 fi
 configure_tailscale
+configure_apparmor
 configure_fail2ban
 configure_auditd
 configure_prometheus
@@ -5291,6 +5399,7 @@ log "QEMU_RAM_OVERRIDE=$QEMU_RAM_OVERRIDE"
 log "QEMU_CORES_OVERRIDE=$QEMU_CORES_OVERRIDE"
 log "PVE_REPO_TYPE=${PVE_REPO_TYPE:-no-subscription}"
 log "SSL_TYPE=${SSL_TYPE:-self-signed}"
+metrics_start
 log "Step: collect_system_info"
 show_banner_animated_start 0.1
 SYSTEM_INFO_CACHE=$(mktemp)
@@ -5308,8 +5417,10 @@ rm -f "$SYSTEM_INFO_CACHE"
 fi
 log "Step: show_system_status"
 show_system_status
+log_metric "system_info"
 log "Step: show_gum_config_editor"
 show_gum_config_editor
+log_metric "config_wizard"
 start_live_installation||{
 log "WARNING: Failed to start live installation display, falling back to regular mode"
 clear
@@ -5318,27 +5429,34 @@ show_banner
 live_log_system_preparation
 log "Step: prepare_packages"
 prepare_packages
+log_metric "packages"
 live_log_iso_download
 log "Step: download_proxmox_iso"
 download_proxmox_iso
+log_metric "iso_download"
 live_log_autoinstall_preparation
 log "Step: make_answer_toml"
 make_answer_toml
 log "Step: make_autoinstall_iso"
 make_autoinstall_iso
+log_metric "autoinstall_prep"
 live_log_proxmox_installation
 log "Step: install_proxmox"
 install_proxmox
+log_metric "proxmox_install"
 log "Step: boot_proxmox_with_port_forwarding"
 boot_proxmox_with_port_forwarding||{
 log "ERROR: Failed to boot Proxmox with port forwarding"
 exit 1
 }
+log_metric "qemu_boot"
 live_log_system_configuration
 log "Step: configure_proxmox_via_ssh"
 configure_proxmox_via_ssh
+log_metric "system_config"
 live_log_installation_complete
 finish_live_installation
+metrics_finish
 INSTALL_COMPLETED=true
 log "Step: reboot_to_main_os"
 reboot_to_main_os
