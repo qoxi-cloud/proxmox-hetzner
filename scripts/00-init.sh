@@ -193,21 +193,6 @@ Strict (SSH only)
 Standard (SSH + Web UI)
 Disabled"
 
-# Optional features
-# shellcheck disable=SC2034
-readonly WIZ_OPTIONAL_FEATURES="vnstat (network stats)
-ringbuffer (network tuning)
-apparmor (mandatory access control)
-auditd (audit logging)
-aide (file integrity)
-chkrootkit (rootkit scanner)
-lynis (security audit)
-needrestart (auto service restart)
-netdata (real-time monitoring)
-prometheus (metrics exporter)
-yazi (file manager)
-nvim (text editor)"
-
 # =============================================================================
 # Disk configuration
 # =============================================================================

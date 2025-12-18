@@ -53,7 +53,9 @@ _wizard_main() {
           ssl) _edit_ssl ;;
           shell) _edit_shell ;;
           power_profile) _edit_power_profile ;;
-          features) _edit_features ;;
+          security) _edit_features_security ;;
+          monitoring) _edit_features_monitoring ;;
+          tools) _edit_features_tools ;;
           api_token) _edit_api_token ;;
           ssh_key) _edit_ssh_key ;;
         esac
