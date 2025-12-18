@@ -15,8 +15,20 @@ _install_netdata() {
 
 # Configuration function for netdata
 _config_netdata() {
+  # Determine bind address based on Tailscale
+  local bind_to="127.0.0.1"
+
+  if [[ $INSTALL_TAILSCALE == "yes" ]]; then
+    # Bind to localhost and Tailscale interface (100.x.x.x)
+    # Tailscale IP will be detected at runtime
+    bind_to="127.0.0.1 100.*"
+  fi
+
+  # Export for template
+  export NETDATA_BIND_TO="$bind_to"
+
   # Deploy netdata configuration
-  deploy_template "netdata.conf" "/etc/netdata/netdata.conf"
+  deploy_template "netdata.conf" "/etc/netdata/netdata.conf" NETDATA_BIND_TO
 
   remote_exec '
     # Enable and start netdata service
@@ -28,6 +40,8 @@ _config_netdata() {
 
 # Installs and configures Netdata for real-time monitoring.
 # Provides web dashboard accessible on port 19999.
+# If Tailscale enabled: accessible via Tailscale network
+# Otherwise: localhost only (use reverse proxy for external access)
 # Side effects: Sets NETDATA_INSTALLED global, installs netdata package
 configure_netdata() {
   # Skip if netdata is not requested
