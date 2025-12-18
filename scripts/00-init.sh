@@ -883,7 +883,7 @@ BOOT_DISK=""
 ZFS_POOL_DISKS=()
 
 # System utilities to install on Proxmox
-SYSTEM_UTILITIES="btop iotop ncdu tmux pigz smartmontools jq bat fastfetch aide chkrootkit sysstat nethogs ethtool"
+SYSTEM_UTILITIES="btop iotop ncdu tmux pigz smartmontools jq bat fastfetch sysstat nethogs ethtool"
 OPTIONAL_PACKAGES="libguestfs-tools" # prometheus-node-exporter moved to wizard features
 
 # Log file

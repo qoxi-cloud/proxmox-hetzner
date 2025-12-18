@@ -4,6 +4,15 @@
 # Weekly scheduled scans with logging
 # =============================================================================
 
+# Installation function for chkrootkit
+_install_chkrootkit() {
+  run_remote "Installing chkrootkit" '
+    export DEBIAN_FRONTEND=noninteractive
+    apt-get update -qq
+    apt-get install -yqq chkrootkit
+  ' "chkrootkit installed"
+}
+
 # Configuration function for chkrootkit
 _config_chkrootkit() {
   # Deploy systemd service and timer for weekly scans
@@ -21,24 +30,24 @@ _config_chkrootkit() {
   ' || exit 1
 }
 
-# Configures chkrootkit for scheduled rootkit scanning.
+# Installs and configures chkrootkit for scheduled rootkit scanning.
 # Sets up weekly scans via systemd timer with logging.
-# Note: chkrootkit package is already installed via SYSTEM_UTILITIES
-# Side effects: Sets CHKROOTKIT_INSTALLED global
+# Side effects: Sets CHKROOTKIT_INSTALLED global, installs chkrootkit package
 configure_chkrootkit() {
-  # Skip if chkrootkit scheduling is not requested
+  # Skip if chkrootkit is not requested
   if [[ $INSTALL_CHKROOTKIT != "yes" ]]; then
-    log "Skipping chkrootkit scheduling (not requested)"
+    log "Skipping chkrootkit (not requested)"
     return 0
   fi
 
-  log "Configuring chkrootkit scheduled scanning"
+  log "Installing and configuring chkrootkit"
 
-  # Configure using helper (with background progress)
+  # Install and configure using helper (with background progress)
   (
+    _install_chkrootkit || exit 1
     _config_chkrootkit || exit 1
   ) >/dev/null 2>&1 &
-  show_progress $! "Configuring chkrootkit" "chkrootkit configured"
+  show_progress $! "Installing chkrootkit" "chkrootkit configured"
 
   local exit_code=$?
   if [[ $exit_code -ne 0 ]]; then
