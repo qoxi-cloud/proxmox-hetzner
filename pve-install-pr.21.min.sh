@@ -19,7 +19,7 @@ HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 HEX_NONE="7"
 MENU_BOX_WIDTH=60
-VERSION="2.0.269-pr.21"
+VERSION="2.0.270-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -1066,16 +1066,19 @@ esac
 return 0
 }
 create_virtio_mapping(){
+local boot_disk="$1"
+shift
+local pool_disks=("$@")
 declare -A VIRTIO_MAP
 local virtio_idx=0
 local vdev_letters=(a b c d e f g h i j k l m n o p q r s t u v w x y z)
-if [[ -n $BOOT_DISK ]];then
+if [[ -n $boot_disk ]];then
 local vdev="vd${vdev_letters[$virtio_idx]}"
-VIRTIO_MAP["$BOOT_DISK"]="$vdev"
-log "Virtio mapping: $BOOT_DISK → /dev/$vdev (boot)"
+VIRTIO_MAP["$boot_disk"]="$vdev"
+log "Virtio mapping: $boot_disk → /dev/$vdev (boot)"
 ((virtio_idx++))
 fi
-for drive in "${ZFS_POOL_DISKS[@]}";do
+for drive in "${pool_disks[@]}";do
 local vdev="vd${vdev_letters[$virtio_idx]}"
 VIRTIO_MAP["$drive"]="$vdev"
 log "Virtio mapping: $drive → /dev/$vdev (pool)"
@@ -1085,14 +1088,11 @@ declare -p VIRTIO_MAP|sed 's/declare -A/declare -gA/' >/tmp/virtio_map.env
 log "Virtio mapping saved to /tmp/virtio_map.env"
 }
 load_virtio_mapping(){
-if [[ ! -f /tmp/virtio_map.env ]];then
-create_virtio_mapping
-fi
 if [[ -f /tmp/virtio_map.env ]];then
 source /tmp/virtio_map.env
 return 0
 else
-log "ERROR: Failed to create virtio mapping"
+log "ERROR: Virtio mapping file not found"
 return 1
 fi
 }
@@ -3670,12 +3670,7 @@ make_answer_toml(){
 log "Creating answer.toml for autoinstall"
 log "ZFS_RAID=$ZFS_RAID, BOOT_DISK=$BOOT_DISK"
 log "ZFS_POOL_DISKS=(${ZFS_POOL_DISKS[*]})"
-(if
-! load_virtio_mapping
-then
-log "ERROR: Failed to load virtio mapping"
-exit 1
-fi) \
+(create_virtio_mapping "$BOOT_DISK" "${ZFS_POOL_DISKS[@]}") \
 &
 show_progress $! "Creating disk mapping" "Disk mapping created"
 load_virtio_mapping||{
@@ -3826,11 +3821,9 @@ fi
 log "QEMU config: $QEMU_CORES vCPUs, ${QEMU_RAM}MB RAM"
 load_virtio_mapping
 DRIVE_ARGS=""
-if [[ -n $BOOT_DISK ]];then
-DRIVE_ARGS="$DRIVE_ARGS -drive file=$BOOT_DISK,format=raw,media=disk,if=virtio"
-fi
-for drive in "${ZFS_POOL_DISKS[@]}";do
-DRIVE_ARGS="$DRIVE_ARGS -drive file=$drive,format=raw,media=disk,if=virtio"
+local disk
+for disk in "${!VIRTIO_MAP[@]}";do
+DRIVE_ARGS="$DRIVE_ARGS -drive file=$disk,format=raw,media=disk,if=virtio"
 done
 log "Drive args: $DRIVE_ARGS"
 }
