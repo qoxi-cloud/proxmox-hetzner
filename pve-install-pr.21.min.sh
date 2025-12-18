@@ -19,7 +19,7 @@ HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 HEX_NONE="7"
 MENU_BOX_WIDTH=60
-VERSION="2.0.266-pr.21"
+VERSION="2.0.269-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -4353,173 +4353,6 @@ print_info "  tailscale up --ssh"
 print_info "  tailscale serve --bg --https=443 https://127.0.0.1:8006"
 fi
 }
-_install_aide(){
-run_remote "Installing AIDE" '
-    export DEBIAN_FRONTEND=noninteractive
-    apt-get update -qq
-    apt-get install -yqq aide aide-common
-  ' "AIDE installed"
-}
-_config_aide(){
-deploy_template "aide-check.service" "/etc/systemd/system/aide-check.service"
-deploy_template "aide-check.timer" "/etc/systemd/system/aide-check.timer"
-remote_exec '
-    # Initialize AIDE database (this takes a while)
-    echo "Initializing AIDE database (this may take several minutes)..."
-    aideinit -y -f 2>/dev/null || true
-
-    # Move new database to active location
-    if [[ -f /var/lib/aide/aide.db.new ]]; then
-      mv /var/lib/aide/aide.db.new /var/lib/aide/aide.db
-    fi
-
-    # Enable daily integrity check timer
-    systemctl daemon-reload
-    systemctl enable aide-check.timer
-    systemctl start aide-check.timer
-  '||exit 1
-}
-configure_aide(){
-if [[ $INSTALL_AIDE != "yes" ]];then
-log "Skipping AIDE (not requested)"
-return 0
-fi
-log "Installing and configuring AIDE"
-(_install_aide||exit 1
-_config_aide||exit 1) > \
-/dev/null 2>&1&
-show_progress $! "Installing and configuring AIDE" "AIDE configured"
-local exit_code=$?
-if [[ $exit_code -ne 0 ]];then
-log "WARNING: AIDE setup failed"
-print_warning "AIDE setup failed - continuing without it"
-return 0
-fi
-AIDE_INSTALLED="yes"
-}
-_install_apparmor(){
-run_remote "Installing AppArmor" '
-    export DEBIAN_FRONTEND=noninteractive
-    apt-get update -qq
-    apt-get install -yqq apparmor apparmor-utils
-  ' "AppArmor installed"
-}
-_config_apparmor(){
-remote_exec '
-    if ! grep -q "Y" /sys/module/apparmor/parameters/enabled 2>/dev/null; then
-      if ! grep -q "apparmor=1" /etc/default/grub 2>/dev/null; then
-        mkdir -p /etc/default/grub.d
-      fi
-    fi
-  '
-remote_exec 'grep -q "Y" /sys/module/apparmor/parameters/enabled 2>/dev/null'||remote_copy "templates/apparmor-grub.cfg" "/etc/default/grub.d/apparmor.cfg"
-remote_exec '
-    # Update GRUB if config was added
-    if [[ -f /etc/default/grub.d/apparmor.cfg ]]; then
-      update-grub 2>/dev/null || true
-    fi
-
-    # Enable and start AppArmor service
-    systemctl enable apparmor.service
-    systemctl start apparmor.service 2>/dev/null || true
-
-    # Load profiles in enforce mode
-    if command -v aa-enforce >/dev/null 2>&1; then
-      for profile in /etc/apparmor.d/*; do
-        [[ -f "$profile" && ! -d "$profile" ]] && aa-enforce "$profile" 2>/dev/null || true
-      done
-    fi
-  '||exit 1
-}
-configure_apparmor(){
-if [[ ${INSTALL_APPARMOR:-} != "yes" ]];then
-log "Skipping AppArmor (not requested)"
-return 0
-fi
-log "Installing and configuring AppArmor"
-(_install_apparmor||exit 1
-_config_apparmor||exit 1) > \
-/dev/null 2>&1&
-show_progress $! "Installing and configuring AppArmor" "AppArmor configured"
-local exit_code=$?
-if [[ $exit_code -ne 0 ]];then
-log "WARNING: AppArmor setup failed"
-print_warning "AppArmor setup failed - continuing without it"
-return 0
-fi
-APPARMOR_INSTALLED="yes"
-}
-_install_chkrootkit(){
-run_remote "Installing chkrootkit" '
-    export DEBIAN_FRONTEND=noninteractive
-    apt-get update -qq
-    apt-get install -yqq chkrootkit
-  ' "chkrootkit installed"
-}
-_config_chkrootkit(){
-deploy_template "chkrootkit-scan.service" "/etc/systemd/system/chkrootkit-scan.service"
-deploy_template "chkrootkit-scan.timer" "/etc/systemd/system/chkrootkit-scan.timer"
-remote_exec '
-    # Ensure log directory exists
-    mkdir -p /var/log/chkrootkit
-
-    # Enable weekly scan timer
-    systemctl daemon-reload
-    systemctl enable chkrootkit-scan.timer
-    systemctl start chkrootkit-scan.timer
-  '||exit 1
-}
-configure_chkrootkit(){
-if [[ $INSTALL_CHKROOTKIT != "yes" ]];then
-log "Skipping chkrootkit (not requested)"
-return 0
-fi
-log "Installing and configuring chkrootkit"
-(_install_chkrootkit||exit 1
-_config_chkrootkit||exit 1) > \
-/dev/null 2>&1&
-show_progress $! "Installing chkrootkit" "chkrootkit configured"
-local exit_code=$?
-if [[ $exit_code -ne 0 ]];then
-log "WARNING: chkrootkit setup failed"
-print_warning "chkrootkit setup failed - continuing without it"
-return 0
-fi
-CHKROOTKIT_INSTALLED="yes"
-}
-_install_fail2ban(){
-run_remote "Installing Fail2Ban" '
-    export DEBIAN_FRONTEND=noninteractive
-    apt-get update -qq
-    apt-get install -yqq fail2ban
-  ' "Fail2Ban installed"
-}
-_config_fail2ban(){
-apply_template_vars "./templates/fail2ban-jail.local" \
-"EMAIL=$EMAIL" \
-"HOSTNAME=$PVE_HOSTNAME"
-remote_copy "templates/fail2ban-jail.local" "/etc/fail2ban/jail.local"||exit 1
-remote_copy "templates/fail2ban-proxmox.conf" "/etc/fail2ban/filter.d/proxmox.conf"||exit 1
-remote_exec "systemctl enable fail2ban && systemctl restart fail2ban"||exit 1
-}
-configure_fail2ban(){
-if [[ $INSTALL_TAILSCALE == "yes" ]];then
-log "Skipping Fail2Ban (Tailscale provides security)"
-return 0
-fi
-log "Installing Fail2Ban (no Tailscale)"
-(_install_fail2ban||exit 1
-_config_fail2ban||exit 1) > \
-/dev/null 2>&1&
-show_progress $! "Installing and configuring Fail2Ban" "Fail2Ban configured"
-local exit_code=$?
-if [[ $exit_code -ne 0 ]];then
-log "WARNING: Fail2Ban setup failed"
-print_warning "Fail2Ban setup failed - continuing without it"
-return 0
-fi
-FAIL2BAN_INSTALLED="yes"
-}
 _install_nftables(){
 run_remote "Installing nftables" '
     export DEBIAN_FRONTEND=noninteractive
@@ -4690,6 +4523,217 @@ return 0
 fi
 FIREWALL_INSTALLED="yes"
 }
+_install_fail2ban(){
+run_remote "Installing Fail2Ban" '
+    export DEBIAN_FRONTEND=noninteractive
+    apt-get update -qq
+    apt-get install -yqq fail2ban
+  ' "Fail2Ban installed"
+}
+_config_fail2ban(){
+apply_template_vars "./templates/fail2ban-jail.local" \
+"EMAIL=$EMAIL" \
+"HOSTNAME=$PVE_HOSTNAME"
+remote_copy "templates/fail2ban-jail.local" "/etc/fail2ban/jail.local"||exit 1
+remote_copy "templates/fail2ban-proxmox.conf" "/etc/fail2ban/filter.d/proxmox.conf"||exit 1
+remote_exec "systemctl enable fail2ban && systemctl restart fail2ban"||exit 1
+}
+configure_fail2ban(){
+if [[ $INSTALL_TAILSCALE == "yes" ]];then
+log "Skipping Fail2Ban (Tailscale provides security)"
+return 0
+fi
+log "Installing Fail2Ban (no Tailscale)"
+(_install_fail2ban||exit 1
+_config_fail2ban||exit 1) > \
+/dev/null 2>&1&
+show_progress $! "Installing and configuring Fail2Ban" "Fail2Ban configured"
+local exit_code=$?
+if [[ $exit_code -ne 0 ]];then
+log "WARNING: Fail2Ban setup failed"
+print_warning "Fail2Ban setup failed - continuing without it"
+return 0
+fi
+FAIL2BAN_INSTALLED="yes"
+}
+_install_apparmor(){
+run_remote "Installing AppArmor" '
+    export DEBIAN_FRONTEND=noninteractive
+    apt-get update -qq
+    apt-get install -yqq apparmor apparmor-utils
+  ' "AppArmor installed"
+}
+_config_apparmor(){
+remote_exec '
+    if ! grep -q "Y" /sys/module/apparmor/parameters/enabled 2>/dev/null; then
+      if ! grep -q "apparmor=1" /etc/default/grub 2>/dev/null; then
+        mkdir -p /etc/default/grub.d
+      fi
+    fi
+  '
+remote_exec 'grep -q "Y" /sys/module/apparmor/parameters/enabled 2>/dev/null'||remote_copy "templates/apparmor-grub.cfg" "/etc/default/grub.d/apparmor.cfg"
+remote_exec '
+    # Update GRUB if config was added
+    if [[ -f /etc/default/grub.d/apparmor.cfg ]]; then
+      update-grub 2>/dev/null || true
+    fi
+
+    # Enable and start AppArmor service
+    systemctl enable apparmor.service
+    systemctl start apparmor.service 2>/dev/null || true
+
+    # Load profiles in enforce mode
+    if command -v aa-enforce >/dev/null 2>&1; then
+      for profile in /etc/apparmor.d/*; do
+        [[ -f "$profile" && ! -d "$profile" ]] && aa-enforce "$profile" 2>/dev/null || true
+      done
+    fi
+  '||exit 1
+}
+configure_apparmor(){
+if [[ ${INSTALL_APPARMOR:-} != "yes" ]];then
+log "Skipping AppArmor (not requested)"
+return 0
+fi
+log "Installing and configuring AppArmor"
+(_install_apparmor||exit 1
+_config_apparmor||exit 1) > \
+/dev/null 2>&1&
+show_progress $! "Installing and configuring AppArmor" "AppArmor configured"
+local exit_code=$?
+if [[ $exit_code -ne 0 ]];then
+log "WARNING: AppArmor setup failed"
+print_warning "AppArmor setup failed - continuing without it"
+return 0
+fi
+APPARMOR_INSTALLED="yes"
+}
+_install_auditd(){
+run_remote "Installing auditd" '
+    export DEBIAN_FRONTEND=noninteractive
+    apt-get update -qq
+    apt-get install -yqq auditd audispd-plugins
+  ' "Auditd installed"
+}
+_config_auditd(){
+remote_copy "templates/auditd-rules" "/etc/audit/rules.d/proxmox.rules"||exit 1
+remote_exec '
+    # Ensure log directory exists
+    mkdir -p /var/log/audit
+
+    # Configure auditd.conf for better log retention
+    sed -i "s/^max_log_file = .*/max_log_file = 50/" /etc/audit/auditd.conf 2>/dev/null || true
+    sed -i "s/^num_logs = .*/num_logs = 10/" /etc/audit/auditd.conf 2>/dev/null || true
+    sed -i "s/^max_log_file_action = .*/max_log_file_action = ROTATE/" /etc/audit/auditd.conf 2>/dev/null || true
+
+    # Load new rules
+    augenrules --load 2>/dev/null || true
+
+    # Enable and restart auditd
+    systemctl enable auditd
+    systemctl restart auditd
+  '||exit 1
+}
+configure_auditd(){
+if [[ $INSTALL_AUDITD != "yes" ]];then
+log "Skipping auditd (not requested)"
+return 0
+fi
+log "Installing and configuring auditd"
+(_install_auditd||exit 1
+_config_auditd||exit 1) > \
+/dev/null 2>&1&
+show_progress $! "Installing and configuring auditd" "Auditd configured"
+local exit_code=$?
+if [[ $exit_code -ne 0 ]];then
+log "WARNING: Auditd setup failed"
+print_warning "Auditd setup failed - continuing without it"
+return 0
+fi
+AUDITD_INSTALLED="yes"
+}
+_install_aide(){
+run_remote "Installing AIDE" '
+    export DEBIAN_FRONTEND=noninteractive
+    apt-get update -qq
+    apt-get install -yqq aide aide-common
+  ' "AIDE installed"
+}
+_config_aide(){
+deploy_template "aide-check.service" "/etc/systemd/system/aide-check.service"
+deploy_template "aide-check.timer" "/etc/systemd/system/aide-check.timer"
+remote_exec '
+    # Initialize AIDE database (this takes a while)
+    echo "Initializing AIDE database (this may take several minutes)..."
+    aideinit -y -f 2>/dev/null || true
+
+    # Move new database to active location
+    if [[ -f /var/lib/aide/aide.db.new ]]; then
+      mv /var/lib/aide/aide.db.new /var/lib/aide/aide.db
+    fi
+
+    # Enable daily integrity check timer
+    systemctl daemon-reload
+    systemctl enable aide-check.timer
+    systemctl start aide-check.timer
+  '||exit 1
+}
+configure_aide(){
+if [[ $INSTALL_AIDE != "yes" ]];then
+log "Skipping AIDE (not requested)"
+return 0
+fi
+log "Installing and configuring AIDE"
+(_install_aide||exit 1
+_config_aide||exit 1) > \
+/dev/null 2>&1&
+show_progress $! "Installing and configuring AIDE" "AIDE configured"
+local exit_code=$?
+if [[ $exit_code -ne 0 ]];then
+log "WARNING: AIDE setup failed"
+print_warning "AIDE setup failed - continuing without it"
+return 0
+fi
+AIDE_INSTALLED="yes"
+}
+_install_chkrootkit(){
+run_remote "Installing chkrootkit" '
+    export DEBIAN_FRONTEND=noninteractive
+    apt-get update -qq
+    apt-get install -yqq chkrootkit
+  ' "chkrootkit installed"
+}
+_config_chkrootkit(){
+deploy_template "chkrootkit-scan.service" "/etc/systemd/system/chkrootkit-scan.service"
+deploy_template "chkrootkit-scan.timer" "/etc/systemd/system/chkrootkit-scan.timer"
+remote_exec '
+    # Ensure log directory exists
+    mkdir -p /var/log/chkrootkit
+
+    # Enable weekly scan timer
+    systemctl daemon-reload
+    systemctl enable chkrootkit-scan.timer
+    systemctl start chkrootkit-scan.timer
+  '||exit 1
+}
+configure_chkrootkit(){
+if [[ $INSTALL_CHKROOTKIT != "yes" ]];then
+log "Skipping chkrootkit (not requested)"
+return 0
+fi
+log "Installing and configuring chkrootkit"
+(_install_chkrootkit||exit 1
+_config_chkrootkit||exit 1) > \
+/dev/null 2>&1&
+show_progress $! "Installing chkrootkit" "chkrootkit configured"
+local exit_code=$?
+if [[ $exit_code -ne 0 ]];then
+log "WARNING: chkrootkit setup failed"
+print_warning "chkrootkit setup failed - continuing without it"
+return 0
+fi
+CHKROOTKIT_INSTALLED="yes"
+}
 _install_lynis(){
 run_remote "Installing lynis" '
     export DEBIAN_FRONTEND=noninteractive
@@ -4793,50 +4837,6 @@ return 0
 fi
 RINGBUFFER_INSTALLED="yes"
 }
-_install_auditd(){
-run_remote "Installing auditd" '
-    export DEBIAN_FRONTEND=noninteractive
-    apt-get update -qq
-    apt-get install -yqq auditd audispd-plugins
-  ' "Auditd installed"
-}
-_config_auditd(){
-remote_copy "templates/auditd-rules" "/etc/audit/rules.d/proxmox.rules"||exit 1
-remote_exec '
-    # Ensure log directory exists
-    mkdir -p /var/log/audit
-
-    # Configure auditd.conf for better log retention
-    sed -i "s/^max_log_file = .*/max_log_file = 50/" /etc/audit/auditd.conf 2>/dev/null || true
-    sed -i "s/^num_logs = .*/num_logs = 10/" /etc/audit/auditd.conf 2>/dev/null || true
-    sed -i "s/^max_log_file_action = .*/max_log_file_action = ROTATE/" /etc/audit/auditd.conf 2>/dev/null || true
-
-    # Load new rules
-    augenrules --load 2>/dev/null || true
-
-    # Enable and restart auditd
-    systemctl enable auditd
-    systemctl restart auditd
-  '||exit 1
-}
-configure_auditd(){
-if [[ $INSTALL_AUDITD != "yes" ]];then
-log "Skipping auditd (not requested)"
-return 0
-fi
-log "Installing and configuring auditd"
-(_install_auditd||exit 1
-_config_auditd||exit 1) > \
-/dev/null 2>&1&
-show_progress $! "Installing and configuring auditd" "Auditd configured"
-local exit_code=$?
-if [[ $exit_code -ne 0 ]];then
-log "WARNING: Auditd setup failed"
-print_warning "Auditd setup failed - continuing without it"
-return 0
-fi
-AUDITD_INSTALLED="yes"
-}
 _install_vnstat(){
 run_remote "Installing vnstat" '
     export DEBIAN_FRONTEND=noninteractive
@@ -4884,6 +4884,98 @@ print_warning "vnstat setup failed - continuing without it"
 return 0
 fi
 VNSTAT_INSTALLED="yes"
+}
+_install_prometheus(){
+run_remote "Installing prometheus-node-exporter" '
+    export DEBIAN_FRONTEND=noninteractive
+    apt-get update -qq
+    apt-get install -yqq prometheus-node-exporter
+  ' "Prometheus node exporter installed"
+}
+_config_prometheus(){
+remote_exec '
+    mkdir -p /var/lib/prometheus/node-exporter
+    chown prometheus:prometheus /var/lib/prometheus/node-exporter
+  '||exit 1
+remote_copy "templates/prometheus-node-exporter" "/etc/default/prometheus-node-exporter"||exit 1
+remote_copy "templates/proxmox-metrics.sh" "/usr/local/bin/proxmox-metrics.sh"||exit 1
+remote_exec "chmod +x /usr/local/bin/proxmox-metrics.sh"||exit 1
+remote_copy "templates/proxmox-metrics.cron" "/etc/cron.d/proxmox-metrics"||exit 1
+remote_exec "/usr/local/bin/proxmox-metrics.sh" >/dev/null 2>&1||log "WARNING: Initial metrics collection failed (non-fatal)"
+remote_exec '
+    systemctl daemon-reload
+    systemctl enable prometheus-node-exporter
+    systemctl restart prometheus-node-exporter
+
+    # Verify service is running
+    systemctl is-active --quiet prometheus-node-exporter || exit 1
+  '||exit 1
+log "Prometheus node exporter listening on :9100 with textfile collector"
+log "Custom metrics cron job installed (/etc/cron.d/proxmox-metrics, runs every 5 minutes)"
+}
+configure_prometheus(){
+if [[ $INSTALL_PROMETHEUS != "yes" ]];then
+log "Skipping prometheus-node-exporter (not requested)"
+return 0
+fi
+log "Installing and configuring prometheus-node-exporter"
+(_install_prometheus||exit 1
+_config_prometheus||exit 1) > \
+/dev/null 2>&1&
+show_progress $! "Installing and configuring prometheus" "Prometheus configured"
+local exit_code=$?
+if [[ $exit_code -ne 0 ]];then
+log "WARNING: Prometheus setup failed"
+print_warning "Prometheus setup failed - continuing without it"
+return 0
+fi
+PROMETHEUS_INSTALLED="yes"
+if [[ $INSTALL_TAILSCALE == "yes" ]];then
+log "Prometheus metrics accessible via Tailscale only (stealth firewall enabled)"
+else
+log "WARNING: Prometheus metrics exposed on public IP $MAIN_IPV4:9100"
+log "Consider using firewall rules to restrict access to trusted IPs only"
+fi
+log "Textfile collector directory: /var/lib/prometheus/node-exporter"
+}
+_install_netdata(){
+run_remote "Installing netdata" '
+    export DEBIAN_FRONTEND=noninteractive
+    apt-get update -qq
+    apt-get install -yqq netdata
+  ' "netdata installed"
+}
+_config_netdata(){
+local bind_to="127.0.0.1"
+if [[ $INSTALL_TAILSCALE == "yes" ]];then
+bind_to="127.0.0.1 100.*"
+fi
+export NETDATA_BIND_TO="$bind_to"
+deploy_template "netdata.conf" "/etc/netdata/netdata.conf" NETDATA_BIND_TO
+remote_exec '
+    # Enable and start netdata service
+    systemctl daemon-reload
+    systemctl enable netdata
+    systemctl restart netdata
+  '||exit 1
+}
+configure_netdata(){
+if [[ $INSTALL_NETDATA != "yes" ]];then
+log "Skipping netdata (not requested)"
+return 0
+fi
+log "Installing and configuring netdata"
+(_install_netdata||exit 1
+_config_netdata||exit 1) > \
+/dev/null 2>&1&
+show_progress $! "Installing netdata" "netdata configured"
+local exit_code=$?
+if [[ $exit_code -ne 0 ]];then
+log "WARNING: netdata setup failed"
+print_warning "netdata setup failed - continuing without it"
+return 0
+fi
+NETDATA_INSTALLED="yes"
 }
 _install_yazi(){
 run_remote "Installing yazi" '
@@ -5011,6 +5103,157 @@ run_remote "Configuring Let's Encrypt templates" '
 LETSENCRYPT_DOMAIN="$cert_domain"
 LETSENCRYPT_FIRSTBOOT=true
 }
+create_api_token(){
+[[ $INSTALL_API_TOKEN != "yes" ]]&&return 0
+log "INFO: Creating Proxmox API token: $API_TOKEN_NAME"
+local existing
+existing=$(remote_exec "pveum user token list root@pam 2>/dev/null | grep -q '$API_TOKEN_NAME' && echo 'exists' || echo ''"||true)
+if [[ $existing == "exists" ]];then
+log "WARNING: Token $API_TOKEN_NAME exists, removing first"
+remote_exec "pveum user token remove root@pam $API_TOKEN_NAME"||true
+fi
+local output
+output=$(remote_exec "pveum user token add root@pam $API_TOKEN_NAME --privsep 0 --expire 0 --output-format json 2>&1"||true)
+if [[ -z $output ]];then
+log "ERROR: Failed to create API token - empty output"
+print_warning "API token creation failed - continuing without it"
+return 1
+fi
+local token_value
+token_value=$(echo "$output"|jq -r '.value // empty' 2>/dev/null||true)
+if [[ -z $token_value ]];then
+log "ERROR: Failed to extract token value from pveum output"
+log "DEBUG: pveum output: $output"
+print_warning "API token creation failed - continuing without it"
+return 1
+fi
+API_TOKEN_VALUE="$token_value"
+API_TOKEN_ID="root@pam!$API_TOKEN_NAME"
+cat >/tmp/pve-install-api-token.env <<EOF
+API_TOKEN_VALUE=$token_value
+API_TOKEN_ID=$API_TOKEN_ID
+API_TOKEN_NAME=$API_TOKEN_NAME
+EOF
+log "INFO: API token created successfully: $API_TOKEN_ID"
+return 0
+}
+configure_zfs_arc(){
+log "INFO: Configuring ZFS ARC memory allocation (mode: $ZFS_ARC_MODE)"
+local total_ram_mb
+total_ram_mb=$(free -m|awk 'NR==2 {print $2}')
+local arc_max_mb
+case "$ZFS_ARC_MODE" in
+vm-focused)arc_max_mb=4096
+;;
+balanced)if
+[[ $total_ram_mb -lt 16384 ]]
+then
+arc_max_mb=$((total_ram_mb*25/100))
+elif [[ $total_ram_mb -lt 65536 ]];then
+arc_max_mb=$((total_ram_mb*40/100))
+else
+arc_max_mb=$((total_ram_mb/2))
+fi
+;;
+storage-focused)arc_max_mb=$((total_ram_mb/2))
+;;
+*)log "ERROR: Invalid ZFS_ARC_MODE: $ZFS_ARC_MODE"
+return 1
+esac
+local arc_max_bytes=$((arc_max_mb*1024*1024))
+log "INFO: ZFS ARC: ${arc_max_mb}MB (Total RAM: ${total_ram_mb}MB, Mode: $ZFS_ARC_MODE)"
+run_remote "Configuring ZFS ARC memory" "
+    # Set ZFS ARC limit in modprobe config (persistent across reboots)
+    echo 'options zfs zfs_arc_max=$arc_max_bytes' >/etc/modprobe.d/zfs.conf
+
+    # Apply limit to currently running kernel module (if ZFS loaded)
+    if [[ -f /sys/module/zfs/parameters/zfs_arc_max ]]; then
+      echo '$arc_max_bytes' >/sys/module/zfs/parameters/zfs_arc_max 2>/dev/null || true
+    fi
+  "
+log "INFO: ZFS ARC memory limit configured: ${arc_max_mb}MB"
+}
+configure_zfs_scrub(){
+log "INFO: Configuring ZFS scrub schedule"
+deploy_template "zfs-scrub.service" "/etc/systemd/system/zfs-scrub@.service"
+deploy_template "zfs-scrub.timer" "/etc/systemd/system/zfs-scrub@.timer"
+run_remote "Enabling ZFS scrub timers" "
+    systemctl daemon-reload
+
+    # Enable scrub timer for rpool (boot/system pool)
+    if zpool list rpool &>/dev/null; then
+      systemctl enable --now zfs-scrub@rpool.timer
+      echo 'Enabled scrub timer for rpool'
+    fi
+
+    # Enable scrub timer for tank (data pool) if exists
+    if zpool list tank &>/dev/null; then
+      systemctl enable --now zfs-scrub@tank.timer
+      echo 'Enabled scrub timer for tank'
+    fi
+  "
+log "INFO: ZFS scrub schedule configured (monthly, 1st Sunday at 2:00 AM)"
+}
+configure_zfs_pool(){
+if [[ -z $BOOT_DISK ]];then
+log "INFO: BOOT_DISK not set, skipping separate ZFS pool creation (all-ZFS mode)"
+return 0
+fi
+log "INFO: Creating separate ZFS pool 'tank' from pool disks"
+if ! load_virtio_mapping;then
+log "ERROR: Failed to load virtio mapping"
+return 1
+fi
+local vdevs_str
+vdevs_str=$(map_disks_to_virtio "space_separated" "${ZFS_POOL_DISKS[@]}")
+if [[ -z $vdevs_str ]];then
+log "ERROR: Failed to map pool disks to virtio devices"
+return 1
+fi
+read -ra vdevs <<<"$vdevs_str"
+log "INFO: Pool disks: ${vdevs[*]} (RAID: $ZFS_RAID)"
+local pool_cmd
+pool_cmd=$(build_zpool_command "tank" "$ZFS_RAID" "${vdevs[@]}")
+if [[ -z $pool_cmd ]];then
+log "ERROR: Failed to build zpool create command"
+return 1
+fi
+log "INFO: ZFS pool command: $pool_cmd"
+if ! run_remote "Creating ZFS pool 'tank'" "
+    set -e
+
+    # Create ZFS pool with specified RAID configuration
+    $pool_cmd
+
+    # Set recommended ZFS properties
+    zfs set compression=lz4 tank
+    zfs set atime=off tank
+    zfs set relatime=on tank
+    zfs set xattr=sa tank
+    zfs set dnodesize=auto tank
+
+    # Create dataset for VM disks
+    zfs create tank/vm-disks
+
+    # Add tank pool to Proxmox storage config
+    pvesm add zfspool tank --pool tank/vm-disks --content images,rootdir
+
+    # Configure local storage (boot disk ext4) for ISO/templates/backups
+    pvesm set local --content iso,vztmpl,backup,snippets
+
+    # Verify pool was created
+    if ! zpool list | grep -q '^tank '; then
+      echo 'ERROR: ZFS pool tank not found after creation'
+      exit 1
+    fi
+  " "ZFS pool 'tank' created";then
+log "ERROR: Failed to create ZFS pool 'tank'"
+return 1
+fi
+log "INFO: ZFS pool 'tank' created successfully"
+log "INFO: Proxmox storage configured: tank (VMs), local (ISO/templates/backups)"
+return 0
+}
 configure_ssh_hardening(){
 (remote_copy "templates/sshd_config" "/etc/ssh/sshd_config"||exit 1
 remote_exec "chmod 700 /root/.ssh && chmod 600 /root/.ssh/authorized_keys"||exit 1) > \
@@ -5124,249 +5367,6 @@ fi
 configure_ssh_hardening
 validate_installation
 finalize_vm
-}
-create_api_token(){
-[[ $INSTALL_API_TOKEN != "yes" ]]&&return 0
-log "INFO: Creating Proxmox API token: $API_TOKEN_NAME"
-local existing
-existing=$(remote_exec "pveum user token list root@pam 2>/dev/null | grep -q '$API_TOKEN_NAME' && echo 'exists' || echo ''"||true)
-if [[ $existing == "exists" ]];then
-log "WARNING: Token $API_TOKEN_NAME exists, removing first"
-remote_exec "pveum user token remove root@pam $API_TOKEN_NAME"||true
-fi
-local output
-output=$(remote_exec "pveum user token add root@pam $API_TOKEN_NAME --privsep 0 --expire 0 --output-format json 2>&1"||true)
-if [[ -z $output ]];then
-log "ERROR: Failed to create API token - empty output"
-print_warning "API token creation failed - continuing without it"
-return 1
-fi
-local token_value
-token_value=$(echo "$output"|jq -r '.value // empty' 2>/dev/null||true)
-if [[ -z $token_value ]];then
-log "ERROR: Failed to extract token value from pveum output"
-log "DEBUG: pveum output: $output"
-print_warning "API token creation failed - continuing without it"
-return 1
-fi
-API_TOKEN_VALUE="$token_value"
-API_TOKEN_ID="root@pam!$API_TOKEN_NAME"
-cat >/tmp/pve-install-api-token.env <<EOF
-API_TOKEN_VALUE=$token_value
-API_TOKEN_ID=$API_TOKEN_ID
-API_TOKEN_NAME=$API_TOKEN_NAME
-EOF
-log "INFO: API token created successfully: $API_TOKEN_ID"
-return 0
-}
-configure_zfs_pool(){
-if [[ -z $BOOT_DISK ]];then
-log "INFO: BOOT_DISK not set, skipping separate ZFS pool creation (all-ZFS mode)"
-return 0
-fi
-log "INFO: Creating separate ZFS pool 'tank' from pool disks"
-if ! load_virtio_mapping;then
-log "ERROR: Failed to load virtio mapping"
-return 1
-fi
-local vdevs_str
-vdevs_str=$(map_disks_to_virtio "space_separated" "${ZFS_POOL_DISKS[@]}")
-if [[ -z $vdevs_str ]];then
-log "ERROR: Failed to map pool disks to virtio devices"
-return 1
-fi
-read -ra vdevs <<<"$vdevs_str"
-log "INFO: Pool disks: ${vdevs[*]} (RAID: $ZFS_RAID)"
-local pool_cmd
-pool_cmd=$(build_zpool_command "tank" "$ZFS_RAID" "${vdevs[@]}")
-if [[ -z $pool_cmd ]];then
-log "ERROR: Failed to build zpool create command"
-return 1
-fi
-log "INFO: ZFS pool command: $pool_cmd"
-if ! run_remote "Creating ZFS pool 'tank'" "
-    set -e
-
-    # Create ZFS pool with specified RAID configuration
-    $pool_cmd
-
-    # Set recommended ZFS properties
-    zfs set compression=lz4 tank
-    zfs set atime=off tank
-    zfs set relatime=on tank
-    zfs set xattr=sa tank
-    zfs set dnodesize=auto tank
-
-    # Create dataset for VM disks
-    zfs create tank/vm-disks
-
-    # Add tank pool to Proxmox storage config
-    pvesm add zfspool tank --pool tank/vm-disks --content images,rootdir
-
-    # Configure local storage (boot disk ext4) for ISO/templates/backups
-    pvesm set local --content iso,vztmpl,backup,snippets
-
-    # Verify pool was created
-    if ! zpool list | grep -q '^tank '; then
-      echo 'ERROR: ZFS pool tank not found after creation'
-      exit 1
-    fi
-  " "ZFS pool 'tank' created";then
-log "ERROR: Failed to create ZFS pool 'tank'"
-return 1
-fi
-log "INFO: ZFS pool 'tank' created successfully"
-log "INFO: Proxmox storage configured: tank (VMs), local (ISO/templates/backups)"
-return 0
-}
-configure_zfs_arc(){
-log "INFO: Configuring ZFS ARC memory allocation (mode: $ZFS_ARC_MODE)"
-local total_ram_mb
-total_ram_mb=$(free -m|awk 'NR==2 {print $2}')
-local arc_max_mb
-case "$ZFS_ARC_MODE" in
-vm-focused)arc_max_mb=4096
-;;
-balanced)if
-[[ $total_ram_mb -lt 16384 ]]
-then
-arc_max_mb=$((total_ram_mb*25/100))
-elif [[ $total_ram_mb -lt 65536 ]];then
-arc_max_mb=$((total_ram_mb*40/100))
-else
-arc_max_mb=$((total_ram_mb/2))
-fi
-;;
-storage-focused)arc_max_mb=$((total_ram_mb/2))
-;;
-*)log "ERROR: Invalid ZFS_ARC_MODE: $ZFS_ARC_MODE"
-return 1
-esac
-local arc_max_bytes=$((arc_max_mb*1024*1024))
-log "INFO: ZFS ARC: ${arc_max_mb}MB (Total RAM: ${total_ram_mb}MB, Mode: $ZFS_ARC_MODE)"
-run_remote "Configuring ZFS ARC memory" "
-    # Set ZFS ARC limit in modprobe config (persistent across reboots)
-    echo 'options zfs zfs_arc_max=$arc_max_bytes' >/etc/modprobe.d/zfs.conf
-
-    # Apply limit to currently running kernel module (if ZFS loaded)
-    if [[ -f /sys/module/zfs/parameters/zfs_arc_max ]]; then
-      echo '$arc_max_bytes' >/sys/module/zfs/parameters/zfs_arc_max 2>/dev/null || true
-    fi
-  "
-log "INFO: ZFS ARC memory limit configured: ${arc_max_mb}MB"
-}
-configure_zfs_scrub(){
-log "INFO: Configuring ZFS scrub schedule"
-deploy_template "zfs-scrub.service" "/etc/systemd/system/zfs-scrub@.service"
-deploy_template "zfs-scrub.timer" "/etc/systemd/system/zfs-scrub@.timer"
-run_remote "Enabling ZFS scrub timers" "
-    systemctl daemon-reload
-
-    # Enable scrub timer for rpool (boot/system pool)
-    if zpool list rpool &>/dev/null; then
-      systemctl enable --now zfs-scrub@rpool.timer
-      echo 'Enabled scrub timer for rpool'
-    fi
-
-    # Enable scrub timer for tank (data pool) if exists
-    if zpool list tank &>/dev/null; then
-      systemctl enable --now zfs-scrub@tank.timer
-      echo 'Enabled scrub timer for tank'
-    fi
-  "
-log "INFO: ZFS scrub schedule configured (monthly, 1st Sunday at 2:00 AM)"
-}
-_install_netdata(){
-run_remote "Installing netdata" '
-    export DEBIAN_FRONTEND=noninteractive
-    apt-get update -qq
-    apt-get install -yqq netdata
-  ' "netdata installed"
-}
-_config_netdata(){
-local bind_to="127.0.0.1"
-if [[ $INSTALL_TAILSCALE == "yes" ]];then
-bind_to="127.0.0.1 100.*"
-fi
-export NETDATA_BIND_TO="$bind_to"
-deploy_template "netdata.conf" "/etc/netdata/netdata.conf" NETDATA_BIND_TO
-remote_exec '
-    # Enable and start netdata service
-    systemctl daemon-reload
-    systemctl enable netdata
-    systemctl restart netdata
-  '||exit 1
-}
-configure_netdata(){
-if [[ $INSTALL_NETDATA != "yes" ]];then
-log "Skipping netdata (not requested)"
-return 0
-fi
-log "Installing and configuring netdata"
-(_install_netdata||exit 1
-_config_netdata||exit 1) > \
-/dev/null 2>&1&
-show_progress $! "Installing netdata" "netdata configured"
-local exit_code=$?
-if [[ $exit_code -ne 0 ]];then
-log "WARNING: netdata setup failed"
-print_warning "netdata setup failed - continuing without it"
-return 0
-fi
-NETDATA_INSTALLED="yes"
-}
-_install_prometheus(){
-run_remote "Installing prometheus-node-exporter" '
-    export DEBIAN_FRONTEND=noninteractive
-    apt-get update -qq
-    apt-get install -yqq prometheus-node-exporter
-  ' "Prometheus node exporter installed"
-}
-_config_prometheus(){
-remote_exec '
-    mkdir -p /var/lib/prometheus/node-exporter
-    chown prometheus:prometheus /var/lib/prometheus/node-exporter
-  '||exit 1
-remote_copy "templates/prometheus-node-exporter" "/etc/default/prometheus-node-exporter"||exit 1
-remote_copy "templates/proxmox-metrics.sh" "/usr/local/bin/proxmox-metrics.sh"||exit 1
-remote_exec "chmod +x /usr/local/bin/proxmox-metrics.sh"||exit 1
-remote_copy "templates/proxmox-metrics.cron" "/etc/cron.d/proxmox-metrics"||exit 1
-remote_exec "/usr/local/bin/proxmox-metrics.sh" >/dev/null 2>&1||log "WARNING: Initial metrics collection failed (non-fatal)"
-remote_exec '
-    systemctl daemon-reload
-    systemctl enable prometheus-node-exporter
-    systemctl restart prometheus-node-exporter
-
-    # Verify service is running
-    systemctl is-active --quiet prometheus-node-exporter || exit 1
-  '||exit 1
-log "Prometheus node exporter listening on :9100 with textfile collector"
-log "Custom metrics cron job installed (/etc/cron.d/proxmox-metrics, runs every 5 minutes)"
-}
-configure_prometheus(){
-if [[ $INSTALL_PROMETHEUS != "yes" ]];then
-log "Skipping prometheus-node-exporter (not requested)"
-return 0
-fi
-log "Installing and configuring prometheus-node-exporter"
-(_install_prometheus||exit 1
-_config_prometheus||exit 1) > \
-/dev/null 2>&1&
-show_progress $! "Installing and configuring prometheus" "Prometheus configured"
-local exit_code=$?
-if [[ $exit_code -ne 0 ]];then
-log "WARNING: Prometheus setup failed"
-print_warning "Prometheus setup failed - continuing without it"
-return 0
-fi
-PROMETHEUS_INSTALLED="yes"
-if [[ $INSTALL_TAILSCALE == "yes" ]];then
-log "Prometheus metrics accessible via Tailscale only (stealth firewall enabled)"
-else
-log "WARNING: Prometheus metrics exposed on public IP $MAIN_IPV4:9100"
-log "Consider using firewall rules to restrict access to trusted IPs only"
-fi
-log "Textfile collector directory: /var/lib/prometheus/node-exporter"
 }
 _show_credentials_info(){
 echo ""
