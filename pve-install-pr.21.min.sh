@@ -19,7 +19,7 @@ HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 HEX_NONE="7"
 MENU_BOX_WIDTH=60
-VERSION="2.0.235-pr.21"
+VERSION="2.0.236-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -750,6 +750,8 @@ Test/Development"
 readonly WIZ_BRIDGE_MODES="External bridge
 Internal NAT
 Both"
+readonly WIZ_BRIDGE_MTU="9000 (jumbo frames)
+1500 (standard)"
 readonly WIZ_IPV6_MODES="Auto
 Manual
 Disabled"
@@ -851,6 +853,7 @@ TAILSCALE_SSH=""
 TAILSCALE_WEBUI=""
 TAILSCALE_DISABLE_SSH=""
 STEALTH_MODE=""
+BRIDGE_MTU=""
 INSTALL_API_TOKEN=""
 API_TOKEN_NAME="automation"
 API_TOKEN_VALUE=""
@@ -2618,6 +2621,7 @@ repository)_edit_repository;;
 interface)_edit_interface;;
 bridge_mode)_edit_bridge_mode;;
 private_subnet)_edit_private_subnet;;
+bridge_mtu)_edit_bridge_mtu;;
 ipv6)_edit_ipv6;;
 boot_disk)_edit_boot_disk;;
 pool_disks)_edit_pool_disks;;
@@ -2966,7 +2970,12 @@ if [[ ${INTERFACE_COUNT:-1} -gt 1 ]];then
 _add_field "Interface        " "$(_wiz_fmt "$INTERFACE_NAME")" "interface"
 fi
 _add_field "Bridge mode      " "$(_wiz_fmt "$bridge_display")" "bridge_mode"
+if [[ $BRIDGE_MODE == "internal" ]]||[[ $BRIDGE_MODE == "both" ]];then
 _add_field "Private subnet   " "$(_wiz_fmt "$PRIVATE_SUBNET")" "private_subnet"
+local mtu_display="${BRIDGE_MTU:-9000}"
+[[ $mtu_display == "9000" ]]&&mtu_display="9000 (jumbo)"
+_add_field "Bridge MTU       " "$(_wiz_fmt "$mtu_display")" "bridge_mtu"
+fi
 _add_field "IPv6             " "$(_wiz_fmt "$ipv6_display")" "ipv6"
 _add_section "Storage"
 if [[ $DRIVE_COUNT -gt 1 ]];then
@@ -3269,6 +3278,23 @@ done
 else
 PRIVATE_SUBNET="$selected"
 fi
+}
+_edit_bridge_mtu(){
+_wiz_start_edit
+_wiz_description \
+"MTU for private bridge (VM-to-VM traffic):" \
+"" \
+"  {{cyan:9000}}:  Jumbo frames (better VM performance)" \
+"  {{cyan:1500}}:  Standard MTU (safe default)" \
+""
+_show_input_footer "filter" 3
+local selected
+selected=$(echo "$WIZ_BRIDGE_MTU"|_wiz_choose \
+--header="Bridge MTU:")
+case "$selected" in
+"9000 (jumbo frames)")BRIDGE_MTU="9000";;
+"1500 (standard)")BRIDGE_MTU="1500"
+esac
 }
 _edit_ipv6(){
 _wiz_start_edit
