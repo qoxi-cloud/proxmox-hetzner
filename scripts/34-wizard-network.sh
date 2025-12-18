@@ -27,6 +27,14 @@ _edit_interface() {
 _edit_bridge_mode() {
   _wiz_start_edit
 
+  _wiz_description \
+    "Network bridge configuration for VMs:" \
+    "" \
+    "  {{cyan:External}}: VMs get public IPs directly (routed mode)" \
+    "  {{cyan:Internal}}: Private network with NAT (10.x.x.x)" \
+    "  {{cyan:Both}}:     External + Internal bridges" \
+    ""
+
   # 1 header + 3 items for gum choose
   _show_input_footer "filter" 4
 

@@ -50,6 +50,14 @@ _edit_zfs_mode() {
 _edit_zfs_arc() {
   _wiz_start_edit
 
+  _wiz_description \
+    "ZFS Adaptive Replacement Cache (ARC) memory allocation:" \
+    "" \
+    "  {{cyan:VM-focused}}:      Fixed 4GB for ARC (more RAM for VMs)" \
+    "  {{cyan:Balanced}}:        25-40% of RAM based on total size" \
+    "  {{cyan:Storage-focused}}: 50% of RAM (maximize ZFS caching)" \
+    ""
+
   # 1 header + 3 options
   _show_input_footer "filter" 4
 

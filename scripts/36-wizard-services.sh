@@ -7,6 +7,15 @@
 _edit_tailscale() {
   _wiz_start_edit
 
+  _wiz_description \
+    "Tailscale VPN with stealth mode:" \
+    "" \
+    "  {{cyan:Enabled}}:  Access via Tailscale only (blocks public SSH)" \
+    "  {{cyan:Disabled}}: Standard access via public IP" \
+    "" \
+    "  Stealth mode blocks ALL incoming traffic on public IP." \
+    ""
+
   # 1 header + 2 items for gum choose
   _show_input_footer "filter" 3
 
@@ -62,6 +71,13 @@ _edit_tailscale() {
 
 _edit_ssl() {
   _wiz_start_edit
+
+  _wiz_description \
+    "SSL certificate for Proxmox web interface:" \
+    "" \
+    "  {{cyan:Self-signed}}:   Works always, browser shows warning" \
+    "  {{cyan:Let's Encrypt}}: Trusted cert, requires public DNS" \
+    ""
 
   # 1 header + 2 items for gum choose
   _show_input_footer "filter" 3
@@ -207,6 +223,16 @@ _edit_shell() {
 _edit_power_profile() {
   _wiz_start_edit
 
+  _wiz_description \
+    "CPU frequency scaling governor:" \
+    "" \
+    "  {{cyan:Performance}}:  Max frequency always (highest power)" \
+    "  {{cyan:Balanced}}:     Scale based on load (ondemand)" \
+    "  {{cyan:Adaptive}}:     Kernel-managed scaling (schedutil)" \
+    "  {{cyan:Power saving}}: Prefer low frequency (powersave)" \
+    "  {{cyan:Conservative}}: Gradual frequency changes" \
+    ""
+
   # 1 header + 5 items for gum choose
   _show_input_footer "filter" 6
 
@@ -230,6 +256,16 @@ _edit_power_profile() {
 
 _edit_features() {
   _wiz_start_edit
+
+  _wiz_description \
+    "Optional features (use Space to toggle):" \
+    "" \
+    "  {{cyan:vnstat}}:     Network traffic monitoring" \
+    "  {{cyan:auditd}}:     Security audit logging" \
+    "  {{cyan:prometheus}}: Node exporter for metrics (port 9100)" \
+    "  {{cyan:yazi}}:       Terminal file manager" \
+    "  {{cyan:nvim}}:       Neovim as default editor" \
+    ""
 
   # 1 header + 5 items for multi-select checkbox
   _show_input_footer "checkbox" 6

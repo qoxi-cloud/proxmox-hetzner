@@ -33,6 +33,14 @@ _edit_iso_version() {
 _edit_repository() {
   _wiz_start_edit
 
+  _wiz_description \
+    "Proxmox VE package repository:" \
+    "" \
+    "  {{cyan:No-subscription}}: Free updates, community tested" \
+    "  {{cyan:Enterprise}}:      Stable updates, requires license" \
+    "  {{cyan:Test}}:            Latest builds, may be unstable" \
+    ""
+
   # 1 header + 3 items for gum choose
   _show_input_footer "filter" 4
 
