@@ -19,7 +19,7 @@ HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 HEX_NONE="7"
 MENU_BOX_WIDTH=60
-VERSION="2.0.276-pr.21"
+VERSION="2.0.277-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -2000,6 +2000,20 @@ then
 ((selection++))
 fi
 ;;
+left)if
+[[ $WIZ_CURRENT_SCREEN -gt 0 ]]
+then
+((WIZ_CURRENT_SCREEN--))
+selection=0
+fi
+;;
+right)if
+[[ $WIZ_CURRENT_SCREEN -lt $((${#WIZ_SCREENS[@]}-1)) ]]
+then
+((WIZ_CURRENT_SCREEN++))
+selection=0
+fi
+;;
 enter)_wiz_show_cursor
 local field_name="${_WIZ_FIELD_MAP[$selection]}"
 case "$field_name" in
@@ -2118,6 +2132,87 @@ break
 fi
 done
 }
+WIZ_SCREENS=("Basic" "Proxmox" "Network" "Storage" "Services" "SSH")
+WIZ_CURRENT_SCREEN=0
+_NAV_COL_WIDTH=10
+_nav_repeat(){
+local char="$1" count="$2" i
+for ((i=0; i<count; i++));do
+printf '%s' "$char"
+done
+}
+_nav_color(){
+local idx="$1" current="$2"
+if [[ $idx -eq $current ]];then
+echo "$CLR_ORANGE"
+elif [[ $idx -lt $current ]];then
+echo "$CLR_CYAN"
+else
+echo "$CLR_GRAY"
+fi
+}
+_nav_dot(){
+local idx="$1" current="$2"
+if [[ $idx -eq $current ]];then
+echo "◉"
+elif [[ $idx -lt $current ]];then
+echo "●"
+else
+echo "○"
+fi
+}
+_nav_line(){
+local idx="$1" current="$2" len="$3"
+if [[ $idx -lt $current ]];then
+_nav_repeat "━" "$len"
+else
+_nav_repeat "─" "$len"
+fi
+}
+_wiz_render_nav(){
+local current=$WIZ_CURRENT_SCREEN
+local total=${#WIZ_SCREENS[@]}
+local col=$_NAV_COL_WIDTH
+local labels=""
+for i in "${!WIZ_SCREENS[@]}";do
+local name="${WIZ_SCREENS[$i]}"
+local name_len=${#name}
+local pad_left=$(((col-name_len)/2))
+local pad_right=$((col-name_len-pad_left))
+local centered
+centered=$(printf '%*s%s%*s' $pad_left '' "$name" $pad_right '')
+labels+="$(_nav_color "$i" "$current")$centered$CLR_RESET"
+done
+local dots=""
+local center_pad=$(((col-1)/2))
+local right_pad=$((col-center_pad-1))
+for i in "${!WIZ_SCREENS[@]}";do
+local color line_color dot
+color=$(_nav_color "$i" "$current")
+dot=$(_nav_dot "$i" "$current")
+if [[ $i -eq 0 ]];then
+dots+=$(printf '%*s' $center_pad '')
+dots+="$color$dot$CLR_RESET"
+local line_clr
+line_clr=$([[ $i -lt $current ]]&&echo "$CLR_CYAN"||echo "$CLR_GRAY")
+dots+="$line_clr$(_nav_line "$i" "$current" "$right_pad")$CLR_RESET"
+elif [[ $i -eq $((total-1)) ]];then
+local prev_line_clr
+prev_line_clr=$([[ $((i-1)) -lt $current ]]&&echo "$CLR_CYAN"||echo "$CLR_GRAY")
+dots+="$prev_line_clr$(_nav_line "$((i-1))" "$current" "$center_pad")$CLR_RESET"
+dots+="$color$dot$CLR_RESET"
+else
+local prev_line_clr
+prev_line_clr=$([[ $((i-1)) -lt $current ]]&&echo "$CLR_CYAN"||echo "$CLR_GRAY")
+dots+="$prev_line_clr$(_nav_line "$((i-1))" "$current" "$center_pad")$CLR_RESET"
+dots+="$color$dot$CLR_RESET"
+local next_line_clr
+next_line_clr=$([[ $i -lt $current ]]&&echo "$CLR_CYAN"||echo "$CLR_GRAY")
+dots+="$next_line_clr$(_nav_line "$i" "$current" "$right_pad")$CLR_RESET"
+fi
+done
+printf '%s\n%s\n' "$labels" "$dots"
+}
 _wiz_read_key(){
 local key
 IFS= read -rsn1 key
@@ -2204,167 +2299,209 @@ fi
 }
 _WIZ_FIELD_COUNT=0
 _WIZ_FIELD_MAP=()
-_wiz_render_menu(){
-local selection="$1"
-local output=""
-local banner_output
-banner_output=$(show_banner)
-output="\n$banner_output\n\n"
-local pass_display=""
-if [[ -n $NEW_ROOT_PASSWORD ]];then
-pass_display="********"
-fi
-local ipv6_display=""
+_wiz_build_display_values(){
+_DSP_PASS=""
+[[ -n $NEW_ROOT_PASSWORD ]]&&_DSP_PASS="********"
+_DSP_HOSTNAME=""
+[[ -n $PVE_HOSTNAME && -n $DOMAIN_SUFFIX ]]&&_DSP_HOSTNAME="$PVE_HOSTNAME.$DOMAIN_SUFFIX"
+_DSP_IPV6=""
 if [[ -n $IPV6_MODE ]];then
 case "$IPV6_MODE" in
-auto)ipv6_display="Auto"
-if [[ -n $MAIN_IPV6 ]];then
-ipv6_display+=" ($MAIN_IPV6)"
-fi
+auto)_DSP_IPV6="Auto"
+[[ -n $MAIN_IPV6 ]]&&_DSP_IPV6+=" ($MAIN_IPV6)"
 ;;
-manual)ipv6_display="Manual"
-if [[ -n $MAIN_IPV6 ]];then
-ipv6_display+=" ($MAIN_IPV6, gw: $IPV6_GATEWAY)"
-fi
+manual)_DSP_IPV6="Manual"
+[[ -n $MAIN_IPV6 ]]&&_DSP_IPV6+=" ($MAIN_IPV6, gw: $IPV6_GATEWAY)"
 ;;
-disabled)ipv6_display="Disabled";;
-*)ipv6_display="$IPV6_MODE"
+disabled)_DSP_IPV6="Disabled";;
+*)_DSP_IPV6="$IPV6_MODE"
 esac
 fi
-local tailscale_display=""
+_DSP_TAILSCALE=""
 if [[ -n $INSTALL_TAILSCALE ]];then
-if [[ $INSTALL_TAILSCALE == "yes" ]];then
-tailscale_display="Enabled + Stealth"
-else
-tailscale_display="Disabled"
+[[ $INSTALL_TAILSCALE == "yes" ]]&&_DSP_TAILSCALE="Enabled + Stealth"||_DSP_TAILSCALE="Disabled"
 fi
-fi
-local ssl_display=""
+_DSP_SSL=""
 if [[ -n $SSL_TYPE ]];then
 case "$SSL_TYPE" in
-self-signed)ssl_display="Self-signed";;
-letsencrypt)ssl_display="Let's Encrypt";;
-*)ssl_display="$SSL_TYPE"
+self-signed)_DSP_SSL="Self-signed";;
+letsencrypt)_DSP_SSL="Let's Encrypt";;
+*)_DSP_SSL="$SSL_TYPE"
 esac
 fi
-local repo_display=""
+_DSP_REPO=""
 if [[ -n $PVE_REPO_TYPE ]];then
 case "$PVE_REPO_TYPE" in
-no-subscription)repo_display="No-subscription (free)";;
-enterprise)repo_display="Enterprise";;
-test)repo_display="Test/Development";;
-*)repo_display="$PVE_REPO_TYPE"
+no-subscription)_DSP_REPO="No-subscription (free)";;
+enterprise)_DSP_REPO="Enterprise";;
+test)_DSP_REPO="Test/Development";;
+*)_DSP_REPO="$PVE_REPO_TYPE"
 esac
 fi
-local bridge_display=""
+_DSP_BRIDGE=""
 if [[ -n $BRIDGE_MODE ]];then
 case "$BRIDGE_MODE" in
-external)bridge_display="External bridge";;
-internal)bridge_display="Internal NAT";;
-both)bridge_display="Both";;
-*)bridge_display="$BRIDGE_MODE"
+external)_DSP_BRIDGE="External bridge";;
+internal)_DSP_BRIDGE="Internal NAT";;
+both)_DSP_BRIDGE="Both";;
+*)_DSP_BRIDGE="$BRIDGE_MODE"
 esac
 fi
-local zfs_display=""
+_DSP_ZFS=""
 if [[ -n $ZFS_RAID ]];then
 case "$ZFS_RAID" in
-single)zfs_display="Single disk";;
-raid0)zfs_display="RAID-0 (striped)";;
-raid1)zfs_display="RAID-1 (mirror)";;
-raidz1)zfs_display="RAID-Z1 (parity)";;
-raidz2)zfs_display="RAID-Z2 (double parity)";;
-raid5)zfs_display="RAID-5 (parity)";;
-raid10)zfs_display="RAID-10 (striped mirrors)";;
-*)zfs_display="$ZFS_RAID"
+single)_DSP_ZFS="Single disk";;
+raid0)_DSP_ZFS="RAID-0 (striped)";;
+raid1)_DSP_ZFS="RAID-1 (mirror)";;
+raidz1)_DSP_ZFS="RAID-Z1 (parity)";;
+raidz2)_DSP_ZFS="RAID-Z2 (double parity)";;
+raid10)_DSP_ZFS="RAID-10 (striped mirrors)";;
+*)_DSP_ZFS="$ZFS_RAID"
 esac
 fi
-local zfs_arc_display=""
+_DSP_ARC=""
 if [[ -n $ZFS_ARC_MODE ]];then
 case "$ZFS_ARC_MODE" in
-vm-focused)zfs_arc_display="VM-focused (4GB)";;
-balanced)zfs_arc_display="Balanced (25-40%)";;
-storage-focused)zfs_arc_display="Storage-focused (50%)";;
-*)zfs_arc_display="$ZFS_ARC_MODE"
+vm-focused)_DSP_ARC="VM-focused (4GB)";;
+balanced)_DSP_ARC="Balanced (25-40%)";;
+storage-focused)_DSP_ARC="Storage-focused (50%)";;
+*)_DSP_ARC="$ZFS_ARC_MODE"
 esac
 fi
-local shell_display=""
+_DSP_SHELL=""
 if [[ -n $SHELL_TYPE ]];then
 case "$SHELL_TYPE" in
-zsh)shell_display="ZSH";;
-bash)shell_display="Bash";;
-*)shell_display="$SHELL_TYPE"
+zsh)_DSP_SHELL="ZSH";;
+bash)_DSP_SHELL="Bash";;
+*)_DSP_SHELL="$SHELL_TYPE"
 esac
 fi
-local power_display=""
+_DSP_POWER=""
 if [[ -n $CPU_GOVERNOR ]];then
 case "$CPU_GOVERNOR" in
-performance)power_display="Performance";;
-ondemand)power_display="Balanced";;
-powersave)power_display="Power saving";;
-schedutil)power_display="Adaptive";;
-conservative)power_display="Conservative";;
-*)power_display="$CPU_GOVERNOR"
+performance)_DSP_POWER="Performance";;
+ondemand)_DSP_POWER="Balanced";;
+powersave)_DSP_POWER="Power saving";;
+schedutil)_DSP_POWER="Adaptive";;
+conservative)_DSP_POWER="Conservative";;
+*)_DSP_POWER="$CPU_GOVERNOR"
 esac
 fi
-local security_display="none"
-local security_items=()
-[[ $INSTALL_APPARMOR == "yes" ]]&&security_items+=("apparmor")
-[[ $INSTALL_AUDITD == "yes" ]]&&security_items+=("auditd")
-[[ $INSTALL_AIDE == "yes" ]]&&security_items+=("aide")
-[[ $INSTALL_CHKROOTKIT == "yes" ]]&&security_items+=("chkrootkit")
-[[ $INSTALL_LYNIS == "yes" ]]&&security_items+=("lynis")
-[[ $INSTALL_NEEDRESTART == "yes" ]]&&security_items+=("needrestart")
-[[ ${#security_items[@]} -gt 0 ]]&&security_display="${security_items[*]// /, }"
-local monitoring_display="none"
-local monitoring_items=()
-[[ $INSTALL_VNSTAT == "yes" ]]&&monitoring_items+=("vnstat")
-[[ $INSTALL_NETDATA == "yes" ]]&&monitoring_items+=("netdata")
-[[ $INSTALL_PROMETHEUS == "yes" ]]&&monitoring_items+=("prometheus")
-[[ ${#monitoring_items[@]} -gt 0 ]]&&monitoring_display="${monitoring_items[*]// /, }"
-local tools_display="none"
-local tools_items=()
-[[ $INSTALL_YAZI == "yes" ]]&&tools_items+=("yazi")
-[[ $INSTALL_NVIM == "yes" ]]&&tools_items+=("nvim")
-[[ $INSTALL_RINGBUFFER == "yes" ]]&&tools_items+=("ringbuffer")
-[[ ${#tools_items[@]} -gt 0 ]]&&tools_display="${tools_items[*]// /, }"
-local api_token_display=""
+_DSP_SECURITY="none"
+local sec_items=()
+[[ $INSTALL_APPARMOR == "yes" ]]&&sec_items+=("apparmor")
+[[ $INSTALL_AUDITD == "yes" ]]&&sec_items+=("auditd")
+[[ $INSTALL_AIDE == "yes" ]]&&sec_items+=("aide")
+[[ $INSTALL_CHKROOTKIT == "yes" ]]&&sec_items+=("chkrootkit")
+[[ $INSTALL_LYNIS == "yes" ]]&&sec_items+=("lynis")
+[[ $INSTALL_NEEDRESTART == "yes" ]]&&sec_items+=("needrestart")
+[[ ${#sec_items[@]} -gt 0 ]]&&_DSP_SECURITY="${sec_items[*]}"
+_DSP_MONITORING="none"
+local mon_items=()
+[[ $INSTALL_VNSTAT == "yes" ]]&&mon_items+=("vnstat")
+[[ $INSTALL_NETDATA == "yes" ]]&&mon_items+=("netdata")
+[[ $INSTALL_PROMETHEUS == "yes" ]]&&mon_items+=("prometheus")
+[[ ${#mon_items[@]} -gt 0 ]]&&_DSP_MONITORING="${mon_items[*]}"
+_DSP_TOOLS="none"
+local tool_items=()
+[[ $INSTALL_YAZI == "yes" ]]&&tool_items+=("yazi")
+[[ $INSTALL_NVIM == "yes" ]]&&tool_items+=("nvim")
+[[ $INSTALL_RINGBUFFER == "yes" ]]&&tool_items+=("ringbuffer")
+[[ ${#tool_items[@]} -gt 0 ]]&&_DSP_TOOLS="${tool_items[*]}"
+_DSP_API=""
 if [[ -n $INSTALL_API_TOKEN ]];then
 case "$INSTALL_API_TOKEN" in
-yes)api_token_display="Yes ($API_TOKEN_NAME)";;
-no)api_token_display="No";;
-*)api_token_display=""
+yes)_DSP_API="Yes ($API_TOKEN_NAME)";;
+no)_DSP_API="No"
 esac
 fi
-local ssh_display=""
-if [[ -n $SSH_PUBLIC_KEY ]];then
-ssh_display="${SSH_PUBLIC_KEY:0:20}..."
-fi
-local firewall_display=""
+_DSP_SSH=""
+[[ -n $SSH_PUBLIC_KEY ]]&&_DSP_SSH="${SSH_PUBLIC_KEY:0:20}..."
+_DSP_FIREWALL=""
 if [[ -n $INSTALL_FIREWALL ]];then
 if [[ $INSTALL_FIREWALL == "yes" ]];then
 case "$FIREWALL_MODE" in
-stealth)firewall_display="Stealth (Tailscale only)";;
-strict)firewall_display="Strict (SSH only)";;
-standard)firewall_display="Standard (SSH + Web UI)";;
-*)firewall_display="$FIREWALL_MODE"
+stealth)_DSP_FIREWALL="Stealth (Tailscale only)";;
+strict)_DSP_FIREWALL="Strict (SSH only)";;
+standard)_DSP_FIREWALL="Standard (SSH + Web UI)";;
+*)_DSP_FIREWALL="$FIREWALL_MODE"
 esac
 else
-firewall_display="Disabled"
+_DSP_FIREWALL="Disabled"
 fi
 fi
-local iso_version_display=""
-if [[ -n $PROXMOX_ISO_VERSION ]];then
-iso_version_display=$(get_iso_version "$PROXMOX_ISO_VERSION")
+_DSP_ISO=""
+[[ -n $PROXMOX_ISO_VERSION ]]&&_DSP_ISO=$(get_iso_version "$PROXMOX_ISO_VERSION")
+_DSP_MTU="${BRIDGE_MTU:-9000}"
+[[ $_DSP_MTU == "9000" ]]&&_DSP_MTU="9000 (jumbo)"
+_DSP_BOOT="All in pool"
+if [[ -n $BOOT_DISK ]];then
+for i in "${!DRIVES[@]}";do
+if [[ ${DRIVES[$i]} == "$BOOT_DISK" ]];then
+_DSP_BOOT="${DRIVE_MODELS[$i]}"
+break
 fi
-local hostname_display=""
-if [[ -n $PVE_HOSTNAME && -n $DOMAIN_SUFFIX ]];then
-hostname_display="$PVE_HOSTNAME.$DOMAIN_SUFFIX"
+done
 fi
+_DSP_POOL="${#ZFS_POOL_DISKS[@]} disks"
+}
+_wiz_render_screen_content(){
+local screen="$1"
+local selection="$2"
+case $screen in
+0)_add_field "Hostname         " "$(_wiz_fmt "$_DSP_HOSTNAME")" "hostname"
+_add_field "Email            " "$(_wiz_fmt "$EMAIL")" "email"
+_add_field "Password         " "$(_wiz_fmt "$_DSP_PASS")" "password"
+_add_field "Timezone         " "$(_wiz_fmt "$TIMEZONE")" "timezone"
+_add_field "Keyboard         " "$(_wiz_fmt "$KEYBOARD")" "keyboard"
+_add_field "Country          " "$(_wiz_fmt "$COUNTRY")" "country"
+;;
+1)_add_field "Version          " "$(_wiz_fmt "$_DSP_ISO")" "iso_version"
+_add_field "Repository       " "$(_wiz_fmt "$_DSP_REPO")" "repository"
+;;
+2)if
+[[ ${INTERFACE_COUNT:-1} -gt 1 ]]
+then
+_add_field "Interface        " "$(_wiz_fmt "$INTERFACE_NAME")" "interface"
+fi
+_add_field "Bridge mode      " "$(_wiz_fmt "$_DSP_BRIDGE")" "bridge_mode"
+if [[ $BRIDGE_MODE == "internal" || $BRIDGE_MODE == "both" ]];then
+_add_field "Private subnet   " "$(_wiz_fmt "$PRIVATE_SUBNET")" "private_subnet"
+_add_field "Bridge MTU       " "$(_wiz_fmt "$_DSP_MTU")" "bridge_mtu"
+fi
+_add_field "IPv6             " "$(_wiz_fmt "$_DSP_IPV6")" "ipv6"
+_add_field "Firewall         " "$(_wiz_fmt "$_DSP_FIREWALL")" "firewall"
+;;
+3)if
+[[ $DRIVE_COUNT -gt 1 ]]
+then
+_add_field "Boot disk        " "$(_wiz_fmt "$_DSP_BOOT")" "boot_disk"
+_add_field "Pool disks       " "$(_wiz_fmt "$_DSP_POOL")" "pool_disks"
+fi
+_add_field "ZFS mode         " "$(_wiz_fmt "$_DSP_ZFS")" "zfs_mode"
+_add_field "ZFS ARC          " "$(_wiz_fmt "$_DSP_ARC")" "zfs_arc"
+;;
+4)_add_field "Tailscale        " "$(_wiz_fmt "$_DSP_TAILSCALE")" "tailscale"
+if [[ $INSTALL_TAILSCALE != "yes" ]];then
+_add_field "SSL Certificate  " "$(_wiz_fmt "$_DSP_SSL")" "ssl"
+fi
+_add_field "Shell            " "$(_wiz_fmt "$_DSP_SHELL")" "shell"
+_add_field "Power profile    " "$(_wiz_fmt "$_DSP_POWER")" "power_profile"
+_add_field "Security         " "$(_wiz_fmt "$_DSP_SECURITY")" "security"
+_add_field "Monitoring       " "$(_wiz_fmt "$_DSP_MONITORING")" "monitoring"
+_add_field "Tools            " "$(_wiz_fmt "$_DSP_TOOLS")" "tools"
+_add_field "API Token        " "$(_wiz_fmt "$_DSP_API")" "api_token"
+;;
+5)_add_field "SSH Key          " "$(_wiz_fmt "$_DSP_SSH")" "ssh_key"
+esac
+}
+_wiz_render_menu(){
+local selection="$1"
+local output=""
+_wiz_build_display_values
+output+="\n$(_wiz_render_nav)\n\n"
 _WIZ_FIELD_MAP=()
 local field_idx=0
-_add_section(){
-output+="$CLR_CYAN--- $1 ---$CLR_RESET\n"
-}
 _add_field(){
 local label="$1"
 local value="$2"
@@ -2377,64 +2514,19 @@ output+="  $CLR_GRAY$label$CLR_RESET$value\n"
 fi
 ((field_idx++))
 }
-_add_section "Basic Settings"
-_add_field "Hostname         " "$(_wiz_fmt "$hostname_display")" "hostname"
-_add_field "Email            " "$(_wiz_fmt "$EMAIL")" "email"
-_add_field "Password         " "$(_wiz_fmt "$pass_display")" "password"
-_add_field "Timezone         " "$(_wiz_fmt "$TIMEZONE")" "timezone"
-_add_field "Keyboard         " "$(_wiz_fmt "$KEYBOARD")" "keyboard"
-_add_field "Country          " "$(_wiz_fmt "$COUNTRY")" "country"
-_add_section "Proxmox"
-_add_field "Version          " "$(_wiz_fmt "$iso_version_display")" "iso_version"
-_add_field "Repository       " "$(_wiz_fmt "$repo_display")" "repository"
-_add_section "Network"
-if [[ ${INTERFACE_COUNT:-1} -gt 1 ]];then
-_add_field "Interface        " "$(_wiz_fmt "$INTERFACE_NAME")" "interface"
-fi
-_add_field "Bridge mode      " "$(_wiz_fmt "$bridge_display")" "bridge_mode"
-if [[ $BRIDGE_MODE == "internal" ]]||[[ $BRIDGE_MODE == "both" ]];then
-_add_field "Private subnet   " "$(_wiz_fmt "$PRIVATE_SUBNET")" "private_subnet"
-local mtu_display="${BRIDGE_MTU:-9000}"
-[[ $mtu_display == "9000" ]]&&mtu_display="9000 (jumbo)"
-_add_field "Bridge MTU       " "$(_wiz_fmt "$mtu_display")" "bridge_mtu"
-fi
-_add_field "IPv6             " "$(_wiz_fmt "$ipv6_display")" "ipv6"
-_add_field "Firewall         " "$(_wiz_fmt "$firewall_display")" "firewall"
-_add_section "Storage"
-if [[ $DRIVE_COUNT -gt 1 ]];then
-local boot_display="All in pool"
-if [[ -n $BOOT_DISK ]];then
-for i in "${!DRIVES[@]}";do
-if [[ ${DRIVES[$i]} == "$BOOT_DISK" ]];then
-boot_display="${DRIVE_MODELS[$i]}"
-break
-fi
-done
-fi
-_add_field "Boot disk        " "$(_wiz_fmt "$boot_display")" "boot_disk"
-local pool_display="${#ZFS_POOL_DISKS[@]} disks"
-_add_field "Pool disks       " "$(_wiz_fmt "$pool_display")" "pool_disks"
-fi
-_add_field "ZFS mode         " "$(_wiz_fmt "$zfs_display")" "zfs_mode"
-_add_field "ZFS ARC          " "$(_wiz_fmt "$zfs_arc_display")" "zfs_arc"
-_add_section "VPN"
-_add_field "Tailscale        " "$(_wiz_fmt "$tailscale_display")" "tailscale"
-if [[ $INSTALL_TAILSCALE != "yes" ]];then
-_add_section "SSL"
-_add_field "Certificate      " "$(_wiz_fmt "$ssl_display")" "ssl"
-fi
-_add_section "Optional"
-_add_field "Shell            " "$(_wiz_fmt "$shell_display")" "shell"
-_add_field "Power profile    " "$(_wiz_fmt "$power_display")" "power_profile"
-_add_field "Security         " "$(_wiz_fmt "$security_display")" "security"
-_add_field "Monitoring       " "$(_wiz_fmt "$monitoring_display")" "monitoring"
-_add_field "Tools            " "$(_wiz_fmt "$tools_display")" "tools"
-_add_field "API Token        " "$(_wiz_fmt "$api_token_display")" "api_token"
-_add_section "SSH"
-_add_field "SSH Key          " "$(_wiz_fmt "$ssh_display")" "ssh_key"
+_wiz_render_screen_content "$WIZ_CURRENT_SCREEN" "$selection"
 _WIZ_FIELD_COUNT=$field_idx
 output+="\n"
-output+="$CLR_GRAY[$CLR_ORANGE↑↓$CLR_GRAY] navigate  [${CLR_ORANGE}Enter$CLR_GRAY] edit  [${CLR_ORANGE}S$CLR_GRAY] start  [${CLR_ORANGE}Q$CLR_GRAY] quit$CLR_RESET"
+local nav_hint=""
+if [[ $WIZ_CURRENT_SCREEN -gt 0 ]];then
+nav_hint+="[$CLR_ORANGE←$CLR_GRAY] prev  "
+fi
+nav_hint+="[$CLR_ORANGE↑↓$CLR_GRAY] navigate  [${CLR_ORANGE}Enter$CLR_GRAY] edit"
+if [[ $WIZ_CURRENT_SCREEN -lt $((${#WIZ_SCREENS[@]}-1)) ]];then
+nav_hint+="  [$CLR_ORANGE→$CLR_GRAY] next"
+fi
+nav_hint+="  [${CLR_ORANGE}S$CLR_GRAY] start  [${CLR_ORANGE}Q$CLR_GRAY] quit"
+output+="$CLR_GRAY$nav_hint$CLR_RESET"
 _wiz_clear
 printf '%b' "$output"
 }
