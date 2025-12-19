@@ -19,7 +19,7 @@ HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 HEX_NONE="7"
 MENU_BOX_WIDTH=60
-VERSION="2.0.281-pr.21"
+VERSION="2.0.282-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -323,7 +323,7 @@ log "METRIC: installation_completed total_time=${total}s (${minutes}m ${seconds}
 fi
 }
 BANNER_LETTER_COUNT=7
-_BANNER_PAD="         "
+_BANNER_PAD="        "
 show_banner(){
 local p="$_BANNER_PAD"
 printf '%s\n' \
@@ -2529,7 +2529,7 @@ local output=""
 local banner_output
 banner_output=$(show_banner)
 _wiz_build_display_values
-output+="\n$banner_output\n\n$(_wiz_render_nav)\n\n"
+output+="$banner_output\n\n$(_wiz_render_nav)\n\n"
 _WIZ_FIELD_MAP=()
 local field_idx=0
 _add_field(){
