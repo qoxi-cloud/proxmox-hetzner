@@ -137,14 +137,18 @@ configure_base_system() {
   rm -f "$pkg_output"
 
   # Configure UTF-8 locales using template files
-  run_remote "Configuring UTF-8 locales" '
+  # Generate the user's selected locale plus common fallbacks
+  local locale_name="${LOCALE%%.UTF-8}" # Remove .UTF-8 suffix for sed pattern
+  run_remote "Configuring UTF-8 locales" "
         export DEBIAN_FRONTEND=noninteractive
         apt-get install -yqq locales
-        sed -i "s/# en_US.UTF-8/en_US.UTF-8/" /etc/locale.gen
-        sed -i "s/# ru_RU.UTF-8/ru_RU.UTF-8/" /etc/locale.gen
+        # Enable user's selected locale
+        sed -i 's/# ${locale_name}.UTF-8/${locale_name}.UTF-8/' /etc/locale.gen
+        # Also enable en_US as fallback (many tools expect it)
+        sed -i 's/# en_US.UTF-8/en_US.UTF-8/' /etc/locale.gen
         locale-gen
-        update-locale LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
-    ' "UTF-8 locales configured"
+        update-locale LANG=${LOCALE} LC_ALL=${LOCALE}
+    " "UTF-8 locales configured"
 
   # Copy locale template files
   (
