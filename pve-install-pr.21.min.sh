@@ -19,7 +19,7 @@ HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 HEX_NONE="7"
 MENU_BOX_WIDTH=60
-VERSION="2.0.272-pr.21"
+VERSION="2.0.273-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -4491,10 +4491,18 @@ log "  Firewall mode: $FIREWALL_MODE"
 log "  Private subnet: ${PRIVATE_SUBNET:-N/A}"
 remote_copy "templates/nftables.conf.generated" "/etc/nftables.conf"||exit 1
 remote_exec "systemctl enable nftables && systemctl restart nftables"||exit 1
-remote_exec "nft list ruleset | grep -q 'table inet filter'"||{
-log "ERROR: nftables rules not loaded properly"
+sleep 2
+local retry_count=0
+local max_retries=5
+while ! remote_exec "nft list ruleset 2>/dev/null | grep -q 'table inet filter'";do
+((retry_count++))
+if ((retry_count>=max_retries));then
+log "ERROR: nftables rules not loaded properly after $max_retries attempts"
 exit 1
-}
+fi
+log "Waiting for nftables rules to load (attempt $retry_count/$max_retries)..."
+sleep 2
+done
 rm -f "./templates/nftables.conf.generated"
 }
 configure_firewall(){
@@ -4940,6 +4948,11 @@ log "Textfile collector directory: /var/lib/prometheus/node-exporter"
 _install_netdata(){
 run_remote "Installing netdata" '
     export DEBIAN_FRONTEND=noninteractive
+
+    # Add Netdata official repository (package not in default Debian repos)
+    curl -fsSL https://repo.netdata.cloud/netdatabot.gpg.key | gpg --dearmor -o /usr/share/keyrings/netdata-archive-keyring.gpg
+    echo "deb [signed-by=/usr/share/keyrings/netdata-archive-keyring.gpg] https://repo.netdata.cloud/repos/stable/debian/ bookworm/" > /etc/apt/sources.list.d/netdata.list
+
     apt-get update -qq
     apt-get install -yqq netdata
   ' "netdata installed"
@@ -5284,10 +5297,13 @@ validate_installation(){
         exit 1
       fi
 
-      # Check if ZFS pool exists
-      if ! zpool list | grep -q "rpool"; then
-        echo "ERROR: ZFS root pool (rpool) not found"
-        exit 1
+      # Check if ZFS pool exists (rpool for full ZFS install, or tank for ext4 boot + ZFS pool)
+      if ! zpool list 2>/dev/null | grep -qE "^(rpool|tank) "; then
+        # If neither pool exists, check if this is an ext4-only installation (valid for single disk without ZFS)
+        if ! mount | grep -q "on / type ext4"; then
+          echo "ERROR: Neither ZFS pool (rpool/tank) nor ext4 root filesystem found"
+          exit 1
+        fi
       fi
 
       exit 0
