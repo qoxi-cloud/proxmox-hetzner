@@ -33,6 +33,7 @@ End
 It "handles empty message"
 When call print_success ""
 The status should be success
+The output should be present
 End
 End
 

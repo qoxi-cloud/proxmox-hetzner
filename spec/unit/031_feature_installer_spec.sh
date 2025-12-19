@@ -90,8 +90,9 @@ End
 
 It "handles slow install"
 INSTALL_SLOW="yes"
-When call install_optional_feature_with_progress "Slow Test" "INSTALL_SLOW" "test_install_slow" "test_config_success"
+When call install_optional_feature_with_progress "Slow Test" "INSTALL_SLOW" "test_install_slow" "test_config_success" "SLOW_INSTALLED"
 The status should be success
+The variable SLOW_INSTALLED should equal "yes"
 End
 End
 End
