@@ -306,6 +306,9 @@ KEYBOARD="en-us"
 # Country code (ISO 3166-1 alpha-2, default: us)
 COUNTRY="us"
 
+# Locale (derived from country, default: en_US.UTF-8)
+LOCALE="en_US.UTF-8"
+
 # Timezone (default: UTC)
 TIMEZONE="UTC"
 
