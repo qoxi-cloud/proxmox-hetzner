@@ -19,7 +19,7 @@ HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 HEX_NONE="7"
 MENU_BOX_WIDTH=60
-VERSION="2.0.291-pr.21"
+VERSION="2.0.292-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -700,12 +700,14 @@ _SSH_SESSION_PASSFILE=$(mktemp)
 fi
 echo "$NEW_ROOT_PASSWORD" >"$_SSH_SESSION_PASSFILE"
 chmod 600 "$_SSH_SESSION_PASSFILE"
+if [[ $BASHPID == "$$" ]];then
 local existing_trap
 existing_trap=$(trap -p EXIT 2>/dev/null|sed "s/trap -- '\\(.*\\)' EXIT/\\1/"||true)
 if [[ -n $existing_trap ]];then
 trap "$existing_trap; _ssh_session_cleanup" EXIT
 else
 trap '_ssh_session_cleanup' EXIT
+fi
 fi
 log "SSH session initialized"
 }
@@ -759,18 +761,14 @@ return 1
 fi
 local passfile
 passfile=$(_ssh_get_passfile)
-log "DEBUG: passfile=$passfile"
-log "DEBUG: passfile exists=$(test -f "$passfile"&&echo yes||echo no)"
-log "DEBUG: passfile size=$(wc -c <"$passfile" 2>/dev/null||echo 0)"
 (local elapsed=0
 while ((elapsed<timeout));do
-if timeout 15 sshpass -f "$passfile" ssh -p "$SSH_PORT" $SSH_OPTS root@localhost 'echo ready' >/dev/null 2>&1;then
+if sshpass -f "$passfile" ssh -p "$SSH_PORT" $SSH_OPTS root@localhost 'echo ready' >/dev/null 2>&1;then
 exit 0
 fi
 sleep 2
 ((elapsed+=2))
 done
-timeout 15 sshpass -f "$passfile" ssh -p "$SSH_PORT" $SSH_OPTS root@localhost 'echo ready' 2>&1|head -5 >>/tmp/ssh-debug.log
 exit 1) \
 &
 local wait_pid=$!
