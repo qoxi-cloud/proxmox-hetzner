@@ -152,33 +152,20 @@ KEYBOARD="en-us"
 COUNTRY="us"
 LOCALE="en_US.UTF-8"
 TIMEZONE="UTC"
-FAIL2BAN_INSTALLED=""
 INSTALL_AUDITD=""
 INSTALL_AIDE=""
 INSTALL_APPARMOR=""
 CPU_GOVERNOR=""
 ZFS_ARC_MODE=""
-AUDITD_INSTALLED=""
-AIDE_INSTALLED=""
 INSTALL_CHKROOTKIT=""
-CHKROOTKIT_INSTALLED=""
 INSTALL_LYNIS=""
-LYNIS_INSTALLED=""
 INSTALL_NEEDRESTART=""
-NEEDRESTART_INSTALLED=""
 INSTALL_NETDATA=""
-NETDATA_INSTALLED=""
 INSTALL_RINGBUFFER=""
-RINGBUFFER_INSTALLED=""
-APPARMOR_INSTALLED=""
 INSTALL_VNSTAT=""
-VNSTAT_INSTALLED=""
 INSTALL_PROMETHEUS=""
-PROMETHEUS_INSTALLED=""
 INSTALL_YAZI=""
-YAZI_INSTALLED=""
 INSTALL_NVIM=""
-NVIM_INSTALLED=""
 INSTALL_UNATTENDED_UPGRADES=""
 INSTALL_TAILSCALE=""
 TAILSCALE_AUTH_KEY=""
@@ -191,7 +178,6 @@ API_TOKEN_VALUE=""
 API_TOKEN_ID=""
 INSTALL_FIREWALL=""
 FIREWALL_MODE=""
-FIREWALL_INSTALLED=""
 show_help(){
 cat <<EOF
 Proxmox VE Automated Installer for Hetzner v$VERSION
@@ -1006,18 +992,6 @@ log "WARNING: $failures/$count functions failed in group '$group_name'"
 return 0
 fi
 return 0
-}
-collect_enabled_funcs(){
-local -n result_arr=$1
-shift
-result_arr=()
-for pair in "$@";do
-local var="${pair%%:*}"
-local func="${pair#*:}"
-if [[ ${!var} == "yes" ]];then
-result_arr+=("$func")
-fi
-done
 }
 validate_hostname(){
 local hostname="$1"
@@ -4508,7 +4482,6 @@ log "WARNING: Firewall setup failed"
 print_warning "Firewall setup failed - continuing without it"
 return 0
 fi
-FIREWALL_INSTALLED="yes"
 }
 _config_fail2ban(){
 apply_template_vars "./templates/fail2ban-jail.local" \
@@ -4688,7 +4661,6 @@ log "WARNING: netdata setup failed"
 print_warning "netdata setup failed - continuing without it"
 return 0
 fi
-NETDATA_INSTALLED="yes"
 }
 _install_yazi(){
 run_remote "Installing yazi" '
@@ -4728,7 +4700,6 @@ log "WARNING: Yazi setup failed"
 print_warning "Yazi setup failed - continuing without it"
 return 0
 fi
-YAZI_INSTALLED="yes"
 }
 _config_nvim(){
 remote_exec '
