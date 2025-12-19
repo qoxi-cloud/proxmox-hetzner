@@ -48,6 +48,12 @@ add_log() {
 # Render all logs (with auto-scroll, no flicker)
 render_logs() {
   restore_cursor_position
+
+  # Print fixed header each time
+  echo ""
+  echo "${CLR_CYAN} Live Logs${CLR_RESET}"
+  echo ""
+
   local start_line=0
   if ((LOG_COUNT > LOG_AREA_HEIGHT)); then
     start_line=$((LOG_COUNT - LOG_AREA_HEIGHT))
@@ -109,12 +115,14 @@ start_live_installation() {
   _wiz_clear
   show_banner
 
-  # Print fixed header (stays in place during scroll)
+  # Save cursor position right after banner (before header)
+  save_cursor_position
+
+  # Print fixed header
   echo ""
   echo "${CLR_CYAN} Live Logs${CLR_RESET}"
   echo ""
 
-  save_cursor_position
   tput civis # Hide cursor
 
   # Set trap to restore cursor and exit alternate buffer on exit
