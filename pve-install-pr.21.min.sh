@@ -19,7 +19,7 @@ HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 HEX_NONE="7"
 MENU_BOX_WIDTH=60
-VERSION="2.0.275-pr.21"
+VERSION="2.0.276-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -4250,7 +4250,7 @@ run_remote "Installing NTP (chrony)" '
         systemctl stop chrony
     ' "NTP (chrony) installed"
 (remote_copy "templates/chrony" "/etc/chrony/chrony.conf"
-remote_exec "systemctl enable chrony && systemctl start chrony") > \
+remote_exec "systemctl enable chrony") > \
 /dev/null 2>&1&
 show_progress $! "Configuring chrony" "Chrony configured"
 run_remote "Installing Unattended Upgrades" '
@@ -4494,23 +4494,7 @@ remote_exec "nft -c -f /etc/nftables.conf"||{
 log "ERROR: nftables config syntax validation failed"
 exit 1
 }
-remote_exec "systemctl enable nftables && systemctl restart nftables"||exit 1
-if [[ $FIREWALL_MODE == "stealth" ]];then
-log "Stealth mode enabled - SSH blocked, skipping remote verification (config pre-validated)"
-else
-sleep 2
-local retry_count=0
-local max_retries=5
-while ! remote_exec "nft list ruleset 2>/dev/null | grep -q 'table inet filter'";do
-((retry_count++))
-if ((retry_count>=max_retries));then
-log "ERROR: nftables rules not loaded properly after $max_retries attempts"
-exit 1
-fi
-log "Waiting for nftables rules to load (attempt $retry_count/$max_retries)..."
-sleep 2
-done
-fi
+remote_exec "systemctl enable nftables"||exit 1
 rm -f "./templates/nftables.conf.generated"
 }
 configure_firewall(){
@@ -4551,7 +4535,7 @@ apply_template_vars "./templates/fail2ban-jail.local" \
 "HOSTNAME=$PVE_HOSTNAME"
 remote_copy "templates/fail2ban-jail.local" "/etc/fail2ban/jail.local"||exit 1
 remote_copy "templates/fail2ban-proxmox.conf" "/etc/fail2ban/filter.d/proxmox.conf"||exit 1
-remote_exec "systemctl enable fail2ban && systemctl restart fail2ban"||exit 1
+remote_exec "systemctl enable fail2ban"||exit 1
 }
 configure_fail2ban(){
 if [[ $INSTALL_TAILSCALE == "yes" ]];then
@@ -4593,16 +4577,8 @@ remote_exec '
       update-grub 2>/dev/null || true
     fi
 
-    # Enable and start AppArmor service
+    # Enable AppArmor to start on boot (will activate after reboot)
     systemctl enable apparmor.service
-    systemctl start apparmor.service 2>/dev/null || true
-
-    # Load profiles in enforce mode
-    if command -v aa-enforce >/dev/null 2>&1; then
-      for profile in /etc/apparmor.d/*; do
-        [[ -f "$profile" && ! -d "$profile" ]] && aa-enforce "$profile" 2>/dev/null || true
-      done
-    fi
   '||exit 1
 }
 configure_apparmor(){
@@ -4644,9 +4620,8 @@ remote_exec '
     # Load new rules
     augenrules --load 2>/dev/null || true
 
-    # Enable and restart auditd
+    # Enable auditd to start on boot (will activate after reboot)
     systemctl enable auditd
-    systemctl restart auditd
   '||exit 1
 }
 configure_auditd(){
@@ -4687,10 +4662,9 @@ remote_exec '
       mv /var/lib/aide/aide.db.new /var/lib/aide/aide.db
     fi
 
-    # Enable daily integrity check timer
+    # Enable daily integrity check timer (will activate after reboot)
     systemctl daemon-reload
     systemctl enable aide-check.timer
-    systemctl start aide-check.timer
   '||exit 1
 }
 configure_aide(){
@@ -4725,10 +4699,9 @@ remote_exec '
     # Ensure log directory exists
     mkdir -p /var/log/chkrootkit
 
-    # Enable weekly scan timer
+    # Enable weekly scan timer (will activate after reboot)
     systemctl daemon-reload
     systemctl enable chkrootkit-scan.timer
-    systemctl start chkrootkit-scan.timer
   '||exit 1
 }
 configure_chkrootkit(){
@@ -4763,10 +4736,9 @@ remote_exec '
     # Ensure log directory exists
     mkdir -p /var/log/lynis
 
-    # Enable weekly audit timer
+    # Enable weekly audit timer (will activate after reboot)
     systemctl daemon-reload
     systemctl enable lynis-audit.timer
-    systemctl start lynis-audit.timer
   '||exit 1
 }
 configure_lynis(){
@@ -4826,12 +4798,9 @@ _config_ringbuffer(){
 export RINGBUFFER_INTERFACE="${DEFAULT_INTERFACE:-eth0}"
 deploy_template "network-ringbuffer.service" "/etc/systemd/system/network-ringbuffer.service" RINGBUFFER_INTERFACE
 remote_exec '
-    # Enable service for boot
+    # Enable service for boot (will activate after reboot)
     systemctl daemon-reload
     systemctl enable network-ringbuffer.service
-
-    # Apply immediately
-    systemctl start network-ringbuffer.service 2>/dev/null || true
   '||exit 1
 }
 configure_ringbuffer(){
@@ -4877,9 +4846,8 @@ remote_exec "
       fi
     done
 
-    # Enable and start vnstat daemon
+    # Enable vnstat to start on boot (don't start now - will activate after reboot)
     systemctl enable vnstat
-    systemctl restart vnstat
   "||exit 1
 }
 configure_vnstat(){
@@ -4920,10 +4888,6 @@ remote_exec "/usr/local/bin/proxmox-metrics.sh" >/dev/null 2>&1||log "WARNING: I
 remote_exec '
     systemctl daemon-reload
     systemctl enable prometheus-node-exporter
-    systemctl restart prometheus-node-exporter
-
-    # Verify service is running
-    systemctl is-active --quiet prometheus-node-exporter || exit 1
   '||exit 1
 log "Prometheus node exporter listening on :9100 with textfile collector"
 log "Custom metrics cron job installed (/etc/cron.d/proxmox-metrics, runs every 5 minutes)"
@@ -4973,10 +4937,8 @@ fi
 export NETDATA_BIND_TO="$bind_to"
 deploy_template "netdata.conf" "/etc/netdata/netdata.conf" NETDATA_BIND_TO
 remote_exec '
-    # Enable and start netdata service
     systemctl daemon-reload
     systemctl enable netdata
-    systemctl restart netdata
   '||exit 1
 }
 configure_netdata(){
