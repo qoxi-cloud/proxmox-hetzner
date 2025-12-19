@@ -61,8 +61,7 @@ jobs:
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
         with:
-          directory: ./coverage
-          files: ./coverage/shellspec/cobertura.xml
+          files: ./coverage/cobertura.xml
           fail_ci_if_error: false
           token: ${{ secrets.CODECOV_TOKEN }}
 
@@ -74,12 +73,12 @@ jobs:
           retention-days: 7
 
       - name: Coverage summary
+        shell: bash
         run: |
           echo "### Test Coverage" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
-          if [[ -f coverage/shellspec/cobertura.xml ]]; then
-            # Extract line coverage from cobertura.xml
-            line_rate=$(grep -oP 'line-rate="\K[0-9.]+' coverage/shellspec/cobertura.xml | head -1)
+          if [[ -f coverage/cobertura.xml ]]; then
+            line_rate=$(grep -oP 'line-rate="\K[0-9.]+' coverage/cobertura.xml | head -1)
             if [[ -n "$line_rate" ]]; then
               pct=$(echo "$line_rate * 100" | bc -l | xargs printf "%.1f")
               echo "**Line Coverage:** ${pct}%" >> "$GITHUB_STEP_SUMMARY"
