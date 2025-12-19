@@ -188,15 +188,6 @@ live_log_validation_finalization() {
   live_log_section "Validation & Finalization"
 }
 
-# Installation complete message
-live_log_installation_complete() {
-  add_log ""
-  add_log "${CLR_CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${CLR_RESET}"
-  add_log "${CLR_CYAN}✓ Installation completed successfully!${CLR_RESET}"
-  add_log "${CLR_CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${CLR_RESET}"
-  add_log ""
-}
-
 # Flag to track if live logs are active
 LIVE_LOGS_ACTIVE=false
 

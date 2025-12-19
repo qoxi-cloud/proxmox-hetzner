@@ -237,14 +237,6 @@ log "Step: configure_proxmox_via_ssh"
 configure_proxmox_via_ssh
 log_metric "system_config"
 
-# ============================================================================
-# Installation Complete
-# ============================================================================
-live_log_installation_complete
-
-# Finish live installation display
-finish_live_installation
-
 # Log final metrics
 metrics_finish
 
