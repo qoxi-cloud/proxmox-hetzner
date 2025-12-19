@@ -29,13 +29,6 @@ _show_credentials_info() {
       echo "${CLR_CYAN}${CLR_BOLD}API Token:${CLR_RESET}"
       echo "${CLR_CYAN}  Token ID:${CLR_RESET}  ${API_TOKEN_ID}"
       echo "${CLR_CYAN}  Secret:${CLR_RESET}    ${API_TOKEN_VALUE}"
-      echo ""
-      echo "${CLR_DIM}  Usage (curl):${CLR_RESET}"
-      echo "${CLR_DIM}    curl -k -H \"Authorization: PVEAPIToken=${API_TOKEN_ID}=${API_TOKEN_VALUE}\" \\${CLR_RESET}"
-      echo "${CLR_DIM}         https://${MAIN_IPV4}:8006/api2/json/nodes${CLR_RESET}"
-      echo ""
-      echo "${CLR_DIM}  Properties: privileged (full root@pam rights), never expires${CLR_RESET}"
-      echo "${CLR_DIM}  Revoke via: pveum user token remove ${API_TOKEN_ID}${CLR_RESET}"
     fi
   fi
 
