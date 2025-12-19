@@ -19,7 +19,7 @@ HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 HEX_NONE="7"
 MENU_BOX_WIDTH=60
-VERSION="2.0.285-pr.21"
+VERSION="2.0.287-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -323,6 +323,7 @@ log "METRIC: installation_completed total_time=${total}s (${minutes}m ${seconds}
 fi
 }
 BANNER_LETTER_COUNT=7
+BANNER_HEIGHT=9
 _BANNER_PAD="        "
 show_banner(){
 local p="$_BANNER_PAD"
@@ -596,6 +597,12 @@ fi
 }
 apply_common_template_vars(){
 local file="$1"
+local -a critical_vars=(MAIN_IPV4 MAIN_IPV4_GW PVE_HOSTNAME INTERFACE_NAME)
+for var in "${critical_vars[@]}";do
+if [[ -z ${!var:-} ]];then
+log "WARNING: [apply_common_template_vars] Critical variable $var is empty for $file"
+fi
+done
 apply_template_vars "$file" \
 "MAIN_IPV4=${MAIN_IPV4:-}" \
 "MAIN_IPV4_GW=${MAIN_IPV4_GW:-}" \
@@ -678,6 +685,38 @@ return 0
 }
 SSH_OPTS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -o ConnectTimeout=${SSH_CONNECT_TIMEOUT:-10}"
 SSH_PORT="5555"
+_SSH_SESSION_PASSFILE=""
+_ssh_session_init(){
+[[ -n $_SSH_SESSION_PASSFILE ]]&&[[ -f $_SSH_SESSION_PASSFILE ]]&&return 0
+if [[ -d /dev/shm ]]&&[[ -w /dev/shm ]];then
+_SSH_SESSION_PASSFILE=$(mktemp --tmpdir=/dev/shm pve-ssh-session.XXXXXX 2>/dev/null||mktemp)
+else
+_SSH_SESSION_PASSFILE=$(mktemp)
+fi
+echo "$NEW_ROOT_PASSWORD" >"$_SSH_SESSION_PASSFILE"
+chmod 600 "$_SSH_SESSION_PASSFILE"
+trap '_ssh_session_cleanup' EXIT
+log "SSH session initialized"
+}
+_ssh_session_cleanup(){
+[[ -z $_SSH_SESSION_PASSFILE ]]&&return 0
+[[ ! -f $_SSH_SESSION_PASSFILE ]]&&return 0
+if command -v shred &>/dev/null;then
+shred -u -z "$_SSH_SESSION_PASSFILE" 2>/dev/null||rm -f "$_SSH_SESSION_PASSFILE"
+else
+if command -v dd &>/dev/null;then
+local file_size
+file_size=$(stat -c%s "$_SSH_SESSION_PASSFILE" 2>/dev/null||echo 1024)
+dd if=/dev/zero of="$_SSH_SESSION_PASSFILE" bs=1 count="$file_size" 2>/dev/null||true
+fi
+rm -f "$_SSH_SESSION_PASSFILE"
+fi
+_SSH_SESSION_PASSFILE=""
+}
+_ssh_get_passfile(){
+_ssh_session_init
+echo "$_SSH_SESSION_PASSFILE"
+}
 check_port_available(){
 local port="$1"
 if command -v ss &>/dev/null;then
@@ -691,37 +730,11 @@ fi
 fi
 return 0
 }
-create_passfile(){
-local passfile
-if [[ -d /dev/shm ]]&&[[ -w /dev/shm ]];then
-passfile=$(mktemp --tmpdir=/dev/shm pve-passfile.XXXXXX 2>/dev/null||mktemp)
-else
-passfile=$(mktemp)
-fi
-echo "$NEW_ROOT_PASSWORD" >"$passfile"
-chmod 600 "$passfile"
-echo "$passfile"
-}
-secure_cleanup_passfile(){
-local passfile="$1"
-if [[ -f $passfile ]];then
-if command -v shred &>/dev/null;then
-shred -u -z "$passfile" 2>/dev/null||rm -f "$passfile"
-else
-if command -v dd &>/dev/null;then
-local file_size
-file_size=$(stat -c%s "$passfile" 2>/dev/null||echo 1024)
-dd if=/dev/zero of="$passfile" bs=1 count="$file_size" 2>/dev/null||true
-fi
-rm -f "$passfile"
-fi
-fi
-}
 wait_for_ssh_ready(){
 local timeout="${1:-120}"
 ssh-keygen -f "/root/.ssh/known_hosts" -R "[localhost]:$SSH_PORT" 2>/dev/null||true
 local port_check=0
-for i in {1..10};do
+for _ in {1..10};do
 if (echo >/dev/tcp/localhost/$SSH_PORT) 2>/dev/null;then
 port_check=1
 break
@@ -734,7 +747,7 @@ log "ERROR: Port $SSH_PORT not accessible after 10 attempts"
 return 1
 fi
 local passfile
-passfile=$(create_passfile)
+passfile=$(_ssh_get_passfile)
 (local elapsed=0
 while ((elapsed<timeout));do
 if sshpass -f "$passfile" ssh -p "$SSH_PORT" $SSH_OPTS root@localhost 'echo ready' >/dev/null 2>&1;then
@@ -747,51 +760,36 @@ exit 1) \
 &
 local wait_pid=$!
 show_progress $wait_pid "Waiting for SSH to be ready" "SSH connection established"
-local exit_code=$?
-secure_cleanup_passfile "$passfile"
-return $exit_code
 }
 remote_exec(){
 local passfile
-passfile=$(create_passfile)
+passfile=$(_ssh_get_passfile)
 local max_attempts=3
 local attempt=0
 local exit_code=1
 while [[ $attempt -lt $max_attempts ]];do
 attempt=$((attempt+1))
 if sshpass -f "$passfile" ssh -p "$SSH_PORT" $SSH_OPTS root@localhost "$@";then
-exit_code=0
-break
+return 0
 fi
 if [[ $attempt -lt $max_attempts ]];then
 log "SSH attempt $attempt failed, retrying in 2 seconds..."
 sleep 2
 fi
 done
-secure_cleanup_passfile "$passfile"
-if [[ $exit_code -ne 0 ]];then
 log "ERROR: SSH command failed after $max_attempts attempts: $*"
-fi
-return $exit_code
+return 1
 }
-remote_exec_script(){
-local passfile
-passfile=$(create_passfile)
-sshpass -f "$passfile" ssh -p "$SSH_PORT" $SSH_OPTS root@localhost 'bash -s'
-local exit_code=$?
-secure_cleanup_passfile "$passfile"
-return $exit_code
-}
-remote_exec_with_progress(){
+_remote_exec_with_progress(){
 local message="$1"
 local script="$2"
 local done_message="${3:-$message}"
-log "remote_exec_with_progress: $message"
+log "_remote_exec_with_progress: $message"
 log "--- Script start ---"
 echo "$script" >>"$LOG_FILE"
 log "--- Script end ---"
 local passfile
-passfile=$(create_passfile)
+passfile=$(_ssh_get_passfile)
 local output_file
 output_file=$(mktemp)
 echo "$script"|sshpass -f "$passfile" ssh -p "$SSH_PORT" $SSH_OPTS root@localhost 'bash -s' >"$output_file" 2>&1&
@@ -804,11 +802,10 @@ grep -iE "(error|failed|cannot|unable|fatal)" "$output_file" >>"$LOG_FILE" 2>/de
 fi
 cat "$output_file" >>"$LOG_FILE"
 rm -f "$output_file"
-secure_cleanup_passfile "$passfile"
 if [[ $exit_code -ne 0 ]];then
-log "remote_exec_with_progress: FAILED with exit code $exit_code"
+log "_remote_exec_with_progress: FAILED with exit code $exit_code"
 else
-log "remote_exec_with_progress: completed successfully"
+log "_remote_exec_with_progress: completed successfully"
 fi
 return $exit_code
 }
@@ -816,7 +813,7 @@ run_remote(){
 local message="$1"
 local script="$2"
 local done_message="${3:-$message}"
-if ! remote_exec_with_progress "$message" "$script" "$done_message";then
+if ! _remote_exec_with_progress "$message" "$script" "$done_message";then
 log "ERROR: $message failed"
 exit 1
 fi
@@ -825,11 +822,8 @@ remote_copy(){
 local src="$1"
 local dst="$2"
 local passfile
-passfile=$(create_passfile)
+passfile=$(_ssh_get_passfile)
 sshpass -f "$passfile" scp -P "$SSH_PORT" $SSH_OPTS "$src" "root@localhost:$dst"
-local exit_code=$?
-secure_cleanup_passfile "$passfile"
-return $exit_code
 }
 parse_ssh_key(){
 local key="$1"
@@ -837,9 +831,7 @@ SSH_KEY_TYPE=""
 SSH_KEY_DATA=""
 SSH_KEY_COMMENT=""
 SSH_KEY_SHORT=""
-if [[ -z $key ]];then
-return 1
-fi
+[[ -z $key ]]&&return 1
 SSH_KEY_TYPE=$(echo "$key"|awk '{print $1}')
 SSH_KEY_DATA=$(echo "$key"|awk '{print $2}')
 SSH_KEY_COMMENT=$(echo "$key"|awk '{$1=""; $2=""; print}'|sed 's/^ *//')
@@ -892,7 +884,7 @@ run_parallel(){
 local -a pids=()
 local exit_code=0
 for cmd in "$@";do
-eval "$cmd"&
+bash -c "$cmd"&
 pids+=($!)
 done
 for pid in "${pids[@]}";do
@@ -915,7 +907,7 @@ fi
 if ! "$install_func";then
 log "ERROR: $feature_name installation failed"
 print_error "$feature_name installation failed"
-exit 1
+return 1
 fi
 if ! "$config_func";then
 log "WARNING: $feature_name configuration failed"
@@ -923,7 +915,7 @@ print_warning "$feature_name configuration failed - continuing without it"
 return 0
 fi
 if [[ -n $installed_var ]];then
-eval "$installed_var=yes"
+declare -g "$installed_var=yes"
 log "$feature_name installed and configured successfully"
 fi
 return 0
@@ -981,13 +973,6 @@ run_remote "Installing packages: $packages" "
     apt-get update -qq || exit 1
     apt-get install -yqq $packages || exit 1
   " "Packages installed: $packages"
-}
-remote_exec_retry(){
-local max_retries="${1:-3}"
-local message="$2"
-local command="$3"
-local done_message="${4:-$message}"
-retry_command "$max_retries" 2 remote_exec "$message" "$command" "$done_message"
 }
 generate_password(){
 local length="${1:-16}"
@@ -1437,20 +1422,24 @@ return 0
 }
 collect_system_info(){
 local errors=0
+local -A required_commands=(
+[column]="bsdmainutils"
+[ip]="iproute2"
+[udevadm]="udev"
+[timeout]="coreutils"
+[curl]="curl"
+[jq]="jq"
+[aria2c]="aria2"
+[findmnt]="util-linux"
+[gum]="gum")
 local packages_to_install=""
 local need_charm_repo=false
-command -v column &>/dev/null||packages_to_install+=" bsdmainutils"
-command -v ip &>/dev/null||packages_to_install+=" iproute2"
-command -v udevadm &>/dev/null||packages_to_install+=" udev"
-command -v timeout &>/dev/null||packages_to_install+=" coreutils"
-command -v curl &>/dev/null||packages_to_install+=" curl"
-command -v jq &>/dev/null||packages_to_install+=" jq"
-command -v aria2c &>/dev/null||packages_to_install+=" aria2"
-command -v findmnt &>/dev/null||packages_to_install+=" util-linux"
-command -v gum &>/dev/null||{
-need_charm_repo=true
-packages_to_install+=" gum"
-}
+for cmd in "${!required_commands[@]}";do
+if ! command -v "$cmd" &>/dev/null;then
+packages_to_install+=" ${required_commands[$cmd]}"
+[[ $cmd == "gum" ]]&&need_charm_repo=true
+fi
+done
 if [[ $need_charm_repo == true ]];then
 mkdir -p /etc/apt/keyrings 2>/dev/null
 curl -fsSL https://repo.charm.sh/apt/gpg.key 2>/dev/null|gpg --dearmor -o /etc/apt/keyrings/charm.gpg >/dev/null 2>&1
@@ -1822,7 +1811,7 @@ get_terminal_dimensions(){
 TERM_HEIGHT=$(tput lines)
 TERM_WIDTH=$(tput cols)
 }
-LOGO_HEIGHT=9
+LOGO_HEIGHT=${BANNER_HEIGHT:-9}
 calculate_log_area(){
 get_terminal_dimensions
 LOG_AREA_HEIGHT=$((TERM_HEIGHT-LOGO_HEIGHT-2))
@@ -1873,8 +1862,8 @@ log "WARNING: gum is not installed, live logs disabled"
 return 1
 fi
 LIVE_LOGS_ACTIVE=true
-if type show_progress &>/dev/null 2>&1;then
-eval "$(declare -f show_progress|sed '1s/show_progress/show_progress_original/')"
+if type show_progress &>/dev/null;then
+source <(declare -f show_progress|sed '1s/show_progress/show_progress_original/')
 fi
 show_progress(){
 live_show_progress "$@"
@@ -4211,31 +4200,29 @@ apply_template_vars "./templates/cpufrequtils" "CPU_GOVERNOR=${CPU_GOVERNOR:-per
 show_progress $! "Modifying template files"
 }
 configure_base_system(){
+local -a copy_pids=()
 remote_copy "templates/hosts" "/etc/hosts" >/dev/null 2>&1&
-local pid1=$!
+copy_pids+=($!)
 remote_copy "templates/interfaces" "/etc/network/interfaces" >/dev/null 2>&1&
-local pid2=$!
+copy_pids+=($!)
 remote_copy "templates/99-proxmox.conf" "/etc/sysctl.d/99-proxmox.conf" >/dev/null 2>&1&
-local pid3=$!
+copy_pids+=($!)
 remote_copy "templates/debian.sources" "/etc/apt/sources.list.d/debian.sources" >/dev/null 2>&1&
-local pid4=$!
+copy_pids+=($!)
 remote_copy "templates/proxmox.sources" "/etc/apt/sources.list.d/proxmox.sources" >/dev/null 2>&1&
-local pid5=$!
+copy_pids+=($!)
 remote_copy "templates/resolv.conf" "/etc/resolv.conf" >/dev/null 2>&1&
-local pid6=$!
+copy_pids+=($!)
 local exit_code=0
-wait $pid1||exit_code=1
-wait $pid2||exit_code=1
-wait $pid3||exit_code=1
-wait $pid4||exit_code=1
-wait $pid5||exit_code=1
-wait $pid6||exit_code=1
+for pid in "${copy_pids[@]}";do
+wait "$pid"||exit_code=1
+done
 if [[ $exit_code -eq 0 ]];then
 printf '\r\e[K%s✓ Configuration files copied%s\n' "$CLR_CYAN" "$CLR_RESET"
 else
 printf '\r\e[K%s✗ Copying configuration files%s\n' "$CLR_RED" "$CLR_RESET"
 log "ERROR: Failed to copy some configuration files"
-exit 1
+return 1
 fi
 (remote_exec "[ -f /etc/apt/sources.list ] && mv /etc/apt/sources.list /etc/apt/sources.list.bak"
 remote_exec "echo '$PVE_HOSTNAME' > /etc/hostname"
