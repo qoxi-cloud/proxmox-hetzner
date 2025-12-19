@@ -4477,12 +4477,12 @@ log "Generated nftables config:"
 log "  Bridge mode: $BRIDGE_MODE"
 log "  Firewall mode: $FIREWALL_MODE"
 log "  Private subnet: ${PRIVATE_SUBNET:-N/A}"
-remote_copy "templates/nftables.conf.generated" "/etc/nftables.conf"||exit 1
+remote_copy "templates/nftables.conf.generated" "/etc/nftables.conf"||return 1
 remote_exec "nft -c -f /etc/nftables.conf"||{
 log "ERROR: nftables config syntax validation failed"
-exit 1
+return 1
 }
-remote_exec "systemctl enable nftables"||exit 1
+remote_exec "systemctl enable nftables"||return 1
 rm -f "./templates/nftables.conf.generated"
 }
 configure_firewall(){
@@ -4666,11 +4666,11 @@ if [[ $INSTALL_TAILSCALE == "yes" ]];then
 bind_to="127.0.0.1 100.*"
 fi
 apply_template_vars "templates/netdata.conf" "NETDATA_BIND_TO=$bind_to"
-remote_copy "templates/netdata.conf" "/etc/netdata/netdata.conf"||exit 1
+remote_copy "templates/netdata.conf" "/etc/netdata/netdata.conf"||return 1
 remote_exec '
     systemctl daemon-reload
     systemctl enable netdata
-  '||exit 1
+  '||return 1
 }
 configure_netdata(){
 if [[ $INSTALL_NETDATA != "yes" ]];then
@@ -4709,8 +4709,8 @@ run_remote "Installing yazi" '
   ' "Yazi installed"
 }
 _config_yazi(){
-remote_exec 'mkdir -p /root/.config/yazi'||exit 1
-remote_copy "templates/yazi-theme.toml" "/root/.config/yazi/theme.toml"||exit 1
+remote_exec 'mkdir -p /root/.config/yazi'||return 1
+remote_copy "templates/yazi-theme.toml" "/root/.config/yazi/theme.toml"||return 1
 }
 configure_yazi(){
 if [[ $INSTALL_YAZI != "yes" ]];then
