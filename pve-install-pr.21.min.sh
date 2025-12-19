@@ -4266,6 +4266,11 @@ run_remote "Installing Tailscale VPN" '
         apt-get install -yqq tailscale
         systemctl enable tailscaled
         systemctl start tailscaled
+        # Wait for tailscaled socket to be ready (up to 30s)
+        for i in {1..30}; do
+          tailscale status &>/dev/null && break
+          sleep 1
+        done
     ' "Tailscale VPN installed"
 if [[ -n $TAILSCALE_AUTH_KEY ]];then
 local tmp_ip tmp_hostname
