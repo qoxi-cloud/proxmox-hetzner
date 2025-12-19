@@ -222,24 +222,36 @@ $nat_rules")
   # Copy configuration to VM
   remote_copy "templates/nftables.conf.generated" "/etc/nftables.conf" || exit 1
 
+  # Validate config syntax before enabling (catches errors before SSH gets blocked)
+  remote_exec "nft -c -f /etc/nftables.conf" || {
+    log "ERROR: nftables config syntax validation failed"
+    exit 1
+  }
+
   # Enable and start nftables
   remote_exec "systemctl enable nftables && systemctl restart nftables" || exit 1
 
-  # Wait for nftables to fully load rules (service needs time to apply ruleset)
-  sleep 2
-
-  # Verify rules are loaded with retry (nftables may take a moment to apply)
-  local retry_count=0
-  local max_retries=5
-  while ! remote_exec "nft list ruleset 2>/dev/null | grep -q 'table inet filter'"; do
-    ((retry_count++))
-    if ((retry_count >= max_retries)); then
-      log "ERROR: nftables rules not loaded properly after $max_retries attempts"
-      exit 1
-    fi
-    log "Waiting for nftables rules to load (attempt $retry_count/$max_retries)..."
+  # For stealth mode, SSH will be blocked after firewall starts - skip remote verification
+  # The config was already validated with nft -c above
+  if [[ $FIREWALL_MODE == "stealth" ]]; then
+    log "Stealth mode enabled - SSH blocked, skipping remote verification (config pre-validated)"
+  else
+    # Wait for nftables to fully load rules (service needs time to apply ruleset)
     sleep 2
-  done
+
+    # Verify rules are loaded with retry (nftables may take a moment to apply)
+    local retry_count=0
+    local max_retries=5
+    while ! remote_exec "nft list ruleset 2>/dev/null | grep -q 'table inet filter'"; do
+      ((retry_count++))
+      if ((retry_count >= max_retries)); then
+        log "ERROR: nftables rules not loaded properly after $max_retries attempts"
+        exit 1
+      fi
+      log "Waiting for nftables rules to load (attempt $retry_count/$max_retries)..."
+      sleep 2
+    done
+  fi
 
   # Clean up temp file
   rm -f "./templates/nftables.conf.generated"
