@@ -40,7 +40,7 @@ jobs:
       - name: Calculate version for badge
         id: version
         run: |
-          VERSION=$(grep '^VERSION=' pve-install.min.sh | head -1 | sed 's/VERSION="//;s/"//')
+          VERSION=$(grep 'readonly VERSION=' pve-install.min.sh | head -1 | sed 's/.*VERSION="//;s/"//')
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
 
       - name: Checkout gh-pages
