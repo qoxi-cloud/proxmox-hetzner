@@ -7,9 +7,7 @@
 # Shows success message and interactive reboot dialog.
 _show_credentials_info() {
   echo ""
-  print_info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   echo "${CLR_YELLOW}${CLR_BOLD}Access Credentials${CLR_RESET} ${CLR_RED}(SAVE THIS!)${CLR_RESET}"
-  print_info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   echo ""
 
   # Root credentials (always shown)
@@ -31,8 +29,6 @@ _show_credentials_info() {
       echo "${CLR_CYAN}  Secret:${CLR_RESET}    ${API_TOKEN_VALUE}"
     fi
   fi
-
-  print_info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   echo ""
 }
 
@@ -45,7 +41,6 @@ reboot_to_main_os() {
 
   # Show success message
   print_info "Installation completed successfully!"
-  echo ""
 
   # Show credentials (root password + API token if created)
   _show_credentials_info
