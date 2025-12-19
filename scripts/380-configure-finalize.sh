@@ -102,21 +102,90 @@ finalize_vm() {
 }
 
 # =============================================================================
+# Parallel configuration helpers
+# =============================================================================
+
+# Wrapper functions that check INSTALL_* and call _config_* silently.
+# These are designed for parallel execution after batch package install.
+# Each function returns 0 (skip) if feature not enabled, or runs config.
+
+_parallel_config_apparmor() {
+  [[ ${INSTALL_APPARMOR:-} != "yes" ]] && return 0
+  _config_apparmor
+}
+
+_parallel_config_fail2ban() {
+  # Requires firewall and not stealth mode
+  [[ ${INSTALL_FIREWALL:-} != "yes" || ${FIREWALL_MODE:-standard} == "stealth" ]] && return 0
+  _config_fail2ban
+}
+
+_parallel_config_auditd() {
+  [[ ${INSTALL_AUDITD:-} != "yes" ]] && return 0
+  _config_auditd
+}
+
+_parallel_config_aide() {
+  [[ ${INSTALL_AIDE:-} != "yes" ]] && return 0
+  _config_aide
+}
+
+_parallel_config_chkrootkit() {
+  [[ ${INSTALL_CHKROOTKIT:-} != "yes" ]] && return 0
+  _config_chkrootkit
+}
+
+_parallel_config_lynis() {
+  [[ ${INSTALL_LYNIS:-} != "yes" ]] && return 0
+  _config_lynis
+}
+
+_parallel_config_needrestart() {
+  [[ ${INSTALL_NEEDRESTART:-} != "yes" ]] && return 0
+  _config_needrestart
+}
+
+_parallel_config_prometheus() {
+  [[ ${INSTALL_PROMETHEUS:-} != "yes" ]] && return 0
+  _config_prometheus
+}
+
+_parallel_config_vnstat() {
+  [[ ${INSTALL_VNSTAT:-} != "yes" ]] && return 0
+  _config_vnstat
+}
+
+_parallel_config_ringbuffer() {
+  [[ ${INSTALL_RINGBUFFER:-} != "yes" ]] && return 0
+  _config_ringbuffer
+}
+
+_parallel_config_nvim() {
+  [[ ${INSTALL_NVIM:-} != "yes" ]] && return 0
+  _config_nvim
+}
+
+# =============================================================================
 # Main configuration function
 # =============================================================================
 
 # Main entry point for post-install Proxmox configuration via SSH.
-# Orchestrates all configuration steps: templates, base, services, security.
+# Orchestrates all configuration steps with parallel execution where safe.
+# Uses batch package installation and parallel config groups for speed.
 configure_proxmox_via_ssh() {
   log "Starting Proxmox configuration via SSH"
 
-  # Base Configuration
+  # ==========================================================================
+  # PHASE 1: Base Configuration (sequential - dependencies)
+  # ==========================================================================
   make_templates
   configure_base_system
   configure_shell
   configure_system_services
 
-  # Storage Configuration
+  # ==========================================================================
+  # PHASE 2: Storage Configuration (sequential - ZFS dependencies)
+  # ==========================================================================
   if type live_log_storage_configuration &>/dev/null 2>&1; then
     live_log_storage_configuration
   fi
@@ -124,46 +193,79 @@ configure_proxmox_via_ssh() {
   configure_zfs_pool
   configure_zfs_scrub
 
-  # Security Configuration
+  # ==========================================================================
+  # PHASE 3: Security Configuration (parallel after batch install)
+  # ==========================================================================
   if type live_log_security_configuration &>/dev/null 2>&1; then
     live_log_security_configuration
   fi
-  configure_tailscale
-  configure_firewall
-  configure_apparmor
-  configure_fail2ban
-  configure_auditd
-  configure_aide
-  configure_chkrootkit
-  configure_lynis
-  configure_needrestart
 
-  # Monitoring & Tools
+  # Tailscale first (uses curl installer, needed for firewall rules)
+  configure_tailscale
+
+  # Firewall next (depends on tailscale for rule generation)
+  configure_firewall
+
+  # Batch install remaining security packages
+  batch_install_packages
+
+  # Parallel security configuration
+  run_parallel_group "Configuring security" "Security features configured" \
+    _parallel_config_apparmor \
+    _parallel_config_fail2ban \
+    _parallel_config_auditd \
+    _parallel_config_aide \
+    _parallel_config_chkrootkit \
+    _parallel_config_lynis \
+    _parallel_config_needrestart
+
+  # ==========================================================================
+  # PHASE 4: Monitoring & Tools (parallel where possible)
+  # ==========================================================================
   if type live_log_monitoring_configuration &>/dev/null 2>&1; then
     live_log_monitoring_configuration
   fi
-  configure_netdata
-  configure_prometheus
-  configure_vnstat
-  configure_ringbuffer
-  configure_yazi
-  configure_nvim
 
-  # SSL & API Configuration
+  # Special installers (non-apt) - run in parallel
+  (
+    local pids=()
+    if [[ $INSTALL_NETDATA == "yes" ]]; then
+      configure_netdata &
+      pids+=($!)
+    fi
+    if [[ $INSTALL_YAZI == "yes" ]]; then
+      configure_yazi &
+      pids+=($!)
+    fi
+    for pid in "${pids[@]}"; do wait "$pid" 2>/dev/null || true; done
+  ) >/dev/null 2>&1 &
+  local special_pid=$!
+
+  # Parallel config for apt-installed tools (packages already installed by batch)
+  run_parallel_group "Configuring tools" "Tools configured" \
+    _parallel_config_prometheus \
+    _parallel_config_vnstat \
+    _parallel_config_ringbuffer \
+    _parallel_config_nvim
+
+  # Wait for special installers
+  wait $special_pid 2>/dev/null || true
+
+  # ==========================================================================
+  # PHASE 5: SSL & API Configuration
+  # ==========================================================================
   if type live_log_ssl_configuration &>/dev/null 2>&1; then
     live_log_ssl_configuration
   fi
   configure_ssl_certificate
   if [[ $INSTALL_API_TOKEN == "yes" ]]; then
-    (
-      # shellcheck disable=SC1091
-      source "$SCRIPT_DIR/58-configure-api-token.sh"
-      create_api_token || exit 1
-    ) >/dev/null 2>&1 &
+    (create_api_token || exit 1) >/dev/null 2>&1 &
     show_progress $! "Creating API token" "API token created"
   fi
 
-  # Validation & Finalization
+  # ==========================================================================
+  # PHASE 6: Validation & Finalization
+  # ==========================================================================
   if type live_log_validation_finalization &>/dev/null 2>&1; then
     live_log_validation_finalization
   fi

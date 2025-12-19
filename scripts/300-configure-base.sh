@@ -193,14 +193,13 @@ configure_shell() {
             sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
         ' "Oh-My-Zsh installed"
 
-    run_remote "Installing Powerlevel10k theme" '
-            git clone --depth=1 https://github.com/romkatv/powerlevel10k.git /root/.oh-my-zsh/custom/themes/powerlevel10k
-        ' "Powerlevel10k theme installed"
-
-    run_remote "Installing ZSH plugins" '
-            git clone --depth=1 https://github.com/zsh-users/zsh-autosuggestions /root/.oh-my-zsh/custom/plugins/zsh-autosuggestions
-            git clone --depth=1 https://github.com/zsh-users/zsh-syntax-highlighting /root/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting
-        ' "ZSH plugins installed"
+    # Parallel git clones for theme and plugins (all independent after Oh-My-Zsh)
+    run_remote "Installing ZSH theme and plugins" '
+            git clone --depth=1 https://github.com/romkatv/powerlevel10k.git /root/.oh-my-zsh/custom/themes/powerlevel10k &
+            git clone --depth=1 https://github.com/zsh-users/zsh-autosuggestions /root/.oh-my-zsh/custom/plugins/zsh-autosuggestions &
+            git clone --depth=1 https://github.com/zsh-users/zsh-syntax-highlighting /root/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting &
+            wait
+        ' "ZSH theme and plugins installed"
 
     (
       remote_copy "templates/zshrc" "/root/.zshrc" || exit 1
