@@ -42,7 +42,7 @@ jobs:
       - name: Install dependencies
         run: |
           apt-get update -qq
-          apt-get install -y -qq git curl ca-certificates kcov bc >/dev/null
+          apt-get install -y -qq git curl ca-certificates kcov bc gpg >/dev/null
 
       - name: Checkout repository
         uses: actions/checkout@v4
