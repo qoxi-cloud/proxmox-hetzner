@@ -33,16 +33,6 @@ validate_email() {
   [[ $email =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]]
 }
 
-# Validates password meets minimum requirements (8+ chars, ASCII).
-# Parameters:
-#   $1 - Password to validate
-# Returns: 0 if valid, 1 otherwise
-validate_password() {
-  local password="$1"
-  # Password must be at least 8 characters (Proxmox requirement)
-  [[ ${#password} -ge 8 ]] && is_ascii_printable "$password"
-}
-
 # Checks if string contains only ASCII printable characters.
 # Parameters:
 #   $1 - String to check
@@ -64,21 +54,6 @@ get_password_error() {
   elif ! is_ascii_printable "$password"; then
     echo "Password contains invalid characters (Cyrillic or non-ASCII). Only Latin letters, digits, and special characters are allowed."
   fi
-}
-
-# Validates password and prints error if invalid.
-# Parameters:
-#   $1 - Password to validate
-# Returns: 0 if valid, 1 if invalid (with error printed)
-validate_password_with_error() {
-  local password="$1"
-  local error
-  error=$(get_password_error "$password")
-  if [[ -n $error ]]; then
-    print_error "$error"
-    return 1
-  fi
-  return 0
 }
 
 # Validates subnet in CIDR notation (e.g., 10.0.0.0/24).
@@ -198,66 +173,6 @@ validate_ipv6_gateway() {
 
   # Validate as IPv6 address
   validate_ipv6 "$gateway"
-}
-
-# Validates IPv6 prefix length (48-128).
-# Parameters:
-#   $1 - Prefix length to validate
-# Returns: 0 if valid, 1 otherwise
-validate_ipv6_prefix_length() {
-  local prefix="$1"
-
-  [[ ! $prefix =~ ^[0-9]+$ ]] && return 1
-  # Typical values: 48 (site), 56 (organization), 64 (subnet), 80 (small subnet)
-  [[ $prefix -lt 48 || $prefix -gt 128 ]] && return 1
-
-  return 0
-}
-
-# Checks if IPv6 address is link-local (fe80::/10).
-# Parameters:
-#   $1 - IPv6 address to check
-# Returns: 0 if link-local, 1 otherwise
-is_ipv6_link_local() {
-  local ipv6="$1"
-  [[ $ipv6 =~ ^[fF][eE]8[0-9a-fA-F]: ]] || [[ $ipv6 =~ ^[fF][eE][89aAbB][0-9a-fA-F]: ]]
-}
-
-# Checks if IPv6 address is ULA (fc00::/7).
-# Parameters:
-#   $1 - IPv6 address to check
-# Returns: 0 if ULA, 1 otherwise
-is_ipv6_ula() {
-  local ipv6="$1"
-  [[ $ipv6 =~ ^[fF][cCdD] ]]
-}
-
-# Checks if IPv6 address is global unicast (2000::/3).
-# Parameters:
-#   $1 - IPv6 address to check
-# Returns: 0 if global unicast, 1 otherwise
-is_ipv6_global() {
-  local ipv6="$1"
-  [[ $ipv6 =~ ^[23] ]]
-}
-
-# Validates timezone string format and existence.
-# Parameters:
-#   $1 - Timezone to validate (e.g., Europe/London)
-# Returns: 0 if valid, 1 otherwise
-validate_timezone() {
-  local tz="$1"
-  # Check if timezone file exists (preferred validation)
-  if [[ -f "/usr/share/zoneinfo/$tz" ]]; then
-    return 0
-  fi
-  # Fallback: In Rescue System, zoneinfo may not be available
-  # Validate format (Region/City or Region/Subregion/City)
-  if [[ $tz =~ ^[A-Za-z_]+/[A-Za-z_]+(/[A-Za-z_]+)?$ ]]; then
-    print_warning "Cannot verify timezone in Rescue System, format looks valid."
-    return 0
-  fi
-  return 1
 }
 
 # =============================================================================

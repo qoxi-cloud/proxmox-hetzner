@@ -4,67 +4,6 @@
 # =============================================================================
 # Reusable ZFS utilities for RAID validation, disk mapping, and pool creation
 
-# Validates RAID type against disk count.
-# Parameters:
-#   $1 - RAID type (single, raid0, raid1, raidz1, raidz2, raidz3, raid10)
-#   $2 - Disk count
-# Returns:
-#   0 - Valid configuration
-#   1 - Invalid (error)
-#   2 - Valid but with warning
-validate_zfs_raid_disk_count() {
-  local raid_type="$1"
-  local disk_count="$2"
-
-  case "$raid_type" in
-    single)
-      if [[ $disk_count -ne 1 ]]; then
-        log "WARNING: Single disk RAID expects 1 disk, have $disk_count"
-        return 2
-      fi
-      ;;
-    raid0)
-      # RAID0 accepts any number of disks
-      ;;
-    raid1)
-      if [[ $disk_count -lt 2 ]]; then
-        log "ERROR: RAID1 requires at least 2 disks, have $disk_count"
-        return 1
-      fi
-      ;;
-    raidz1)
-      if [[ $disk_count -lt 3 ]]; then
-        log "WARNING: RAIDZ1 recommended for 3+ disks, have $disk_count"
-        return 2
-      fi
-      ;;
-    raidz2)
-      if [[ $disk_count -lt 4 ]]; then
-        log "WARNING: RAIDZ2 recommended for 4+ disks, have $disk_count"
-        return 2
-      fi
-      ;;
-    raidz3)
-      if [[ $disk_count -lt 5 ]]; then
-        log "WARNING: RAIDZ3 recommended for 5+ disks, have $disk_count"
-        return 2
-      fi
-      ;;
-    raid10)
-      if [[ $disk_count -lt 4 ]] || [[ $((disk_count % 2)) -ne 0 ]]; then
-        log "ERROR: RAID10 requires even number of disks (min 4), have $disk_count"
-        return 1
-      fi
-      ;;
-    *)
-      log "ERROR: Unknown RAID type: $raid_type"
-      return 1
-      ;;
-  esac
-
-  return 0
-}
-
 # Creates virtio disk mapping file.
 # Maps boot disk (if set) to vda, then pool disks to vdb, vdc, etc.
 # Parameters:

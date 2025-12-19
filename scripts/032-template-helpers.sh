@@ -53,24 +53,3 @@ deploy_template() {
   log "Template deployed successfully: $template_name → $dest_path"
   return 0
 }
-
-# Deploys multiple templates in parallel for faster execution.
-# Parameters:
-#   Pairs of: template_name dest_path [template_name dest_path ...]
-# Returns: 0 if all succeeded, 1 if any failed
-# Side effects: Deploys templates via deploy_template in parallel
-deploy_templates() {
-  local -a cmds=()
-
-  # Build array of deploy_template commands
-  while [[ $# -gt 0 ]]; do
-    local template="$1"
-    local dest="$2"
-    shift 2
-
-    cmds+=("deploy_template '$template' '$dest'")
-  done
-
-  # Execute all deployments in parallel
-  run_parallel "${cmds[@]}"
-}

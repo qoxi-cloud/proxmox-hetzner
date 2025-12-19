@@ -143,17 +143,16 @@ live_log_section() {
   local section_name="$1"
   local first="${2:-}"
 
-  [[ $first != "first" ]] && add_log ""
   add_log "${CLR_CYAN}▼ $section_name${CLR_RESET}"
 }
 
 # Convenience wrappers for sections (for backward compatibility)
 live_log_system_preparation() {
-  live_log_section "Rescue System Preparation" "first"
+  live_log_section "Rescue System Preparation"
 }
 
 live_log_iso_download() {
-  live_log_section "Proxmox ISO Download" "first"
+  live_log_section "Proxmox ISO Download"
 }
 
 live_log_autoinstall_preparation() {
@@ -247,12 +246,6 @@ live_show_progress() {
   fi
 
   return $exit_code
-}
-
-# Add a live log entry for completed task
-live_log_task_complete() {
-  local message="$1"
-  add_log "  ${CLR_GRAY}├─${CLR_RESET} ${message} ${CLR_CYAN}✓${CLR_RESET}"
 }
 
 # Add a live log entry for subtask info
