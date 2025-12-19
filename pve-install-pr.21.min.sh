@@ -19,7 +19,7 @@ HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 HEX_NONE="7"
 MENU_BOX_WIDTH=60
-VERSION="2.0.295-pr.21"
+VERSION="2.0.296-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -3722,68 +3722,36 @@ log "aria2c will verify checksum automatically"
 fi
 aria2c "${aria2_args[@]}" "$url" >>"$LOG_FILE" 2>&1
 }
-_download_iso_parallel(){
+_download_iso_with_fallback(){
 local url="$1"
 local output="$2"
 local checksum="$3"
-local temp_dir
-temp_dir=$(mktemp -d)
-local pids=()
-local methods=()
-log "Starting parallel download race"
-_cleanup_parallel_download(){
-for pid in "${pids[@]}";do
-kill "$pid" 2>/dev/null||true
-done
-rm -rf "$temp_dir"
-rm -f "$output.aria2" "$output.curl" "$output.wget" 2>/dev/null
-}
 if command -v aria2c &>/dev/null;then
-(_download_iso_aria2c "$url" "$temp_dir/iso.aria2" "$checksum"&&[[ -s "$temp_dir/iso.aria2" ]]&&mv "$temp_dir/iso.aria2" "$temp_dir/done.aria2") 2> \
-/dev/null&
-pids+=($!)
-methods+=("aria2c")
-log "Started aria2c downloader (PID: $!)"
-fi
-(_download_iso_curl "$url" "$temp_dir/iso.curl"&&[[ -s "$temp_dir/iso.curl" ]]&&mv "$temp_dir/iso.curl" "$temp_dir/done.curl") 2> \
-/dev/null&
-pids+=($!)
-methods+=("curl")
-log "Started curl downloader (PID: $!)"
-if command -v wget &>/dev/null;then
-(_download_iso_wget "$url" "$temp_dir/iso.wget"&&[[ -s "$temp_dir/iso.wget" ]]&&mv "$temp_dir/iso.wget" "$temp_dir/done.wget") 2> \
-/dev/null&
-pids+=($!)
-methods+=("wget")
-log "Started wget downloader (PID: $!)"
-fi
-while true;do
-for ext in aria2 curl wget;do
-if [[ -f "$temp_dir/done.$ext" ]]&&[[ -s "$temp_dir/done.$ext" ]];then
-log "Download completed by $ext"
-mv "$temp_dir/done.$ext" "$output"
-case "$ext" in
-aria2)DOWNLOAD_METHOD="aria2c";;
-*)DOWNLOAD_METHOD="$ext"
-esac
-_cleanup_parallel_download
+log "Trying aria2c (parallel download)..."
+if _download_iso_aria2c "$url" "$output" "$checksum"&&[[ -s $output ]];then
+DOWNLOAD_METHOD="aria2c"
 return 0
 fi
-done
-local all_dead=true
-for pid in "${pids[@]}";do
-if kill -0 "$pid" 2>/dev/null;then
-all_dead=false
-break
+log "aria2c failed, trying fallback..."
+rm -f "$output" 2>/dev/null
 fi
-done
-if $all_dead;then
+log "Trying curl..."
+if _download_iso_curl "$url" "$output"&&[[ -s $output ]];then
+DOWNLOAD_METHOD="curl"
+return 0
+fi
+log "curl failed, trying fallback..."
+rm -f "$output" 2>/dev/null
+if command -v wget &>/dev/null;then
+log "Trying wget..."
+if _download_iso_wget "$url" "$output"&&[[ -s $output ]];then
+DOWNLOAD_METHOD="wget"
+return 0
+fi
+rm -f "$output" 2>/dev/null
+fi
 log "All download methods failed"
-_cleanup_parallel_download
 return 1
-fi
-sleep 1
-done
 }
 download_proxmox_iso(){
 log "Starting Proxmox ISO download"
@@ -3805,9 +3773,9 @@ if [[ -n $_CHECKSUM_CACHE ]];then
 expected_checksum=$(echo "$_CHECKSUM_CACHE"|grep "$ISO_FILENAME"|awk '{print $1}')
 fi
 log "Expected checksum: ${expected_checksum:-not available}"
-log "Downloading ISO: $ISO_FILENAME (parallel mode)"
+log "Downloading ISO: $ISO_FILENAME"
 DOWNLOAD_METHOD=""
-_download_iso_parallel "$PROXMOX_ISO_URL" "pve.iso" "$expected_checksum"&
+_download_iso_with_fallback "$PROXMOX_ISO_URL" "pve.iso" "$expected_checksum"&
 show_progress $! "Downloading $ISO_FILENAME" "$ISO_FILENAME downloaded"
 wait $!
 local exit_code=$?
