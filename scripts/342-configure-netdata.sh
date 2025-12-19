@@ -8,6 +8,11 @@
 _install_netdata() {
   run_remote "Installing netdata" '
     export DEBIAN_FRONTEND=noninteractive
+
+    # Add Netdata official repository (package not in default Debian repos)
+    curl -fsSL https://repo.netdata.cloud/netdatabot.gpg.key | gpg --dearmor -o /usr/share/keyrings/netdata-archive-keyring.gpg
+    echo "deb [signed-by=/usr/share/keyrings/netdata-archive-keyring.gpg] https://repo.netdata.cloud/repos/stable/debian/ bookworm/" > /etc/apt/sources.list.d/netdata.list
+
     apt-get update -qq
     apt-get install -yqq netdata
   ' "netdata installed"

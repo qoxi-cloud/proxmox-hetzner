@@ -49,10 +49,13 @@ validate_installation() {
         exit 1
       fi
 
-      # Check if ZFS pool exists
-      if ! zpool list | grep -q "rpool"; then
-        echo "ERROR: ZFS root pool (rpool) not found"
-        exit 1
+      # Check if ZFS pool exists (rpool for full ZFS install, or tank for ext4 boot + ZFS pool)
+      if ! zpool list 2>/dev/null | grep -qE "^(rpool|tank) "; then
+        # If neither pool exists, check if this is an ext4-only installation (valid for single disk without ZFS)
+        if ! mount | grep -q "on / type ext4"; then
+          echo "ERROR: Neither ZFS pool (rpool/tank) nor ext4 root filesystem found"
+          exit 1
+        fi
       fi
 
       exit 0
