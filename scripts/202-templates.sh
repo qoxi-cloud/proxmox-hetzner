@@ -75,6 +75,10 @@ make_templates() {
     postprocess_interfaces_ipv6 "./templates/interfaces"
     apply_common_template_vars "./templates/resolv.conf"
     apply_template_vars "./templates/cpufrequtils" "CPU_GOVERNOR=${CPU_GOVERNOR:-performance}"
+    # Locale templates - substitute {{LOCALE}} with actual locale value
+    apply_common_template_vars "./templates/locale.sh"
+    apply_common_template_vars "./templates/default-locale"
+    apply_common_template_vars "./templates/environment"
   ) &
   show_progress $! "Modifying template files"
 }

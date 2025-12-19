@@ -208,10 +208,9 @@ _download_iso_parallel() {
 
   # Cleanup function
   _cleanup_parallel_download() {
-    # Kill remaining processes
+    # Kill remaining processes immediately (no waiting needed)
     for pid in "${pids[@]}"; do
       kill "$pid" 2>/dev/null || true
-      wait "$pid" 2>/dev/null || true
     done
     # Remove temp files
     rm -rf "$temp_dir"

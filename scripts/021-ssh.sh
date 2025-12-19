@@ -10,6 +10,7 @@ SSH_PORT="5555"
 
 # Session passfile - created once, reused for all SSH operations
 _SSH_SESSION_PASSFILE=""
+_SSH_SESSION_LOGGED=false
 
 # =============================================================================
 # Session management
@@ -44,9 +45,13 @@ _ssh_session_init() {
     else
       trap '_ssh_session_cleanup' EXIT
     fi
-  fi
 
-  log "SSH session initialized"
+    # Only log once from main shell
+    if [[ $_SSH_SESSION_LOGGED != true ]]; then
+      log "SSH session initialized"
+      _SSH_SESSION_LOGGED=true
+    fi
+  fi
 }
 
 # Cleans up SSH session passfile securely.
@@ -68,6 +73,7 @@ _ssh_session_cleanup() {
   fi
 
   _SSH_SESSION_PASSFILE=""
+  log "SSH session cleaned up"
 }
 
 # Gets session passfile, initializing if needed.
