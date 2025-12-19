@@ -29,10 +29,9 @@ _config_aide() {
       mv /var/lib/aide/aide.db.new /var/lib/aide/aide.db
     fi
 
-    # Enable daily integrity check timer
+    # Enable daily integrity check timer (will activate after reboot)
     systemctl daemon-reload
     systemctl enable aide-check.timer
-    systemctl start aide-check.timer
   ' || exit 1
 }
 

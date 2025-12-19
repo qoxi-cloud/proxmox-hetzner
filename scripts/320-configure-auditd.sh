@@ -31,9 +31,8 @@ _config_auditd() {
     # Load new rules
     augenrules --load 2>/dev/null || true
 
-    # Enable and restart auditd
+    # Enable auditd to start on boot (will activate after reboot)
     systemctl enable auditd
-    systemctl restart auditd
   ' || exit 1
 }
 

@@ -23,10 +23,9 @@ _config_lynis() {
     # Ensure log directory exists
     mkdir -p /var/log/lynis
 
-    # Enable weekly audit timer
+    # Enable weekly audit timer (will activate after reboot)
     systemctl daemon-reload
     systemctl enable lynis-audit.timer
-    systemctl start lynis-audit.timer
   ' || exit 1
 }
 

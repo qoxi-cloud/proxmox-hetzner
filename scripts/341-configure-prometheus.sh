@@ -34,14 +34,10 @@ _config_prometheus() {
   # Run metrics collector once to populate initial data
   remote_exec "/usr/local/bin/proxmox-metrics.sh" >/dev/null 2>&1 || log "WARNING: Initial metrics collection failed (non-fatal)"
 
-  # Enable and restart the service
+  # Enable prometheus to start on boot (don't start now - will activate after reboot)
   remote_exec '
     systemctl daemon-reload
     systemctl enable prometheus-node-exporter
-    systemctl restart prometheus-node-exporter
-
-    # Verify service is running
-    systemctl is-active --quiet prometheus-node-exporter || exit 1
   ' || exit 1
 
   log "Prometheus node exporter listening on :9100 with textfile collector"

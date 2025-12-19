@@ -221,7 +221,8 @@ configure_system_services() {
     ' "NTP (chrony) installed"
   (
     remote_copy "templates/chrony" "/etc/chrony/chrony.conf"
-    remote_exec "systemctl enable chrony && systemctl start chrony"
+    # Enable chrony to start on boot (don't start now - will activate after reboot)
+    remote_exec "systemctl enable chrony"
   ) >/dev/null 2>&1 &
   show_progress $! "Configuring chrony" "Chrony configured"
 

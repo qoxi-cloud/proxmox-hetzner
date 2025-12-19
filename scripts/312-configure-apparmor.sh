@@ -36,16 +36,8 @@ _config_apparmor() {
       update-grub 2>/dev/null || true
     fi
 
-    # Enable and start AppArmor service
+    # Enable AppArmor to start on boot (will activate after reboot)
     systemctl enable apparmor.service
-    systemctl start apparmor.service 2>/dev/null || true
-
-    # Load profiles in enforce mode
-    if command -v aa-enforce >/dev/null 2>&1; then
-      for profile in /etc/apparmor.d/*; do
-        [[ -f "$profile" && ! -d "$profile" ]] && aa-enforce "$profile" 2>/dev/null || true
-      done
-    fi
   ' || exit 1
 }
 

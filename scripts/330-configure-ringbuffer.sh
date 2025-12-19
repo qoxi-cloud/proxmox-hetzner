@@ -22,12 +22,9 @@ _config_ringbuffer() {
   deploy_template "network-ringbuffer.service" "/etc/systemd/system/network-ringbuffer.service" RINGBUFFER_INTERFACE
 
   remote_exec '
-    # Enable service for boot
+    # Enable service for boot (will activate after reboot)
     systemctl daemon-reload
     systemctl enable network-ringbuffer.service
-
-    # Apply immediately
-    systemctl start network-ringbuffer.service 2>/dev/null || true
   ' || exit 1
 }
 

@@ -35,9 +35,8 @@ _config_vnstat() {
       fi
     done
 
-    # Enable and start vnstat daemon
+    # Enable vnstat to start on boot (don't start now - will activate after reboot)
     systemctl enable vnstat
-    systemctl restart vnstat
   " || exit 1
 }
 

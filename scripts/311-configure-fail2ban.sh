@@ -24,8 +24,8 @@ _config_fail2ban() {
   remote_copy "templates/fail2ban-jail.local" "/etc/fail2ban/jail.local" || exit 1
   remote_copy "templates/fail2ban-proxmox.conf" "/etc/fail2ban/filter.d/proxmox.conf" || exit 1
 
-  # Enable and start Fail2Ban
-  remote_exec "systemctl enable fail2ban && systemctl restart fail2ban" || exit 1
+  # Enable fail2ban to start on boot (don't start now - will activate after reboot)
+  remote_exec "systemctl enable fail2ban" || exit 1
 }
 
 # Installs and configures Fail2Ban for brute-force protection.

@@ -35,11 +35,10 @@ _config_netdata() {
   # Deploy netdata configuration
   deploy_template "netdata.conf" "/etc/netdata/netdata.conf" NETDATA_BIND_TO
 
+  # Enable netdata to start on boot (don't start now - will activate after reboot)
   remote_exec '
-    # Enable and start netdata service
     systemctl daemon-reload
     systemctl enable netdata
-    systemctl restart netdata
   ' || exit 1
 }
 

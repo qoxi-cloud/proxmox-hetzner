@@ -23,10 +23,9 @@ _config_chkrootkit() {
     # Ensure log directory exists
     mkdir -p /var/log/chkrootkit
 
-    # Enable weekly scan timer
+    # Enable weekly scan timer (will activate after reboot)
     systemctl daemon-reload
     systemctl enable chkrootkit-scan.timer
-    systemctl start chkrootkit-scan.timer
   ' || exit 1
 }
 
