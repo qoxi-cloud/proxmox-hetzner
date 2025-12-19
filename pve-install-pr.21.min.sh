@@ -19,7 +19,7 @@ HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 HEX_NONE="7"
 MENU_BOX_WIDTH=60
-VERSION="2.0.294-pr.21"
+VERSION="2.0.295-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -4406,14 +4406,17 @@ log "WARNING: Failed to install packages:$failed_list"
 fi
 cat "$pkg_output" >>"$LOG_FILE"
 rm -f "$pkg_output"
-run_remote "Configuring UTF-8 locales" '
+local locale_name="${LOCALE%%.UTF-8}"
+run_remote "Configuring UTF-8 locales" "
         export DEBIAN_FRONTEND=noninteractive
         apt-get install -yqq locales
-        sed -i "s/# en_US.UTF-8/en_US.UTF-8/" /etc/locale.gen
-        sed -i "s/# ru_RU.UTF-8/ru_RU.UTF-8/" /etc/locale.gen
+        # Enable user's selected locale
+        sed -i 's/# $locale_name.UTF-8/$locale_name.UTF-8/' /etc/locale.gen
+        # Also enable en_US as fallback (many tools expect it)
+        sed -i 's/# en_US.UTF-8/en_US.UTF-8/' /etc/locale.gen
         locale-gen
-        update-locale LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
-    ' "UTF-8 locales configured"
+        update-locale LANG=$LOCALE LC_ALL=$LOCALE
+    " "UTF-8 locales configured"
 (remote_copy "templates/locale.sh" "/etc/profile.d/locale.sh"||exit 1
 remote_exec "chmod +x /etc/profile.d/locale.sh"||exit 1
 remote_copy "templates/default-locale" "/etc/default/locale"||exit 1
