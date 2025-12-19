@@ -17,7 +17,7 @@ readonly HEX_ORANGE="#ff8700"
 readonly HEX_GRAY="#585858"
 readonly HEX_WHITE="#ffffff"
 readonly HEX_NONE="7"
-readonly VERSION="2.0.323-pr.21"
+readonly VERSION="2.0.324-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -910,6 +910,23 @@ _wiz_hide_cursor
 _wiz_error "$message"
 sleep 3
 }
+install_base_packages(){
+local packages="$SYSTEM_UTILITIES $OPTIONAL_PACKAGES locales chrony unattended-upgrades apt-listchanges cpufrequtils"
+if [[ ${SHELL_TYPE:-bash} == "zsh" ]];then
+packages="$packages zsh git curl"
+fi
+log "Installing base packages: $packages"
+run_remote "Installing system packages" "
+    export DEBIAN_FRONTEND=noninteractive
+    apt-get update -qq
+    apt-get dist-upgrade -yqq
+    apt-get install -yqq $packages
+    apt-get autoremove -yqq
+    apt-get clean
+    pveupgrade 2>/dev/null || true
+    pveam update 2>/dev/null || true
+  " "System packages installed"
+}
 batch_install_packages(){
 local packages=()
 [[ $INSTALL_FIREWALL == "yes" ]]&&packages+=(nftables)
@@ -924,15 +941,33 @@ fi
 [[ $INSTALL_NEEDRESTART == "yes" ]]&&packages+=(needrestart)
 [[ $INSTALL_VNSTAT == "yes" ]]&&packages+=(vnstat)
 [[ $INSTALL_PROMETHEUS == "yes" ]]&&packages+=(prometheus-node-exporter)
+[[ $INSTALL_NETDATA == "yes" ]]&&packages+=(netdata)
 [[ $INSTALL_NVIM == "yes" ]]&&packages+=(neovim)
 [[ $INSTALL_RINGBUFFER == "yes" ]]&&packages+=(ethtool)
+[[ $INSTALL_YAZI == "yes" ]]&&packages+=(curl file unzip)
+[[ $INSTALL_TAILSCALE == "yes" ]]&&packages+=(tailscale)
+[[ ${SSL_TYPE:-self-signed} == "letsencrypt" ]]&&packages+=(certbot)
 if [[ ${#packages[@]} -eq 0 ]];then
 log "No optional packages to install"
 return 0
 fi
 log "Batch installing packages: ${packages[*]}"
+local repo_setup=""
+if [[ $INSTALL_TAILSCALE == "yes" ]];then
+repo_setup+='
+      curl -fsSL https://pkgs.tailscale.com/stable/debian/bookworm.noarmor.gpg | tee /usr/share/keyrings/tailscale-archive-keyring.gpg >/dev/null
+      curl -fsSL https://pkgs.tailscale.com/stable/debian/bookworm.tailscale-keyring.list | tee /etc/apt/sources.list.d/tailscale.list
+    '
+fi
+if [[ $INSTALL_NETDATA == "yes" ]];then
+repo_setup+='
+      curl -fsSL https://repo.netdata.cloud/netdatabot.gpg.key | gpg --dearmor -o /usr/share/keyrings/netdata-archive-keyring.gpg
+      echo "deb [signed-by=/usr/share/keyrings/netdata-archive-keyring.gpg] https://repo.netdata.cloud/repos/stable/debian/ bookworm/" > /etc/apt/sources.list.d/netdata.list
+    '
+fi
 (remote_exec '
       export DEBIAN_FRONTEND=noninteractive
+      '"$repo_setup"'
       apt-get update -qq
       apt-get install -yqq '"${packages[*]}"'
     '||exit 1) > \
@@ -4110,46 +4145,9 @@ run_remote "Configuring ${PVE_REPO_TYPE:-no-subscription} repository" '
             fi
         ' "Repository configured"
 fi
-run_remote "Updating system packages" '
-        export DEBIAN_FRONTEND=noninteractive
-        apt-get update -qq
-        apt-get dist-upgrade -yqq
-        apt-get autoremove -yqq
-        apt-get clean
-        pveupgrade 2>/dev/null || true
-        pveam update 2>/dev/null || true
-    ' "System packages updated"
-local pkg_output
-pkg_output=$(mktemp)
-(remote_exec "
-            export DEBIAN_FRONTEND=noninteractive
-            failed_pkgs=''
-            for pkg in $SYSTEM_UTILITIES; do
-                if ! apt-get install -yqq \"\$pkg\" 2>&1; then
-                    failed_pkgs=\"\${failed_pkgs} \$pkg\"
-                fi
-            done
-            for pkg in $OPTIONAL_PACKAGES; do
-                apt-get install -yqq \"\$pkg\" 2>/dev/null || true
-            done
-            if [[ -n \"\$failed_pkgs\" ]]; then
-                echo \"FAILED_PACKAGES:\$failed_pkgs\"
-            fi
-        " 2>&1) > \
-"$pkg_output"&
-show_progress $! "Installing system utilities" "System utilities installed"
-if grep -q "FAILED_PACKAGES:" "$pkg_output" 2>/dev/null;then
-local failed_list
-failed_list=$(grep "FAILED_PACKAGES:" "$pkg_output"|sed 's/FAILED_PACKAGES://')
-print_warning "Some packages failed to install:$failed_list" true
-log "WARNING: Failed to install packages:$failed_list"
-fi
-cat "$pkg_output" >>"$LOG_FILE"
-rm -f "$pkg_output"
+install_base_packages
 local locale_name="${LOCALE%%.UTF-8}"
 run_remote "Configuring UTF-8 locales" "
-        export DEBIAN_FRONTEND=noninteractive
-        apt-get install -yqq locales
         # Enable user's selected locale
         sed -i 's/# $locale_name.UTF-8/$locale_name.UTF-8/' /etc/locale.gen
         # Also enable en_US as fallback (many tools expect it)
@@ -4175,10 +4173,6 @@ show_progress $! "Configuring bat" "Bat configured"
 }
 configure_shell(){
 if [[ $SHELL_TYPE == "zsh" ]];then
-run_remote "Installing ZSH and Git" '
-            export DEBIAN_FRONTEND=noninteractive
-            apt-get install -yqq zsh git curl
-        ' "ZSH and Git installed"
 run_remote "Installing Oh-My-Zsh" '
             export RUNZSH=no
             export CHSH=no
@@ -4200,19 +4194,11 @@ print_success "Default shell:" "Bash"
 fi
 }
 configure_system_services(){
-run_remote "Installing NTP (chrony)" '
-        export DEBIAN_FRONTEND=noninteractive
-        apt-get install -yqq chrony
-        systemctl stop chrony
-    ' "NTP (chrony) installed"
-(remote_copy "templates/chrony" "/etc/chrony/chrony.conf"||exit 1
+(remote_exec "systemctl stop chrony"||true
+remote_copy "templates/chrony" "/etc/chrony/chrony.conf"||exit 1
 remote_exec "systemctl enable chrony"||exit 1) > \
 /dev/null 2>&1&
 show_progress $! "Configuring chrony" "Chrony configured"
-run_remote "Installing Unattended Upgrades" '
-        export DEBIAN_FRONTEND=noninteractive
-        apt-get install -yqq unattended-upgrades apt-listchanges
-    ' "Unattended Upgrades installed"
 (remote_copy "templates/50unattended-upgrades" "/etc/apt/apt.conf.d/50unattended-upgrades"||exit 1
 remote_copy "templates/20auto-upgrades" "/etc/apt/apt.conf.d/20auto-upgrades"||exit 1
 remote_exec "systemctl enable unattended-upgrades"||exit 1) > \
@@ -4226,7 +4212,6 @@ run_remote "Configuring nf_conntrack" '
 local governor="${CPU_GOVERNOR:-performance}"
 (remote_copy "templates/cpufrequtils" "/tmp/cpufrequtils"||exit 1
 remote_exec "
-            apt-get update -qq && apt-get install -yqq cpufrequtils 2>/dev/null || true
             mv /tmp/cpufrequtils /etc/default/cpufrequtils
             systemctl enable cpufrequtils 2>/dev/null || true
             if [ -d /sys/devices/system/cpu/cpu0/cpufreq ]; then
@@ -4253,19 +4238,15 @@ configure_tailscale(){
 if [[ $INSTALL_TAILSCALE != "yes" ]];then
 return 0
 fi
-run_remote "Installing Tailscale VPN" '
-        curl -fsSL https://pkgs.tailscale.com/stable/debian/bookworm.noarmor.gpg | tee /usr/share/keyrings/tailscale-archive-keyring.gpg >/dev/null
-        curl -fsSL https://pkgs.tailscale.com/stable/debian/bookworm.tailscale-keyring.list | tee /etc/apt/sources.list.d/tailscale.list
-        apt-get update -qq
-        apt-get install -yqq tailscale
+run_remote "Starting Tailscale" '
         systemctl enable tailscaled
         systemctl start tailscaled
-        # Wait for tailscaled socket to be ready (up to 30s)
-        for i in {1..30}; do
+        # Wait for tailscaled socket to be ready (up to 3s)
+        for i in {1..3}; do
           tailscale status &>/dev/null && break
           sleep 1
         done
-    ' "Tailscale VPN installed"
+    ' "Tailscale started"
 if [[ -n $TAILSCALE_AUTH_KEY ]];then
 local tmp_ip tmp_hostname
 tmp_ip=$(mktemp)
@@ -4312,16 +4293,6 @@ print_info "After reboot, run these commands to enable SSH and Web UI:"
 print_info "  tailscale up --ssh"
 print_info "  tailscale serve --bg --https=443 https://127.0.0.1:8006"
 fi
-}
-_install_nftables(){
-run_remote "Installing nftables" '
-    export DEBIAN_FRONTEND=noninteractive
-    apt-get update -qq
-    apt-get install -yqq nftables
-    # Disable iptables-nft compatibility layer if present
-    update-alternatives --set iptables /usr/sbin/iptables-nft 2>/dev/null || true
-    update-alternatives --set ip6tables /usr/sbin/ip6tables-nft 2>/dev/null || true
-  ' "nftables installed"
 }
 _generate_port_rules(){
 local mode="$1"
@@ -4423,6 +4394,10 @@ esac
 echo "$rules"
 }
 _config_nftables(){
+remote_exec '
+    update-alternatives --set iptables /usr/sbin/iptables-nft 2>/dev/null || true
+    update-alternatives --set ip6tables /usr/sbin/ip6tables-nft 2>/dev/null || true
+  '||true
 local template_content
 template_content=$(cat "./templates/nftables.conf")
 local port_rules bridge_input_rules bridge_forward_rules nat_rules tailscale_rules
@@ -4464,8 +4439,7 @@ log "Skipping firewall configuration (INSTALL_FIREWALL=$INSTALL_FIREWALL)"
 return 0
 fi
 log "Configuring nftables firewall (mode: $FIREWALL_MODE, bridge: $BRIDGE_MODE)"
-(_install_nftables||exit 1
-_config_nftables||exit 1) > \
+(_config_nftables||exit 1) > \
 /dev/null 2>&1&
 local mode_display=""
 case "$FIREWALL_MODE" in
@@ -4620,18 +4594,6 @@ remote_exec '
   '||return 1
 log "Prometheus node exporter listening on :9100 with textfile collector"
 }
-_install_netdata(){
-run_remote "Installing netdata" '
-    export DEBIAN_FRONTEND=noninteractive
-
-    # Add Netdata official repository (package not in default Debian repos)
-    curl -fsSL https://repo.netdata.cloud/netdatabot.gpg.key | gpg --dearmor -o /usr/share/keyrings/netdata-archive-keyring.gpg
-    echo "deb [signed-by=/usr/share/keyrings/netdata-archive-keyring.gpg] https://repo.netdata.cloud/repos/stable/debian/ bookworm/" > /etc/apt/sources.list.d/netdata.list
-
-    apt-get update -qq
-    apt-get install -yqq netdata
-  ' "netdata installed"
-}
 _config_netdata(){
 local bind_to="127.0.0.1"
 if [[ $INSTALL_TAILSCALE == "yes" ]];then
@@ -4649,11 +4611,10 @@ if [[ $INSTALL_NETDATA != "yes" ]];then
 log "Skipping netdata (not requested)"
 return 0
 fi
-log "Installing and configuring netdata"
-(_install_netdata||exit 1
-_config_netdata||exit 1) > \
+log "Configuring netdata"
+(_config_netdata||exit 1) > \
 /dev/null 2>&1&
-show_progress $! "Installing netdata" "netdata configured"
+show_progress $! "Configuring netdata" "netdata configured"
 local exit_code=$?
 if [[ $exit_code -ne 0 ]];then
 log "WARNING: netdata setup failed"
@@ -4663,11 +4624,6 @@ fi
 }
 _install_yazi(){
 run_remote "Installing yazi" '
-    # Install dependencies
-    export DEBIAN_FRONTEND=noninteractive
-    apt-get update -qq
-    apt-get install -yqq curl file unzip
-
     # Get latest yazi version and download
     YAZI_VERSION=$(curl -s https://api.github.com/repos/sxyazi/yazi/releases/latest | grep "tag_name" | cut -d "\"" -f 4 | sed "s/^v//")
     curl -sL "https://github.com/sxyazi/yazi/releases/download/v${YAZI_VERSION}/yazi-x86_64-unknown-linux-gnu.zip" -o /tmp/yazi.zip
@@ -4720,10 +4676,6 @@ return 0
 fi
 local cert_domain="${FQDN:-$PVE_HOSTNAME.$DOMAIN_SUFFIX}"
 log "configure_ssl_certificate: domain=$cert_domain, email=$EMAIL"
-run_remote "Installing Certbot" '
-        export DEBIAN_FRONTEND=noninteractive
-        apt-get install -yqq certbot
-    ' "Certbot installed"
 if ! apply_template_vars "./templates/letsencrypt-firstboot.sh" \
 "CERT_DOMAIN=$cert_domain" \
 "CERT_EMAIL=$EMAIL";then
