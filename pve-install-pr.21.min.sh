@@ -19,7 +19,7 @@ HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 HEX_NONE="7"
 MENU_BOX_WIDTH=60
-VERSION="2.0.277-pr.21"
+VERSION="2.0.278-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -2173,7 +2173,12 @@ _wiz_render_nav(){
 local current=$WIZ_CURRENT_SCREEN
 local total=${#WIZ_SCREENS[@]}
 local col=$_NAV_COL_WIDTH
-local labels=""
+local nav_width=$((col*total))
+local footer_width=69
+local pad_left=$(((footer_width-nav_width)/2))
+local padding=""
+((pad_left>0))&&padding=$(printf '%*s' $pad_left '')
+local labels="$padding"
 for i in "${!WIZ_SCREENS[@]}";do
 local name="${WIZ_SCREENS[$i]}"
 local name_len=${#name}
@@ -2183,7 +2188,7 @@ local centered
 centered=$(printf '%*s%s%*s' $pad_left '' "$name" $pad_right '')
 labels+="$(_nav_color "$i" "$current")$centered$CLR_RESET"
 done
-local dots=""
+local dots="$padding"
 local center_pad=$(((col-1)/2))
 local right_pad=$((col-center_pad-1))
 for i in "${!WIZ_SCREENS[@]}";do
@@ -2498,8 +2503,10 @@ esac
 _wiz_render_menu(){
 local selection="$1"
 local output=""
+local banner_output
+banner_output=$(show_banner)
 _wiz_build_display_values
-output+="\n$(_wiz_render_nav)\n\n"
+output+="\n$banner_output\n\n$(_wiz_render_nav)\n\n"
 _WIZ_FIELD_MAP=()
 local field_idx=0
 _add_field(){
@@ -2517,15 +2524,14 @@ fi
 _wiz_render_screen_content "$WIZ_CURRENT_SCREEN" "$selection"
 _WIZ_FIELD_COUNT=$field_idx
 output+="\n"
+local left_clr right_clr
+left_clr=$([[ $WIZ_CURRENT_SCREEN -gt 0 ]]&&echo "$CLR_ORANGE"||echo "$CLR_GRAY")
+right_clr=$([[ $WIZ_CURRENT_SCREEN -lt $((${#WIZ_SCREENS[@]}-1)) ]]&&echo "$CLR_ORANGE"||echo "$CLR_GRAY")
 local nav_hint=""
-if [[ $WIZ_CURRENT_SCREEN -gt 0 ]];then
-nav_hint+="[$CLR_ORANGE←$CLR_GRAY] prev  "
-fi
-nav_hint+="[$CLR_ORANGE↑↓$CLR_GRAY] navigate  [${CLR_ORANGE}Enter$CLR_GRAY] edit"
-if [[ $WIZ_CURRENT_SCREEN -lt $((${#WIZ_SCREENS[@]}-1)) ]];then
-nav_hint+="  [$CLR_ORANGE→$CLR_GRAY] next"
-fi
-nav_hint+="  [${CLR_ORANGE}S$CLR_GRAY] start  [${CLR_ORANGE}Q$CLR_GRAY] quit"
+nav_hint+="[$left_clr←$CLR_GRAY] prev  "
+nav_hint+="[$CLR_ORANGE↑↓$CLR_GRAY] navigate  [${CLR_ORANGE}Enter$CLR_GRAY] edit  "
+nav_hint+="[$right_clr→$CLR_GRAY] next  "
+nav_hint+="[${CLR_ORANGE}S$CLR_GRAY] start  [${CLR_ORANGE}Q$CLR_GRAY] quit"
 output+="$CLR_GRAY$nav_hint$CLR_RESET"
 _wiz_clear
 printf '%b' "$output"
