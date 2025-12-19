@@ -19,7 +19,7 @@ HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 HEX_NONE="7"
 MENU_BOX_WIDTH=60
-VERSION="2.0.292-pr.21"
+VERSION="2.0.293-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -691,6 +691,7 @@ return 0
 SSH_OPTS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -o ConnectTimeout=${SSH_CONNECT_TIMEOUT:-10}"
 SSH_PORT="5555"
 _SSH_SESSION_PASSFILE=""
+_SSH_SESSION_LOGGED=false
 _ssh_session_init(){
 [[ -n $_SSH_SESSION_PASSFILE ]]&&[[ -f $_SSH_SESSION_PASSFILE ]]&&return 0
 if [[ -d /dev/shm ]]&&[[ -w /dev/shm ]];then
@@ -708,8 +709,11 @@ trap "$existing_trap; _ssh_session_cleanup" EXIT
 else
 trap '_ssh_session_cleanup' EXIT
 fi
-fi
+if [[ $_SSH_SESSION_LOGGED != true ]];then
 log "SSH session initialized"
+_SSH_SESSION_LOGGED=true
+fi
+fi
 }
 _ssh_session_cleanup(){
 [[ -z $_SSH_SESSION_PASSFILE ]]&&return 0
@@ -725,6 +729,7 @@ fi
 rm -f "$_SSH_SESSION_PASSFILE"
 fi
 _SSH_SESSION_PASSFILE=""
+log "SSH session cleaned up"
 }
 _ssh_get_passfile(){
 _ssh_session_init
@@ -3671,7 +3676,6 @@ log "Starting parallel download race"
 _cleanup_parallel_download(){
 for pid in "${pids[@]}";do
 kill "$pid" 2>/dev/null||true
-wait "$pid" 2>/dev/null||true
 done
 rm -rf "$temp_dir"
 rm -f "$output.aria2" "$output.curl" "$output.wget" 2>/dev/null
@@ -4235,7 +4239,10 @@ fi
 apply_common_template_vars "./templates/interfaces"
 postprocess_interfaces_ipv6 "./templates/interfaces"
 apply_common_template_vars "./templates/resolv.conf"
-apply_template_vars "./templates/cpufrequtils" "CPU_GOVERNOR=${CPU_GOVERNOR:-performance}") \
+apply_template_vars "./templates/cpufrequtils" "CPU_GOVERNOR=${CPU_GOVERNOR:-performance}"
+apply_common_template_vars "./templates/locale.sh"
+apply_common_template_vars "./templates/default-locale"
+apply_common_template_vars "./templates/environment") \
 &
 show_progress $! "Modifying template files"
 }
@@ -5245,8 +5252,10 @@ log "ERROR: Failed to create API token - empty output"
 print_warning "API token creation failed - continuing without it"
 return 1
 fi
+local json_output
+json_output=$(echo "$output"|grep -v "^perl:"|grep -v "^warning:"|grep -E '^\{|"value"'|head -1)
 local token_value
-token_value=$(echo "$output"|jq -r '.value // empty' 2>/dev/null||true)
+token_value=$(echo "$json_output"|jq -r '.value // empty' 2>/dev/null||true)
 if [[ -z $token_value ]];then
 log "ERROR: Failed to extract token value from pveum output"
 log "DEBUG: pveum output: $output"
