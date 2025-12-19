@@ -19,7 +19,7 @@ HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 HEX_NONE="7"
 MENU_BOX_WIDTH=60
-VERSION="2.0.297-pr.21"
+VERSION="2.0.298-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -4212,6 +4212,44 @@ cat qemu_output.log >>"$LOG_FILE" 2>&1
 return 1
 }
 }
+_download_templates_parallel(){
+local -a templates=("$@")
+local input_file
+input_file=$(mktemp)
+for entry in "${templates[@]}";do
+local local_path="${entry%%:*}"
+local remote_name="${entry#*:}"
+local url="$GITHUB_BASE_URL/templates/$remote_name.tmpl"
+echo "$url"
+echo "  out=$local_path"
+done >"$input_file"
+log "Downloading ${#templates[@]} templates in parallel"
+if command -v aria2c &>/dev/null;then
+if aria2c -q \
+-j 16 \
+--max-connection-per-server=4 \
+--file-allocation=none \
+--max-tries=3 \
+--retry-wait=2 \
+--timeout=30 \
+--connect-timeout=10 \
+-i "$input_file" >> \
+"$LOG_FILE" 2>&1;then
+rm -f "$input_file"
+return 0
+fi
+log "WARNING: aria2c failed, falling back to sequential download"
+fi
+rm -f "$input_file"
+for entry in "${templates[@]}";do
+local local_path="${entry%%:*}"
+local remote_name="${entry#*:}"
+if ! download_template "$local_path" "$remote_name";then
+return 1
+fi
+done
+return 0
+}
 make_templates(){
 log "Starting template preparation"
 mkdir -p ./templates
@@ -4223,39 +4261,41 @@ enterprise)proxmox_sources_template="proxmox-enterprise.sources";;
 test)proxmox_sources_template="proxmox-test.sources"
 esac
 log "Using repository template: $proxmox_sources_template"
-(download_template "./templates/99-proxmox.conf"||exit 1
-download_template "./templates/hosts"||exit 1
-download_template "./templates/debian.sources"||exit 1
-download_template "./templates/proxmox.sources" "$proxmox_sources_template"||exit 1
-download_template "./templates/sshd_config"||exit 1
-download_template "./templates/zshrc"||exit 1
-download_template "./templates/p10k.zsh"||exit 1
-download_template "./templates/chrony"||exit 1
-download_template "./templates/50unattended-upgrades"||exit 1
-download_template "./templates/20auto-upgrades"||exit 1
-download_template "./templates/interfaces" "$interfaces_template"||exit 1
-download_template "./templates/resolv.conf"||exit 1
-download_template "./templates/configure-zfs-arc.sh"||exit 1
-download_template "./templates/locale.sh"||exit 1
-download_template "./templates/default-locale"||exit 1
-download_template "./templates/environment"||exit 1
-download_template "./templates/cpufrequtils"||exit 1
-download_template "./templates/remove-subscription-nag.sh"||exit 1
-download_template "./templates/letsencrypt-deploy-hook.sh"||exit 1
-download_template "./templates/letsencrypt-firstboot.sh"||exit 1
-download_template "./templates/letsencrypt-firstboot.service"||exit 1
-download_template "./templates/fastfetch.sh"||exit 1
-download_template "./templates/bat-config"||exit 1
-download_template "./templates/fail2ban-jail.local"||exit 1
-download_template "./templates/fail2ban-proxmox.conf"||exit 1
-download_template "./templates/auditd-rules"||exit 1
-download_template "./templates/apparmor-grub.cfg"||exit 1
-download_template "./templates/disable-openssh.service"||exit 1
-download_template "./templates/nftables.conf"||exit 1
-download_template "./templates/yazi-theme.toml"||exit 1
-download_template "./templates/prometheus-node-exporter"||exit 1
-download_template "./templates/proxmox-metrics.sh"||exit 1
-download_template "./templates/proxmox-metrics.cron"||exit 1) > \
+local -a template_list=(
+"./templates/99-proxmox.conf:99-proxmox.conf"
+"./templates/hosts:hosts"
+"./templates/debian.sources:debian.sources"
+"./templates/proxmox.sources:$proxmox_sources_template"
+"./templates/sshd_config:sshd_config"
+"./templates/zshrc:zshrc"
+"./templates/p10k.zsh:p10k.zsh"
+"./templates/chrony:chrony"
+"./templates/50unattended-upgrades:50unattended-upgrades"
+"./templates/20auto-upgrades:20auto-upgrades"
+"./templates/interfaces:$interfaces_template"
+"./templates/resolv.conf:resolv.conf"
+"./templates/configure-zfs-arc.sh:configure-zfs-arc.sh"
+"./templates/locale.sh:locale.sh"
+"./templates/default-locale:default-locale"
+"./templates/environment:environment"
+"./templates/cpufrequtils:cpufrequtils"
+"./templates/remove-subscription-nag.sh:remove-subscription-nag.sh"
+"./templates/letsencrypt-deploy-hook.sh:letsencrypt-deploy-hook.sh"
+"./templates/letsencrypt-firstboot.sh:letsencrypt-firstboot.sh"
+"./templates/letsencrypt-firstboot.service:letsencrypt-firstboot.service"
+"./templates/fastfetch.sh:fastfetch.sh"
+"./templates/bat-config:bat-config"
+"./templates/fail2ban-jail.local:fail2ban-jail.local"
+"./templates/fail2ban-proxmox.conf:fail2ban-proxmox.conf"
+"./templates/auditd-rules:auditd-rules"
+"./templates/apparmor-grub.cfg:apparmor-grub.cfg"
+"./templates/disable-openssh.service:disable-openssh.service"
+"./templates/nftables.conf:nftables.conf"
+"./templates/yazi-theme.toml:yazi-theme.toml"
+"./templates/prometheus-node-exporter:prometheus-node-exporter"
+"./templates/proxmox-metrics.sh:proxmox-metrics.sh"
+"./templates/proxmox-metrics.cron:proxmox-metrics.cron")
+(_download_templates_parallel "${template_list[@]}"||exit 1) > \
 /dev/null 2>&1&
 if ! show_progress $! "Downloading template files";then
 log "ERROR: Failed to download template files"
