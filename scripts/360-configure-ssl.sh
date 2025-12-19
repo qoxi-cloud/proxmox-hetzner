@@ -5,7 +5,8 @@
 
 # Configures SSL certificates for Proxmox Web UI.
 # For Let's Encrypt, sets up first-boot certificate acquisition.
-# Side effects: Installs certbot, configures systemd service for cert renewal
+# Certbot package installed via batch_install_packages() in 037-parallel-helpers.sh
+# Side effects: Configures systemd service for cert renewal
 configure_ssl_certificate() {
   log "configure_ssl_certificate: SSL_TYPE=$SSL_TYPE"
 
@@ -18,12 +19,6 @@ configure_ssl_certificate() {
   # Build FQDN if not set
   local cert_domain="${FQDN:-$PVE_HOSTNAME.$DOMAIN_SUFFIX}"
   log "configure_ssl_certificate: domain=$cert_domain, email=$EMAIL"
-
-  # Install certbot (will be used on first boot)
-  run_remote "Installing Certbot" '
-        export DEBIAN_FRONTEND=noninteractive
-        apt-get install -yqq certbot
-    ' "Certbot installed"
 
   # Apply template substitutions locally before copying
   if ! apply_template_vars "./templates/letsencrypt-firstboot.sh" \

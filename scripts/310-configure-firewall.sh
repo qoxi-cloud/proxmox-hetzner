@@ -2,19 +2,8 @@
 # =============================================================================
 # nftables Firewall configuration
 # Modern replacement for iptables with unified IPv4/IPv6 rules
+# Package installed via batch_install_packages() in 037-parallel-helpers.sh
 # =============================================================================
-
-# Installation function for nftables
-_install_nftables() {
-  run_remote "Installing nftables" '
-    export DEBIAN_FRONTEND=noninteractive
-    apt-get update -qq
-    apt-get install -yqq nftables
-    # Disable iptables-nft compatibility layer if present
-    update-alternatives --set iptables /usr/sbin/iptables-nft 2>/dev/null || true
-    update-alternatives --set ip6tables /usr/sbin/ip6tables-nft 2>/dev/null || true
-  ' "nftables installed"
-}
 
 # Generate port rules based on firewall mode
 _generate_port_rules() {
@@ -169,6 +158,12 @@ _generate_nat_rules() {
 
 # Configuration function for nftables
 _config_nftables() {
+  # Set up iptables-nft compatibility layer
+  remote_exec '
+    update-alternatives --set iptables /usr/sbin/iptables-nft 2>/dev/null || true
+    update-alternatives --set ip6tables /usr/sbin/ip6tables-nft 2>/dev/null || true
+  ' || true
+
   # Read the template
   local template_content
   template_content=$(cat "./templates/nftables.conf")
@@ -250,9 +245,8 @@ configure_firewall() {
 
   log "Configuring nftables firewall (mode: $FIREWALL_MODE, bridge: $BRIDGE_MODE)"
 
-  # Install and configure using helper (with background progress)
+  # Configure using helper (package already installed via batch_install_packages)
   (
-    _install_nftables || exit 1
     _config_nftables || exit 1
   ) >/dev/null 2>&1 &
 

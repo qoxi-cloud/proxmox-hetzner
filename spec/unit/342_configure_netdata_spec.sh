@@ -2,6 +2,7 @@
 # shellcheck disable=SC2034
 # =============================================================================
 # Tests for 342-configure-netdata.sh
+# Package installed via batch_install_packages(), this tests config only
 # =============================================================================
 
 %const SCRIPTS_DIR: "${SHELLSPEC_PROJECT_ROOT}/scripts"
@@ -12,17 +13,6 @@ eval "$(cat "$SUPPORT_DIR/configure_mocks.sh")"
 
 Describe "342-configure-netdata.sh"
 Include "$SCRIPTS_DIR/342-configure-netdata.sh"
-
-# ===========================================================================
-# _install_netdata()
-# ===========================================================================
-Describe "_install_netdata()"
-It "calls run_remote successfully"
-MOCK_RUN_REMOTE_RESULT=0
-When call _install_netdata
-The status should be success
-End
-End
 
 # ===========================================================================
 # configure_netdata()

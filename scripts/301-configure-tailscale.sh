@@ -5,25 +5,23 @@
 
 # Configures Tailscale VPN with SSH and Web UI access.
 # Optionally authenticates with auth key and enables stealth mode.
-# Side effects: Installs and configures Tailscale on remote system
+# Package installed via batch_install_packages() in 037-parallel-helpers.sh
+# Side effects: Configures Tailscale on remote system
 configure_tailscale() {
   if [[ $INSTALL_TAILSCALE != "yes" ]]; then
     return 0
   fi
 
-  run_remote "Installing Tailscale VPN" '
-        curl -fsSL https://pkgs.tailscale.com/stable/debian/bookworm.noarmor.gpg | tee /usr/share/keyrings/tailscale-archive-keyring.gpg >/dev/null
-        curl -fsSL https://pkgs.tailscale.com/stable/debian/bookworm.tailscale-keyring.list | tee /etc/apt/sources.list.d/tailscale.list
-        apt-get update -qq
-        apt-get install -yqq tailscale
+  # Start tailscaled (package already installed via batch_install_packages)
+  run_remote "Starting Tailscale" '
         systemctl enable tailscaled
         systemctl start tailscaled
-        # Wait for tailscaled socket to be ready (up to 30s)
-        for i in {1..30}; do
+        # Wait for tailscaled socket to be ready (up to 3s)
+        for i in {1..3}; do
           tailscale status &>/dev/null && break
           sleep 1
         done
-    ' "Tailscale VPN installed"
+    ' "Tailscale started"
 
   # If auth key is provided, authenticate Tailscale
   if [[ -n $TAILSCALE_AUTH_KEY ]]; then

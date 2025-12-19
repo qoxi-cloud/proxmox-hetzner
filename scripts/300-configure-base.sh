@@ -92,56 +92,14 @@ configure_base_system() {
         ' "Repository configured"
   fi
 
-  # Update all system packages
-  run_remote "Updating system packages" '
-        export DEBIAN_FRONTEND=noninteractive
-        apt-get update -qq
-        apt-get dist-upgrade -yqq
-        apt-get autoremove -yqq
-        apt-get clean
-        pveupgrade 2>/dev/null || true
-        pveam update 2>/dev/null || true
-    ' "System packages updated"
-
-  # Install monitoring and system utilities (with individual package error reporting)
-  local pkg_output
-  pkg_output=$(mktemp)
-  # shellcheck disable=SC2086
-  (
-    remote_exec "
-            export DEBIAN_FRONTEND=noninteractive
-            failed_pkgs=''
-            for pkg in ${SYSTEM_UTILITIES}; do
-                if ! apt-get install -yqq \"\$pkg\" 2>&1; then
-                    failed_pkgs=\"\${failed_pkgs} \$pkg\"
-                fi
-            done
-            for pkg in ${OPTIONAL_PACKAGES}; do
-                apt-get install -yqq \"\$pkg\" 2>/dev/null || true
-            done
-            if [[ -n \"\$failed_pkgs\" ]]; then
-                echo \"FAILED_PACKAGES:\$failed_pkgs\"
-            fi
-        " 2>&1
-  ) >"$pkg_output" &
-  show_progress $! "Installing system utilities" "System utilities installed"
-
-  # Check for failed packages and show warning to user
-  if grep -q "FAILED_PACKAGES:" "$pkg_output" 2>/dev/null; then
-    local failed_list
-    failed_list=$(grep "FAILED_PACKAGES:" "$pkg_output" | sed 's/FAILED_PACKAGES://')
-    print_warning "Some packages failed to install:$failed_list" true
-    log "WARNING: Failed to install packages:$failed_list"
-  fi
-  cat "$pkg_output" >>"$LOG_FILE"
-  rm -f "$pkg_output"
+  # Install all base system packages in one batch (includes dist-upgrade)
+  install_base_packages
 
   # Configure UTF-8 locales using template files
   # Generate the user's selected locale plus common fallbacks
+  # Note: locales package already installed via install_base_packages()
   local locale_name="${LOCALE%%.UTF-8}" # Remove .UTF-8 suffix for sed pattern
   run_remote "Configuring UTF-8 locales" "
-        export DEBIAN_FRONTEND=noninteractive
-        apt-get install -yqq locales
         # Enable user's selected locale
         sed -i 's/# ${locale_name}.UTF-8/${locale_name}.UTF-8/' /etc/locale.gen
         # Also enable en_US as fallback (many tools expect it)
@@ -178,14 +136,10 @@ configure_base_system() {
 
 # Configures default shell for root user.
 # Optionally installs ZSH with Oh-My-Zsh and Powerlevel10k theme.
+# Note: zsh, git, curl packages already installed via install_base_packages()
 configure_shell() {
   # Configure default shell for root
   if [[ $SHELL_TYPE == "zsh" ]]; then
-    run_remote "Installing ZSH and Git" '
-            export DEBIAN_FRONTEND=noninteractive
-            apt-get install -yqq zsh git curl
-        ' "ZSH and Git installed"
-
     # shellcheck disable=SC2016 # Single quotes intentional - executed on remote system
     run_remote "Installing Oh-My-Zsh" '
             export RUNZSH=no
@@ -214,25 +168,18 @@ configure_shell() {
 
 # Configures system services: NTP, unattended upgrades, conntrack, CPU governor.
 # Removes subscription notice for non-enterprise installations.
+# Note: chrony, unattended-upgrades, cpufrequtils already installed via install_base_packages()
 configure_system_services() {
-  # Configure NTP time synchronization with chrony
-  run_remote "Installing NTP (chrony)" '
-        export DEBIAN_FRONTEND=noninteractive
-        apt-get install -yqq chrony
-        systemctl stop chrony
-    ' "NTP (chrony) installed"
+  # Configure NTP time synchronization with chrony (package already installed)
   (
+    remote_exec "systemctl stop chrony" || true
     remote_copy "templates/chrony" "/etc/chrony/chrony.conf" || exit 1
     # Enable chrony to start on boot (don't start now - will activate after reboot)
     remote_exec "systemctl enable chrony" || exit 1
   ) >/dev/null 2>&1 &
   show_progress $! "Configuring chrony" "Chrony configured"
 
-  # Configure Unattended Upgrades (security updates, kernel excluded)
-  run_remote "Installing Unattended Upgrades" '
-        export DEBIAN_FRONTEND=noninteractive
-        apt-get install -yqq unattended-upgrades apt-listchanges
-    ' "Unattended Upgrades installed"
+  # Configure Unattended Upgrades (package already installed)
   (
     remote_copy "templates/50unattended-upgrades" "/etc/apt/apt.conf.d/50unattended-upgrades" || exit 1
     remote_copy "templates/20auto-upgrades" "/etc/apt/apt.conf.d/20auto-upgrades" || exit 1
@@ -247,12 +194,11 @@ configure_system_services() {
         fi
     ' "nf_conntrack configured"
 
-  # Configure CPU governor using template
+  # Configure CPU governor using template (package already installed)
   local governor="${CPU_GOVERNOR:-performance}"
   (
     remote_copy "templates/cpufrequtils" "/tmp/cpufrequtils" || exit 1
     remote_exec "
-            apt-get update -qq && apt-get install -yqq cpufrequtils 2>/dev/null || true
             mv /tmp/cpufrequtils /etc/default/cpufrequtils
             systemctl enable cpufrequtils 2>/dev/null || true
             if [ -d /sys/devices/system/cpu/cpu0/cpufreq ]; then

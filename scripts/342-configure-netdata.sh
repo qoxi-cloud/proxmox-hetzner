@@ -2,21 +2,8 @@
 # =============================================================================
 # Netdata - Real-time performance and health monitoring
 # Provides web dashboard on port 19999
+# Package installed via batch_install_packages() in 037-parallel-helpers.sh
 # =============================================================================
-
-# Installation function for netdata
-_install_netdata() {
-  run_remote "Installing netdata" '
-    export DEBIAN_FRONTEND=noninteractive
-
-    # Add Netdata official repository (package not in default Debian repos)
-    curl -fsSL https://repo.netdata.cloud/netdatabot.gpg.key | gpg --dearmor -o /usr/share/keyrings/netdata-archive-keyring.gpg
-    echo "deb [signed-by=/usr/share/keyrings/netdata-archive-keyring.gpg] https://repo.netdata.cloud/repos/stable/debian/ bookworm/" > /etc/apt/sources.list.d/netdata.list
-
-    apt-get update -qq
-    apt-get install -yqq netdata
-  ' "netdata installed"
-}
 
 # Configuration function for netdata
 _config_netdata() {
@@ -40,7 +27,8 @@ _config_netdata() {
   ' || return 1
 }
 
-# Installs and configures Netdata for real-time monitoring.
+# Configures Netdata for real-time monitoring.
+# Package already installed via batch_install_packages().
 # Provides web dashboard accessible on port 19999.
 # If Tailscale enabled: accessible via Tailscale network
 # Otherwise: localhost only (use reverse proxy for external access)
@@ -51,14 +39,13 @@ configure_netdata() {
     return 0
   fi
 
-  log "Installing and configuring netdata"
+  log "Configuring netdata"
 
-  # Install and configure using helper (with background progress)
+  # Configure using helper (with background progress)
   (
-    _install_netdata || exit 1
     _config_netdata || exit 1
   ) >/dev/null 2>&1 &
-  show_progress $! "Installing netdata" "netdata configured"
+  show_progress $! "Configuring netdata" "netdata configured"
 
   local exit_code=$?
   if [[ $exit_code -ne 0 ]]; then
@@ -66,5 +53,4 @@ configure_netdata() {
     print_warning "netdata setup failed - continuing without it"
     return 0 # Non-fatal error
   fi
-
 }

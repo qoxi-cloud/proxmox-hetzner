@@ -3,6 +3,34 @@
 # Parallel execution helpers for faster installation
 # =============================================================================
 
+# Installs all base system packages in one batch.
+# Called at the start of configure_base_system().
+# Includes: SYSTEM_UTILITIES, locales, chrony, unattended-upgrades, cpufrequtils
+# And conditionally: zsh/git/curl (if SHELL_TYPE=zsh)
+# Side effects: Runs apt-get update and installs packages on remote system
+install_base_packages() {
+  # shellcheck disable=SC2086
+  local packages="${SYSTEM_UTILITIES} ${OPTIONAL_PACKAGES} locales chrony unattended-upgrades apt-listchanges cpufrequtils"
+
+  # Add ZSH packages if needed
+  if [[ ${SHELL_TYPE:-bash} == "zsh" ]]; then
+    packages="$packages zsh git curl"
+  fi
+
+  log "Installing base packages: $packages"
+
+  run_remote "Installing system packages" "
+    export DEBIAN_FRONTEND=noninteractive
+    apt-get update -qq
+    apt-get dist-upgrade -yqq
+    apt-get install -yqq $packages
+    apt-get autoremove -yqq
+    apt-get clean
+    pveupgrade 2>/dev/null || true
+    pveam update 2>/dev/null || true
+  " "System packages installed"
+}
+
 # Collects packages needed by enabled features and installs them in one batch.
 # This eliminates redundant apt-get update calls across configure scripts.
 # Must be called BEFORE running parallel config groups.
@@ -25,12 +53,18 @@ batch_install_packages() {
   # Monitoring packages
   [[ $INSTALL_VNSTAT == "yes" ]] && packages+=(vnstat)
   [[ $INSTALL_PROMETHEUS == "yes" ]] && packages+=(prometheus-node-exporter)
-  # Netdata installed via script, not apt
+  [[ $INSTALL_NETDATA == "yes" ]] && packages+=(netdata)
 
   # Tools packages
   [[ $INSTALL_NVIM == "yes" ]] && packages+=(neovim)
   [[ $INSTALL_RINGBUFFER == "yes" ]] && packages+=(ethtool)
-  # Yazi installed via cargo
+  [[ $INSTALL_YAZI == "yes" ]] && packages+=(curl file unzip)
+
+  # Tailscale (needs custom repo)
+  [[ $INSTALL_TAILSCALE == "yes" ]] && packages+=(tailscale)
+
+  # SSL packages
+  [[ ${SSL_TYPE:-self-signed} == "letsencrypt" ]] && packages+=(certbot)
 
   if [[ ${#packages[@]} -eq 0 ]]; then
     log "No optional packages to install"
@@ -39,10 +73,28 @@ batch_install_packages() {
 
   log "Batch installing packages: ${packages[*]}"
 
+  # Build repo setup commands for packages needing custom repos
+  local repo_setup=""
+
+  if [[ $INSTALL_TAILSCALE == "yes" ]]; then
+    repo_setup+='
+      curl -fsSL https://pkgs.tailscale.com/stable/debian/bookworm.noarmor.gpg | tee /usr/share/keyrings/tailscale-archive-keyring.gpg >/dev/null
+      curl -fsSL https://pkgs.tailscale.com/stable/debian/bookworm.tailscale-keyring.list | tee /etc/apt/sources.list.d/tailscale.list
+    '
+  fi
+
+  if [[ $INSTALL_NETDATA == "yes" ]]; then
+    repo_setup+='
+      curl -fsSL https://repo.netdata.cloud/netdatabot.gpg.key | gpg --dearmor -o /usr/share/keyrings/netdata-archive-keyring.gpg
+      echo "deb [signed-by=/usr/share/keyrings/netdata-archive-keyring.gpg] https://repo.netdata.cloud/repos/stable/debian/ bookworm/" > /etc/apt/sources.list.d/netdata.list
+    '
+  fi
+
   (
     # shellcheck disable=SC2086,SC2016
     remote_exec '
       export DEBIAN_FRONTEND=noninteractive
+      '"$repo_setup"'
       apt-get update -qq
       apt-get install -yqq '"${packages[*]}"'
     ' || exit 1
