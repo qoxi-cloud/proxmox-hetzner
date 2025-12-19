@@ -6,6 +6,8 @@
   <h3>Automated Installation for Hetzner Dedicated Servers</h3>
 
   ![Version](https://img.shields.io/endpoint?url=https://qoxi-cloud.github.io/proxmox-hetzner/version.json&style=for-the-badge)
+  ![Tests](https://img.shields.io/github/actions/workflow/status/qoxi-cloud/proxmox-hetzner/test.yml?style=for-the-badge&logo=github&label=tests)
+  [![codecov](https://img.shields.io/codecov/c/github/qoxi-cloud/proxmox-hetzner?style=for-the-badge&logo=codecov)](https://codecov.io/gh/qoxi-cloud/proxmox-hetzner)
   ![GitHub Stars](https://img.shields.io/github/stars/qoxi-cloud/proxmox-hetzner?style=for-the-badge&logo=github)
   ![GitHub Forks](https://img.shields.io/github/forks/qoxi-cloud/proxmox-hetzner?style=for-the-badge&logo=github)
   ![GitHub License](https://img.shields.io/github/license/qoxi-cloud/proxmox-hetzner?style=for-the-badge)
