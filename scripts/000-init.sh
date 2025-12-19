@@ -11,31 +11,25 @@ export LC_ALL=en_US.UTF-8
 # =============================================================================
 # Colors and configuration
 # =============================================================================
-CLR_RED=$'\033[1;31m'
-CLR_CYAN=$'\033[38;2;0;177;255m'
-CLR_YELLOW=$'\033[1;33m'
-CLR_ORANGE=$'\033[38;5;208m'
-CLR_GRAY=$'\033[38;5;240m'
-CLR_HETZNER=$'\033[38;5;160m'
-CLR_RESET=$'\033[m'
+readonly CLR_RED=$'\033[1;31m'
+readonly CLR_CYAN=$'\033[38;2;0;177;255m'
+readonly CLR_YELLOW=$'\033[1;33m'
+readonly CLR_ORANGE=$'\033[38;5;208m'
+readonly CLR_GRAY=$'\033[38;5;240m'
+readonly CLR_HETZNER=$'\033[38;5;160m'
+readonly CLR_RESET=$'\033[m'
 
 # Hex colors for gum (terminal UI toolkit)
-HEX_RED="#ff0000"
-HEX_CYAN="#00b1ff"
-HEX_YELLOW="#ffff00"
-HEX_ORANGE="#ff8700"
-HEX_GRAY="#585858"
-HEX_HETZNER="#d70000"
-HEX_GREEN="#00ff00"
-HEX_WHITE="#ffffff"
-HEX_NONE="7"
-
-# Menu box width for consistent UI rendering across all scripts
-# shellcheck disable=SC2034
-MENU_BOX_WIDTH=60
+readonly HEX_RED="#ff0000"
+readonly HEX_CYAN="#00b1ff"
+readonly HEX_YELLOW="#ffff00"
+readonly HEX_ORANGE="#ff8700"
+readonly HEX_GRAY="#585858"
+readonly HEX_WHITE="#ffffff"
+readonly HEX_NONE="7"
 
 # Version (MAJOR only - MINOR.PATCH added by CI from git tags/commits)
-VERSION="2"
+readonly VERSION="2"
 
 # =============================================================================
 # Configuration constants
@@ -47,53 +41,44 @@ GITHUB_BRANCH="${GITHUB_BRANCH:-main}"
 GITHUB_BASE_URL="https://github.com/${GITHUB_REPO}/raw/refs/heads/${GITHUB_BRANCH}"
 
 # Proxmox ISO download URLs
-PROXMOX_ISO_BASE_URL="https://enterprise.proxmox.com/iso/"
-PROXMOX_CHECKSUM_URL="https://enterprise.proxmox.com/iso/SHA256SUMS"
+readonly PROXMOX_ISO_BASE_URL="https://enterprise.proxmox.com/iso/"
+readonly PROXMOX_CHECKSUM_URL="https://enterprise.proxmox.com/iso/SHA256SUMS"
 
 # DNS servers for connectivity checks and resolution (IPv4)
-DNS_SERVERS=("1.1.1.1" "8.8.8.8" "9.9.9.9")
-DNS_PRIMARY="1.1.1.1"
-DNS_SECONDARY="1.0.0.1"
-DNS_TERTIARY="8.8.8.8"
-DNS_QUATERNARY="8.8.4.4"
+readonly DNS_SERVERS=("1.1.1.1" "8.8.8.8" "9.9.9.9")
+readonly DNS_PRIMARY="1.1.1.1"
+readonly DNS_SECONDARY="1.0.0.1"
 
-# DNS servers (IPv6) - Cloudflare, Google, Quad9
-DNS6_PRIMARY="2606:4700:4700::1111"
-DNS6_SECONDARY="2606:4700:4700::1001"
-DNS6_TERTIARY="2001:4860:4860::8888"
-DNS6_QUATERNARY="2001:4860:4860::8844"
+# DNS servers (IPv6) - Cloudflare
+readonly DNS6_PRIMARY="2606:4700:4700::1111"
+readonly DNS6_SECONDARY="2606:4700:4700::1001"
 
 # Resource requirements (ISO ~3.5GB + QEMU + overhead = 6GB)
-MIN_DISK_SPACE_MB=6000
-MIN_RAM_MB=4000
-MIN_CPU_CORES=2
+readonly MIN_DISK_SPACE_MB=6000
+readonly MIN_RAM_MB=4000
+readonly MIN_CPU_CORES=2
 
 # QEMU defaults
-DEFAULT_QEMU_RAM=8192 # Deprecated: now uses all available RAM minus reserve
-MIN_QEMU_RAM=4096
-MAX_QEMU_CORES=16            # Deprecated: now uses all available cores
-QEMU_LOW_RAM_THRESHOLD=16384 # Deprecated: now uses dynamic calculation
+readonly MIN_QEMU_RAM=4096
 
 # Download settings
-DOWNLOAD_RETRY_COUNT=3
-DOWNLOAD_RETRY_DELAY=2
+readonly DOWNLOAD_RETRY_COUNT=3
+readonly DOWNLOAD_RETRY_DELAY=2
 
 # SSH settings
-SSH_READY_TIMEOUT=120
-SSH_CONNECT_TIMEOUT=10
-QEMU_BOOT_TIMEOUT=300
+readonly SSH_CONNECT_TIMEOUT=10
 
 # Password settings
-DEFAULT_PASSWORD_LENGTH=16
+readonly DEFAULT_PASSWORD_LENGTH=16
 
 # QEMU memory settings
-QEMU_MIN_RAM_RESERVE=2048
+readonly QEMU_MIN_RAM_RESERVE=2048
 
 # DNS lookup timeout (seconds)
-DNS_LOOKUP_TIMEOUT=5
+readonly DNS_LOOKUP_TIMEOUT=5
 
 # Retry delays (seconds)
-DNS_RETRY_DELAY=10
+readonly DNS_RETRY_DELAY=10
 
 # Keyboard layouts supported by Proxmox installer (from official documentation)
 # shellcheck disable=SC2034
