@@ -13,8 +13,8 @@ get_terminal_dimensions() {
 # Fallback to 9 if not defined (6 ASCII art + 1 empty + 1 tagline + 1 spacing)
 LOGO_HEIGHT=${BANNER_HEIGHT:-9}
 
-# Fixed header height (Live Logs title + empty line)
-HEADER_HEIGHT=2
+# Fixed header height (empty + Live Logs title + empty line)
+HEADER_HEIGHT=3
 
 # Calculate available space for logs
 calculate_log_area() {
@@ -110,7 +110,9 @@ start_live_installation() {
   show_banner
 
   # Print fixed header (stays in place during scroll)
-  printf '%s Live Logs%s\n\n' "${CLR_CYAN}" "${CLR_RESET}"
+  echo ""
+  echo "${CLR_CYAN} Live Logs${CLR_RESET}"
+  echo ""
 
   save_cursor_position
   tput civis # Hide cursor
