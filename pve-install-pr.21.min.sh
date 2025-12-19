@@ -19,7 +19,7 @@ HEX_GREEN="#00ff00"
 HEX_WHITE="#ffffff"
 HEX_NONE="7"
 MENU_BOX_WIDTH=60
-VERSION="2.0.287-pr.21"
+VERSION="2.0.288-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -115,9 +115,10 @@ OPTIONAL_PACKAGES="libguestfs-tools"
 LOG_FILE="/root/pve-install-$(date +%Y%m%d-%H%M%S).log"
 INSTALL_COMPLETED=false
 cleanup_temp_files(){
-rm -f /tmp/tailscale_*.txt /tmp/iso_checksum.txt /tmp/*.tmp 2>/dev/null||true
+rm -f /tmp/tailscale_*.txt /tmp/iso_checksum.txt /tmp/*.tmp /tmp/pve-install-api-token.env 2>/dev/null||true
+rm -f /root/answer.toml 2>/dev/null||true
 if [[ $INSTALL_COMPLETED != "true" ]];then
-rm -f /root/pve.iso /root/pve-autoinstall.iso /root/answer.toml /root/SHA256SUMS 2>/dev/null||true
+rm -f /root/pve.iso /root/pve-autoinstall.iso /root/SHA256SUMS 2>/dev/null||true
 rm -f /root/qemu_*.log 2>/dev/null||true
 fi
 find /dev/shm /tmp -name "pve-passfile.*" -type f -delete 2>/dev/null||true
@@ -620,7 +621,11 @@ apply_template_vars "$file" \
 "DNS_TERTIARY=${DNS_TERTIARY:-8.8.8.8}" \
 "DNS_QUATERNARY=${DNS_QUATERNARY:-8.8.4.4}" \
 "DNS6_PRIMARY=${DNS6_PRIMARY:-2606:4700:4700::1111}" \
-"DNS6_SECONDARY=${DNS6_SECONDARY:-2606:4700:4700::1001}"
+"DNS6_SECONDARY=${DNS6_SECONDARY:-2606:4700:4700::1001}" \
+"LOCALE=${LOCALE:-en_US.UTF-8}" \
+"KEYBOARD=${KEYBOARD:-us}" \
+"COUNTRY=${COUNTRY:-US}" \
+"BAT_THEME=${BAT_THEME:-Catppuccin Mocha}"
 }
 postprocess_interfaces_ipv6(){
 local file="$1"
@@ -918,6 +923,32 @@ if [[ -n $installed_var ]];then
 declare -g "$installed_var=yes"
 log "$feature_name installed and configured successfully"
 fi
+return 0
+}
+install_optional_feature_with_progress(){
+local feature_name="$1"
+local install_var="$2"
+local install_func="$3"
+local config_func="$4"
+local installed_var="$5"
+local progress_msg="${6:-Installing $feature_name}"
+local success_msg="${7:-$feature_name configured}"
+if [[ ${!install_var} != "yes" ]];then
+log "Skipping $feature_name (not requested)"
+return 0
+fi
+log "Installing and configuring $feature_name"
+("$install_func"||exit 1
+"$config_func"||exit 1) > \
+/dev/null 2>&1&
+show_progress $! "$progress_msg" "$success_msg"
+local exit_code=$?
+if [[ $exit_code -ne 0 ]];then
+log "WARNING: $feature_name setup failed"
+print_warning "$feature_name setup failed - continuing without it"
+return 0
+fi
+declare -g "$installed_var=yes"
 return 0
 }
 deploy_template(){
@@ -4224,13 +4255,13 @@ printf '\r\e[K%s✗ Copying configuration files%s\n' "$CLR_RED" "$CLR_RESET"
 log "ERROR: Failed to copy some configuration files"
 return 1
 fi
-(remote_exec "[ -f /etc/apt/sources.list ] && mv /etc/apt/sources.list /etc/apt/sources.list.bak"
-remote_exec "echo '$PVE_HOSTNAME' > /etc/hostname"
-remote_exec "systemctl disable --now rpcbind rpcbind.socket 2>/dev/null") > \
+(remote_exec "[ -f /etc/apt/sources.list ] && mv /etc/apt/sources.list /etc/apt/sources.list.bak"||exit 1
+remote_exec "echo '$PVE_HOSTNAME' > /etc/hostname"||exit 1
+remote_exec "systemctl disable --now rpcbind rpcbind.socket 2>/dev/null"||true) > \
 /dev/null 2>&1&
 show_progress $! "Applying basic system settings" "Basic system settings applied"
-(remote_copy "templates/configure-zfs-arc.sh" "/tmp/configure-zfs-arc.sh"
-remote_exec "chmod +x /tmp/configure-zfs-arc.sh && /tmp/configure-zfs-arc.sh && rm -f /tmp/configure-zfs-arc.sh") > \
+(remote_copy "templates/configure-zfs-arc.sh" "/tmp/configure-zfs-arc.sh"||exit 1
+remote_exec "chmod +x /tmp/configure-zfs-arc.sh && /tmp/configure-zfs-arc.sh && rm -f /tmp/configure-zfs-arc.sh"||exit 1) > \
 /dev/null 2>&1&
 show_progress $! "Configuring ZFS ARC memory limits" "ZFS ARC memory limits configured"
 log "configure_base_system: PVE_REPO_TYPE=${PVE_REPO_TYPE:-no-subscription}"
@@ -4309,19 +4340,19 @@ run_remote "Configuring UTF-8 locales" '
         locale-gen
         update-locale LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
     ' "UTF-8 locales configured"
-(remote_copy "templates/locale.sh" "/etc/profile.d/locale.sh"
-remote_exec "chmod +x /etc/profile.d/locale.sh"
-remote_copy "templates/default-locale" "/etc/default/locale"
-remote_copy "templates/environment" "/etc/environment") > \
+(remote_copy "templates/locale.sh" "/etc/profile.d/locale.sh"||exit 1
+remote_exec "chmod +x /etc/profile.d/locale.sh"||exit 1
+remote_copy "templates/default-locale" "/etc/default/locale"||exit 1
+remote_copy "templates/environment" "/etc/environment"||exit 1) > \
 /dev/null 2>&1&
 show_progress $! "Installing locale configuration files" "Locale files installed"
-(remote_copy "templates/fastfetch.sh" "/etc/profile.d/fastfetch.sh"
-remote_exec "chmod +x /etc/profile.d/fastfetch.sh"
-remote_exec "grep -q 'profile.d/fastfetch.sh' /etc/bash.bashrc || echo '[ -f /etc/profile.d/fastfetch.sh ] && . /etc/profile.d/fastfetch.sh' >> /etc/bash.bashrc") > \
+(remote_copy "templates/fastfetch.sh" "/etc/profile.d/fastfetch.sh"||exit 1
+remote_exec "chmod +x /etc/profile.d/fastfetch.sh"||exit 1
+remote_exec "grep -q 'profile.d/fastfetch.sh' /etc/bash.bashrc || echo '[ -f /etc/profile.d/fastfetch.sh ] && . /etc/profile.d/fastfetch.sh' >> /etc/bash.bashrc"||exit 1) > \
 /dev/null 2>&1&
 show_progress $! "Configuring fastfetch" "Fastfetch configured"
-(remote_exec "mkdir -p /root/.config/bat"
-remote_copy "templates/bat-config" "/root/.config/bat/config") > \
+(remote_exec "mkdir -p /root/.config/bat"||exit 1
+remote_copy "templates/bat-config" "/root/.config/bat/config"||exit 1) > \
 /dev/null 2>&1&
 show_progress $! "Configuring bat" "Bat configured"
 }
@@ -4343,9 +4374,9 @@ run_remote "Installing ZSH plugins" '
             git clone --depth=1 https://github.com/zsh-users/zsh-autosuggestions /root/.oh-my-zsh/custom/plugins/zsh-autosuggestions
             git clone --depth=1 https://github.com/zsh-users/zsh-syntax-highlighting /root/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting
         ' "ZSH plugins installed"
-(remote_copy "templates/zshrc" "/root/.zshrc"
-remote_copy "templates/p10k.zsh" "/root/.p10k.zsh"
-remote_exec "chsh -s /bin/zsh root") > \
+(remote_copy "templates/zshrc" "/root/.zshrc"||exit 1
+remote_copy "templates/p10k.zsh" "/root/.p10k.zsh"||exit 1
+remote_exec "chsh -s /bin/zsh root"||exit 1) > \
 /dev/null 2>&1&
 show_progress $! "Configuring ZSH" "ZSH with Powerlevel10k configured"
 else
@@ -4358,17 +4389,17 @@ run_remote "Installing NTP (chrony)" '
         apt-get install -yqq chrony
         systemctl stop chrony
     ' "NTP (chrony) installed"
-(remote_copy "templates/chrony" "/etc/chrony/chrony.conf"
-remote_exec "systemctl enable chrony") > \
+(remote_copy "templates/chrony" "/etc/chrony/chrony.conf"||exit 1
+remote_exec "systemctl enable chrony"||exit 1) > \
 /dev/null 2>&1&
 show_progress $! "Configuring chrony" "Chrony configured"
 run_remote "Installing Unattended Upgrades" '
         export DEBIAN_FRONTEND=noninteractive
         apt-get install -yqq unattended-upgrades apt-listchanges
     ' "Unattended Upgrades installed"
-(remote_copy "templates/50unattended-upgrades" "/etc/apt/apt.conf.d/50unattended-upgrades"
-remote_copy "templates/20auto-upgrades" "/etc/apt/apt.conf.d/20auto-upgrades"
-remote_exec "systemctl enable unattended-upgrades") > \
+(remote_copy "templates/50unattended-upgrades" "/etc/apt/apt.conf.d/50unattended-upgrades"||exit 1
+remote_copy "templates/20auto-upgrades" "/etc/apt/apt.conf.d/20auto-upgrades"||exit 1
+remote_exec "systemctl enable unattended-upgrades"||exit 1) > \
 /dev/null 2>&1&
 show_progress $! "Configuring Unattended Upgrades" "Unattended Upgrades configured"
 run_remote "Configuring nf_conntrack" '
@@ -4377,7 +4408,7 @@ run_remote "Configuring nf_conntrack" '
         fi
     ' "nf_conntrack configured"
 local governor="${CPU_GOVERNOR:-performance}"
-(remote_copy "templates/cpufrequtils" "/tmp/cpufrequtils"
+(remote_copy "templates/cpufrequtils" "/tmp/cpufrequtils"||exit 1
 remote_exec "
             apt-get update -qq && apt-get install -yqq cpufrequtils 2>/dev/null || true
             mv /tmp/cpufrequtils /etc/default/cpufrequtils
@@ -4387,17 +4418,17 @@ remote_exec "
                     [ -f \"\$cpu\" ] && echo '$governor' > \"\$cpu\" 2>/dev/null || true
                 done
             fi
-        ") > \
+        "||exit 1) > \
 /dev/null 2>&1&
 show_progress $! "Configuring CPU governor ($governor)" "CPU governor configured"
-(remote_copy "templates/60-io-scheduler.rules" "/etc/udev/rules.d/60-io-scheduler.rules"
-remote_exec "udevadm control --reload-rules && udevadm trigger") > \
+(remote_copy "templates/60-io-scheduler.rules" "/etc/udev/rules.d/60-io-scheduler.rules"||exit 1
+remote_exec "udevadm control --reload-rules && udevadm trigger"||exit 1) > \
 /dev/null 2>&1&
 show_progress $! "Configuring I/O scheduler" "I/O scheduler configured"
 if [[ ${PVE_REPO_TYPE:-no-subscription} != "enterprise" ]];then
 log "configure_system_services: removing subscription notice (non-enterprise)"
-(remote_copy "templates/remove-subscription-nag.sh" "/tmp/remove-subscription-nag.sh"
-remote_exec "chmod +x /tmp/remove-subscription-nag.sh && /tmp/remove-subscription-nag.sh && rm -f /tmp/remove-subscription-nag.sh") > \
+(remote_copy "templates/remove-subscription-nag.sh" "/tmp/remove-subscription-nag.sh"||exit 1
+remote_exec "chmod +x /tmp/remove-subscription-nag.sh && /tmp/remove-subscription-nag.sh && rm -f /tmp/remove-subscription-nag.sh"||exit 1) > \
 /dev/null 2>&1&
 show_progress $! "Removing Proxmox subscription notice" "Subscription notice removed"
 fi
@@ -4647,11 +4678,15 @@ remote_copy "templates/fail2ban-proxmox.conf" "/etc/fail2ban/filter.d/proxmox.co
 remote_exec "systemctl enable fail2ban"||exit 1
 }
 configure_fail2ban(){
-if [[ $INSTALL_TAILSCALE == "yes" ]];then
-log "Skipping Fail2Ban (Tailscale provides security)"
+if [[ $INSTALL_FIREWALL != "yes" ]];then
+log "Skipping Fail2Ban (no firewall installed)"
 return 0
 fi
-log "Installing Fail2Ban (no Tailscale)"
+if [[ $FIREWALL_MODE == "stealth" ]];then
+log "Skipping Fail2Ban (stealth mode - no public ports)"
+return 0
+fi
+log "Installing and configuring Fail2Ban"
 (_install_fail2ban||exit 1
 _config_fail2ban||exit 1) > \
 /dev/null 2>&1&
@@ -4734,22 +4769,14 @@ remote_exec '
   '||exit 1
 }
 configure_auditd(){
-if [[ $INSTALL_AUDITD != "yes" ]];then
-log "Skipping auditd (not requested)"
-return 0
-fi
-log "Installing and configuring auditd"
-(_install_auditd||exit 1
-_config_auditd||exit 1) > \
-/dev/null 2>&1&
-show_progress $! "Installing and configuring auditd" "Auditd configured"
-local exit_code=$?
-if [[ $exit_code -ne 0 ]];then
-log "WARNING: Auditd setup failed"
-print_warning "Auditd setup failed - continuing without it"
-return 0
-fi
-AUDITD_INSTALLED="yes"
+install_optional_feature_with_progress \
+"Auditd" \
+"INSTALL_AUDITD" \
+"_install_auditd" \
+"_config_auditd" \
+"AUDITD_INSTALLED" \
+"Installing and configuring auditd" \
+"Auditd configured"
 }
 _install_aide(){
 run_remote "Installing AIDE" '
@@ -4904,8 +4931,8 @@ run_remote "Installing ethtool" '
   ' "ethtool installed"
 }
 _config_ringbuffer(){
-export RINGBUFFER_INTERFACE="${DEFAULT_INTERFACE:-eth0}"
-deploy_template "network-ringbuffer.service" "/etc/systemd/system/network-ringbuffer.service" RINGBUFFER_INTERFACE
+local ringbuffer_interface="${DEFAULT_INTERFACE:-eth0}"
+deploy_template "network-ringbuffer.service" "/etc/systemd/system/network-ringbuffer.service" "RINGBUFFER_INTERFACE=$ringbuffer_interface"
 remote_exec '
     # Enable service for boot (will activate after reboot)
     systemctl daemon-reload
@@ -5043,8 +5070,7 @@ local bind_to="127.0.0.1"
 if [[ $INSTALL_TAILSCALE == "yes" ]];then
 bind_to="127.0.0.1 100.*"
 fi
-export NETDATA_BIND_TO="$bind_to"
-deploy_template "netdata.conf" "/etc/netdata/netdata.conf" NETDATA_BIND_TO
+deploy_template "netdata.conf" "/etc/netdata/netdata.conf" "NETDATA_BIND_TO=$bind_to"
 remote_exec '
     systemctl daemon-reload
     systemctl enable netdata
@@ -5220,11 +5246,13 @@ return 1
 fi
 API_TOKEN_VALUE="$token_value"
 API_TOKEN_ID="root@pam!$API_TOKEN_NAME"
+(umask 0077
 cat >/tmp/pve-install-api-token.env <<EOF
 API_TOKEN_VALUE=$token_value
 API_TOKEN_ID=$API_TOKEN_ID
 API_TOKEN_NAME=$API_TOKEN_NAME
 EOF
+)
 log "INFO: API token created successfully: $API_TOKEN_ID"
 return 0
 }
