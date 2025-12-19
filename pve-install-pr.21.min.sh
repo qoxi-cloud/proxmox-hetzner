@@ -976,6 +976,101 @@ _wiz_hide_cursor
 _wiz_error "$message"
 sleep 3
 }
+batch_install_packages(){
+local packages=()
+[[ $INSTALL_FIREWALL == "yes" ]]&&packages+=(nftables)
+if [[ $INSTALL_FIREWALL == "yes" && ${FIREWALL_MODE:-standard} != "stealth" ]];then
+packages+=(fail2ban)
+fi
+[[ $INSTALL_APPARMOR == "yes" ]]&&packages+=(apparmor apparmor-utils)
+[[ $INSTALL_AUDITD == "yes" ]]&&packages+=(auditd audispd-plugins)
+[[ $INSTALL_AIDE == "yes" ]]&&packages+=(aide aide-common)
+[[ $INSTALL_CHKROOTKIT == "yes" ]]&&packages+=(chkrootkit)
+[[ $INSTALL_LYNIS == "yes" ]]&&packages+=(lynis)
+[[ $INSTALL_NEEDRESTART == "yes" ]]&&packages+=(needrestart)
+[[ $INSTALL_VNSTAT == "yes" ]]&&packages+=(vnstat)
+[[ $INSTALL_PROMETHEUS == "yes" ]]&&packages+=(prometheus-node-exporter)
+[[ $INSTALL_NVIM == "yes" ]]&&packages+=(neovim)
+[[ $INSTALL_RINGBUFFER == "yes" ]]&&packages+=(ethtool)
+if [[ ${#packages[@]} -eq 0 ]];then
+log "No optional packages to install"
+return 0
+fi
+log "Batch installing packages: ${packages[*]}"
+(remote_exec '
+      export DEBIAN_FRONTEND=noninteractive
+      apt-get update -qq
+      apt-get install -yqq '"${packages[*]}"'
+    '||exit 1) > \
+/dev/null 2>&1&
+show_progress $! "Installing packages (${#packages[@]})" "Packages installed"
+local exit_code=$?
+if [[ $exit_code -ne 0 ]];then
+log "WARNING: Batch package installation failed"
+return 1
+fi
+return 0
+}
+run_parallel_group(){
+local group_name="$1"
+local done_msg="$2"
+shift 2
+local funcs=("$@")
+if [[ ${#funcs[@]} -eq 0 ]];then
+log "No functions to run in parallel group: $group_name"
+return 0
+fi
+log "Running parallel group '$group_name' with functions: ${funcs[*]}"
+local result_dir
+result_dir=$(mktemp -d)
+trap "rm -rf '$result_dir'" RETURN
+local i=0
+for func in "${funcs[@]}";do
+(if
+"$func" 2>&1
+then
+touch "$result_dir/success_$i"
+else
+touch "$result_dir/fail_$i"
+fi) > \
+/dev/null&
+((i++))
+done
+local count=$i
+(while
+true
+do
+local done_count=0
+for j in $(seq 0 $((count-1)));do
+[[ -f "$result_dir/success_$j" || -f "$result_dir/fail_$j" ]]&&((done_count++))
+done
+[[ $done_count -eq $count ]]&&break
+sleep 0.2
+done) \
+&
+show_progress $! "$group_name" "$done_msg"
+local failures=0
+for j in $(seq 0 $((count-1)));do
+[[ -f "$result_dir/fail_$j" ]]&&((failures++))
+done
+if [[ $failures -gt 0 ]];then
+log "WARNING: $failures/$count functions failed in group '$group_name'"
+return 0
+fi
+return 0
+}
+collect_enabled_funcs(){
+local -n result_arr=$1
+shift
+result_arr=()
+for pair in "$@";do
+local var="${pair%%:*}"
+local func="${pair#*:}"
+if [[ ${!var} == "yes" ]];then
+result_arr+=("$func")
+fi
+done
+}
 validate_hostname(){
 local hostname="$1"
 [[ $hostname =~ ^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$ ]]
@@ -4173,13 +4268,12 @@ run_remote "Installing Oh-My-Zsh" '
             export CHSH=no
             sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
         ' "Oh-My-Zsh installed"
-run_remote "Installing Powerlevel10k theme" '
-            git clone --depth=1 https://github.com/romkatv/powerlevel10k.git /root/.oh-my-zsh/custom/themes/powerlevel10k
-        ' "Powerlevel10k theme installed"
-run_remote "Installing ZSH plugins" '
-            git clone --depth=1 https://github.com/zsh-users/zsh-autosuggestions /root/.oh-my-zsh/custom/plugins/zsh-autosuggestions
-            git clone --depth=1 https://github.com/zsh-users/zsh-syntax-highlighting /root/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting
-        ' "ZSH plugins installed"
+run_remote "Installing ZSH theme and plugins" '
+            git clone --depth=1 https://github.com/romkatv/powerlevel10k.git /root/.oh-my-zsh/custom/themes/powerlevel10k &
+            git clone --depth=1 https://github.com/zsh-users/zsh-autosuggestions /root/.oh-my-zsh/custom/plugins/zsh-autosuggestions &
+            git clone --depth=1 https://github.com/zsh-users/zsh-syntax-highlighting /root/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting &
+            wait
+        ' "ZSH theme and plugins installed"
 (remote_copy "templates/zshrc" "/root/.zshrc"||exit 1
 remote_copy "templates/p10k.zsh" "/root/.p10k.zsh"||exit 1
 remote_exec "chsh -s /bin/zsh root"||exit 1) > \
@@ -5256,6 +5350,50 @@ log "WARNING: QEMU process did not exit cleanly within 120 seconds"
 kill -9 "$QEMU_PID" 2>/dev/null||true
 fi
 }
+_parallel_config_apparmor(){
+[[ ${INSTALL_APPARMOR:-} != "yes" ]]&&return 0
+_config_apparmor
+}
+_parallel_config_fail2ban(){
+[[ ${INSTALL_FIREWALL:-} != "yes" || ${FIREWALL_MODE:-standard} == "stealth" ]]&&return 0
+_config_fail2ban
+}
+_parallel_config_auditd(){
+[[ ${INSTALL_AUDITD:-} != "yes" ]]&&return 0
+_config_auditd
+}
+_parallel_config_aide(){
+[[ ${INSTALL_AIDE:-} != "yes" ]]&&return 0
+_config_aide
+}
+_parallel_config_chkrootkit(){
+[[ ${INSTALL_CHKROOTKIT:-} != "yes" ]]&&return 0
+_config_chkrootkit
+}
+_parallel_config_lynis(){
+[[ ${INSTALL_LYNIS:-} != "yes" ]]&&return 0
+_config_lynis
+}
+_parallel_config_needrestart(){
+[[ ${INSTALL_NEEDRESTART:-} != "yes" ]]&&return 0
+_config_needrestart
+}
+_parallel_config_prometheus(){
+[[ ${INSTALL_PROMETHEUS:-} != "yes" ]]&&return 0
+_config_prometheus
+}
+_parallel_config_vnstat(){
+[[ ${INSTALL_VNSTAT:-} != "yes" ]]&&return 0
+_config_vnstat
+}
+_parallel_config_ringbuffer(){
+[[ ${INSTALL_RINGBUFFER:-} != "yes" ]]&&return 0
+_config_ringbuffer
+}
+_parallel_config_nvim(){
+[[ ${INSTALL_NVIM:-} != "yes" ]]&&return 0
+_config_nvim
+}
 configure_proxmox_via_ssh(){
 log "Starting Proxmox configuration via SSH"
 make_templates
@@ -5273,30 +5411,42 @@ live_log_security_configuration
 fi
 configure_tailscale
 configure_firewall
-configure_apparmor
-configure_fail2ban
-configure_auditd
-configure_aide
-configure_chkrootkit
-configure_lynis
-configure_needrestart
+batch_install_packages
+run_parallel_group "Configuring security" "Security features configured" \
+_parallel_config_apparmor \
+_parallel_config_fail2ban \
+_parallel_config_auditd \
+_parallel_config_aide \
+_parallel_config_chkrootkit \
+_parallel_config_lynis \
+_parallel_config_needrestart
 if type live_log_monitoring_configuration &>/dev/null 2>&1;then
 live_log_monitoring_configuration
 fi
-configure_netdata
-configure_prometheus
-configure_vnstat
-configure_ringbuffer
-configure_yazi
-configure_nvim
+(local pids=()
+if [[ $INSTALL_NETDATA == "yes" ]];then
+configure_netdata&
+pids+=($!)
+fi
+if [[ $INSTALL_YAZI == "yes" ]];then
+configure_yazi&
+pids+=($!)
+fi
+for pid in "${pids[@]}";do wait "$pid" 2>/dev/null||true;done) > \
+/dev/null 2>&1&
+local special_pid=$!
+run_parallel_group "Configuring tools" "Tools configured" \
+_parallel_config_prometheus \
+_parallel_config_vnstat \
+_parallel_config_ringbuffer \
+_parallel_config_nvim
+wait $special_pid 2>/dev/null||true
 if type live_log_ssl_configuration &>/dev/null 2>&1;then
 live_log_ssl_configuration
 fi
 configure_ssl_certificate
 if [[ $INSTALL_API_TOKEN == "yes" ]];then
-(source "$SCRIPT_DIR/58-configure-api-token.sh"
-create_api_token||exit 1) > \
-/dev/null 2>&1&
+(create_api_token||exit 1) >/dev/null 2>&1&
 show_progress $! "Creating API token" "API token created"
 fi
 if type live_log_validation_finalization &>/dev/null 2>&1;then
