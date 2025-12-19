@@ -4025,7 +4025,8 @@ local -a template_list=(
 "./templates/proxmox-metrics.sh:proxmox-metrics.sh"
 "./templates/proxmox-metrics.cron:proxmox-metrics.cron"
 "./templates/yazi-theme.toml:yazi-theme.toml"
-"./templates/network-ringbuffer.service:network-ringbuffer.service")
+"./templates/network-ringbuffer.service:network-ringbuffer.service"
+"./templates/validation.sh:validation.sh")
 (_download_templates_parallel "${template_list[@]}"||exit 1) > \
 /dev/null 2>&1&
 if ! show_progress $! "Downloading template files";then
@@ -4927,42 +4928,35 @@ exit 1
 fi
 }
 validate_installation(){
-(remote_exec '
-      # Check if Proxmox VE packages are installed
-      if ! dpkg -l | grep -q "proxmox-ve"; then
-        echo "ERROR: Proxmox VE package not found"
-        exit 1
-      fi
-
-      # Check if pveproxy service is running (Proxmox web interface)
-      if ! systemctl is-active --quiet pveproxy; then
-        echo "ERROR: pveproxy service is not running"
-        exit 1
-      fi
-
-      # Check if pvedaemon is running (Proxmox API daemon)
-      if ! systemctl is-active --quiet pvedaemon; then
-        echo "ERROR: pvedaemon service is not running"
-        exit 1
-      fi
-
-      # Check if ZFS pool exists (rpool for full ZFS install, or tank for ext4 boot + ZFS pool)
-      if ! zpool list 2>/dev/null | grep -qE "^(rpool|tank) "; then
-        # If neither pool exists, check if this is an ext4-only installation (valid for single disk without ZFS)
-        if ! mount | grep -q "on / type ext4"; then
-          echo "ERROR: Neither ZFS pool (rpool/tank) nor ext4 root filesystem found"
-          exit 1
-        fi
-      fi
-
-      exit 0
-    '||exit 1) > \
+log "Generating validation script from template..."
+local validation_script
+validation_script=$(apply_template_vars "./templates/validation.sh" \
+"INSTALL_TAILSCALE=${INSTALL_TAILSCALE:-no}" \
+"INSTALL_FIREWALL=${INSTALL_FIREWALL:-no}" \
+"FIREWALL_MODE=${FIREWALL_MODE:-standard}" \
+"INSTALL_APPARMOR=${INSTALL_APPARMOR:-no}" \
+"INSTALL_AUDITD=${INSTALL_AUDITD:-no}" \
+"INSTALL_AIDE=${INSTALL_AIDE:-no}" \
+"INSTALL_CHKROOTKIT=${INSTALL_CHKROOTKIT:-no}" \
+"INSTALL_LYNIS=${INSTALL_LYNIS:-no}" \
+"INSTALL_NEEDRESTART=${INSTALL_NEEDRESTART:-no}" \
+"INSTALL_VNSTAT=${INSTALL_VNSTAT:-no}" \
+"INSTALL_PROMETHEUS=${INSTALL_PROMETHEUS:-no}" \
+"INSTALL_NETDATA=${INSTALL_NETDATA:-no}" \
+"INSTALL_YAZI=${INSTALL_YAZI:-no}" \
+"INSTALL_NVIM=${INSTALL_NVIM:-no}" \
+"INSTALL_RINGBUFFER=${INSTALL_RINGBUFFER:-no}" \
+"SHELL_TYPE=${SHELL_TYPE:-bash}" \
+"SSL_TYPE=${SSL_TYPE:-self-signed}")
+log "Validation script generated"
+echo "$validation_script" >>"$LOG_FILE"
+(echo "$validation_script"|remote_exec 'bash -s' 2>&1|tee -a "$LOG_FILE"||exit 1) > \
 /dev/null 2>&1&
 show_progress $! "Validating installation" "Installation validated"
 local exit_code=$?
 if [[ $exit_code -ne 0 ]];then
 log "ERROR: Installation validation failed"
-print_error "Installation validation failed - review logs for details"
+print_error "Installation validation failed - check $LOG_FILE for details"
 exit 1
 fi
 }
