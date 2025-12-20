@@ -17,7 +17,7 @@ readonly HEX_ORANGE="#ff8700"
 readonly HEX_GRAY="#585858"
 readonly HEX_WHITE="#ffffff"
 readonly HEX_NONE="7"
-readonly VERSION="2.0.336-pr.21"
+readonly VERSION="2.0.345-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -1681,12 +1681,11 @@ live_show_progress "$@"
 export -f show_progress 2>/dev/null||true
 calculate_log_area
 tput smcup
+tput civis
 _wiz_clear
 show_banner
 save_cursor_position
-print_section " Installation Progress"
-_wiz_blank_line
-tput civis
+render_logs
 trap 'tput cnorm; tput rmcup' EXIT RETURN
 }
 finish_live_installation(){
@@ -4084,7 +4083,7 @@ apply_common_template_vars "./templates/environment") \
 show_progress $! "Modifying template files"
 }
 configure_base_system(){
-local -a copy_pids=()
+(local -a copy_pids=()
 remote_copy "templates/hosts" "/etc/hosts" >/dev/null 2>&1&
 copy_pids+=($!)
 remote_copy "templates/interfaces" "/etc/network/interfaces" >/dev/null 2>&1&
@@ -4097,17 +4096,11 @@ remote_copy "templates/proxmox.sources" "/etc/apt/sources.list.d/proxmox.sources
 copy_pids+=($!)
 remote_copy "templates/resolv.conf" "/etc/resolv.conf" >/dev/null 2>&1&
 copy_pids+=($!)
-local exit_code=0
 for pid in "${copy_pids[@]}";do
-wait "$pid"||exit_code=1
-done
-if [[ $exit_code -eq 0 ]];then
-printf '\r\e[K%s✓ Configuration files copied%s\n' "$CLR_CYAN" "$CLR_RESET"
-else
-printf '\r\e[K%s✗ Copying configuration files%s\n' "$CLR_RED" "$CLR_RESET"
-log "ERROR: Failed to copy some configuration files"
-return 1
-fi
+wait "$pid"||exit 1
+done) > \
+/dev/null 2>&1&
+show_progress $! "Copying configuration files" "Configuration files copied"
 (remote_exec "[ -f /etc/apt/sources.list ] && mv /etc/apt/sources.list /etc/apt/sources.list.bak"||exit 1
 remote_exec "echo '$PVE_HOSTNAME' > /etc/hostname"||exit 1
 remote_exec "systemctl disable --now rpcbind rpcbind.socket 2>/dev/null"||true) > \
@@ -4194,7 +4187,7 @@ remote_exec "chsh -s /bin/zsh root"||exit 1) > \
 /dev/null 2>&1&
 show_progress $! "Configuring ZSH" "ZSH with Powerlevel10k configured"
 else
-print_success "Default shell:" "Bash"
+add_log "$CLR_GRAY├─$CLR_RESET Default shell: Bash $CLR_CYAN✓$CLR_RESET"
 fi
 }
 configure_system_services(){
@@ -4288,10 +4281,8 @@ fi
 else
 TAILSCALE_IP="not authenticated"
 TAILSCALE_HOSTNAME=""
-print_warning "Tailscale installed but not authenticated."
-print_info "After reboot, run these commands to enable SSH and Web UI:"
-print_info "  tailscale up --ssh"
-print_info "  tailscale serve --bg --https=443 https://127.0.0.1:8006"
+add_log "$CLR_GRAY├─$CLR_RESET $CLR_YELLOW⚠️$CLR_RESET Tailscale installed but not authenticated"
+add_log "$CLR_GRAY│$CLR_RESET   ${CLR_GRAY}After reboot: tailscale up --ssh$CLR_RESET"
 fi
 }
 _generate_port_rules(){
@@ -4452,7 +4443,6 @@ show_progress $! "Configuring nftables firewall" "Firewall configured ($mode_dis
 local exit_code=$?
 if [[ $exit_code -ne 0 ]];then
 log "WARNING: Firewall setup failed"
-print_warning "Firewall setup failed - continuing without it"
 return 0
 fi
 }
@@ -4618,7 +4608,6 @@ show_progress $! "Configuring netdata" "netdata configured"
 local exit_code=$?
 if [[ $exit_code -ne 0 ]];then
 log "WARNING: netdata setup failed"
-print_warning "netdata setup failed - continuing without it"
 return 0
 fi
 }
@@ -4653,7 +4642,6 @@ show_progress $! "Installing and configuring yazi" "Yazi configured"
 local exit_code=$?
 if [[ $exit_code -ne 0 ]];then
 log "WARNING: Yazi setup failed"
-print_warning "Yazi setup failed - continuing without it"
 return 0
 fi
 }
@@ -4728,7 +4716,6 @@ local output
 output=$(remote_exec "pveum user token add root@pam $API_TOKEN_NAME --privsep 0 --expire 0 --output-format json 2>&1"||true)
 if [[ -z $output ]];then
 log "ERROR: Failed to create API token - empty output"
-print_warning "API token creation failed - continuing without it"
 return 1
 fi
 local json_output
@@ -4738,7 +4725,6 @@ token_value=$(echo "$json_output"|jq -r '.value // empty' 2>/dev/null||true)
 if [[ -z $token_value ]];then
 log "ERROR: Failed to extract token value from pveum output"
 log "DEBUG: pveum output: $output"
-print_warning "API token creation failed - continuing without it"
 return 1
 fi
 API_TOKEN_VALUE="$token_value"
