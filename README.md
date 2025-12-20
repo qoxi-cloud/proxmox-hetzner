@@ -1,9 +1,8 @@
-# Proxmox on Hetzner Without Console Access
+# Qoxi - Proxmox Automated Installer
 
 <div align="center">
   <img src="https://github.com/qoxi-cloud/proxmox-installer/raw/main/icons/proxmox.png" alt="Proxmox" height="64" />
-  <img src="https://github.com/qoxi-cloud/proxmox-installer/raw/main/icons/hetzner.png" alt="Hetzner" height="50" />
-  <h3>Automated Installation for Hetzner Dedicated Servers</h3>
+  <h3>Automated Proxmox VE Installation for Dedicated Servers</h3>
 
   ![Version](https://img.shields.io/endpoint?url=https://qoxi-cloud.github.io/proxmox-installer/version.json&style=for-the-badge)
   ![Tests](https://img.shields.io/github/actions/workflow/status/qoxi-cloud/proxmox-installer/test.yml?style=for-the-badge&logo=github&label=tests)
@@ -15,7 +14,7 @@
 
 ## Overview
 
-Automated Proxmox VE installer for Hetzner dedicated servers **without console access**. Runs in Hetzner Rescue System.
+Automated Proxmox VE installer for dedicated servers **without console access**. Runs in any Linux rescue environment with KVM support.
 
 ### Features
 
@@ -33,7 +32,7 @@ Automated Proxmox VE installer for Hetzner dedicated servers **without console a
 - Optional Tailscale VPN integration
 - Stealth firewall mode (blocks all incoming on public IP when Tailscale is enabled)
 
-**Compatible:** [AX](https://www.hetzner.com/dedicated-rootserver/matrix-ax), [EX](https://www.hetzner.com/dedicated-rootserver/matrix-ex), [SX](https://www.hetzner.com/dedicated-rootserver/matrix-sx) series servers
+**Compatible:** Any dedicated server with KVM-enabled rescue system (Hetzner, OVH, Scaleway, etc.)
 
 ## Time Savings
 
@@ -54,7 +53,7 @@ One command replaces hours of manual configuration with battle-tested defaults.
 
 ## Quick Start
 
-1. Boot server into **Rescue Mode** (Hetzner Robot → Rescue → Linux 64-bit → Reset)
+1. Boot server into **Rescue Mode** (Linux 64-bit with KVM support)
 2. SSH to the rescue system
 3. Run: `bash <(curl -sSL https://qoxi-cloud.github.io/proxmox-installer/pve-install.min.sh)`
 4. Access Proxmox: `https://YOUR-IP:8006`
