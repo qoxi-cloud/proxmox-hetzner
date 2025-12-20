@@ -71,8 +71,8 @@ jobs:
               // Filter for expected CI checks. If workflow names change, update these filters
               // and the error message below (line 115) to match new check names.
               return checks.check_runs.filter(check =>
-                check.name === 'build-pr' ||
-                check.name === 'shellcheck' ||  // lint / shellcheck
+                check.name === 'build' ||        // build workflow (handles both push and PR)
+                check.name === 'shellcheck' ||   // lint / shellcheck
                 check.name === 'shfmt' ||        // lint / shfmt
                 check.name === 'commits'         // lint / commits
               );
