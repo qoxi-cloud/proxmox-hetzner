@@ -65,6 +65,13 @@ _edit_pool_disks() {
   while true; do
     _wiz_start_edit
 
+    _wiz_description \
+      "Select disks for ZFS storage pool:" \
+      "" \
+      "  These disks will store VMs, containers, and data." \
+      "  RAID level is auto-selected based on disk count." \
+      ""
+
     # Build options (exclude boot if set) and preselected items
     local options=""
     local preselected=()

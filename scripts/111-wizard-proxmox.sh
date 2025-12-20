@@ -7,6 +7,12 @@
 _edit_iso_version() {
   _wiz_start_edit
 
+  _wiz_description \
+    "Proxmox VE version to install:" \
+    "" \
+    "  Latest version recommended for new installations." \
+    ""
+
   # Get available ISO versions (last 5, uses cached data from prefetch)
   local iso_list
   iso_list=$(get_available_proxmox_isos 5)
