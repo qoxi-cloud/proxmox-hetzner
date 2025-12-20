@@ -16,7 +16,7 @@ readonly HEX_ORANGE="#ff8700"
 readonly HEX_GRAY="#585858"
 readonly HEX_GOLD="#d7af5f"
 readonly HEX_NONE="7"
-readonly VERSION="2.0.384-pr.21"
+readonly VERSION="2.0.385-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-installer}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -2567,7 +2567,8 @@ selected=$(echo "$WIZ_TIMEZONES"|gum filter \
 --prompt "Timezone: " \
 --prompt.foreground "$HEX_CYAN" \
 --indicator.foreground "$HEX_ORANGE" \
---match.foreground "$HEX_GOLD")
+--match.foreground "$HEX_GOLD" \
+--text.foreground "$HEX_GOLD")
 if [[ -n $selected ]];then
 TIMEZONE="$selected"
 local country_code="${TZ_TO_COUNTRY[$selected]:-}"
@@ -2589,7 +2590,8 @@ selected=$(echo "$WIZ_KEYBOARD_LAYOUTS"|gum filter \
 --prompt "Keyboard: " \
 --prompt.foreground "$HEX_CYAN" \
 --indicator.foreground "$HEX_ORANGE" \
---match.foreground "$HEX_GOLD")
+--match.foreground "$HEX_GOLD" \
+--text.foreground "$HEX_GOLD")
 if [[ -n $selected ]];then
 KEYBOARD="$selected"
 fi
@@ -2606,7 +2608,8 @@ selected=$(echo "$WIZ_COUNTRIES"|gum filter \
 --prompt "Country: " \
 --prompt.foreground "$HEX_CYAN" \
 --indicator.foreground "$HEX_ORANGE" \
---match.foreground "$HEX_GOLD")
+--match.foreground "$HEX_GOLD" \
+--text.foreground "$HEX_GOLD")
 if [[ -n $selected ]];then
 COUNTRY="$selected"
 _update_locale_from_country
