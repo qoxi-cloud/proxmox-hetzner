@@ -8,21 +8,18 @@
 #   $1 - Label or full message
 #   $2 - Optional value (highlighted in cyan)
 print_success() {
-  local msg
   if [[ $# -eq 2 ]]; then
-    msg="${CLR_CYAN}✓${CLR_RESET} $1 ${CLR_CYAN}$2${CLR_RESET}"
+    echo "${CLR_CYAN}✓${CLR_RESET} $1 ${CLR_CYAN}$2${CLR_RESET}"
   else
-    msg="${CLR_CYAN}✓${CLR_RESET} $1"
+    echo "${CLR_CYAN}✓${CLR_RESET} $1"
   fi
-  add_log "${CLR_GRAY}├─${CLR_RESET} $msg"
 }
 
 # Prints error message with red cross icon.
 # Parameters:
 #   $1 - Error message to display
 print_error() {
-  local msg="${CLR_RED}✗${CLR_RESET} $1"
-  add_log "${CLR_GRAY}├─${CLR_RESET} $msg"
+  echo "${CLR_RED}✗${CLR_RESET} $1"
 }
 
 # Prints warning message with yellow warning icon.
@@ -33,28 +30,23 @@ print_warning() {
   local message="$1"
   local second="${2:-false}"
   local indent=""
-  local msg
 
   # Check if second argument is a value (not "true" for nested)
   if [[ $# -eq 2 && $second != "true" ]]; then
-    # Two-argument format: label and value
-    msg="${CLR_YELLOW}⚠️${CLR_RESET} $message ${CLR_CYAN}$second${CLR_RESET}"
+    echo "${CLR_YELLOW}⚠️${CLR_RESET} $message ${CLR_CYAN}$second${CLR_RESET}"
   else
-    # Original format: message with optional nested indent
     if [[ $second == "true" ]]; then
       indent="  "
     fi
-    msg="${indent}${CLR_YELLOW}⚠️${CLR_RESET} $message"
+    echo "${indent}${CLR_YELLOW}⚠️${CLR_RESET} $message"
   fi
-  add_log "${CLR_GRAY}├─${CLR_RESET} $msg"
 }
 
 # Prints informational message with cyan info symbol.
 # Parameters:
 #   $1 - Informational message to display
 print_info() {
-  local msg="${CLR_CYAN}ℹ${CLR_RESET} $1"
-  add_log "${CLR_GRAY}├─${CLR_RESET} $msg"
+  echo "${CLR_CYAN}ℹ${CLR_RESET} $1"
 }
 
 # Prints section header in cyan bold.
