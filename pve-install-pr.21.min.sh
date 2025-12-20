@@ -16,7 +16,7 @@ readonly HEX_ORANGE="#ff8700"
 readonly HEX_GRAY="#585858"
 readonly HEX_WHITE="#ffffff"
 readonly HEX_NONE="7"
-readonly VERSION="2.0.371-pr.21"
+readonly VERSION="2.0.372-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-installer}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -4296,7 +4296,8 @@ remote_exec "chmod +x /etc/profile.d/fastfetch.sh"||exit 1
 remote_exec "grep -q 'profile.d/fastfetch.sh' /etc/bash.bashrc || echo '[ -f /etc/profile.d/fastfetch.sh ] && . /etc/profile.d/fastfetch.sh' >> /etc/bash.bashrc"||exit 1) > \
 /dev/null 2>&1&
 show_progress $! "Configuring fastfetch" "Fastfetch configured"
-(remote_exec "mkdir -p /root/.config/bat"||exit 1
+(remote_exec "ln -sf /usr/bin/batcat /usr/local/bin/bat"||exit 1
+remote_exec "mkdir -p /root/.config/bat"||exit 1
 remote_copy "templates/bat-config" "/root/.config/bat/config"||exit 1) > \
 /dev/null 2>&1&
 show_progress $! "Configuring bat" "Bat configured"
