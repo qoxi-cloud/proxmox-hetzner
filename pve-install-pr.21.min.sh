@@ -17,7 +17,7 @@ readonly HEX_ORANGE="#ff8700"
 readonly HEX_GRAY="#585858"
 readonly HEX_WHITE="#ffffff"
 readonly HEX_NONE="7"
-readonly VERSION="2.0.333-pr.21"
+readonly VERSION="2.0.334-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -88,11 +88,6 @@ readonly WIZ_SSL_TYPES="Self-signed
 Let's Encrypt"
 readonly WIZ_SHELL_OPTIONS="ZSH
 Bash"
-readonly WIZ_CPU_GOVERNORS="Performance
-Balanced
-Power saving
-Adaptive
-Conservative"
 readonly WIZ_FIREWALL_MODES="Stealth (Tailscale only)
 Strict (SSH only)
 Standard (SSH + Web UI)
@@ -914,18 +909,20 @@ _wiz_error "$message"
 sleep 3
 }
 install_base_packages(){
-local packages="$SYSTEM_UTILITIES $OPTIONAL_PACKAGES locales chrony unattended-upgrades apt-listchanges cpufrequtils"
+local packages="$SYSTEM_UTILITIES $OPTIONAL_PACKAGES locales chrony unattended-upgrades apt-listchanges linux-cpupower"
 if [[ ${SHELL_TYPE:-bash} == "zsh" ]];then
 packages="$packages zsh git curl"
 fi
 log "Installing base packages: $packages"
 run_remote "Installing system packages" "
+    set -e
     export DEBIAN_FRONTEND=noninteractive
     apt-get update -qq
     apt-get dist-upgrade -yqq
     apt-get install -yqq $packages
     apt-get autoremove -yqq
     apt-get clean
+    set +e
     pveupgrade 2>/dev/null || true
     pveam update 2>/dev/null || true
   " "System packages installed"
@@ -969,6 +966,7 @@ repo_setup+='
     '
 fi
 (remote_exec '
+      set -e
       export DEBIAN_FRONTEND=noninteractive
       '"$repo_setup"'
       apt-get update -qq
@@ -2163,8 +2161,7 @@ _DSP_POWER=""
 if [[ -n $CPU_GOVERNOR ]];then
 case "$CPU_GOVERNOR" in
 performance)_DSP_POWER="Performance";;
-ondemand)_DSP_POWER="Balanced";;
-powersave)_DSP_POWER="Power saving";;
+ondemand|powersave)_DSP_POWER="Balanced";;
 schedutil)_DSP_POWER="Adaptive";;
 conservative)_DSP_POWER="Conservative";;
 *)_DSP_POWER="$CPU_GOVERNOR"
@@ -2984,24 +2981,59 @@ fi
 }
 _edit_power_profile(){
 _wiz_start_edit
+local avail_governors=""
+if [[ -f /sys/devices/system/cpu/cpu0/cpufreq/scaling_available_governors ]];then
+avail_governors=$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_available_governors)
+fi
+local options=()
+local descriptions=()
+if [[ -z $avail_governors ]]||echo "$avail_governors"|grep -qw "performance";then
+options+=("Performance")
+descriptions+=("  {{cyan:Performance}}:  Max frequency (highest power)")
+fi
+if echo "$avail_governors"|grep -qw "ondemand";then
+options+=("Balanced")
+descriptions+=("  {{cyan:Balanced}}:     Scale based on load")
+elif echo "$avail_governors"|grep -qw "powersave";then
+options+=("Balanced")
+descriptions+=("  {{cyan:Balanced}}:     Dynamic scaling (power efficient)")
+fi
+if echo "$avail_governors"|grep -qw "schedutil";then
+options+=("Adaptive")
+descriptions+=("  {{cyan:Adaptive}}:     Kernel-managed scaling")
+fi
+if echo "$avail_governors"|grep -qw "conservative";then
+options+=("Conservative")
+descriptions+=("  {{cyan:Conservative}}: Gradual frequency changes")
+fi
+if [[ ${#options[@]} -eq 0 ]];then
+options=("Performance" "Balanced")
+descriptions=(
+"  {{cyan:Performance}}:  Max frequency (highest power)"
+"  {{cyan:Balanced}}:     Dynamic scaling (power efficient)")
+fi
 _wiz_description \
 "CPU frequency scaling governor:" \
 "" \
-"  {{cyan:Performance}}:  Max frequency always (highest power)" \
-"  {{cyan:Balanced}}:     Scale based on load (ondemand)" \
-"  {{cyan:Adaptive}}:     Kernel-managed scaling (schedutil)" \
-"  {{cyan:Power saving}}: Prefer low frequency (powersave)" \
-"  {{cyan:Conservative}}: Gradual frequency changes" \
+"${descriptions[@]}" \
 ""
-_show_input_footer "filter" 6
+_show_input_footer "filter" $((${#options[@]}+1))
+local options_str
+options_str=$(printf '%s\n' "${options[@]}")
 local selected
-selected=$(echo "$WIZ_CPU_GOVERNORS"|_wiz_choose \
+selected=$(echo "$options_str"|_wiz_choose \
 --header="Power profile:")
 if [[ -n $selected ]];then
 case "$selected" in
 "Performance")CPU_GOVERNOR="performance";;
-"Balanced")CPU_GOVERNOR="ondemand";;
-"Power saving")CPU_GOVERNOR="powersave";;
+"Balanced")if
+echo "$avail_governors"|grep -qw "ondemand"
+then
+CPU_GOVERNOR="ondemand"
+else
+CPU_GOVERNOR="powersave"
+fi
+;;
 "Adaptive")CPU_GOVERNOR="schedutil";;
 "Conservative")CPU_GOVERNOR="conservative"
 esac
@@ -4004,7 +4036,7 @@ local -a template_list=(
 "./templates/chrony:chrony"
 "./templates/50unattended-upgrades:50unattended-upgrades"
 "./templates/20auto-upgrades:20auto-upgrades"
-"./templates/cpufrequtils:cpufrequtils"
+"./templates/cpupower.service:cpupower.service"
 "./templates/60-io-scheduler.rules:60-io-scheduler.rules"
 "./templates/remove-subscription-nag.sh:remove-subscription-nag.sh"
 "./templates/configure-zfs-arc.sh:configure-zfs-arc.sh"
@@ -4044,7 +4076,7 @@ fi
 apply_common_template_vars "./templates/interfaces"
 postprocess_interfaces_ipv6 "./templates/interfaces"
 apply_common_template_vars "./templates/resolv.conf"
-apply_template_vars "./templates/cpufrequtils" "CPU_GOVERNOR=${CPU_GOVERNOR:-performance}"
+apply_template_vars "./templates/cpupower.service" "CPU_GOVERNOR=${CPU_GOVERNOR:-performance}"
 apply_common_template_vars "./templates/locale.sh"
 apply_common_template_vars "./templates/default-locale"
 apply_common_template_vars "./templates/environment") \
@@ -4182,15 +4214,11 @@ run_remote "Configuring nf_conntrack" '
         fi
     ' "nf_conntrack configured"
 local governor="${CPU_GOVERNOR:-performance}"
-(remote_copy "templates/cpufrequtils" "/tmp/cpufrequtils"||exit 1
+(remote_copy "templates/cpupower.service" "/etc/systemd/system/cpupower.service"||exit 1
 remote_exec "
-            mv /tmp/cpufrequtils /etc/default/cpufrequtils
-            systemctl enable cpufrequtils 2>/dev/null || true
-            if [ -d /sys/devices/system/cpu/cpu0/cpufreq ]; then
-                for cpu in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do
-                    [ -f \"\$cpu\" ] && echo '$governor' > \"\$cpu\" 2>/dev/null || true
-                done
-            fi
+            systemctl daemon-reload
+            systemctl enable cpupower.service
+            cpupower frequency-set -g '$governor' 2>/dev/null || true
         "||exit 1) > \
 /dev/null 2>&1&
 show_progress $! "Configuring CPU governor ($governor)" "CPU governor configured"
@@ -4596,6 +4624,7 @@ fi
 }
 _install_yazi(){
 run_remote "Installing yazi" '
+    set -e
     # Get latest yazi version and download
     YAZI_VERSION=$(curl -s https://api.github.com/repos/sxyazi/yazi/releases/latest | grep "tag_name" | cut -d "\"" -f 4 | sed "s/^v//")
     curl -sL "https://github.com/sxyazi/yazi/releases/download/v${YAZI_VERSION}/yazi-x86_64-unknown-linux-gnu.zip" -o /tmp/yazi.zip
@@ -4667,6 +4696,7 @@ log "ERROR: Failed to copy letsencrypt-firstboot.service"
 exit 1
 fi
 run_remote "Configuring Let's Encrypt templates" '
+        set -e
         mkdir -p /etc/letsencrypt/renewal-hooks/deploy
 
         # Install deploy hook for renewals
