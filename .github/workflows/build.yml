@@ -79,24 +79,12 @@ jobs:
             sed -i "s|^GITHUB_REPO=\"\${GITHUB_REPO:-[^}]*}\"|GITHUB_REPO=\"\${GITHUB_REPO:-${PR_REPO}}\"|" pve-install.sh
           fi
 
-      - name: Install shfmt
-        run: |
-          curl -sS https://webi.sh/shfmt | sh
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
+      - name: Setup shfmt
+        uses: mfinelli/setup-shfmt@v3
 
-      - name: Minify script with shfmt
+      - name: Minify script
         run: |
-          # Minify: -mn removes comments and minimizes whitespace
           shfmt -mn pve-install.sh > pve-install.min.sh
-
-          # Show size reduction
-          ORIGINAL_SIZE=$(wc -c < pve-install.sh)
-          MINIFIED_SIZE=$(wc -c < pve-install.min.sh)
-          REDUCTION=$((100 - (MINIFIED_SIZE * 100 / ORIGINAL_SIZE)))
-          echo "Original: ${ORIGINAL_SIZE} bytes"
-          echo "Minified: ${MINIFIED_SIZE} bytes"
-          echo "Reduction: ${REDUCTION}%"
-
           chmod +x pve-install.min.sh
 
       - name: Upload build artifact
@@ -174,24 +162,12 @@ jobs:
 
           chmod +x pve-install.sh
 
-      - name: Install shfmt
-        run: |
-          curl -sS https://webi.sh/shfmt | sh
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
+      - name: Setup shfmt
+        uses: mfinelli/setup-shfmt@v3
 
-      - name: Minify script with shfmt
+      - name: Minify script
         run: |
-          # Minify: -mn removes comments and minimizes whitespace
           shfmt -mn pve-install.sh > pve-install.min.sh
-
-          # Show size reduction
-          ORIGINAL_SIZE=$(wc -c < pve-install.sh)
-          MINIFIED_SIZE=$(wc -c < pve-install.min.sh)
-          REDUCTION=$((100 - (MINIFIED_SIZE * 100 / ORIGINAL_SIZE)))
-          echo "Original: ${ORIGINAL_SIZE} bytes"
-          echo "Minified: ${MINIFIED_SIZE} bytes"
-          echo "Reduction: ${REDUCTION}%"
-
           chmod +x pve-install.min.sh
 
       - name: Upload build artifact
