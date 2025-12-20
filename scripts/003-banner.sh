@@ -18,6 +18,12 @@ _BANNER_PAD="        "
 # Usage: show_banner
 show_banner() {
   local p="$_BANNER_PAD"
+  local tagline="${CLR_CYAN}Qoxi ${CLR_GRAY}Automated Installer v${VERSION}${CLR_RESET}"
+  # Banner width = 51, center the tagline
+  local text="Qoxi Automated Installer v${VERSION}"
+  local pad=$(((51 - ${#text}) / 2))
+  local spaces
+  printf -v spaces '%*s' "$pad" ''
   printf '%s\n' \
     "${p}${CLR_GRAY} _____                                             ${CLR_RESET}" \
     "${p}${CLR_GRAY}|  __ \\                                            ${CLR_RESET}" \
@@ -26,7 +32,7 @@ show_banner() {
     "${p}${CLR_GRAY}| |     | |   | (_) |${CLR_ORANGE} >  <${CLR_GRAY}  | | | | | || (_) |${CLR_ORANGE} >  <${CLR_RESET}" \
     "${p}${CLR_GRAY}|_|     |_|    \\___/ ${CLR_ORANGE}/_/\\_\\${CLR_GRAY} |_| |_| |_| \\___/ ${CLR_ORANGE}/_/\\_\\${CLR_RESET}" \
     "" \
-    "${p}${CLR_HETZNER}            Hetzner ${CLR_GRAY}Automated Installer${CLR_RESET}"
+    "${p}${spaces}${tagline}"
 }
 
 # Displays animated banner with highlighted letter.
@@ -94,8 +100,12 @@ _show_banner_frame() {
   [[ $h -eq 6 ]] && line6+=" ${A}/_/\\_\\${M}" || line6+=' /_/\_\'
   line6+="${R}"
 
-  # Hetzner line
-  local line_hetzner="${p}${CLR_HETZNER}            Hetzner ${M}Automated Installer${R}"
+  # Tagline (centered)
+  local text="Qoxi Automated Installer v${VERSION}"
+  local pad=$(((51 - ${#text}) / 2))
+  local spaces
+  printf -v spaces '%*s' "$pad" ''
+  local line_tagline="${p}${spaces}${CLR_CYAN}Qoxi ${M}Automated Installer v${VERSION}${R}"
 
   # Output all lines atomically to prevent interference
   # Build the entire frame first, then output it all at once
@@ -107,7 +117,7 @@ _show_banner_frame() {
     "$line4" \
     "$line5" \
     "$line6" \
-    "$line_hetzner")
+    "$line_tagline")
 
   # Output the entire frame at once
   printf '%s' "$frame"

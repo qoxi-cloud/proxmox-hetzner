@@ -113,7 +113,7 @@ reboot_to_main_os() {
 # =============================================================================
 
 log "=========================================="
-log "Proxmox VE Automated Installer v${VERSION}"
+log "Qoxi Automated Installer v${VERSION}"
 log "=========================================="
 log "QEMU_RAM_OVERRIDE=$QEMU_RAM_OVERRIDE"
 log "QEMU_CORES_OVERRIDE=$QEMU_CORES_OVERRIDE"

@@ -7,7 +7,7 @@
 # Prints to stdout and exits with code 0.
 show_help() {
   cat <<EOF
-Proxmox VE Automated Installer for Hetzner v${VERSION}
+Qoxi Automated Installer v${VERSION}
 
 Usage: $0 [OPTIONS]
 
