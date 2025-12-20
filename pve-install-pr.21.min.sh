@@ -17,7 +17,7 @@ readonly HEX_ORANGE="#ff8700"
 readonly HEX_GRAY="#585858"
 readonly HEX_WHITE="#ffffff"
 readonly HEX_NONE="7"
-readonly VERSION="2.0.361-pr.21"
+readonly VERSION="2.0.362-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-installer}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -3444,7 +3444,7 @@ _CHECKSUM_CACHE=$(curl -s "$PROXMOX_CHECKSUM_URL" 2>/dev/null)||true
 }
 get_available_proxmox_isos(){
 local count="${1:-5}"
-echo "$_ISO_LIST_CACHE"|grep -E '^proxmox-ve_[9-9][0-9]*\.'|tail -n "$count"|tac
+echo "$_ISO_LIST_CACHE"|grep -E '^proxmox-ve_(9|[1-9][0-9]+)\.'|tail -n "$count"|tac
 }
 get_proxmox_iso_url(){
 local iso_filename="$1"
