@@ -1,7 +1,5 @@
-name: format
+name: lint
 
-# Runs on every commit to PRs (pull_request trigger covers this)
-# Direct pushes to main are not checked as all changes must go through PRs
 on:
   pull_request:
     branches:
@@ -9,7 +7,17 @@ on:
   workflow_dispatch:
 
 jobs:
-  format:
+  shellcheck:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Lint with ShellCheck
+        run: shellcheck scripts/*.sh
+
+  shfmt:
     runs-on: ubuntu-latest
 
     steps:
@@ -21,12 +29,10 @@ jobs:
           curl -sS https://webi.sh/shfmt | sh
           echo "$HOME/.local/bin" >> $GITHUB_PATH
 
-      - name: Check formatting with shfmt
+      - name: Check formatting
         run: |
-          # Check if scripts are properly formatted (uses .editorconfig)
           if ! shfmt -d scripts/*.sh; then
             echo ""
             echo "::error::Scripts are not properly formatted. Run: shfmt -w scripts/*.sh"
             exit 1
           fi
-          echo "✓ All scripts are properly formatted"
