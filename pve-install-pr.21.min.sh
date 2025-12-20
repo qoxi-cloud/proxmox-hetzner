@@ -16,7 +16,7 @@ readonly HEX_ORANGE="#ff8700"
 readonly HEX_GRAY="#585858"
 readonly HEX_GOLD="#d7af5f"
 readonly HEX_NONE="7"
-readonly VERSION="2.0.382-pr.21"
+readonly VERSION="2.0.383-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-installer}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -2107,6 +2107,7 @@ gum choose \
 --header.foreground "$HEX_CYAN" \
 --cursor "$CLR_ORANGE›$CLR_RESET " \
 --cursor.foreground "$HEX_NONE" \
+--item.foreground "$HEX_GOLD" \
 --selected.foreground "$HEX_GOLD" \
 --no-show-help \
 "$@"
@@ -2115,6 +2116,7 @@ _wiz_input(){
 gum input \
 --prompt.foreground "$HEX_CYAN" \
 --cursor.foreground "$HEX_ORANGE" \
+--text.foreground "$HEX_GOLD" \
 --no-show-help \
 "$@"
 }
@@ -2566,7 +2568,8 @@ selected=$(echo "$WIZ_TIMEZONES"|gum filter \
 --prompt "Timezone: " \
 --prompt.foreground "$HEX_CYAN" \
 --indicator.foreground "$HEX_ORANGE" \
---match.foreground "$HEX_ORANGE")
+--match.foreground "$HEX_ORANGE" \
+--text.foreground "$HEX_GOLD")
 if [[ -n $selected ]];then
 TIMEZONE="$selected"
 local country_code="${TZ_TO_COUNTRY[$selected]:-}"
@@ -2588,7 +2591,8 @@ selected=$(echo "$WIZ_KEYBOARD_LAYOUTS"|gum filter \
 --prompt "Keyboard: " \
 --prompt.foreground "$HEX_CYAN" \
 --indicator.foreground "$HEX_ORANGE" \
---match.foreground "$HEX_ORANGE")
+--match.foreground "$HEX_ORANGE" \
+--text.foreground "$HEX_GOLD")
 if [[ -n $selected ]];then
 KEYBOARD="$selected"
 fi
@@ -2605,7 +2609,8 @@ selected=$(echo "$WIZ_COUNTRIES"|gum filter \
 --prompt "Country: " \
 --prompt.foreground "$HEX_CYAN" \
 --indicator.foreground "$HEX_ORANGE" \
---match.foreground "$HEX_ORANGE")
+--match.foreground "$HEX_ORANGE" \
+--text.foreground "$HEX_GOLD")
 if [[ -n $selected ]];then
 COUNTRY="$selected"
 _update_locale_from_country
@@ -5217,9 +5222,9 @@ if gum confirm "Reboot the system now?" \
 --affirmative "Yes" \
 --negative "No" \
 --default=true \
---prompt.foreground "#ff8700" \
---selected.background "#ff8700" \
---unselected.foreground "#585858";then
+--prompt.foreground "$HEX_ORANGE" \
+--selected.background "$HEX_ORANGE" \
+--unselected.foreground "$HEX_GOLD";then
 print_info "Rebooting the system..."
 if ! reboot;then
 log "ERROR: Failed to reboot - system may require manual restart"
