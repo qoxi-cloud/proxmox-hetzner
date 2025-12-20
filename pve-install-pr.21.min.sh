@@ -17,7 +17,7 @@ readonly HEX_GRAY="#585858"
 readonly HEX_WHITE="#ffffff"
 readonly HEX_GOLD="#d7af5f"
 readonly HEX_NONE="7"
-readonly VERSION="2.0.394-pr.21"
+readonly VERSION="2.0.395-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-installer}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -4324,7 +4324,7 @@ remote_exec "chsh -s /bin/zsh root"||exit 1) > \
 /dev/null 2>&1&
 show_progress $! "Configuring ZSH" "ZSH with Powerlevel10k configured"
 else
-add_log "$CLR_GRAY├─$CLR_RESET Default shell: Bash $CLR_CYAN✓$CLR_RESET"
+add_log "$CLR_ORANGE├─$CLR_RESET Default shell: Bash $CLR_CYAN✓$CLR_RESET"
 fi
 }
 configure_system_services(){
@@ -4398,7 +4398,7 @@ echo "$hostname" >"$tmp_hostname"
 show_progress $! "Authenticating Tailscale"
 TAILSCALE_IP=$(cat "$tmp_ip" 2>/dev/null||echo "pending")
 TAILSCALE_HOSTNAME=$(cat "$tmp_hostname" 2>/dev/null||echo "")
-LOG_LINES[TASK_INDEX]="$CLR_GRAY├─$CLR_RESET Tailscale authenticated. IP: $TAILSCALE_IP $CLR_CYAN✓$CLR_RESET"
+LOG_LINES[TASK_INDEX]="$CLR_ORANGE├─$CLR_RESET Tailscale authenticated. IP: $TAILSCALE_IP $CLR_CYAN✓$CLR_RESET"
 render_logs
 if [[ $TAILSCALE_WEBUI == "yes" ]];then
 remote_exec "tailscale serve --bg --https=443 https://127.0.0.1:8006" >/dev/null 2>&1&
@@ -4419,8 +4419,8 @@ fi
 else
 TAILSCALE_IP="not authenticated"
 TAILSCALE_HOSTNAME=""
-add_log "$CLR_GRAY├─$CLR_RESET $CLR_YELLOW⚠️$CLR_RESET Tailscale installed but not authenticated"
-add_log "$CLR_GRAY│$CLR_RESET   ${CLR_GRAY}After reboot: tailscale up --ssh$CLR_RESET"
+add_log "$CLR_ORANGE├─$CLR_RESET $CLR_YELLOW⚠️$CLR_RESET Tailscale installed but not authenticated"
+add_log "$CLR_ORANGE│$CLR_RESET   ${CLR_GRAY}After reboot: tailscale up --ssh$CLR_RESET"
 fi
 }
 _generate_port_rules(){
