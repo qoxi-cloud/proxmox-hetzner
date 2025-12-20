@@ -2,13 +2,13 @@ name: deploy-pr
 
 on:
   workflow_run:
-    workflows: ["build"]
+    workflows: ["build-pr"]
     types:
       - completed
   workflow_dispatch:
     inputs:
       run_id:
-        description: 'build workflow run ID to deploy'
+        description: 'build-pr workflow run ID to deploy'
         required: true
         type: string
 
@@ -87,7 +87,7 @@ jobs:
           PR_NUMBER=$(cat /tmp/pr-metadata/pr_number)
           PR_BRANCH=$(cat /tmp/pr-metadata/pr_branch)
           PR_REPO=$(cat /tmp/pr-metadata/pr_repo)
-          VERSION=$(grep 'readonly VERSION=' /tmp/build/pve-install.min.sh | head -1 | sed 's/.*VERSION="//;s/"//')
+          VERSION=$(grep '^VERSION=' /tmp/build/pve-install.min.sh | head -1 | sed 's/VERSION="//;s/"//')
 
           echo "number=${PR_NUMBER}" >> $GITHUB_OUTPUT
           echo "branch=${PR_BRANCH}" >> $GITHUB_OUTPUT
@@ -148,28 +148,6 @@ jobs:
           git add "${FILENAME}"
           git commit -m "Deploy PR #${{ steps.pr.outputs.number }} test script" || echo "No changes to commit"
           git push origin gh-pages
-
-      - name: Wait for deployment to be available
-        run: |
-          SCRIPT_URL="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/${{ steps.pr.outputs.filename }}"
-
-          echo "Waiting for ${SCRIPT_URL} to be available..."
-
-          MAX_ATTEMPTS=90
-          ATTEMPT=0
-
-          while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
-            if curl -sSf -o /dev/null "${SCRIPT_URL}"; then
-              echo "✓ Script is available"
-              exit 0
-            fi
-
-            ATTEMPT=$((ATTEMPT + 1))
-            echo "Attempt ${ATTEMPT}/${MAX_ATTEMPTS} - waiting 2s..."
-            sleep 2
-          done
-
-          echo "::warning::Script not available after ${MAX_ATTEMPTS} attempts, proceeding anyway"
 
       - name: Comment on PR
         uses: actions/github-script@v7
