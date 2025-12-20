@@ -305,10 +305,7 @@ _wiz_build_display_values() {
   _DSP_IPV6=""
   if [[ -n $IPV6_MODE ]]; then
     case "$IPV6_MODE" in
-      auto)
-        _DSP_IPV6="Auto"
-        [[ -n $MAIN_IPV6 ]] && _DSP_IPV6+=" (${MAIN_IPV6})"
-        ;;
+      auto) _DSP_IPV6="Auto" ;;
       manual)
         _DSP_IPV6="Manual"
         [[ -n $MAIN_IPV6 ]] && _DSP_IPV6+=" (${MAIN_IPV6}, gw: ${IPV6_GATEWAY})"
