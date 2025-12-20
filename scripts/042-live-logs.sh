@@ -169,3 +169,11 @@ live_log_subtask() {
   local message="$1"
   add_subtask_log "$message"
 }
+
+# Log multiple items as subtasks
+# Usage: log_subtasks "${array[@]}" or log_subtasks $string
+log_subtasks() {
+  for item in "$@"; do
+    add_subtask_log "$item"
+  done
+}

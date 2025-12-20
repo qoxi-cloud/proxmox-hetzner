@@ -34,9 +34,7 @@ install_base_packages() {
 
   # Show installed packages as subtasks
   # shellcheck disable=SC2086
-  for pkg in $packages; do
-    add_subtask_log "$pkg"
-  done
+  log_subtasks $packages
 }
 
 # Collects packages needed by enabled features and installs them in one batch.
@@ -117,9 +115,7 @@ batch_install_packages() {
   fi
 
   # Show installed packages as subtasks
-  for pkg in "${packages[@]}"; do
-    add_subtask_log "$pkg"
-  done
+  log_subtasks "${packages[@]}"
 
   return 0
 }
