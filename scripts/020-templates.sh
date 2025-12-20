@@ -7,7 +7,7 @@
 # Parameters:
 #   $1 - File path to modify
 #   $@ - VAR=VALUE pairs for substitution (replaces {{VAR}} with VALUE)
-# Returns: 0 on success, 1 if file not found
+# Returns: 0 on success, 1 if file not found or critical variable empty
 apply_template_vars() {
   local file="$1"
   shift
@@ -19,16 +19,35 @@ apply_template_vars() {
 
   # Build sed command with all substitutions
   local sed_args=()
+  local has_empty_critical=false
 
   if [[ $# -gt 0 ]]; then
     # Use provided VAR=VALUE pairs
     for pair in "$@"; do
       local var="${pair%%=*}"
       local value="${pair#*=}"
-      # Escape special characters in value for sed
+
+      # Warn about empty values that will leave placeholders
+      if [[ -z $value ]]; then
+        log "WARNING: Template variable $var is empty for $file"
+        # Check if this placeholder exists in the file
+        if grep -qF "{{${var}}}" "$file" 2>/dev/null; then
+          log "WARNING: Placeholder {{${var}}} will remain in $file"
+          has_empty_critical=true
+        fi
+      fi
+
+      # Escape special characters in value for sed replacement
+      # - \ must be escaped first (before adding more backslashes)
+      # - & is replaced with matched pattern
+      # - | is our delimiter
+      # - newlines need special handling
       value="${value//\\/\\\\}"
       value="${value//&/\\&}"
       value="${value//|/\\|}"
+      # Handle newlines - replace with escaped newline for sed
+      value="${value//$'\n'/\\$'\n'}"
+
       sed_args+=(-e "s|{{${var}}}|${value}|g")
     done
   fi
@@ -36,6 +55,20 @@ apply_template_vars() {
   if [[ ${#sed_args[@]} -gt 0 ]]; then
     sed -i "${sed_args[@]}" "$file"
   fi
+
+  # Verify no unsubstituted placeholders remain
+  if grep -qE '\{\{[A-Z_]+\}\}' "$file" 2>/dev/null; then
+    local remaining
+    remaining=$(grep -oE '\{\{[A-Z_]+\}\}' "$file" 2>/dev/null | sort -u | tr '\n' ' ')
+    log "WARNING: Unsubstituted placeholders remain in $file: $remaining"
+  fi
+
+  # Return error if critical placeholders would remain
+  if [[ $has_empty_critical == true ]]; then
+    return 1
+  fi
+
+  return 0
 }
 
 # Applies common template variables to a file using global variables.

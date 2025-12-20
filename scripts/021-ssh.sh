@@ -55,20 +55,21 @@ _ssh_session_init() {
 }
 
 # Cleans up SSH session passfile securely.
-# Uses shred if available, otherwise overwrites with zeros.
+# Uses secure_delete_file if available, otherwise shred/dd fallback.
 _ssh_session_cleanup() {
   [[ -z $_SSH_SESSION_PASSFILE ]] && return 0
   [[ ! -f $_SSH_SESSION_PASSFILE ]] && return 0
 
-  if command -v shred &>/dev/null; then
+  # Use secure_delete_file if available (defined in 012-utils.sh)
+  if type secure_delete_file &>/dev/null; then
+    secure_delete_file "$_SSH_SESSION_PASSFILE"
+  elif command -v shred &>/dev/null; then
     shred -u -z "$_SSH_SESSION_PASSFILE" 2>/dev/null || rm -f "$_SSH_SESSION_PASSFILE"
   else
     # Fallback: overwrite with zeros
-    if command -v dd &>/dev/null; then
-      local file_size
-      file_size=$(stat -c%s "$_SSH_SESSION_PASSFILE" 2>/dev/null || echo 1024)
-      dd if=/dev/zero of="$_SSH_SESSION_PASSFILE" bs=1 count="$file_size" 2>/dev/null || true
-    fi
+    local file_size
+    file_size=$(stat -c%s "$_SSH_SESSION_PASSFILE" 2>/dev/null || echo 1024)
+    dd if=/dev/zero of="$_SSH_SESSION_PASSFILE" bs=1 count="$file_size" conv=notrunc 2>/dev/null || true
     rm -f "$_SSH_SESSION_PASSFILE"
   fi
 
