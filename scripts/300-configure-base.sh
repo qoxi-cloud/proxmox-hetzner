@@ -118,7 +118,9 @@ configure_base_system() {
   show_progress $! "Configuring fastfetch" "Fastfetch configured"
 
   # Configure bat with Visual Studio Dark+ theme
+  # Note: Debian packages bat as 'batcat', create symlink for 'bat' command
   (
+    remote_exec "ln -sf /usr/bin/batcat /usr/local/bin/bat" || exit 1
     remote_exec "mkdir -p /root/.config/bat" || exit 1
     remote_copy "templates/bat-config" "/root/.config/bat/config" || exit 1
   ) >/dev/null 2>&1 &
