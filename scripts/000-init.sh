@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Qoxi - Proxmox VE Automated Installer for Hetzner Dedicated Servers
+# Qoxi - Proxmox VE Automated Installer for Dedicated Servers
 # Note: NOT using set -e because it interferes with trap EXIT handler
 # All error handling is done explicitly with exit 1
 cd /root || exit 1

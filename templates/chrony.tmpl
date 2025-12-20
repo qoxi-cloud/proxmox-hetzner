@@ -1,15 +1,11 @@
 # Chrony configuration for Proxmox VE
 # NTP time synchronization
 
-# Use Hetzner NTP servers (if on Hetzner)
-server ntp1.hetzner.de iburst
-server ntp2.hetzner.com iburst
-server ntp3.hetzner.net iburst
-
-# Fallback to public NTP pools
+# Public NTP pools (geographically distributed)
 pool 0.debian.pool.ntp.org iburst
 pool 1.debian.pool.ntp.org iburst
 pool 2.debian.pool.ntp.org iburst
+pool pool.ntp.org iburst
 
 # Record the rate at which the system clock gains/losses time
 driftfile /var/lib/chrony/drift

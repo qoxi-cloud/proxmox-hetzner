@@ -144,7 +144,7 @@ _edit_ipv6() {
   _wiz_description \
     "IPv6 network configuration:" \
     "" \
-    "  {{cyan:Auto}}:     Use detected IPv6 from Hetzner" \
+    "  {{cyan:Auto}}:     Use detected IPv6 from provider" \
     "  {{cyan:Manual}}:   Specify custom IPv6 address/gateway" \
     "  {{cyan:Disabled}}: IPv4 only" \
     ""
@@ -209,7 +209,7 @@ _edit_ipv6() {
     while true; do
       _wiz_input_screen \
         "Enter IPv6 gateway address" \
-        "Default for Hetzner: fe80::1 (link-local)"
+        "Common default: fe80::1 (link-local)"
 
       local ipv6_gw
       ipv6_gw=$(

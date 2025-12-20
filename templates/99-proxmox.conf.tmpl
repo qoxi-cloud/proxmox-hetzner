@@ -1,6 +1,6 @@
 # ============================================
 # Proxmox VE Optimized Kernel Parameters
-# For Hetzner dedicated servers with NVMe
+# For dedicated servers with NVMe
 # ============================================
 
 # ------------------------------------------
@@ -21,7 +21,7 @@ net.ipv4.tcp_max_syn_backlog=65535
 # ------------------------------------------
 # Network: TCP Performance Tuning
 # ------------------------------------------
-# TCP socket buffer sizes (optimized for 10Gbit+ Hetzner links)
+# TCP socket buffer sizes (optimized for 10Gbit+ links)
 net.core.rmem_max=134217728
 net.core.wmem_max=134217728
 net.ipv4.tcp_rmem=4096 87380 67108864
