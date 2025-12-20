@@ -85,6 +85,10 @@ _wizard_main() {
         _wiz_start_edit
         _wiz_show_cursor
         if _wiz_confirm "Quit installation?" --default=false; then
+          # Clean exit: restore screen, clear it, show cursor
+          tput rmcup 2>/dev/null || true
+          clear
+          tput cnorm 2>/dev/null || true
           exit 0
         fi
         # Hide cursor and continue (menu will be redrawn on next iteration)
