@@ -230,7 +230,8 @@ _edit_timezone() {
     --prompt "Timezone: " \
     --prompt.foreground "$HEX_CYAN" \
     --indicator.foreground "$HEX_ORANGE" \
-    --match.foreground "$HEX_GOLD")
+    --match.foreground "$HEX_GOLD" \
+    --text.foreground "$HEX_GOLD")
 
   if [[ -n $selected ]]; then
     TIMEZONE="$selected"
@@ -258,7 +259,8 @@ _edit_keyboard() {
     --prompt "Keyboard: " \
     --prompt.foreground "$HEX_CYAN" \
     --indicator.foreground "$HEX_ORANGE" \
-    --match.foreground "$HEX_GOLD")
+    --match.foreground "$HEX_GOLD" \
+    --text.foreground "$HEX_GOLD")
 
   if [[ -n $selected ]]; then
     KEYBOARD="$selected"
@@ -280,7 +282,8 @@ _edit_country() {
     --prompt "Country: " \
     --prompt.foreground "$HEX_CYAN" \
     --indicator.foreground "$HEX_ORANGE" \
-    --match.foreground "$HEX_GOLD")
+    --match.foreground "$HEX_GOLD" \
+    --text.foreground "$HEX_GOLD")
 
   if [[ -n $selected ]]; then
     COUNTRY="$selected"
