@@ -14,9 +14,18 @@ _config_fail2ban() {
     "HOSTNAME=${PVE_HOSTNAME}"
 
   # Copy configurations to VM
-  remote_copy "templates/fail2ban-jail.local" "/etc/fail2ban/jail.local" || return 1
-  remote_copy "templates/fail2ban-proxmox.conf" "/etc/fail2ban/filter.d/proxmox.conf" || return 1
+  remote_copy "templates/fail2ban-jail.local" "/etc/fail2ban/jail.local" || {
+    log "ERROR: Failed to deploy fail2ban jail config"
+    return 1
+  }
+  remote_copy "templates/fail2ban-proxmox.conf" "/etc/fail2ban/filter.d/proxmox.conf" || {
+    log "ERROR: Failed to deploy fail2ban filter"
+    return 1
+  }
 
   # Enable fail2ban to start on boot (don't start now - will activate after reboot)
-  remote_exec "systemctl enable fail2ban" || return 1
+  remote_exec "systemctl enable fail2ban" || {
+    log "ERROR: Failed to enable fail2ban"
+    return 1
+  }
 }

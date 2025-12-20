@@ -9,8 +9,14 @@
 # Initializes database and sets up daily checks via systemd timer
 _config_aide() {
   # Deploy systemd service and timer for daily checks
-  remote_copy "templates/aide-check.service" "/etc/systemd/system/aide-check.service" || return 1
-  remote_copy "templates/aide-check.timer" "/etc/systemd/system/aide-check.timer" || return 1
+  remote_copy "templates/aide-check.service" "/etc/systemd/system/aide-check.service" || {
+    log "ERROR: Failed to deploy AIDE service"
+    return 1
+  }
+  remote_copy "templates/aide-check.timer" "/etc/systemd/system/aide-check.timer" || {
+    log "ERROR: Failed to deploy AIDE timer"
+    return 1
+  }
 
   remote_exec '
     # Initialize AIDE database (this takes a while)
@@ -25,5 +31,8 @@ _config_aide() {
     # Enable daily integrity check timer (will activate after reboot)
     systemctl daemon-reload
     systemctl enable aide-check.timer
-  ' || return 1
+  ' || {
+    log "ERROR: Failed to initialize AIDE"
+    return 1
+  }
 }

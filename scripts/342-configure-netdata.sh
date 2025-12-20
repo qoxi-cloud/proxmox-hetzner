@@ -18,13 +18,19 @@ _config_netdata() {
 
   # Apply runtime variable and deploy
   apply_template_vars "templates/netdata.conf" "NETDATA_BIND_TO=${bind_to}"
-  remote_copy "templates/netdata.conf" "/etc/netdata/netdata.conf" || return 1
+  remote_copy "templates/netdata.conf" "/etc/netdata/netdata.conf" || {
+    log "ERROR: Failed to deploy netdata config"
+    return 1
+  }
 
   # Enable netdata to start on boot (don't start now - will activate after reboot)
   remote_exec '
     systemctl daemon-reload
     systemctl enable netdata
-  ' || return 1
+  ' || {
+    log "ERROR: Failed to enable netdata"
+    return 1
+  }
 }
 
 # Configures Netdata for real-time monitoring.

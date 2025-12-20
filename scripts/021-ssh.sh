@@ -257,7 +257,7 @@ run_remote() {
 # Parameters:
 #   $1 - Source file path (local)
 #   $2 - Destination path (remote)
-# Returns: Exit code from scp
+# Returns: 0 on success, 1 on failure
 remote_copy() {
   local src="$1"
   local dst="$2"
@@ -266,7 +266,10 @@ remote_copy() {
   passfile=$(_ssh_get_passfile)
 
   # shellcheck disable=SC2086
-  sshpass -f "$passfile" scp -P "$SSH_PORT" $SSH_OPTS "$src" "root@localhost:$dst"
+  if ! sshpass -f "$passfile" scp -P "$SSH_PORT" $SSH_OPTS "$src" "root@localhost:$dst"; then
+    log "ERROR: Failed to copy $src to $dst"
+    return 1
+  fi
 }
 
 # =============================================================================

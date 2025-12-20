@@ -9,7 +9,10 @@
 # Deploys audit rules and configures log retention
 _config_auditd() {
   # Copy rules to VM
-  remote_copy "templates/auditd-rules" "/etc/audit/rules.d/proxmox.rules" || return 1
+  remote_copy "templates/auditd-rules" "/etc/audit/rules.d/proxmox.rules" || {
+    log "ERROR: Failed to deploy auditd rules"
+    return 1
+  }
 
   # Configure auditd for persistent logging
   remote_exec '
@@ -26,5 +29,8 @@ _config_auditd() {
 
     # Enable auditd to start on boot (will activate after reboot)
     systemctl enable auditd
-  ' || return 1
+  ' || {
+    log "ERROR: Failed to configure auditd"
+    return 1
+  }
 }

@@ -12,7 +12,10 @@ _config_vnstat() {
 
   # Apply runtime variable and deploy
   apply_template_vars "templates/vnstat.conf" "INTERFACE_NAME=${iface}"
-  remote_copy "templates/vnstat.conf" "/etc/vnstat.conf" || return 1
+  remote_copy "templates/vnstat.conf" "/etc/vnstat.conf" || {
+    log "ERROR: Failed to deploy vnstat config"
+    return 1
+  }
 
   remote_exec "
     # Ensure database directory exists
@@ -30,5 +33,8 @@ _config_vnstat() {
 
     # Enable vnstat to start on boot (don't start now - will activate after reboot)
     systemctl enable vnstat
-  " || return 1
+  " || {
+    log "ERROR: Failed to configure vnstat"
+    return 1
+  }
 }

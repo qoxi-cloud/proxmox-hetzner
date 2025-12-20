@@ -215,7 +215,10 @@ $nat_rules")
   log "  Private subnet: ${PRIVATE_SUBNET:-N/A}"
 
   # Copy configuration to VM
-  remote_copy "templates/nftables.conf.generated" "/etc/nftables.conf" || return 1
+  remote_copy "templates/nftables.conf.generated" "/etc/nftables.conf" || {
+    log "ERROR: Failed to deploy nftables config"
+    return 1
+  }
 
   # Validate config syntax before enabling (catches errors before SSH gets blocked)
   remote_exec "nft -c -f /etc/nftables.conf" || {
@@ -224,7 +227,10 @@ $nat_rules")
   }
 
   # Enable nftables to start on boot (don't start now - will activate after reboot)
-  remote_exec "systemctl enable nftables" || return 1
+  remote_exec "systemctl enable nftables" || {
+    log "ERROR: Failed to enable nftables"
+    return 1
+  }
 
   # Clean up temp file
   rm -f "./templates/nftables.conf.generated"

@@ -12,11 +12,17 @@ _config_ringbuffer() {
 
   # Apply runtime variable and deploy
   apply_template_vars "templates/network-ringbuffer.service" "RINGBUFFER_INTERFACE=${ringbuffer_interface}"
-  remote_copy "templates/network-ringbuffer.service" "/etc/systemd/system/network-ringbuffer.service" || return 1
+  remote_copy "templates/network-ringbuffer.service" "/etc/systemd/system/network-ringbuffer.service" || {
+    log "ERROR: Failed to deploy ringbuffer service"
+    return 1
+  }
 
   remote_exec '
     # Enable service for boot (will activate after reboot)
     systemctl daemon-reload
     systemctl enable network-ringbuffer.service
-  ' || return 1
+  ' || {
+    log "ERROR: Failed to configure ringbuffer service"
+    return 1
+  }
 }

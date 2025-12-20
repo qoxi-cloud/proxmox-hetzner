@@ -8,5 +8,8 @@
 # Configuration function for needrestart
 # Deploys configuration for automatic restarts
 _config_needrestart() {
-  remote_copy "templates/needrestart.conf" "/etc/needrestart/conf.d/50-autorestart.conf" || return 1
+  remote_copy "templates/needrestart.conf" "/etc/needrestart/conf.d/50-autorestart.conf" || {
+    log "ERROR: Failed to deploy needrestart config"
+    return 1
+  }
 }

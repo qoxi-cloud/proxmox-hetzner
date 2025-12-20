@@ -31,5 +31,8 @@ _config_apparmor() {
 
     # Enable AppArmor to start on boot (will activate after reboot)
     systemctl enable apparmor.service
-  ' || return 1
+  ' || {
+    log "ERROR: Failed to configure AppArmor"
+    return 1
+  }
 }

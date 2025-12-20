@@ -9,8 +9,14 @@
 # Sets up weekly scans via systemd timer with logging
 _config_lynis() {
   # Deploy systemd service and timer for weekly scans
-  remote_copy "templates/lynis-audit.service" "/etc/systemd/system/lynis-audit.service" || return 1
-  remote_copy "templates/lynis-audit.timer" "/etc/systemd/system/lynis-audit.timer" || return 1
+  remote_copy "templates/lynis-audit.service" "/etc/systemd/system/lynis-audit.service" || {
+    log "ERROR: Failed to deploy Lynis service"
+    return 1
+  }
+  remote_copy "templates/lynis-audit.timer" "/etc/systemd/system/lynis-audit.timer" || {
+    log "ERROR: Failed to deploy Lynis timer"
+    return 1
+  }
 
   remote_exec '
     # Ensure log directory exists
@@ -19,5 +25,8 @@ _config_lynis() {
     # Enable weekly audit timer (will activate after reboot)
     systemctl daemon-reload
     systemctl enable lynis-audit.timer
-  ' || return 1
+  ' || {
+    log "ERROR: Failed to configure Lynis"
+    return 1
+  }
 }
