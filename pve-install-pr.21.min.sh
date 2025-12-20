@@ -16,7 +16,7 @@ readonly HEX_ORANGE="#ff8700"
 readonly HEX_GRAY="#585858"
 readonly HEX_WHITE="#ffffff"
 readonly HEX_NONE="7"
-readonly VERSION="2.0.375-pr.21"
+readonly VERSION="2.0.377-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-installer}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -776,9 +776,9 @@ echo "$script"|sshpass -f "$passfile" ssh -p "$SSH_PORT" $SSH_OPTS root@localhos
 local pid=$!
 show_progress $pid "$message" "$done_message"
 local exit_code=$?
-if grep -qiE "(error|failed|cannot|unable|fatal)" "$output_file" 2>/dev/null;then
+if grep -iE '\b(error|failed|cannot|unable|fatal)\b' "$output_file" 2>/dev/null|grep -qivE '(lib.*error|error-perl|\.deb|Unpacking|Setting up|Selecting)';then
 log "WARNING: Potential errors in remote command output:"
-grep -iE "(error|failed|cannot|unable|fatal)" "$output_file" >>"$LOG_FILE" 2>/dev/null||true
+grep -iE '\b(error|failed|cannot|unable|fatal)\b' "$output_file" 2>/dev/null|grep -ivE '(lib.*error|error-perl|\.deb|Unpacking|Setting up|Selecting)' >>"$LOG_FILE"||true
 fi
 cat "$output_file" >>"$LOG_FILE"
 rm -f "$output_file"
@@ -1727,7 +1727,6 @@ printf '\033[s'
 }
 restore_cursor_position(){
 printf '\033[u'
-printf '\033[J'
 }
 add_log(){
 local message="$1"
@@ -1738,13 +1737,21 @@ render_logs
 render_logs(){
 restore_cursor_position
 print_section " Installation Progress"
+printf '\033[K'
 _wiz_blank_line
+printf '\033[K'
 local start_line=0
+local lines_printed=0
 if ((LOG_COUNT>LOG_AREA_HEIGHT));then
 start_line=$((LOG_COUNT-LOG_AREA_HEIGHT))
 fi
 for ((i=start_line; i<LOG_COUNT; i++));do
-echo "${LOG_LINES[$i]}"
+printf '%s\033[K\n' "${LOG_LINES[$i]}"
+((lines_printed++))
+done
+local remaining=$((LOG_AREA_HEIGHT-lines_printed))
+for ((i=0; i<remaining; i++));do
+printf '\033[K\n'
 done
 }
 start_task(){
