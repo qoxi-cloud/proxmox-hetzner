@@ -220,6 +220,13 @@ _edit_ssl() {
 _edit_shell() {
   _wiz_start_edit
 
+  _wiz_description \
+    "Default shell for root user:" \
+    "" \
+    "  {{cyan:ZSH}}:  Modern shell with Powerlevel10k prompt" \
+    "  {{cyan:Bash}}: Standard shell (minimal changes)" \
+    ""
+
   # 1 header + 2 items for gum choose
   _show_input_footer "filter" 3
 
