@@ -74,7 +74,7 @@ jobs:
                 check.name === 'build-pr' ||
                 check.name === 'shellcheck' ||  // lint / shellcheck
                 check.name === 'shfmt' ||        // lint / shfmt
-                check.name === 'commit-lint'
+                check.name === 'commits'         // lint / commits
               );
             }
 

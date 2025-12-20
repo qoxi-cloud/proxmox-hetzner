@@ -4,6 +4,7 @@ on:
   pull_request:
     branches:
       - main
+    types: [opened, synchronize, reopened, edited]
   workflow_dispatch:
 
 jobs:
@@ -34,5 +35,80 @@ jobs:
           if ! shfmt -d scripts/*.sh; then
             echo ""
             echo "::error::Scripts are not properly formatted. Run: shfmt -w scripts/*.sh"
+            exit 1
+          fi
+
+  commits:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate commit messages
+        run: |
+          BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+
+          echo "Checking commits from ${BASE_SHA}..${HEAD_SHA}"
+          echo ""
+
+          VALID_EMOJIS="✨|🐛|🔒️|🔒|♻️|📝|🔧|⚡️|⚡|🩹|🚑️|🚑|✅|🏗️|🏗|👷"
+          VALID_TYPES="feat|fix|security|refactor|docs|chore|perf|hotfix|test|build|ci"
+          PATTERN="^($VALID_EMOJIS) ($VALID_TYPES): .+"
+
+          FAILED=0
+          CHECKED=0
+
+          while IFS= read -r COMMIT_SHA; do
+            CHECKED=$((CHECKED + 1))
+            MSG=$(git log --format=%s -n 1 "$COMMIT_SHA")
+
+            if [[ "$MSG" =~ ^Merge ]]; then
+              echo "⏭️  Skipping merge commit: ${COMMIT_SHA:0:7}"
+              continue
+            fi
+
+            AUTHOR=$(git log --format=%an -n 1 "$COMMIT_SHA")
+            if [[ "$AUTHOR" == *"[bot]"* ]] || [[ "$AUTHOR" == "GitHub" ]]; then
+              echo "⏭️  Skipping bot commit: ${COMMIT_SHA:0:7}"
+              continue
+            fi
+
+            if [[ "$MSG" =~ $PATTERN ]]; then
+              echo "✅ ${COMMIT_SHA:0:7}: $MSG"
+            else
+              echo "❌ ${COMMIT_SHA:0:7}: $MSG"
+              echo "   Expected format: <emoji> <type>: <description>"
+              FAILED=$((FAILED + 1))
+            fi
+          done < <(git rev-list "${BASE_SHA}..${HEAD_SHA}")
+
+          echo ""
+          echo "Checked: $CHECKED commits, Failed: $FAILED"
+
+          if [[ $FAILED -gt 0 ]]; then
+            echo ""
+            echo "💡 Format: <emoji> <type>: <description>"
+            echo "   Example: ✨ feat: add IPv6 support"
+            exit 1
+          fi
+
+      - name: Validate PR title
+        run: |
+          PR_TITLE="${{ github.event.pull_request.title }}"
+
+          VALID_EMOJIS="✨|🐛|🔒️|🔒|♻️|📝|🔧|⚡️|⚡|🩹|🚑️|🚑|✅|🏗️|🏗|👷"
+          VALID_TYPES="feat|fix|security|refactor|docs|chore|perf|hotfix|test|build|ci"
+          PATTERN="^($VALID_EMOJIS) ($VALID_TYPES): .+"
+
+          echo "Checking PR title: $PR_TITLE"
+
+          if [[ "$PR_TITLE" =~ $PATTERN ]]; then
+            echo "✅ PR title is valid"
+          else
+            echo "❌ PR title invalid. Expected: <emoji> <type>: <description>"
             exit 1
           fi
