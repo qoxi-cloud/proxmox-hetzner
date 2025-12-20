@@ -8,7 +8,6 @@ readonly CLR_CYAN=$'\033[38;2;0;177;255m'
 readonly CLR_YELLOW=$'\033[1;33m'
 readonly CLR_ORANGE=$'\033[38;5;208m'
 readonly CLR_GRAY=$'\033[38;5;240m'
-readonly CLR_HETZNER=$'\033[38;5;160m'
 readonly CLR_RESET=$'\033[m'
 readonly HEX_RED="#ff0000"
 readonly HEX_CYAN="#00b1ff"
@@ -17,7 +16,7 @@ readonly HEX_ORANGE="#ff8700"
 readonly HEX_GRAY="#585858"
 readonly HEX_WHITE="#ffffff"
 readonly HEX_NONE="7"
-readonly VERSION="2.0.363-pr.21"
+readonly VERSION="2.0.364-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-installer}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -485,20 +484,6 @@ retry_count=$((retry_count+1))
 done
 log "ERROR: Failed to download $url after $max_retries attempts"
 return 1
-}
-validate_template_vars(){
-local file="$1"
-local unfilled
-if [[ ! -f $file ]];then
-log "ERROR: Cannot validate - file not found: $file"
-return 1
-fi
-unfilled=$(grep -oE '\{\{[A-Z0-9_]+\}\}' "$file" 2>/dev/null|sort -u|tr '\n' ' ')
-if [[ -n $unfilled ]];then
-log "ERROR: Unfilled template variables in $file: $unfilled"
-return 1
-fi
-return 0
 }
 apply_template_vars(){
 local file="$1"
@@ -4897,8 +4882,7 @@ fi
 }
 validate_installation(){
 log "Generating validation script from template..."
-local validation_script
-validation_script=$(apply_template_vars "./templates/validation.sh" \
+apply_template_vars "./templates/validation.sh" \
 "INSTALL_TAILSCALE=${INSTALL_TAILSCALE:-no}" \
 "INSTALL_FIREWALL=${INSTALL_FIREWALL:-no}" \
 "FIREWALL_MODE=${FIREWALL_MODE:-standard}" \
@@ -4915,7 +4899,9 @@ validation_script=$(apply_template_vars "./templates/validation.sh" \
 "INSTALL_NVIM=${INSTALL_NVIM:-no}" \
 "INSTALL_RINGBUFFER=${INSTALL_RINGBUFFER:-no}" \
 "SHELL_TYPE=${SHELL_TYPE:-bash}" \
-"SSL_TYPE=${SSL_TYPE:-self-signed}")
+"SSL_TYPE=${SSL_TYPE:-self-signed}"
+local validation_script
+validation_script=$(cat "./templates/validation.sh")
 log "Validation script generated"
 echo "$validation_script" >>"$LOG_FILE"
 (echo "$validation_script"|remote_exec 'bash -s' 2>&1|tee -a "$LOG_FILE"||exit 1) > \
