@@ -4,11 +4,19 @@ on:
   push:
     branches:
       - main
+  pull_request:
+    branches:
+      - main
+    types: [opened, synchronize, reopened]
   workflow_dispatch:
 
 jobs:
-  build:
+  # Build for pull requests
+  pr:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
 
     permissions:
       contents: read
@@ -17,13 +25,110 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Full history for version calculation
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Calculate version
         id: version
         run: |
           # Get MAJOR version from source file
-          MAJOR=$(grep -oP 'VERSION="\K[0-9]+' scripts/00-init.sh)
+          MAJOR=$(grep -oP 'VERSION="\K[0-9]+' scripts/000-init.sh)
+
+          # Count tags matching vMAJOR.* for MINOR
+          MINOR=$(git tag -l "v${MAJOR}.*" 2>/dev/null | wc -l | tr -d ' ')
+
+          # Count commits since last tag for PATCH
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          if [[ -n "$LATEST_TAG" ]]; then
+            PATCH=$(git rev-list "${LATEST_TAG}..HEAD" --count)
+          else
+            PATCH=$(git rev-list HEAD --count)
+          fi
+
+          VERSION="${MAJOR}.${MINOR}.${PATCH}-pr.${{ github.event.pull_request.number }}"
+
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "Generated version: ${VERSION}"
+
+      - name: Build script
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+
+          # Concatenate all source files in order
+          echo "#!/usr/bin/env bash" > pve-install.sh
+          for f in scripts/*.sh; do
+            # Remove shebang from all files
+            sed '1{/^#!/d}' "$f" >> pve-install.sh
+          done
+
+          # Replace version placeholder with calculated version
+          sed -i "s/^readonly VERSION=\"[0-9]*\"$/readonly VERSION=\"${VERSION}\"/" pve-install.sh
+
+          chmod +x pve-install.sh
+
+      - name: Configure PR branch/repo
+        run: |
+          PR_BRANCH="${{ github.event.pull_request.head.ref }}"
+          PR_REPO="${{ github.event.pull_request.head.repo.full_name }}"
+
+          # Update GITHUB_BRANCH
+          sed -i "s|^GITHUB_BRANCH=\"\${GITHUB_BRANCH:-main}\"|GITHUB_BRANCH=\"\${GITHUB_BRANCH:-${PR_BRANCH}}\"|" pve-install.sh
+
+          # For forks, also update GITHUB_REPO
+          if [[ "$PR_REPO" != "${{ github.repository }}" ]]; then
+            sed -i "s|^GITHUB_REPO=\"\${GITHUB_REPO:-[^}]*}\"|GITHUB_REPO=\"\${GITHUB_REPO:-${PR_REPO}}\"|" pve-install.sh
+          fi
+
+      - name: Setup shfmt
+        uses: mfinelli/setup-shfmt@v3
+
+      - name: Minify script
+        run: |
+          shfmt -mn pve-install.sh > pve-install.min.sh
+          chmod +x pve-install.min.sh
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pve-install
+          path: |
+            pve-install.sh
+            pve-install.min.sh
+
+      - name: Save PR metadata
+        run: |
+          mkdir -p pr-metadata
+          echo "${{ github.event.pull_request.number }}" > pr-metadata/pr_number
+          echo "${{ github.event.pull_request.head.ref }}" > pr-metadata/pr_branch
+          echo "${{ github.event.pull_request.head.repo.full_name }}" > pr-metadata/pr_repo
+
+      - name: Upload PR metadata
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr-metadata
+          path: pr-metadata/
+
+  # Build for main branch
+  main:
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Calculate version
+        id: version
+        run: |
+          # Get MAJOR version from source file
+          MAJOR=$(grep -oP 'VERSION="\K[0-9]+' scripts/000-init.sh)
 
           # Count tags matching vMAJOR.* for MINOR
           MINOR=$(git tag -l "v${MAJOR}.*" 2>/dev/null | wc -l | tr -d ' ')
@@ -45,45 +150,24 @@ jobs:
         run: |
           VERSION="${{ steps.version.outputs.version }}"
 
-          # Header
-          cat > pve-install.sh << 'HEADER'
-          #!/usr/bin/env bash
-          # =============================================================================
-          # Proxmox VE Auto-Installer for Hetzner Dedicated Servers
-          # =============================================================================
-          HEADER
-
           # Concatenate all source files in order
+          echo "#!/usr/bin/env bash" > pve-install.sh
           for f in scripts/*.sh; do
-            echo "" >> pve-install.sh
-            echo "# --- $(basename "$f") ---" >> pve-install.sh
             # Remove shebang from all files
             sed '1{/^#!/d}' "$f" >> pve-install.sh
           done
 
           # Replace version placeholder with calculated version
-          sed -i "s/^VERSION=\"[0-9]*\"$/VERSION=\"${VERSION}\"/" pve-install.sh
+          sed -i "s/^readonly VERSION=\"[0-9]*\"$/readonly VERSION=\"${VERSION}\"/" pve-install.sh
 
           chmod +x pve-install.sh
 
-      - name: Install shfmt
-        run: |
-          curl -sS https://webi.sh/shfmt | sh
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
+      - name: Setup shfmt
+        uses: mfinelli/setup-shfmt@v3
 
-      - name: Minify script with shfmt
+      - name: Minify script
         run: |
-          # Minify: -mn removes comments and minimizes whitespace
           shfmt -mn pve-install.sh > pve-install.min.sh
-
-          # Show size reduction
-          ORIGINAL_SIZE=$(wc -c < pve-install.sh)
-          MINIFIED_SIZE=$(wc -c < pve-install.min.sh)
-          REDUCTION=$((100 - (MINIFIED_SIZE * 100 / ORIGINAL_SIZE)))
-          echo "Original: ${ORIGINAL_SIZE} bytes"
-          echo "Minified: ${MINIFIED_SIZE} bytes"
-          echo "Reduction: ${REDUCTION}%"
-
           chmod +x pve-install.min.sh
 
       - name: Upload build artifact
