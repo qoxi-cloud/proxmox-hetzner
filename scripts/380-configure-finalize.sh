@@ -195,14 +195,14 @@ configure_proxmox_via_ssh() {
   # ==========================================================================
   # PHASE 3: Security Configuration (parallel after batch install)
   # ==========================================================================
-  # Tailscale first (uses curl installer, needed for firewall rules)
+  # Batch install security & optional packages first
+  batch_install_packages
+
+  # Tailscale (needs package installed, needed for firewall rules)
   configure_tailscale
 
   # Firewall next (depends on tailscale for rule generation)
   configure_firewall
-
-  # Batch install remaining security packages
-  batch_install_packages
 
   # Parallel security configuration
   run_parallel_group "Configuring security" "Security features configured" \
