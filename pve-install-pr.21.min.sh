@@ -17,7 +17,7 @@ readonly HEX_ORANGE="#ff8700"
 readonly HEX_GRAY="#585858"
 readonly HEX_WHITE="#ffffff"
 readonly HEX_NONE="7"
-readonly VERSION="2.0.349-pr.21"
+readonly VERSION="2.0.350-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -403,19 +403,11 @@ msg="$CLR_CYAN✓$CLR_RESET $1 $CLR_CYAN$2$CLR_RESET"
 else
 msg="$CLR_CYAN✓$CLR_RESET $1"
 fi
-if [[ ${LIVE_LOGS_ACTIVE:-false} == true ]];then
 add_log "$CLR_GRAY├─$CLR_RESET $msg"
-else
-echo -e "$msg"
-fi
 }
 print_error(){
 local msg="$CLR_RED✗$CLR_RESET $1"
-if [[ ${LIVE_LOGS_ACTIVE:-false} == true ]];then
 add_log "$CLR_GRAY├─$CLR_RESET $msg"
-else
-echo -e "$msg"
-fi
 }
 print_warning(){
 local message="$1"
@@ -430,19 +422,11 @@ indent="  "
 fi
 msg="$indent$CLR_YELLOW⚠️$CLR_RESET $message"
 fi
-if [[ ${LIVE_LOGS_ACTIVE:-false} == true ]];then
 add_log "$CLR_GRAY├─$CLR_RESET $msg"
-else
-echo -e "$msg"
-fi
 }
 print_info(){
 local msg="$CLR_CYANℹ$CLR_RESET $1"
-if [[ ${LIVE_LOGS_ACTIVE:-false} == true ]];then
 add_log "$CLR_GRAY├─$CLR_RESET $msg"
-else
-echo -e "$msg"
-fi
 }
 print_section(){
 echo "$CLR_CYAN$CLR_BOLD$1$CLR_RESET"
@@ -1690,18 +1674,9 @@ local message="$1"
 add_log "$CLR_GRAY│$CLR_RESET   $CLR_GRAY$message$CLR_RESET"
 }
 start_live_installation(){
-if ! command -v gum &>/dev/null;then
-log "WARNING: gum is not installed, live logs disabled"
-return 1
-fi
-LIVE_LOGS_ACTIVE=true
-if type show_progress &>/dev/null;then
-source <(declare -f show_progress|sed '1s/show_progress/show_progress_original/')
-fi
 show_progress(){
 live_show_progress "$@"
 }
-export -f show_progress 2>/dev/null||true
 calculate_log_area
 tput smcup
 tput civis
@@ -1712,16 +1687,9 @@ render_logs
 trap 'tput cnorm; tput rmcup' EXIT RETURN
 }
 finish_live_installation(){
-LIVE_LOGS_ACTIVE=false
-if type show_progress_original &>/dev/null 2>&1;then
-show_progress(){
-show_progress_original "$@"
-}
-fi
 tput cnorm
 tput rmcup
 }
-LIVE_LOGS_ACTIVE=false
 live_show_progress(){
 local pid=$1
 local message="${2:-Processing}"
@@ -4284,12 +4252,8 @@ echo "$hostname" >"$tmp_hostname"
 show_progress $! "Authenticating Tailscale"
 TAILSCALE_IP=$(cat "$tmp_ip" 2>/dev/null||echo "pending")
 TAILSCALE_HOSTNAME=$(cat "$tmp_hostname" 2>/dev/null||echo "")
-if [[ $LIVE_LOGS_ACTIVE == true ]];then
 LOG_LINES[TASK_INDEX]="$CLR_GRAY├─$CLR_RESET Tailscale authenticated. IP: $TAILSCALE_IP $CLR_CYAN✓$CLR_RESET"
 render_logs
-else
-printf "\033[1A\r%s✓ Tailscale authenticated. IP: %s%s                              \n" "$CLR_CYAN" "$TAILSCALE_IP" "$CLR_RESET"
-fi
 if [[ $TAILSCALE_WEBUI == "yes" ]];then
 remote_exec "tailscale serve --bg --https=443 https://127.0.0.1:8006" >/dev/null 2>&1&
 show_progress $! "Configuring Tailscale Serve" "Proxmox Web UI available via Tailscale Serve"
@@ -5144,11 +5108,7 @@ log_metric "system_info"
 log "Step: show_gum_config_editor"
 show_gum_config_editor
 log_metric "config_wizard"
-start_live_installation||{
-log "WARNING: Failed to start live installation display, falling back to regular mode"
-clear
-show_banner
-}
+start_live_installation
 log "Step: prepare_packages"
 prepare_packages
 log_metric "packages"
