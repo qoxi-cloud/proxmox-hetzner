@@ -17,7 +17,7 @@ readonly HEX_ORANGE="#ff8700"
 readonly HEX_GRAY="#585858"
 readonly HEX_WHITE="#ffffff"
 readonly HEX_NONE="7"
-readonly VERSION="2.0.347-pr.21"
+readonly VERSION="2.0.348-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -396,30 +396,52 @@ show_banner
 _wiz_show_cursor
 }
 print_success(){
+local msg
 if [[ $# -eq 2 ]];then
-echo -e "$CLR_CYAN✓$CLR_RESET $1 $CLR_CYAN$2$CLR_RESET"
+msg="$CLR_CYAN✓$CLR_RESET $1 $CLR_CYAN$2$CLR_RESET"
 else
-echo -e "$CLR_CYAN✓$CLR_RESET $1"
+msg="$CLR_CYAN✓$CLR_RESET $1"
+fi
+if [[ ${LIVE_LOGS_ACTIVE:-false} == true ]];then
+add_log "$CLR_GRAY├─$CLR_RESET $msg"
+else
+echo -e "$msg"
 fi
 }
 print_error(){
-echo -e "$CLR_RED✗$CLR_RESET $1"
+local msg="$CLR_RED✗$CLR_RESET $1"
+if [[ ${LIVE_LOGS_ACTIVE:-false} == true ]];then
+add_log "$CLR_GRAY├─$CLR_RESET $msg"
+else
+echo -e "$msg"
+fi
 }
 print_warning(){
 local message="$1"
 local second="${2:-false}"
 local indent=""
+local msg
 if [[ $# -eq 2 && $second != "true" ]];then
-echo -e "$CLR_YELLOW⚠️$CLR_RESET $message $CLR_CYAN$second$CLR_RESET"
+msg="$CLR_YELLOW⚠️$CLR_RESET $message $CLR_CYAN$second$CLR_RESET"
 else
 if [[ $second == "true" ]];then
 indent="  "
 fi
-echo -e "$indent$CLR_YELLOW⚠️$CLR_RESET $message"
+msg="$indent$CLR_YELLOW⚠️$CLR_RESET $message"
+fi
+if [[ ${LIVE_LOGS_ACTIVE:-false} == true ]];then
+add_log "$CLR_GRAY├─$CLR_RESET $msg"
+else
+echo -e "$msg"
 fi
 }
 print_info(){
-echo -e "$CLR_CYANℹ$CLR_RESET $1"
+local msg="$CLR_CYANℹ$CLR_RESET $1"
+if [[ ${LIVE_LOGS_ACTIVE:-false} == true ]];then
+add_log "$CLR_GRAY├─$CLR_RESET $msg"
+else
+echo -e "$msg"
+fi
 }
 print_section(){
 echo "$CLR_CYAN$CLR_BOLD$1$CLR_RESET"
