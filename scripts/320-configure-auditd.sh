@@ -8,6 +8,7 @@
 # Configuration function for auditd
 # Deploys audit rules and configures log retention
 _config_auditd() {
+  remote_exec 'mkdir -p /etc/audit/rules.d'
   remote_copy "templates/auditd-rules" "/etc/audit/rules.d/proxmox.rules" || {
     log "ERROR: Failed to deploy auditd rules"
     return 1
