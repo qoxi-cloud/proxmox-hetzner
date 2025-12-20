@@ -542,7 +542,7 @@ Status,Item,Value
       --selected.background "#ff8700" \
       --unselected.foreground "#585858"; then
       log "INFO: User cancelled installation"
-      print_info "Installation cancelled by user"
+      clear
       exit 0
     fi
 
