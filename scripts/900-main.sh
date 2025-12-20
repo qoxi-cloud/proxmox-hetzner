@@ -19,7 +19,7 @@ _print_field() {
 # Shows success message and interactive reboot dialog.
 _show_credentials_info() {
   echo ""
-  echo "${CLR_YELLOW}${CLR_BOLD}Access Credentials${CLR_RESET} ${CLR_RED}(SAVE THIS!)${CLR_RESET}"
+  echo "${CLR_YELLOW}Access Credentials${CLR_RESET} ${CLR_RED}(SAVE THIS!)${CLR_RESET}"
   echo ""
 
   # Root credentials (always shown)

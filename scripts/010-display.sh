@@ -49,11 +49,11 @@ print_info() {
   echo "${CLR_CYAN}ℹ${CLR_RESET} $1"
 }
 
-# Prints section header in cyan bold.
+# Prints section header in cyan.
 # Parameters:
 #   $1 - Section header text
 print_section() {
-  echo "${CLR_CYAN}${CLR_BOLD}$1${CLR_RESET}"
+  echo "${CLR_CYAN}$1${CLR_RESET}"
 }
 
 # =============================================================================
