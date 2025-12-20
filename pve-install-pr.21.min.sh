@@ -17,7 +17,7 @@ readonly HEX_ORANGE="#ff8700"
 readonly HEX_GRAY="#585858"
 readonly HEX_WHITE="#ffffff"
 readonly HEX_NONE="7"
-readonly VERSION="2.0.355-pr.21"
+readonly VERSION="2.0.356-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-installer}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -1624,7 +1624,7 @@ if ! gum confirm "Start configuration?" \
 --selected.background "#ff8700" \
 --unselected.foreground "#585858";then
 log "INFO: User cancelled installation"
-print_info "Installation cancelled by user"
+clear
 exit 0
 fi
 _wiz_start_edit
