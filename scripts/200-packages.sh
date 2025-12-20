@@ -81,13 +81,14 @@ prefetch_proxmox_iso_info() {
   _CHECKSUM_CACHE=$(curl -s "$PROXMOX_CHECKSUM_URL" 2>/dev/null) || true
 }
 
-# Returns available Proxmox VE ISO versions (last N versions).
+# Returns available Proxmox VE ISO versions (last N versions, v9+ only).
 # Parameters:
 #   $1 - Number of versions to return (default: 5)
 # Returns: ISO filenames via stdout, newest first
 get_available_proxmox_isos() {
   local count="${1:-5}"
-  echo "$_ISO_LIST_CACHE" | tail -n "$count" | tac
+  # Filter to versions 9.x and newer only
+  echo "$_ISO_LIST_CACHE" | grep -E '^proxmox-ve_[9-9][0-9]*\.' | tail -n "$count" | tac
 }
 
 # Constructs full ISO URL from filename.
