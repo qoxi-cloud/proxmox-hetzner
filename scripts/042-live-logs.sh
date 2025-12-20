@@ -110,9 +110,6 @@ start_live_installation() {
   # Save cursor position right after banner (before header)
   save_cursor_position
 
-  # Print initial header immediately
-  render_logs
-
   # Set trap to restore cursor and exit alternate buffer on exit
   trap 'tput cnorm; tput rmcup' EXIT RETURN
 }
