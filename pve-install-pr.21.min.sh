@@ -14,9 +14,9 @@ readonly HEX_CYAN="#00b1ff"
 readonly HEX_YELLOW="#ffff00"
 readonly HEX_ORANGE="#ff8700"
 readonly HEX_GRAY="#585858"
-readonly HEX_WHITE="#ffffff"
+readonly HEX_GOLD="#d7af5f"
 readonly HEX_NONE="7"
-readonly VERSION="2.0.379-pr.21"
+readonly VERSION="2.0.380-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-installer}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -2107,7 +2107,7 @@ gum choose \
 --header.foreground "$HEX_CYAN" \
 --cursor "$CLR_ORANGE›$CLR_RESET " \
 --cursor.foreground "$HEX_NONE" \
---selected.foreground "$HEX_WHITE" \
+--selected.foreground "$HEX_GOLD" \
 --no-show-help \
 "$@"
 }
@@ -3187,7 +3187,7 @@ local gum_args=(
 --cursor "$CLR_ORANGE›$CLR_RESET "
 --cursor.foreground "$HEX_NONE"
 --cursor-prefix "◦ "
---selected.foreground "$HEX_WHITE"
+--selected.foreground "$HEX_GOLD"
 --selected-prefix "$CLR_CYAN✓$CLR_RESET "
 --unselected-prefix "◦ "
 --no-show-help)
@@ -3230,7 +3230,7 @@ local gum_args=(
 --cursor "$CLR_ORANGE›$CLR_RESET "
 --cursor.foreground "$HEX_NONE"
 --cursor-prefix "◦ "
---selected.foreground "$HEX_WHITE"
+--selected.foreground "$HEX_GOLD"
 --selected-prefix "$CLR_CYAN✓$CLR_RESET "
 --unselected-prefix "◦ "
 --no-show-help)
@@ -3267,7 +3267,7 @@ local gum_args=(
 --cursor "$CLR_ORANGE›$CLR_RESET "
 --cursor.foreground "$HEX_NONE"
 --cursor-prefix "◦ "
---selected.foreground "$HEX_WHITE"
+--selected.foreground "$HEX_GOLD"
 --selected-prefix "$CLR_CYAN✓$CLR_RESET "
 --unselected-prefix "◦ "
 --no-show-help)
@@ -3453,7 +3453,7 @@ local gum_args=(
 --cursor "$CLR_ORANGE›$CLR_RESET "
 --cursor.foreground "$HEX_NONE"
 --cursor-prefix "◦ "
---selected.foreground "$HEX_WHITE"
+--selected.foreground "$HEX_GOLD"
 --selected-prefix "$CLR_CYAN✓$CLR_RESET "
 --unselected-prefix "◦ "
 --no-show-help)
