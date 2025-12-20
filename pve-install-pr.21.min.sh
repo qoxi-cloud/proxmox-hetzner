@@ -17,7 +17,7 @@ readonly HEX_ORANGE="#ff8700"
 readonly HEX_GRAY="#585858"
 readonly HEX_WHITE="#ffffff"
 readonly HEX_NONE="7"
-readonly VERSION="2.0.345-pr.21"
+readonly VERSION="2.0.346-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -4975,9 +4975,9 @@ configure_system_services
 configure_zfs_arc
 configure_zfs_pool
 configure_zfs_scrub
+batch_install_packages
 configure_tailscale
 configure_firewall
-batch_install_packages
 run_parallel_group "Configuring security" "Security features configured" \
 _parallel_config_apparmor \
 _parallel_config_fail2ban \
