@@ -25,21 +25,21 @@ configure_ssl_certificate() {
     "CERT_DOMAIN=${cert_domain}" \
     "CERT_EMAIL=${EMAIL}"; then
     log "ERROR: Failed to apply template variables to letsencrypt-firstboot.sh"
-    exit 1
+    return 1
   fi
 
   # Copy Let's Encrypt templates to VM
   if ! remote_copy "./templates/letsencrypt-deploy-hook.sh" "/tmp/letsencrypt-deploy-hook.sh"; then
     log "ERROR: Failed to copy letsencrypt-deploy-hook.sh"
-    exit 1
+    return 1
   fi
   if ! remote_copy "./templates/letsencrypt-firstboot.sh" "/tmp/letsencrypt-firstboot.sh"; then
     log "ERROR: Failed to copy letsencrypt-firstboot.sh"
-    exit 1
+    return 1
   fi
   if ! remote_copy "./templates/letsencrypt-firstboot.service" "/tmp/letsencrypt-firstboot.service"; then
     log "ERROR: Failed to copy letsencrypt-firstboot.service"
-    exit 1
+    return 1
   fi
 
   # Configure first-boot certificate script

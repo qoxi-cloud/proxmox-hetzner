@@ -11,16 +11,13 @@ configure_ssh_hardening() {
   # CRITICAL: This must succeed - if it fails, system remains with password auth enabled
   # NOTE: SSH key was already deployed via answer.toml root_ssh_keys parameter
 
-  (
-    # Deploy hardened sshd_config (disables password auth, etc.)
-    remote_copy "templates/sshd_config" "/etc/ssh/sshd_config" || exit 1
-    # Ensure correct permissions on SSH directory (should already be set by installer)
-    remote_exec "chmod 700 /root/.ssh && chmod 600 /root/.ssh/authorized_keys" || exit 1
-  ) >/dev/null 2>&1 &
-  show_progress $! "Deploying SSH hardening" "Security hardening configured"
-  local exit_code=$?
+  # shellcheck disable=SC2329 # invoked by run_with_progress
+  _ssh_hardening_impl() {
+    remote_copy "templates/sshd_config" "/etc/ssh/sshd_config" || return 1
+    remote_exec "chmod 700 /root/.ssh && chmod 600 /root/.ssh/authorized_keys"
+  }
 
-  if [[ $exit_code -ne 0 ]]; then
+  if ! run_with_progress "Deploying SSH hardening" "Security hardening configured" _ssh_hardening_impl; then
     log "ERROR: SSH hardening failed - system may be insecure"
     exit 1
   fi
