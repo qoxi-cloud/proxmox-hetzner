@@ -17,7 +17,7 @@ readonly HEX_ORANGE="#ff8700"
 readonly HEX_GRAY="#585858"
 readonly HEX_WHITE="#ffffff"
 readonly HEX_NONE="7"
-readonly VERSION="2.0.357-pr.21"
+readonly VERSION="2.0.358-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-installer}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -1545,6 +1545,14 @@ local no_drives=0
 if [[ $DRIVE_COUNT -eq 0 ]];then
 no_drives=1
 fi
+local has_errors=false
+if [[ $PREFLIGHT_ERRORS -gt 0 || $no_drives -eq 1 ]];then
+has_errors=true
+fi
+if [[ $has_errors == false ]];then
+_wiz_start_edit
+return 0
+fi
 local table_data
 table_data=",,
 Status,Item,Value
@@ -1566,7 +1574,6 @@ status_text=$(format_status "$status")
 table_data+="$status_text,$label,$value
 "
 }
-add_row "ok" "Installer" "v$VERSION"
 add_row "$PREFLIGHT_ROOT_STATUS" "Root Access" "$PREFLIGHT_ROOT"
 add_row "$PREFLIGHT_NET_STATUS" "Internet" "$PREFLIGHT_NET"
 add_row "$PREFLIGHT_DISK_STATUS" "Temp Space" "$PREFLIGHT_DISK"
@@ -1593,36 +1600,10 @@ echo "$table_data"|gum table \
 --cell.foreground "$HEX_GRAY" \
 --header.foreground "$HEX_ORANGE"
 echo ""
-local has_errors=false
-if [[ $PREFLIGHT_ERRORS -gt 0 || $no_drives -eq 1 ]];then
-has_errors=true
-fi
-if [[ $has_errors == true ]];then
 print_error "System requirements not met. Please fix the issues above."
 echo ""
-gum confirm "Exit installer?" \
---affirmative "Exit" \
---negative "" \
---default=true \
---prompt.foreground "#ff8700" \
---selected.background "#ff8700" \
---unselected.foreground "#585858"||true
 log "ERROR: Pre-flight checks failed"
 exit 1
-else
-if ! gum confirm "Start configuration?" \
---affirmative "Start" \
---negative "Cancel" \
---default=true \
---prompt.foreground "#ff8700" \
---selected.background "#ff8700" \
---unselected.foreground "#585858";then
-log "INFO: User cancelled installation"
-clear
-exit 0
-fi
-_wiz_start_edit
-fi
 }
 get_terminal_dimensions(){
 TERM_HEIGHT=$(tput lines)
