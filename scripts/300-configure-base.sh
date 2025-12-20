@@ -36,13 +36,6 @@ configure_base_system() {
   ) >/dev/null 2>&1 &
   show_progress $! "Applying basic system settings" "Basic system settings applied"
 
-  # Configure ZFS ARC memory limits using template script
-  (
-    remote_copy "templates/configure-zfs-arc.sh" "/tmp/configure-zfs-arc.sh" || exit 1
-    remote_exec "chmod +x /tmp/configure-zfs-arc.sh && /tmp/configure-zfs-arc.sh && rm -f /tmp/configure-zfs-arc.sh" || exit 1
-  ) >/dev/null 2>&1 &
-  show_progress $! "Configuring ZFS ARC memory limits" "ZFS ARC memory limits configured"
-
   # Configure Proxmox repository
   log "configure_base_system: PVE_REPO_TYPE=${PVE_REPO_TYPE:-no-subscription}"
   if [[ ${PVE_REPO_TYPE:-no-subscription} == "enterprise" ]]; then

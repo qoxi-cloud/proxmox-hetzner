@@ -100,7 +100,6 @@ make_templates() {
     "./templates/60-io-scheduler.rules:60-io-scheduler.rules"
     "./templates/remove-subscription-nag.sh:remove-subscription-nag.sh"
     # ZFS
-    "./templates/configure-zfs-arc.sh:configure-zfs-arc.sh"
     "./templates/zfs-scrub.service:zfs-scrub.service"
     "./templates/zfs-scrub.timer:zfs-scrub.timer"
     # Let's Encrypt
