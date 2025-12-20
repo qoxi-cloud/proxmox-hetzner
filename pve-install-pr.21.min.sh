@@ -17,7 +17,7 @@ readonly HEX_ORANGE="#ff8700"
 readonly HEX_GRAY="#585858"
 readonly HEX_WHITE="#ffffff"
 readonly HEX_NONE="7"
-readonly VERSION="2.0.351-pr.21"
+readonly VERSION="2.0.352-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-hetzner}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -67,8 +67,8 @@ tr"
 readonly WIZ_REPO_TYPES="No-subscription (free)
 Enterprise
 Test/Development"
-readonly WIZ_BRIDGE_MODES="External bridge
-Internal NAT
+readonly WIZ_BRIDGE_MODES="Internal NAT
+External bridge
 Both"
 readonly WIZ_BRIDGE_MTU="9000 (jumbo frames)
 1500 (standard)"
@@ -1835,7 +1835,7 @@ local missing_fields=()
 [[ -z $PVE_REPO_TYPE ]]&&missing_fields+=("Repository")
 [[ -z $INTERFACE_NAME ]]&&missing_fields+=("Network Interface")
 [[ -z $BRIDGE_MODE ]]&&missing_fields+=("Bridge mode")
-[[ -z $PRIVATE_SUBNET ]]&&missing_fields+=("Private subnet")
+[[ $BRIDGE_MODE != "external" && -z $PRIVATE_SUBNET ]]&&missing_fields+=("Private subnet")
 [[ -z $IPV6_MODE ]]&&missing_fields+=("IPv6")
 [[ -z $ZFS_RAID ]]&&missing_fields+=("ZFS mode")
 [[ -z $ZFS_ARC_MODE ]]&&missing_fields+=("ZFS ARC")
@@ -2580,9 +2580,9 @@ _wiz_start_edit
 _wiz_description \
 "Network bridge configuration for VMs:" \
 "" \
-"  {{cyan:External}}: VMs get public IPs directly (routed mode)" \
 "  {{cyan:Internal}}: Private network with NAT (10.x.x.x)" \
-"  {{cyan:Both}}:     External + Internal bridges" \
+"  {{cyan:External}}: VMs get public IPs directly (routed mode)" \
+"  {{cyan:Both}}:     Internal + External bridges" \
 ""
 _show_input_footer "filter" 4
 local selected
@@ -2598,6 +2598,13 @@ fi
 }
 _edit_private_subnet(){
 _wiz_start_edit
+_wiz_description \
+"Private network for VMs (NAT to internet):" \
+"" \
+"  {{cyan:10.0.0.0/24}}:    Class A private (default)" \
+"  {{cyan:192.168.1.0/24}}: Class C private (home-style)" \
+"  {{cyan:172.16.0.0/24}}:  Class B private" \
+""
 _show_input_footer "filter" 5
 local selected
 selected=$(echo "$WIZ_PRIVATE_SUBNETS"|_wiz_choose \
@@ -2648,6 +2655,13 @@ esac
 }
 _edit_ipv6(){
 _wiz_start_edit
+_wiz_description \
+"IPv6 network configuration:" \
+"" \
+"  {{cyan:Auto}}:     Use detected IPv6 from Hetzner" \
+"  {{cyan:Manual}}:   Specify custom IPv6 address/gateway" \
+"  {{cyan:Disabled}}: IPv4 only" \
+""
 _show_input_footer "filter" 4
 local selected
 selected=$(echo "$WIZ_IPV6_MODES"|_wiz_choose \
@@ -2747,6 +2761,15 @@ fi
 }
 _edit_zfs_mode(){
 _wiz_start_edit
+_wiz_description \
+"ZFS RAID level for data pool:" \
+"" \
+"  {{cyan:RAID-0}}:  Max capacity, no redundancy (all disks)" \
+"  {{cyan:RAID-1}}:  Mirror, 50% capacity (2+ disks)" \
+"  {{cyan:RAID-Z1}}: Single parity, N-1 capacity (3+ disks)" \
+"  {{cyan:RAID-Z2}}: Double parity, N-2 capacity (4+ disks)" \
+"  {{cyan:RAID-10}}: Striped mirrors (4+ disks, even count)" \
+""
 local pool_count=${#ZFS_POOL_DISKS[@]}
 local options=""
 if [[ $pool_count -eq 1 ]];then
@@ -2811,7 +2834,7 @@ _wiz_description \
 ""
 _show_input_footer "filter" 3
 local selected
-selected=$(echo -e "Disabled\nEnabled"|_wiz_choose \
+selected=$(echo -e "Enabled\nDisabled"|_wiz_choose \
 --header="Tailscale:")
 case "$selected" in
 Enabled)local auth_key=""
@@ -3154,9 +3177,17 @@ INSTALL_RINGBUFFER="no"
 }
 _edit_api_token(){
 _wiz_start_edit
+_wiz_description \
+"Proxmox API token for automation:" \
+"" \
+"  {{cyan:Enabled}}:  Create privileged token (Terraform, Ansible)" \
+"  {{cyan:Disabled}}: No API token" \
+"" \
+"  Token has full root@pam permissions, no expiration." \
+""
 _show_input_footer "filter" 3
 local selected
-selected=$(echo -e "Disabled\nEnabled"|_wiz_choose \
+selected=$(echo -e "Enabled\nDisabled"|_wiz_choose \
 --header="API Token (privileged, no expiration):")
 case "$selected" in
 Enabled)_wiz_input_screen "Enter API token name (default: automation)"
@@ -3318,10 +3349,13 @@ done
 local selected
 local gum_exit_code=0
 selected=$(echo -e "$options"|_wiz_choose "${gum_args[@]}")||gum_exit_code=$?
-if [[ $gum_exit_code -eq 130 ]];then
+if [[ $gum_exit_code -ne 0 ]];then
 return 0
 fi
 if [[ -z $selected ]];then
+if [[ ${#ZFS_POOL_DISKS[@]} -gt 0 ]];then
+return 0
+fi
 show_validation_error "✗ At least one disk must be selected for ZFS pool"
 continue
 fi
