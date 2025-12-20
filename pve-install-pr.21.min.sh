@@ -17,7 +17,7 @@ readonly HEX_GRAY="#585858"
 readonly HEX_WHITE="#ffffff"
 readonly HEX_GOLD="#d7af5f"
 readonly HEX_NONE="7"
-readonly VERSION="2.0.410-pr.21"
+readonly VERSION="2.0.411-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-installer}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -488,7 +488,7 @@ if wget -q -O "$output_file" "$url";then
 if [ -s "$output_file" ];then
 local file_type
 file_type=$(file "$output_file" 2>/dev/null||printf '\n')
-if echo "$file_type"|grep -q "empty";then
+if [[ $file_type == *empty* ]];then
 print_error "Downloaded file is empty: $output_file"
 retry_count=$((retry_count+1))
 continue
@@ -4889,9 +4889,9 @@ log "ERROR: Failed to create API token - empty output"
 return 1
 fi
 local json_output
-json_output=$(echo "$output"|grep -v "^perl:"|grep -v "^warning:"|grep -E '^\{|"value"'|head -1)
+json_output=$(grep -v "^perl:" <<<"$output"|grep -v "^warning:"|grep -E '^\{|"value"'|head -1)
 local token_value
-token_value=$(echo "$json_output"|jq -r '.value // empty' 2>/dev/null||true)
+token_value=$(jq -r '.value // empty' <<<"$json_output" 2>/dev/null||true)
 if [[ -z $token_value ]];then
 log "ERROR: Failed to extract token value from pveum output"
 log "DEBUG: pveum output: $output"
