@@ -1,7 +1,7 @@
 # shellcheck shell=bash
 # =============================================================================
 # Netdata - Real-time performance and health monitoring
-# Provides web dashboard on port 19999
+# Provides web dashboard on PORT_NETDATA (default: 19999)
 # Package installed via batch_install_packages() in 037-parallel-helpers.sh
 # =============================================================================
 
@@ -21,7 +21,7 @@ _config_netdata() {
 
 # Configures Netdata for real-time monitoring.
 # Package already installed via batch_install_packages().
-# Provides web dashboard accessible on port 19999.
+# Provides web dashboard on PORT_NETDATA (see 000-init.sh).
 # If Tailscale enabled: accessible via Tailscale network
 # Otherwise: localhost only (use reverse proxy for external access)
 configure_netdata() {

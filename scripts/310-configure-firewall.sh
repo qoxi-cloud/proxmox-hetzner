@@ -18,24 +18,24 @@ _generate_port_rules() {
       ;;
     strict)
       # Strict mode: only SSH allowed
-      rules="# SSH access (port 22)
-        tcp dport 22 ct state new accept"
+      rules="# SSH access (port ${PORT_SSH})
+        tcp dport ${PORT_SSH} ct state new accept"
       ;;
     standard)
       # Standard mode: SSH + Proxmox Web UI
-      rules="# SSH access (port 22)
-        tcp dport 22 ct state new accept
+      rules="# SSH access (port ${PORT_SSH})
+        tcp dport ${PORT_SSH} ct state new accept
 
-        # Proxmox Web UI (port 8006)
-        tcp dport 8006 ct state new accept"
+        # Proxmox Web UI (port ${PORT_PROXMOX_UI})
+        tcp dport ${PORT_PROXMOX_UI} ct state new accept"
       ;;
     *)
       log "WARNING: Unknown firewall mode: $mode, using standard"
-      rules="# SSH access (port 22)
-        tcp dport 22 ct state new accept
+      rules="# SSH access (port ${PORT_SSH})
+        tcp dport ${PORT_SSH} ct state new accept
 
-        # Proxmox Web UI (port 8006)
-        tcp dport 8006 ct state new accept"
+        # Proxmox Web UI (port ${PORT_PROXMOX_UI})
+        tcp dport ${PORT_PROXMOX_UI} ct state new accept"
       ;;
   esac
 

@@ -68,6 +68,13 @@ readonly DOWNLOAD_RETRY_DELAY=2
 # SSH settings
 readonly SSH_CONNECT_TIMEOUT=10
 
+# Ports configuration
+readonly SSH_PORT_QEMU=5555        # SSH port for QEMU VM (installer-internal)
+readonly PORT_SSH=22               # Standard SSH port for firewall rules
+readonly PORT_PROXMOX_UI=8006      # Proxmox Web UI port
+readonly PORT_NETDATA=19999        # Netdata monitoring dashboard
+readonly PORT_PROMETHEUS_NODE=9100 # Prometheus node exporter
+
 # Password settings
 readonly DEFAULT_PASSWORD_LENGTH=16
 
@@ -79,6 +86,11 @@ readonly DNS_LOOKUP_TIMEOUT=5
 
 # Retry delays (seconds)
 readonly DNS_RETRY_DELAY=10
+
+# QEMU boot timeouts (seconds)
+readonly QEMU_BOOT_TIMEOUT=300      # Max wait for QEMU to boot and expose SSH port
+readonly QEMU_PORT_CHECK_INTERVAL=3 # Interval between port availability checks
+readonly QEMU_SSH_READY_TIMEOUT=120 # Max wait for SSH to be fully ready
 
 # Keyboard layouts supported by Proxmox installer (from official documentation)
 # shellcheck disable=SC2034

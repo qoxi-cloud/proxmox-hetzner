@@ -1,7 +1,7 @@
 # shellcheck shell=bash
 # =============================================================================
 # Prometheus Node Exporter configuration
-# Exposes system and hardware metrics on port 9100 for Prometheus scraping
+# Exposes system metrics on PORT_PROMETHEUS_NODE (see 000-init.sh)
 # Package installed via batch_install_packages() in 037-parallel-helpers.sh
 # =============================================================================
 
@@ -51,5 +51,5 @@ _config_prometheus() {
     return 1
   }
 
-  log "Prometheus node exporter listening on :9100 with textfile collector"
+  log "Prometheus node exporter listening on :${PORT_PROMETHEUS_NODE} with textfile collector"
 }

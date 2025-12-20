@@ -6,7 +6,7 @@
 # SSH options for QEMU VM on localhost - host key checking disabled since VM is local/ephemeral
 # NOT suitable for production remote servers
 SSH_OPTS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -o ConnectTimeout=${SSH_CONNECT_TIMEOUT:-10}"
-SSH_PORT="5555"
+SSH_PORT="${SSH_PORT_QEMU:-5555}"
 
 # Session passfile - created once, reused for all SSH operations
 _SSH_SESSION_PASSFILE=""
@@ -120,7 +120,7 @@ wait_for_ssh_ready() {
   # Quick port check first (faster than SSH attempts)
   local port_check=0
   for _ in {1..10}; do
-    if (echo >/dev/tcp/localhost/$SSH_PORT) 2>/dev/null; then
+    if (echo >/dev/tcp/localhost/"$SSH_PORT") 2>/dev/null; then
       port_check=1
       break
     fi
@@ -158,8 +158,36 @@ wait_for_ssh_ready() {
 # =============================================================================
 # Remote execution functions
 # =============================================================================
+#
+# Function selection guide:
+#
+# remote_exec()      - Low-level SSH execution with retry. Use for:
+#                      - Single commands that may not need progress display
+#                      - Commands within subshells that already show progress
+#                      - Quick status checks or simple configurations
+#                      - Returns exit code (doesn't exit on failure)
+#
+# run_remote()       - Primary function for configuration scripts. Use for:
+#                      - All major installation/configuration steps
+#                      - Commands that should show progress to user
+#                      - Operations where failure should abort installation
+#                      - Automatically exits on failure (no manual error handling)
+#
+# remote_copy()      - SCP file transfer. Use for:
+#                      - Deploying config files and templates
+#                      - Returns exit code (check manually or use || return 1)
+#
+# deploy_template()  - High-level helper (in 038-deploy-helpers.sh). Use for:
+#                      - Templates with variable substitution + remote copy
+#
+# run_with_progress() - Background command with progress. Use for:
+#                      - Local or remote operations needing progress display
+#                      - Wraps any command (not just SSH)
+#
+# =============================================================================
 
 # Executes command on remote VM via SSH with retry logic.
+# Use when you need return code handling or within subshells with own progress.
 # Parameters:
 #   $* - Command to execute remotely
 # Returns: Exit code from remote command
@@ -190,6 +218,7 @@ remote_exec() {
 }
 
 # Internal: Executes remote script with progress indicator.
+# Don't use directly - use run_remote() instead which handles errors.
 # Parameters:
 #   $1 - Progress message
 #   $2 - Script content to execute
@@ -236,12 +265,15 @@ _remote_exec_with_progress() {
 }
 
 # Executes remote script with progress, exits on failure.
-# This is the primary function for running installation scripts.
+# PRIMARY function for all configuration scripts - use this by default.
+# Shows progress spinner to user and logs output for debugging.
 # Parameters:
-#   $1 - Progress message
-#   $2 - Script content to execute
+#   $1 - Progress message (shown while running)
+#   $2 - Script content to execute (can be multi-line heredoc)
 #   $3 - Done message (optional, defaults to $1)
-# Side effects: Exits with code 1 on failure
+# Side effects: Exits with code 1 on failure (no need to check return)
+# Example:
+#   run_remote "Installing packages" 'apt-get install -y foo' "Packages installed"
 run_remote() {
   local message="$1"
   local script="$2"
@@ -254,10 +286,13 @@ run_remote() {
 }
 
 # Copies file to remote VM via SCP.
+# Use for deploying config files. For templates with vars, use deploy_template().
 # Parameters:
 #   $1 - Source file path (local)
 #   $2 - Destination path (remote)
-# Returns: 0 on success, 1 on failure
+# Returns: 0 on success, 1 on failure (check manually: || return 1)
+# Example:
+#   remote_copy "templates/foo.conf" "/etc/foo.conf" || return 1
 remote_copy() {
   local src="$1"
   local dst="$2"

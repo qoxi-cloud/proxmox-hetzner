@@ -329,7 +329,7 @@ EOF
 }
 
 # Boots installed Proxmox with SSH port forwarding.
-# Exposes SSH on port 5555 for post-install configuration.
+# Exposes SSH on SSH_PORT_QEMU for post-install configuration.
 # Side effects: Starts QEMU, sets QEMU_PID global
 boot_proxmox_with_port_forwarding() {
   setup_qemu_config
@@ -344,7 +344,7 @@ boot_proxmox_with_port_forwarding() {
   # shellcheck disable=SC2086
   nohup qemu-system-x86_64 $KVM_OPTS $UEFI_OPTS \
     $CPU_OPTS -device e1000,netdev=net0 \
-    -netdev user,id=net0,hostfwd=tcp::5555-:22 \
+    -netdev user,id=net0,hostfwd=tcp::${SSH_PORT_QEMU}-:22 \
     -smp "$QEMU_CORES" -m "$QEMU_RAM" \
     $DRIVE_ARGS -display none \
     >qemu_output.log 2>&1 &
@@ -352,17 +352,18 @@ boot_proxmox_with_port_forwarding() {
   QEMU_PID=$!
 
   # Wait for port to be open first (in background for show_progress)
+  local timeout="${QEMU_BOOT_TIMEOUT:-300}"
+  local check_interval="${QEMU_PORT_CHECK_INTERVAL:-3}"
   (
-    local timeout=300
     local elapsed=0
     while ((elapsed < timeout)); do
       # Suppress all connection errors by redirecting to /dev/null
-      if exec 3<>/dev/tcp/localhost/5555 2>/dev/null; then
+      if exec 3<>/dev/tcp/localhost/"${SSH_PORT_QEMU}" 2>/dev/null; then
         exec 3<&- # Close the file descriptor
         exit 0
       fi 2>/dev/null
-      sleep 3
-      ((elapsed += 3))
+      sleep "$check_interval"
+      ((elapsed += check_interval))
     done
     exit 1
   ) 2>/dev/null &
@@ -379,7 +380,7 @@ boot_proxmox_with_port_forwarding() {
   fi
 
   # Wait for SSH to be fully ready (handles key exchange timing)
-  wait_for_ssh_ready 120 || {
+  wait_for_ssh_ready "${QEMU_SSH_READY_TIMEOUT:-120}" || {
     log "ERROR: SSH connection failed"
     log "QEMU output log:"
     cat qemu_output.log >>"$LOG_FILE" 2>&1
