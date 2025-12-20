@@ -17,7 +17,7 @@ readonly HEX_GRAY="#585858"
 readonly HEX_WHITE="#ffffff"
 readonly HEX_GOLD="#d7af5f"
 readonly HEX_NONE="7"
-readonly VERSION="2.0.392-pr.21"
+readonly VERSION="2.0.393-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-installer}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -4208,6 +4208,11 @@ local -a template_list=(
 if ! show_progress $! "Downloading template files";then
 log "ERROR: Failed to download template files"
 exit 1
+fi
+if [[ -n ${PRIVATE_SUBNET:-} && $BRIDGE_MODE != "external" ]];then
+PRIVATE_IP_CIDR="${PRIVATE_SUBNET%.*}.1/${PRIVATE_SUBNET#*/}"
+export PRIVATE_IP_CIDR
+log "Derived PRIVATE_IP_CIDR=$PRIVATE_IP_CIDR from PRIVATE_SUBNET=$PRIVATE_SUBNET"
 fi
 (apply_common_template_vars "./templates/hosts"
 apply_common_template_vars "./templates/interfaces"
