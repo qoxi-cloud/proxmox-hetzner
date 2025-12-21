@@ -36,7 +36,8 @@ add_log() {
 
 # Render header in wizard style (centered like completion screen)
 _render_install_header() {
-  tput cup "$LOGO_HEIGHT" 0
+  # Use ANSI escape instead of tput for speed
+  printf '\033[%d;0H' "$((LOGO_HEIGHT + 1))"
   printf '\n%s\n\n' "                     ${CLR_ORANGE}●${CLR_RESET} ${CLR_CYAN}Installing Proxmox${CLR_RESET} ${CLR_ORANGE}●${CLR_RESET}"
 }
 
