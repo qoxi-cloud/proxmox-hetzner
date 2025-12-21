@@ -73,11 +73,10 @@ readonly DOWNLOAD_RETRY_DELAY=2
 readonly SSH_CONNECT_TIMEOUT=10
 
 # Ports configuration
-readonly SSH_PORT_QEMU=5555        # SSH port for QEMU VM (installer-internal)
-readonly PORT_SSH=22               # Standard SSH port for firewall rules
-readonly PORT_PROXMOX_UI=8006      # Proxmox Web UI port
-readonly PORT_NETDATA=19999        # Netdata monitoring dashboard
-readonly PORT_PROMETHEUS_NODE=9100 # Prometheus node exporter
+readonly SSH_PORT_QEMU=5555   # SSH port for QEMU VM (installer-internal)
+readonly PORT_SSH=22          # Standard SSH port for firewall rules
+readonly PORT_PROXMOX_UI=8006 # Proxmox Web UI port
+readonly PORT_NETDATA=19999   # Netdata monitoring dashboard
 
 # Password settings
 readonly DEFAULT_PASSWORD_LENGTH=16
@@ -213,7 +212,7 @@ ZFS_POOL_DISKS=()
 
 # System utilities to install on Proxmox
 SYSTEM_UTILITIES="btop iotop ncdu tmux pigz smartmontools jq bat fastfetch sysstat nethogs ethtool"
-OPTIONAL_PACKAGES="libguestfs-tools" # prometheus-node-exporter moved to wizard features
+OPTIONAL_PACKAGES="libguestfs-tools"
 
 # Log file
 LOG_FILE="/root/pve-install-$(date +%Y%m%d-%H%M%S).log"
@@ -221,11 +220,30 @@ LOG_FILE="/root/pve-install-$(date +%Y%m%d-%H%M%S).log"
 # Track if installation completed successfully
 INSTALL_COMPLETED=false
 
+# =============================================================================
+# Temp file registry for cleanup on exit
+# =============================================================================
+# Array to track temp files for cleanup on script exit
+_TEMP_FILES=()
+
+# Register a temp file for automatic cleanup on script exit.
+# Use this for any mktemp files that may not get cleaned up on early exit/SIGTERM.
+# Parameters:
+#   $1 - Path to temp file
+register_temp_file() {
+  _TEMP_FILES+=("$1")
+}
+
 # Cleans up temporary files created during installation.
 # Removes ISO files, password files, logs, and other temporary artifacts.
 # Behavior depends on INSTALL_COMPLETED flag - preserves files if installation succeeded.
 # Uses secure deletion for files containing secrets.
 cleanup_temp_files() {
+  # Clean up registered temp files (from register_temp_file)
+  for f in "${_TEMP_FILES[@]}"; do
+    [[ -f "$f" ]] && rm -f "$f"
+  done
+
   # Secure delete files containing secrets (API token, root password)
   # secure_delete_file is defined in 012-utils.sh, check if available
   if type secure_delete_file &>/dev/null; then
