@@ -17,7 +17,7 @@ readonly HEX_GRAY="#585858"
 readonly HEX_WHITE="#ffffff"
 readonly HEX_GOLD="#d7af5f"
 readonly HEX_NONE="7"
-readonly VERSION="2.0.465-pr.21"
+readonly VERSION="2.0.466-pr.21"
 readonly TERM_WIDTH=69
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-installer}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
@@ -1062,20 +1062,13 @@ repo_setup+='
       echo "deb [signed-by=/usr/share/keyrings/netdata-archive-keyring.gpg] https://repo.netdata.cloud/repos/stable/debian/ bookworm/" > /etc/apt/sources.list.d/netdata.list
     '
 fi
-(remote_exec '
+run_remote "Installing packages (${#packages[@]})" '
       set -e
       export DEBIAN_FRONTEND=noninteractive
       '"$repo_setup"'
       apt-get update -qq
       apt-get install -yqq '"${packages[*]}"'
-    '||exit 1) > \
-/dev/null 2>&1&
-show_progress $! "Installing packages (${#packages[@]})" "Packages installed"
-local exit_code=$?
-if [[ $exit_code -ne 0 ]];then
-log "WARNING: Batch package installation failed"
-return 1
-fi
+    ' "Packages installed"
 log_subtasks "${packages[@]}"
 return 0
 }
@@ -4561,6 +4554,7 @@ if [[ $INSTALL_TAILSCALE != "yes" ]];then
 return 0
 fi
 run_remote "Starting Tailscale" '
+        set -e
         systemctl enable tailscaled
         systemctl start tailscaled
         # Wait for tailscaled socket to be ready (up to 3s)
@@ -4568,6 +4562,7 @@ run_remote "Starting Tailscale" '
           tailscale status &>/dev/null && break
           sleep 1
         done
+        true  # Ensure exit 0 if loop completes without break
     ' "Tailscale started"
 if [[ -n $TAILSCALE_AUTH_KEY ]];then
 local tmp_ip tmp_hostname
@@ -4592,8 +4587,9 @@ TAILSCALE_IP=$(cat "$tmp_ip" 2>/dev/null||echo "pending")
 TAILSCALE_HOSTNAME=$(cat "$tmp_hostname" 2>/dev/null||printf '\n')
 complete_task "$TASK_INDEX" "$CLR_ORANGE├─$CLR_RESET Tailscale authenticated. IP: $TAILSCALE_IP"
 if [[ $TAILSCALE_WEBUI == "yes" ]];then
-remote_exec "tailscale serve --bg --https=443 https://127.0.0.1:8006" >/dev/null 2>&1&
-show_progress $! "Configuring Tailscale Serve" "Proxmox Web UI available via Tailscale Serve"
+run_remote "Configuring Tailscale Serve" \
+'tailscale serve --bg --https=443 https://127.0.0.1:8006' \
+"Proxmox Web UI available via Tailscale Serve"
 fi
 if [[ ${FIREWALL_MODE:-standard} == "stealth" ]];then
 log "Deploying disable-openssh.service (FIREWALL_MODE=$FIREWALL_MODE)"
@@ -5252,7 +5248,12 @@ complete_task "$task_idx" "$CLR_ORANGE├─$CLR_RESET Validation passed"
 fi
 }
 finalize_vm(){
-remote_exec "poweroff" >/dev/null 2>&1&
+(if
+kill -0 "$QEMU_PID" 2>/dev/null
+then
+kill -TERM "$QEMU_PID" 2>/dev/null||true
+fi) \
+&
 show_progress $! "Powering off the VM"
 (local timeout=120
 local elapsed=0
@@ -5360,8 +5361,8 @@ configure_ssl_certificate
 if [[ $INSTALL_API_TOKEN == "yes" ]];then
 run_with_progress "Creating API token" "API token created" create_api_token
 fi
-configure_ssh_hardening
 validate_installation
+configure_ssh_hardening
 finalize_vm
 }
 _render_completion_screen(){
