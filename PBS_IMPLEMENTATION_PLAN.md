@@ -301,17 +301,16 @@ generate_network_config() {
   if [[ "$PRODUCT_TYPE" == "pbs" ]]; then
     template="templates/interfaces.pbs.tmpl"
   else
-    # Current PVE network mode logic
-    case "$NETWORK_MODE" in
-      internal) template="templates/interfaces.internal.tmpl" ;;
-      external) template="templates/interfaces.external.tmpl" ;;
-      both) template="templates/interfaces.both.tmpl" ;;
-    esac
+    # Unified template with bridge mode post-processing
+    template="templates/interfaces.tmpl"
   fi
 
   deploy_template "$template" "/target/etc/network/interfaces" \
     INTERFACE MAIN_IPV4 NETMASK GATEWAY \
     MAIN_IPV6 IPV6_GATEWAY PRIVATE_SUBNET
+
+  # Apply bridge mode sections (removes inapplicable sections)
+  postprocess_interfaces_bridge_mode "/target/etc/network/interfaces"
 }
 ```
 
