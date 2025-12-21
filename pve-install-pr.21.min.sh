@@ -17,7 +17,7 @@ readonly HEX_GRAY="#585858"
 readonly HEX_WHITE="#ffffff"
 readonly HEX_GOLD="#d7af5f"
 readonly HEX_NONE="7"
-readonly VERSION="2.0.462-pr.21"
+readonly VERSION="2.0.463-pr.21"
 readonly TERM_WIDTH=69
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-installer}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
@@ -2071,7 +2071,7 @@ break
 fi
 done
 }
-WIZ_SCREENS=("Basic" "Proxmox" "Network" "Storage" "Services" "SSH")
+WIZ_SCREENS=("Basic" "Proxmox" "Network" "Storage" "Services" "Access")
 WIZ_CURRENT_SCREEN=0
 _NAV_COL_WIDTH=10
 _nav_repeat(){
@@ -2476,11 +2476,11 @@ _add_field "Power profile    " "$(_wiz_fmt "$_DSP_POWER")" "power_profile"
 _add_field "Security         " "$(_wiz_fmt "$_DSP_SECURITY")" "security"
 _add_field "Monitoring       " "$(_wiz_fmt "$_DSP_MONITORING")" "monitoring"
 _add_field "Tools            " "$(_wiz_fmt "$_DSP_TOOLS")" "tools"
-_add_field "API Token        " "$(_wiz_fmt "$_DSP_API")" "api_token"
 ;;
 5)_add_field "Admin User       " "$(_wiz_fmt "$_DSP_ADMIN_USER")" "admin_username"
 _add_field "Admin Password   " "$(_wiz_fmt "$_DSP_ADMIN_PASS")" "admin_password"
 _add_field "SSH Key          " "$(_wiz_fmt "$_DSP_SSH")" "ssh_key"
+_add_field "API Token        " "$(_wiz_fmt "$_DSP_API")" "api_token"
 esac
 }
 _wiz_render_menu(){
@@ -3393,40 +3393,6 @@ INSTALL_RINGBUFFER="no"
 [[ $selected == *nvim* ]]&&INSTALL_NVIM="yes"
 [[ $selected == *ringbuffer* ]]&&INSTALL_RINGBUFFER="yes"
 }
-_edit_api_token(){
-_wiz_start_edit
-_wiz_description \
-"Proxmox API token for automation:" \
-"" \
-"  {{cyan:Enabled}}:  Create privileged token (Terraform, Ansible)" \
-"  {{cyan:Disabled}}: No API token" \
-"" \
-"  Token has full Administrator permissions, no expiration." \
-""
-_show_input_footer "filter" 3
-local selected
-selected=$(printf '%s\n' "$WIZ_TOGGLE_OPTIONS"|_wiz_choose \
---header="API Token (privileged, no expiration):")
-case "$selected" in
-Enabled)_wiz_input_screen "Enter API token name (default: automation)"
-local token_name
-token_name=$(_wiz_input \
---placeholder "automation" \
---prompt "Token name: " \
---no-show-help \
---value="${API_TOKEN_NAME:-automation}")
-if [[ -n $token_name && $token_name =~ ^[a-zA-Z0-9_-]+$ ]];then
-API_TOKEN_NAME="$token_name"
-INSTALL_API_TOKEN="yes"
-else
-API_TOKEN_NAME="automation"
-INSTALL_API_TOKEN="yes"
-fi
-;;
-Disabled)INSTALL_API_TOKEN="no"
-API_TOKEN_NAME="automation"
-esac
-}
 _edit_ssh_key(){
 while true;do
 _wiz_start_edit
@@ -3548,6 +3514,40 @@ ADMIN_PASSWORD="$new_password"
 break
 esac
 done
+}
+_edit_api_token(){
+_wiz_start_edit
+_wiz_description \
+"Proxmox API token for automation:" \
+"" \
+"  {{cyan:Enabled}}:  Create privileged token (Terraform, Ansible)" \
+"  {{cyan:Disabled}}: No API token" \
+"" \
+"  Token has full Administrator permissions, no expiration." \
+""
+_show_input_footer "filter" 3
+local selected
+selected=$(printf '%s\n' "$WIZ_TOGGLE_OPTIONS"|_wiz_choose \
+--header="API Token (privileged, no expiration):")
+case "$selected" in
+Enabled)_wiz_input_screen "Enter API token name (default: automation)"
+local token_name
+token_name=$(_wiz_input \
+--placeholder "automation" \
+--prompt "Token name: " \
+--no-show-help \
+--value="${API_TOKEN_NAME:-automation}")
+if [[ -n $token_name && $token_name =~ ^[a-zA-Z0-9_-]+$ ]];then
+API_TOKEN_NAME="$token_name"
+INSTALL_API_TOKEN="yes"
+else
+API_TOKEN_NAME="automation"
+INSTALL_API_TOKEN="yes"
+fi
+;;
+Disabled)INSTALL_API_TOKEN="no"
+API_TOKEN_NAME="automation"
+esac
 }
 _edit_boot_disk(){
 _wiz_start_edit
