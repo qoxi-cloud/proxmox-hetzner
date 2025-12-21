@@ -17,7 +17,7 @@ readonly HEX_GRAY="#585858"
 readonly HEX_WHITE="#ffffff"
 readonly HEX_GOLD="#d7af5f"
 readonly HEX_NONE="7"
-readonly VERSION="2.0.423-pr.21"
+readonly VERSION="2.0.424-pr.21"
 readonly TERM_WIDTH=69
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-installer}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
@@ -2169,6 +2169,18 @@ gum input \
 --no-show-help \
 "$@"
 }
+_wiz_filter(){
+gum filter \
+--padding "0 0 0 1" \
+--placeholder "Type to search..." \
+--indicator "›" \
+--height 5 \
+--no-show-help \
+--prompt.foreground "$HEX_CYAN" \
+--indicator.foreground "$HEX_ORANGE" \
+--match.foreground "$HEX_ORANGE" \
+"$@"
+}
 _wiz_clear(){
 printf '\033[H\033[J'
 }
@@ -2609,16 +2621,7 @@ _edit_timezone(){
 _wiz_start_edit
 _show_input_footer "filter" 6
 local selected
-selected=$(echo "$WIZ_TIMEZONES"|gum filter \
---padding "0 0 0 1" \
---placeholder "Type to search..." \
---indicator "›" \
---height 5 \
---no-show-help \
---prompt "Timezone: " \
---prompt.foreground "$HEX_CYAN" \
---indicator.foreground "$HEX_ORANGE" \
---match.foreground "$HEX_ORANGE")
+selected=$(echo "$WIZ_TIMEZONES"|_wiz_filter --prompt "Timezone: ")
 if [[ -n $selected ]];then
 TIMEZONE="$selected"
 local country_code="${TZ_TO_COUNTRY[$selected]:-}"
@@ -2632,16 +2635,7 @@ _edit_keyboard(){
 _wiz_start_edit
 _show_input_footer "filter" 6
 local selected
-selected=$(echo "$WIZ_KEYBOARD_LAYOUTS"|gum filter \
---padding "0 0 0 1" \
---placeholder "Type to search..." \
---indicator "›" \
---height 5 \
---no-show-help \
---prompt "Keyboard: " \
---prompt.foreground "$HEX_CYAN" \
---indicator.foreground "$HEX_ORANGE" \
---match.foreground "$HEX_ORANGE")
+selected=$(echo "$WIZ_KEYBOARD_LAYOUTS"|_wiz_filter --prompt "Keyboard: ")
 if [[ -n $selected ]];then
 KEYBOARD="$selected"
 fi
@@ -2650,16 +2644,7 @@ _edit_country(){
 _wiz_start_edit
 _show_input_footer "filter" 6
 local selected
-selected=$(echo "$WIZ_COUNTRIES"|gum filter \
---padding "0 0 0 1" \
---placeholder "Type to search..." \
---indicator "›" \
---height 5 \
---no-show-help \
---prompt "Country: " \
---prompt.foreground "$HEX_CYAN" \
---indicator.foreground "$HEX_ORANGE" \
---match.foreground "$HEX_ORANGE")
+selected=$(echo "$WIZ_COUNTRIES"|_wiz_filter --prompt "Country: ")
 if [[ -n $selected ]];then
 COUNTRY="$selected"
 _update_locale_from_country
