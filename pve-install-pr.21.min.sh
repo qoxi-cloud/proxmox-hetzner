@@ -17,7 +17,7 @@ readonly HEX_GRAY="#585858"
 readonly HEX_WHITE="#ffffff"
 readonly HEX_GOLD="#d7af5f"
 readonly HEX_NONE="7"
-readonly VERSION="2.0.467-pr.21"
+readonly VERSION="2.0.469-pr.21"
 readonly TERM_WIDTH=69
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-installer}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
@@ -4503,9 +4503,7 @@ install_base_packages
 local locale_name="${LOCALE%%.UTF-8}"
 run_remote "Configuring UTF-8 locales" "
         set -e
-        # Enable user's selected locale
         sed -i 's/# $locale_name.UTF-8/$locale_name.UTF-8/' /etc/locale.gen
-        # Also enable en_US as fallback (many tools expect it)
         sed -i 's/# en_US.UTF-8/en_US.UTF-8/' /etc/locale.gen
         locale-gen
         update-locale LANG=$LOCALE LC_ALL=$LOCALE
@@ -4563,12 +4561,8 @@ run_remote "Starting Tailscale" '
         set -e
         systemctl enable tailscaled
         systemctl start tailscaled
-        # Wait for tailscaled socket to be ready (up to 3s)
-        for i in {1..3}; do
-          tailscale status &>/dev/null && break
-          sleep 1
-        done
-        true  # Ensure exit 0 if loop completes without break
+        for i in {1..3}; do tailscale status &>/dev/null && break; sleep 1; done
+        true
     ' "Tailscale started"
 if [[ -n $TAILSCALE_AUTH_KEY ]];then
 local tmp_ip tmp_hostname
@@ -4933,11 +4927,8 @@ return 0
 _install_yazi(){
 run_remote "Installing yazi" '
     set -e
-    # Get latest yazi version and download
     YAZI_VERSION=$(curl -s https://api.github.com/repos/sxyazi/yazi/releases/latest | grep "tag_name" | cut -d "\"" -f 4 | sed "s/^v//")
     curl -sL "https://github.com/sxyazi/yazi/releases/download/v${YAZI_VERSION}/yazi-x86_64-unknown-linux-gnu.zip" -o /tmp/yazi.zip
-
-    # Extract and install
     unzip -q /tmp/yazi.zip -d /tmp/
     chmod +x /tmp/yazi-x86_64-unknown-linux-gnu/yazi
     mv /tmp/yazi-x86_64-unknown-linux-gnu/yazi /usr/local/bin/
@@ -5017,16 +5008,10 @@ fi
 run_remote "Configuring Let's Encrypt templates" '
         set -e
         mkdir -p /etc/letsencrypt/renewal-hooks/deploy
-
-        # Install deploy hook for renewals
         mv /tmp/letsencrypt-deploy-hook.sh /etc/letsencrypt/renewal-hooks/deploy/proxmox.sh
         chmod +x /etc/letsencrypt/renewal-hooks/deploy/proxmox.sh
-
-        # Install first-boot script (already has substituted values)
         mv /tmp/letsencrypt-firstboot.sh /usr/local/bin/obtain-letsencrypt-cert.sh
         chmod +x /usr/local/bin/obtain-letsencrypt-cert.sh
-
-        # Install and enable systemd service
         mv /tmp/letsencrypt-firstboot.service /etc/systemd/system/letsencrypt-firstboot.service
         systemctl daemon-reload
         systemctl enable letsencrypt-firstboot.service
@@ -5096,10 +5081,7 @@ esac
 local arc_max_bytes=$((arc_max_mb*1024*1024))
 log "INFO: ZFS ARC: ${arc_max_mb}MB (Total RAM: ${total_ram_mb}MB, Mode: $ZFS_ARC_MODE)"
 run_remote "Configuring ZFS ARC memory" "
-    # Set ZFS ARC limit in modprobe config (persistent across reboots)
     echo 'options zfs zfs_arc_max=$arc_max_bytes' >/etc/modprobe.d/zfs.conf
-
-    # Apply limit to currently running kernel module (if ZFS loaded)
     if [[ -f /sys/module/zfs/parameters/zfs_arc_max ]]; then
       echo '$arc_max_bytes' >/sys/module/zfs/parameters/zfs_arc_max 2>/dev/null || true
     fi
@@ -5118,17 +5100,11 @@ return 1
 }
 run_remote "Enabling ZFS scrub timers" "
     systemctl daemon-reload
-
-    # Enable scrub timer for rpool (boot/system pool)
     if zpool list rpool &>/dev/null; then
       systemctl enable --now zfs-scrub@rpool.timer
-      echo 'Enabled scrub timer for rpool'
     fi
-
-    # Enable scrub timer for tank (data pool) if exists
     if zpool list tank &>/dev/null; then
       systemctl enable --now zfs-scrub@tank.timer
-      echo 'Enabled scrub timer for tank'
     fi
   "
 log "INFO: ZFS scrub schedule configured (monthly, 1st Sunday at 2:00 AM)"
@@ -5160,31 +5136,16 @@ fi
 log "INFO: ZFS pool command: $pool_cmd"
 if ! run_remote "Creating ZFS pool 'tank'" "
     set -e
-
-    # Create ZFS pool with specified RAID configuration
     $pool_cmd
-
-    # Set recommended ZFS properties
     zfs set compression=lz4 tank
     zfs set atime=off tank
     zfs set relatime=on tank
     zfs set xattr=sa tank
     zfs set dnodesize=auto tank
-
-    # Create dataset for VM disks
     zfs create tank/vm-disks
-
-    # Add tank pool to Proxmox storage config
     pvesm add zfspool tank --pool tank/vm-disks --content images,rootdir
-
-    # Configure local storage (boot disk ext4) for ISO/templates/backups
     pvesm set local --content iso,vztmpl,backup,snippets
-
-    # Verify pool was created
-    if ! zpool list | grep -q '^tank '; then
-      echo 'ERROR: ZFS pool tank not found after creation'
-      exit 1
-    fi
+    zpool list | grep -q '^tank ' || { echo 'ERROR: ZFS pool tank not found'; exit 1; }
   " "ZFS pool 'tank' created";then
 log "ERROR: Failed to create ZFS pool 'tank'"
 return 1
