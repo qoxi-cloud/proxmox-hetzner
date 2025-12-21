@@ -17,7 +17,7 @@ readonly HEX_GRAY="#585858"
 readonly HEX_WHITE="#ffffff"
 readonly HEX_GOLD="#d7af5f"
 readonly HEX_NONE="7"
-readonly VERSION="2.0.426-pr.21"
+readonly VERSION="2.0.460-pr.21"
 readonly TERM_WIDTH=69
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-installer}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
@@ -40,7 +40,6 @@ readonly SSH_PORT_QEMU=5555
 readonly PORT_SSH=22
 readonly PORT_PROXMOX_UI=8006
 readonly PORT_NETDATA=19999
-readonly PORT_PROMETHEUS_NODE=9100
 readonly DEFAULT_PASSWORD_LENGTH=16
 readonly QEMU_MIN_RAM_RESERVE=2048
 readonly DNS_LOOKUP_TIMEOUT=5
@@ -113,7 +112,14 @@ SYSTEM_UTILITIES="btop iotop ncdu tmux pigz smartmontools jq bat fastfetch sysst
 OPTIONAL_PACKAGES="libguestfs-tools"
 LOG_FILE="/root/pve-install-$(date +%Y%m%d-%H%M%S).log"
 INSTALL_COMPLETED=false
+_TEMP_FILES=()
+register_temp_file(){
+_TEMP_FILES+=("$1")
+}
 cleanup_temp_files(){
+for f in "${_TEMP_FILES[@]}";do
+[[ -f $f ]]&&rm -f "$f"
+done
 if type secure_delete_file &>/dev/null;then
 secure_delete_file /tmp/pve-install-api-token.env
 secure_delete_file /root/answer.toml
@@ -185,7 +191,7 @@ INSTALL_LYNIS=""
 INSTALL_NEEDRESTART=""
 INSTALL_NETDATA=""
 INSTALL_VNSTAT=""
-INSTALL_PROMETHEUS=""
+INSTALL_PROMTAIL=""
 INSTALL_RINGBUFFER=""
 INSTALL_YAZI=""
 INSTALL_NVIM=""
@@ -199,6 +205,8 @@ INSTALL_API_TOKEN=""
 API_TOKEN_NAME="automation"
 API_TOKEN_VALUE=""
 API_TOKEN_ID=""
+ADMIN_USERNAME=""
+ADMIN_PASSWORD=""
 INSTALL_FIREWALL=""
 FIREWALL_MODE=""
 show_help(){
@@ -599,7 +607,32 @@ apply_template_vars "$file" \
 "LOCALE=${LOCALE:-en_US.UTF-8}" \
 "KEYBOARD=${KEYBOARD:-us}" \
 "COUNTRY=${COUNTRY:-US}" \
-"BAT_THEME=${BAT_THEME:-Catppuccin Mocha}"
+"BAT_THEME=${BAT_THEME:-Catppuccin Mocha}" \
+"PORT_SSH=${PORT_SSH:-22}" \
+"PORT_PROXMOX_UI=${PORT_PROXMOX_UI:-8006}"
+}
+postprocess_interfaces_bridge_mode(){
+local file="$1"
+local mode="${BRIDGE_MODE:-internal}"
+if [[ ! -f $file ]];then
+log "ERROR: Interfaces file not found: $file"
+return 1
+fi
+log "Processing interfaces for bridge mode: $mode"
+case "$mode" in
+internal)sed -i '/^# === IFACE_MANUAL_START ===/,/^# === IFACE_MANUAL_END ===/d' "$file"
+sed -i '/^# === VMBR0_EXTERNAL_START ===/,/^# === VMBR0_EXTERNAL_END ===/d' "$file"
+sed -i '/^# === VMBR1_START ===/,/^# === VMBR1_END ===/d' "$file"
+;;
+external)sed -i '/^# === IFACE_STATIC_START ===/,/^# === IFACE_STATIC_END ===/d' "$file"
+sed -i '/^# === VMBR0_NAT_START ===/,/^# === VMBR0_NAT_END ===/d' "$file"
+sed -i '/^# === VMBR1_START ===/,/^# === VMBR1_END ===/d' "$file"
+;;
+both)sed -i '/^# === IFACE_STATIC_START ===/,/^# === IFACE_STATIC_END ===/d' "$file"
+sed -i '/^# === VMBR0_NAT_START ===/,/^# === VMBR0_NAT_END ===/d' "$file"
+esac
+sed -i '/^# === [A-Z0-9_]*_START ===/d; /^# === [A-Z0-9_]*_END ===/d' "$file"
+sed -i '/^$/N;/^\n$/d' "$file"
 }
 postprocess_interfaces_ipv6(){
 local file="$1"
@@ -1004,7 +1037,7 @@ fi
 [[ $INSTALL_LYNIS == "yes" ]]&&packages+=(lynis)
 [[ $INSTALL_NEEDRESTART == "yes" ]]&&packages+=(needrestart)
 [[ $INSTALL_VNSTAT == "yes" ]]&&packages+=(vnstat)
-[[ $INSTALL_PROMETHEUS == "yes" ]]&&packages+=(prometheus-node-exporter)
+[[ $INSTALL_PROMTAIL == "yes" ]]&&packages+=(promtail)
 [[ $INSTALL_NETDATA == "yes" ]]&&packages+=(netdata)
 [[ $INSTALL_NVIM == "yes" ]]&&packages+=(neovim)
 [[ $INSTALL_RINGBUFFER == "yes" ]]&&packages+=(ethtool)
@@ -1173,7 +1206,22 @@ return 1
 }
 validate_hostname(){
 local hostname="$1"
+[[ ${hostname,,} == "localhost" ]]&&return 1
 [[ $hostname =~ ^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$ ]]
+}
+validate_admin_username(){
+local username="$1"
+[[ ! $username =~ ^[a-z][a-z0-9_-]{0,31}$ ]]&&return 1
+case "$username" in
+root|nobody|daemon|bin|sys|sync|games|man|lp|mail|\
+news|uucp|proxy|www-data|backup|list|irc|gnats|\
+sshd|systemd-network|systemd-resolve|messagebus|\
+polkitd|postfix|syslog|_apt|tss|uuidd|avahi|colord|\
+cups-pk-helper|dnsmasq|geoclue|hplip|kernoops|lightdm|\
+nm-openconnect|nm-openvpn|pulse|rtkit|saned|speech-dispatcher|\
+whoopsie|admin|administrator|operator|guest)return 1
+esac
+return 0
 }
 validate_fqdn(){
 local fqdn="$1"
@@ -1933,6 +1981,8 @@ security)_edit_features_security;;
 monitoring)_edit_features_monitoring;;
 tools)_edit_features_tools;;
 api_token)_edit_api_token;;
+admin_username)_edit_admin_username;;
+admin_password)_edit_admin_password;;
 ssh_key)_edit_ssh_key
 esac
 _wiz_hide_cursor
@@ -2213,6 +2263,8 @@ _wiz_config_complete(){
 [[ -z $DOMAIN_SUFFIX ]]&&return 1
 [[ -z $EMAIL ]]&&return 1
 [[ -z $NEW_ROOT_PASSWORD ]]&&return 1
+[[ -z $ADMIN_USERNAME ]]&&return 1
+[[ -z $ADMIN_PASSWORD ]]&&return 1
 [[ -z $TIMEZONE ]]&&return 1
 [[ -z $KEYBOARD ]]&&return 1
 [[ -z $COUNTRY ]]&&return 1
@@ -2330,7 +2382,7 @@ _DSP_MONITORING="none"
 local mon_items=()
 [[ $INSTALL_VNSTAT == "yes" ]]&&mon_items+=("vnstat")
 [[ $INSTALL_NETDATA == "yes" ]]&&mon_items+=("netdata")
-[[ $INSTALL_PROMETHEUS == "yes" ]]&&mon_items+=("prometheus")
+[[ $INSTALL_PROMTAIL == "yes" ]]&&mon_items+=("promtail")
 [[ ${#mon_items[@]} -gt 0 ]]&&_DSP_MONITORING="${mon_items[*]}"
 _DSP_TOOLS="none"
 local tool_items=()
@@ -2347,6 +2399,10 @@ esac
 fi
 _DSP_SSH=""
 [[ -n $SSH_PUBLIC_KEY ]]&&_DSP_SSH="${SSH_PUBLIC_KEY:0:20}..."
+_DSP_ADMIN_USER=""
+[[ -n $ADMIN_USERNAME ]]&&_DSP_ADMIN_USER="$ADMIN_USERNAME"
+_DSP_ADMIN_PASS=""
+[[ -n $ADMIN_PASSWORD ]]&&_DSP_ADMIN_PASS="********"
 _DSP_FIREWALL=""
 if [[ -n $INSTALL_FIREWALL ]];then
 if [[ $INSTALL_FIREWALL == "yes" ]];then
@@ -2422,7 +2478,9 @@ _add_field "Monitoring       " "$(_wiz_fmt "$_DSP_MONITORING")" "monitoring"
 _add_field "Tools            " "$(_wiz_fmt "$_DSP_TOOLS")" "tools"
 _add_field "API Token        " "$(_wiz_fmt "$_DSP_API")" "api_token"
 ;;
-5)_add_field "SSH Key          " "$(_wiz_fmt "$_DSP_SSH")" "ssh_key"
+5)_add_field "Admin User       " "$(_wiz_fmt "$_DSP_ADMIN_USER")" "admin_username"
+_add_field "Admin Password   " "$(_wiz_fmt "$_DSP_ADMIN_PASS")" "admin_password"
+_add_field "SSH Key          " "$(_wiz_fmt "$_DSP_SSH")" "ssh_key"
 esac
 }
 _wiz_render_menu(){
@@ -3081,6 +3139,7 @@ _wiz_dim "Expected IP: $CLR_ORANGE$MAIN_IPV4$CLR_RESET"
 _wiz_blank_line
 local dns_result_file
 dns_result_file=$(mktemp)
+register_temp_file "$dns_result_file"
 (validate_dns_resolution "$FQDN" "$MAIN_IPV4"
 printf '%s\n' "$?" >"$dns_result_file") > \
 /dev/null 2>&1&
@@ -3265,15 +3324,15 @@ _wiz_start_edit
 _wiz_description \
 "Monitoring features (use Space to toggle):" \
 "" \
-"  {{cyan:vnstat}}:     Network traffic monitoring" \
-"  {{cyan:netdata}}:    Real-time monitoring (port 19999)" \
-"  {{cyan:prometheus}}: Node exporter for metrics (port 9100)" \
+"  {{cyan:vnstat}}:   Network traffic monitoring" \
+"  {{cyan:netdata}}:  Real-time monitoring (port 19999)" \
+"  {{cyan:promtail}}: Log collector for Loki" \
 ""
 _show_input_footer "checkbox" 4
 local preselected=()
 [[ $INSTALL_VNSTAT == "yes" ]]&&preselected+=("vnstat")
 [[ $INSTALL_NETDATA == "yes" ]]&&preselected+=("netdata")
-[[ $INSTALL_PROMETHEUS == "yes" ]]&&preselected+=("prometheus")
+[[ $INSTALL_PROMTAIL == "yes" ]]&&preselected+=("promtail")
 local gum_args=(
 --no-limit
 --header="Monitoring:"
@@ -3289,13 +3348,13 @@ for item in "${preselected[@]}";do
 gum_args+=(--selected "$item")
 done
 local selected
-selected=$(printf '%s\n' vnstat netdata prometheus|_wiz_choose "${gum_args[@]}")
+selected=$(printf '%s\n' vnstat netdata promtail|_wiz_choose "${gum_args[@]}")
 INSTALL_VNSTAT="no"
 INSTALL_NETDATA="no"
-INSTALL_PROMETHEUS="no"
+INSTALL_PROMTAIL="no"
 [[ $selected == *vnstat* ]]&&INSTALL_VNSTAT="yes"
 [[ $selected == *netdata* ]]&&INSTALL_NETDATA="yes"
-[[ $selected == *prometheus* ]]&&INSTALL_PROMETHEUS="yes"
+[[ $selected == *promtail* ]]&&INSTALL_PROMTAIL="yes"
 }
 _edit_features_tools(){
 _wiz_start_edit
@@ -3418,6 +3477,76 @@ if [[ -n $detected_key ]];then
 continue
 fi
 fi
+done
+}
+_edit_admin_username(){
+while true;do
+_wiz_start_edit
+_wiz_description \
+"Non-root admin username for SSH and Proxmox access:" \
+"" \
+"  Root SSH login will be {{cyan:completely disabled}}." \
+"  All SSH access must use this admin account." \
+"  The admin user will have sudo privileges." \
+""
+_show_input_footer
+local new_username
+new_username=$(_wiz_input \
+--placeholder "e.g., sysadmin, deploy, operator" \
+--value "$ADMIN_USERNAME" \
+--prompt "Admin username: ")
+if [[ -z $new_username ]];then
+return
+fi
+if validate_admin_username "$new_username";then
+ADMIN_USERNAME="$new_username"
+break
+else
+show_validation_error "Invalid username. Use lowercase letters/numbers, 1-32 chars. Reserved names (root, admin) not allowed."
+fi
+done
+}
+_edit_admin_password(){
+while true;do
+_wiz_start_edit
+_show_input_footer "filter" 3
+local choice
+choice=$(printf '%s\n' "$WIZ_PASSWORD_OPTIONS"|_wiz_choose \
+--header="Admin Password:")
+if [[ -z $choice ]];then
+return
+fi
+case "$choice" in
+"Generate password")ADMIN_PASSWORD=$(generate_password "$DEFAULT_PASSWORD_LENGTH")
+_wiz_start_edit
+_wiz_hide_cursor
+_wiz_warn "Please save this password - it will be required for sudo and Proxmox UI"
+_wiz_blank_line
+printf '%s\n' "${CLR_CYAN}Generated admin password:$CLR_RESET $CLR_ORANGE$ADMIN_PASSWORD$CLR_RESET"
+_wiz_blank_line
+printf '%s\n' "${CLR_GRAY}Press any key to continue...$CLR_RESET"
+read -n 1 -s -r
+break
+;;
+"Manual entry")_wiz_start_edit
+_show_input_footer
+local new_password
+new_password=$(_wiz_input \
+--password \
+--placeholder "Enter admin password" \
+--prompt "Admin Password: ")
+if [[ -z $new_password ]];then
+continue
+fi
+local password_error
+password_error=$(get_password_error "$new_password")
+if [[ -n $password_error ]];then
+show_validation_error "$password_error"
+continue
+fi
+ADMIN_PASSWORD="$new_password"
+break
+esac
 done
 }
 _edit_boot_disk(){
@@ -3807,9 +3936,8 @@ make_answer_toml(){
 log "Creating answer.toml for autoinstall"
 log "ZFS_RAID=$ZFS_RAID, BOOT_DISK=$BOOT_DISK"
 log "ZFS_POOL_DISKS=(${ZFS_POOL_DISKS[*]})"
-(create_virtio_mapping "$BOOT_DISK" "${ZFS_POOL_DISKS[@]}") \
-&
-show_progress $! "Creating disk mapping" "Disk mapping created"
+run_with_progress "Creating disk mapping" "Disk mapping created" \
+create_virtio_mapping "$BOOT_DISK" "${ZFS_POOL_DISKS[@]}"
 load_virtio_mapping||{
 log "ERROR: Failed to load virtio mapping"
 exit 1
@@ -3836,12 +3964,6 @@ exit 1
 fi
 log "FILESYSTEM=$FILESYSTEM, DISK_LIST=$DISK_LIST"
 log "Generating answer.toml for autoinstall"
-local ssh_keys_toml=""
-if [[ -n $SSH_PUBLIC_KEY ]];then
-local escaped_key="${SSH_PUBLIC_KEY//\\/\\\\}"
-escaped_key="${escaped_key//\"/\\\"}"
-ssh_keys_toml="root-ssh-keys = [\"$escaped_key\"]"
-fi
 local escaped_password="${NEW_ROOT_PASSWORD//\\/\\\\}"
 escaped_password="${escaped_password//\"/\\\"}"
 cat >./answer.toml <<EOF
@@ -3853,11 +3975,6 @@ cat >./answer.toml <<EOF
     timezone = "$TIMEZONE"
     root-password = "$escaped_password"
     reboot-on-error = false
-EOF
-if [[ -n $ssh_keys_toml ]];then
-printf '%s\n' "    $ssh_keys_toml" >>./answer.toml
-fi
-cat >>./answer.toml <<EOF
 
 [network]
     source = "from-dhcp"
@@ -4164,6 +4281,17 @@ cat qemu_output.log >>"$LOG_FILE" 2>&1
 return 1
 }
 }
+_modify_template_files(){
+apply_common_template_vars "./templates/hosts"
+apply_common_template_vars "./templates/interfaces"
+postprocess_interfaces_bridge_mode "./templates/interfaces"
+postprocess_interfaces_ipv6 "./templates/interfaces"
+apply_common_template_vars "./templates/resolv.conf"
+apply_template_vars "./templates/cpupower.service" "CPU_GOVERNOR=${CPU_GOVERNOR:-performance}"
+apply_common_template_vars "./templates/locale.sh"
+apply_common_template_vars "./templates/default-locale"
+apply_common_template_vars "./templates/environment"
+}
 _download_templates_parallel(){
 local -a templates=("$@")
 local input_file
@@ -4205,8 +4333,7 @@ return 0
 make_templates(){
 log "Starting template preparation"
 mkdir -p ./templates
-local interfaces_template="interfaces.${BRIDGE_MODE:-internal}"
-log "Using interfaces template: $interfaces_template"
+log "Using bridge mode: ${BRIDGE_MODE:-internal}"
 local proxmox_sources_template="proxmox.sources"
 case "${PVE_REPO_TYPE:-no-subscription}" in
 enterprise)proxmox_sources_template="proxmox-enterprise.sources";;
@@ -4220,7 +4347,7 @@ local -a template_list=(
 "./templates/proxmox.sources:$proxmox_sources_template"
 "./templates/sshd_config:sshd_config"
 "./templates/resolv.conf:resolv.conf"
-"./templates/interfaces:$interfaces_template"
+"./templates/interfaces:interfaces"
 "./templates/locale.sh:locale.sh"
 "./templates/default-locale:default-locale"
 "./templates/environment:environment"
@@ -4254,15 +4381,13 @@ local -a template_list=(
 "./templates/needrestart.conf:needrestart.conf"
 "./templates/vnstat.conf:vnstat.conf"
 "./templates/netdata.conf:netdata.conf"
-"./templates/prometheus-node-exporter:prometheus-node-exporter"
-"./templates/proxmox-metrics.sh:proxmox-metrics.sh"
-"./templates/proxmox-metrics.cron:proxmox-metrics.cron"
+"./templates/promtail.yml:promtail.yml"
+"./templates/promtail.service:promtail.service"
 "./templates/yazi-theme.toml:yazi-theme.toml"
 "./templates/network-ringbuffer.service:network-ringbuffer.service"
 "./templates/validation.sh:validation.sh")
-(_download_templates_parallel "${template_list[@]}"||exit 1) > \
-/dev/null 2>&1&
-if ! show_progress $! "Downloading template files";then
+if ! run_with_progress "Downloading template files" "Template files downloaded" \
+_download_templates_parallel "${template_list[@]}";then
 log "ERROR: Failed to download template files"
 exit 1
 fi
@@ -4271,19 +4396,10 @@ PRIVATE_IP_CIDR="${PRIVATE_SUBNET%.*}.1/${PRIVATE_SUBNET#*/}"
 export PRIVATE_IP_CIDR
 log "Derived PRIVATE_IP_CIDR=$PRIVATE_IP_CIDR from PRIVATE_SUBNET=$PRIVATE_SUBNET"
 fi
-(apply_common_template_vars "./templates/hosts"
-apply_common_template_vars "./templates/interfaces"
-postprocess_interfaces_ipv6 "./templates/interfaces"
-apply_common_template_vars "./templates/resolv.conf"
-apply_template_vars "./templates/cpupower.service" "CPU_GOVERNOR=${CPU_GOVERNOR:-performance}"
-apply_common_template_vars "./templates/locale.sh"
-apply_common_template_vars "./templates/default-locale"
-apply_common_template_vars "./templates/environment") \
-&
-show_progress $! "Modifying template files"
+run_with_progress "Modifying template files" "Template files modified" _modify_template_files
 }
-configure_base_system(){
-(local -a copy_pids=()
+_copy_config_files(){
+local -a copy_pids=()
 remote_copy "templates/hosts" "/etc/hosts" >/dev/null 2>&1&
 copy_pids+=($!)
 remote_copy "templates/interfaces" "/etc/network/interfaces" >/dev/null 2>&1&
@@ -4297,17 +4413,68 @@ copy_pids+=($!)
 remote_copy "templates/resolv.conf" "/etc/resolv.conf" >/dev/null 2>&1&
 copy_pids+=($!)
 for pid in "${copy_pids[@]}";do
-wait "$pid"||exit 1
-done) > \
-/dev/null 2>&1&
-show_progress $! "Copying configuration files" "Configuration files copied"
-remote_exec "sysctl --system" >/dev/null 2>&1&
-show_progress $! "Applying sysctl settings" "Sysctl settings applied"
-(remote_exec "[ -f /etc/apt/sources.list ] && mv /etc/apt/sources.list /etc/apt/sources.list.bak"||exit 1
-remote_exec "echo '$PVE_HOSTNAME' > /etc/hostname"||exit 1
-remote_exec "systemctl disable --now rpcbind rpcbind.socket 2>/dev/null"||true) > \
-/dev/null 2>&1&
-show_progress $! "Applying basic system settings" "Basic system settings applied"
+wait "$pid"||return 1
+done
+}
+_apply_basic_settings(){
+remote_exec "[ -f /etc/apt/sources.list ] && mv /etc/apt/sources.list /etc/apt/sources.list.bak"||return 1
+remote_exec "echo '$PVE_HOSTNAME' > /etc/hostname"||return 1
+remote_exec "systemctl disable --now rpcbind rpcbind.socket 2>/dev/null"||true
+}
+_install_locale_files(){
+remote_copy "templates/locale.sh" "/etc/profile.d/locale.sh"||return 1
+remote_exec "chmod +x /etc/profile.d/locale.sh"||return 1
+remote_copy "templates/default-locale" "/etc/default/locale"||return 1
+remote_copy "templates/environment" "/etc/environment"||return 1
+}
+_configure_fastfetch(){
+remote_copy "templates/fastfetch.sh" "/etc/profile.d/fastfetch.sh"||return 1
+remote_exec "chmod +x /etc/profile.d/fastfetch.sh"||return 1
+remote_exec "grep -q 'profile.d/fastfetch.sh' /etc/bash.bashrc || echo '[ -f /etc/profile.d/fastfetch.sh ] && . /etc/profile.d/fastfetch.sh' >> /etc/bash.bashrc"||return 1
+}
+_configure_bat(){
+remote_exec "ln -sf /usr/bin/batcat /usr/local/bin/bat"||return 1
+remote_exec 'mkdir -p /home/'"'$ADMIN_USERNAME'"'/.config/bat'||return 1
+remote_copy "templates/bat-config" "/home/$ADMIN_USERNAME/.config/bat/config"||return 1
+remote_exec 'chown -R '"'$ADMIN_USERNAME:$ADMIN_USERNAME'"' /home/'"'$ADMIN_USERNAME'"'/.config/bat'||return 1
+}
+_configure_zsh_files(){
+remote_copy "templates/zshrc" "/home/$ADMIN_USERNAME/.zshrc"||return 1
+remote_copy "templates/p10k.zsh" "/home/$ADMIN_USERNAME/.p10k.zsh"||return 1
+remote_exec 'chown '"'$ADMIN_USERNAME:$ADMIN_USERNAME'"' /home/'"'$ADMIN_USERNAME'"'/.zshrc /home/'"'$ADMIN_USERNAME'"'/.p10k.zsh'||return 1
+remote_exec 'chsh -s /bin/zsh '"'$ADMIN_USERNAME'"''||return 1
+}
+_configure_chrony(){
+remote_exec "systemctl stop chrony"||true
+remote_copy "templates/chrony" "/etc/chrony/chrony.conf"||return 1
+remote_exec "systemctl enable chrony"||return 1
+}
+_configure_unattended_upgrades(){
+remote_copy "templates/50unattended-upgrades" "/etc/apt/apt.conf.d/50unattended-upgrades"||return 1
+remote_copy "templates/20auto-upgrades" "/etc/apt/apt.conf.d/20auto-upgrades"||return 1
+remote_exec "systemctl enable unattended-upgrades"||return 1
+}
+_configure_cpu_governor(){
+local governor="${CPU_GOVERNOR:-performance}"
+remote_copy "templates/cpupower.service" "/etc/systemd/system/cpupower.service"||return 1
+remote_exec "
+    systemctl daemon-reload
+    systemctl enable cpupower.service
+    cpupower frequency-set -g '$governor' 2>/dev/null || true
+  "||return 1
+}
+_configure_io_scheduler(){
+remote_copy "templates/60-io-scheduler.rules" "/etc/udev/rules.d/60-io-scheduler.rules"||return 1
+remote_exec "udevadm control --reload-rules && udevadm trigger"||return 1
+}
+_remove_subscription_notice(){
+remote_copy "templates/remove-subscription-nag.sh" "/tmp/remove-subscription-nag.sh"||return 1
+remote_exec "chmod +x /tmp/remove-subscription-nag.sh && /tmp/remove-subscription-nag.sh && rm -f /tmp/remove-subscription-nag.sh"||return 1
+}
+configure_base_system(){
+run_with_progress "Copying configuration files" "Configuration files copied" _copy_config_files
+run_with_progress "Applying sysctl settings" "Sysctl settings applied" remote_exec "sysctl --system"
+run_with_progress "Applying basic system settings" "Basic system settings applied" _apply_basic_settings
 log "configure_base_system: PVE_REPO_TYPE=${PVE_REPO_TYPE:-no-subscription}"
 if [[ ${PVE_REPO_TYPE:-no-subscription} == "enterprise" ]];then
 log "configure_base_system: configuring enterprise repository"
@@ -4350,80 +4517,44 @@ run_remote "Configuring UTF-8 locales" "
         locale-gen
         update-locale LANG=$LOCALE LC_ALL=$LOCALE
     " "UTF-8 locales configured"
-(remote_copy "templates/locale.sh" "/etc/profile.d/locale.sh"||exit 1
-remote_exec "chmod +x /etc/profile.d/locale.sh"||exit 1
-remote_copy "templates/default-locale" "/etc/default/locale"||exit 1
-remote_copy "templates/environment" "/etc/environment"||exit 1) > \
-/dev/null 2>&1&
-show_progress $! "Installing locale configuration files" "Locale files installed"
-(remote_copy "templates/fastfetch.sh" "/etc/profile.d/fastfetch.sh"||exit 1
-remote_exec "chmod +x /etc/profile.d/fastfetch.sh"||exit 1
-remote_exec "grep -q 'profile.d/fastfetch.sh' /etc/bash.bashrc || echo '[ -f /etc/profile.d/fastfetch.sh ] && . /etc/profile.d/fastfetch.sh' >> /etc/bash.bashrc"||exit 1) > \
-/dev/null 2>&1&
-show_progress $! "Configuring fastfetch" "Fastfetch configured"
-(remote_exec "ln -sf /usr/bin/batcat /usr/local/bin/bat"||exit 1
-remote_exec "mkdir -p /root/.config/bat"||exit 1
-remote_copy "templates/bat-config" "/root/.config/bat/config"||exit 1) > \
-/dev/null 2>&1&
-show_progress $! "Configuring bat" "Bat configured"
+run_with_progress "Installing locale configuration files" "Locale files installed" _install_locale_files
+run_with_progress "Configuring fastfetch" "Fastfetch configured" _configure_fastfetch
+run_with_progress "Configuring bat" "Bat configured" _configure_bat
 }
 configure_shell(){
 if [[ $SHELL_TYPE == "zsh" ]];then
 run_remote "Installing Oh-My-Zsh" '
             export RUNZSH=no
             export CHSH=no
-            sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+            export HOME=/home/'"'$ADMIN_USERNAME'"'
+            su - '"'$ADMIN_USERNAME'"' -c "sh -c \"\$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)\" \"\" --unattended"
         ' "Oh-My-Zsh installed"
 run_remote "Installing ZSH theme and plugins" '
-            git clone --depth=1 https://github.com/romkatv/powerlevel10k.git /root/.oh-my-zsh/custom/themes/powerlevel10k &
-            git clone --depth=1 https://github.com/zsh-users/zsh-autosuggestions /root/.oh-my-zsh/custom/plugins/zsh-autosuggestions &
-            git clone --depth=1 https://github.com/zsh-users/zsh-syntax-highlighting /root/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting &
+            git clone --depth=1 https://github.com/romkatv/powerlevel10k.git /home/'"'$ADMIN_USERNAME'"'/.oh-my-zsh/custom/themes/powerlevel10k &
+            git clone --depth=1 https://github.com/zsh-users/zsh-autosuggestions /home/'"'$ADMIN_USERNAME'"'/.oh-my-zsh/custom/plugins/zsh-autosuggestions &
+            git clone --depth=1 https://github.com/zsh-users/zsh-syntax-highlighting /home/'"'$ADMIN_USERNAME'"'/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting &
             wait
+            chown -R '"'$ADMIN_USERNAME:$ADMIN_USERNAME'"' /home/'"'$ADMIN_USERNAME'"'/.oh-my-zsh
         ' "ZSH theme and plugins installed"
-(remote_copy "templates/zshrc" "/root/.zshrc"||exit 1
-remote_copy "templates/p10k.zsh" "/root/.p10k.zsh"||exit 1
-remote_exec "chsh -s /bin/zsh root"||exit 1) > \
-/dev/null 2>&1&
-show_progress $! "Configuring ZSH" "ZSH with Powerlevel10k configured"
+run_with_progress "Configuring ZSH" "ZSH with Powerlevel10k configured" _configure_zsh_files
 else
 add_log "$CLR_ORANGE├─$CLR_RESET Default shell: Bash $CLR_CYAN✓$CLR_RESET"
 fi
 }
 configure_system_services(){
-(remote_exec "systemctl stop chrony"||true
-remote_copy "templates/chrony" "/etc/chrony/chrony.conf"||exit 1
-remote_exec "systemctl enable chrony"||exit 1) > \
-/dev/null 2>&1&
-show_progress $! "Configuring chrony" "Chrony configured"
-(remote_copy "templates/50unattended-upgrades" "/etc/apt/apt.conf.d/50unattended-upgrades"||exit 1
-remote_copy "templates/20auto-upgrades" "/etc/apt/apt.conf.d/20auto-upgrades"||exit 1
-remote_exec "systemctl enable unattended-upgrades"||exit 1) > \
-/dev/null 2>&1&
-show_progress $! "Configuring Unattended Upgrades" "Unattended Upgrades configured"
+run_with_progress "Configuring chrony" "Chrony configured" _configure_chrony
+run_with_progress "Configuring Unattended Upgrades" "Unattended Upgrades configured" _configure_unattended_upgrades
 run_remote "Configuring nf_conntrack" '
         if ! grep -q "nf_conntrack" /etc/modules 2>/dev/null; then
             echo "nf_conntrack" >> /etc/modules
         fi
     ' "nf_conntrack configured"
 local governor="${CPU_GOVERNOR:-performance}"
-(remote_copy "templates/cpupower.service" "/etc/systemd/system/cpupower.service"||exit 1
-remote_exec "
-            systemctl daemon-reload
-            systemctl enable cpupower.service
-            cpupower frequency-set -g '$governor' 2>/dev/null || true
-        "||exit 1) > \
-/dev/null 2>&1&
-show_progress $! "Configuring CPU governor ($governor)" "CPU governor configured"
-(remote_copy "templates/60-io-scheduler.rules" "/etc/udev/rules.d/60-io-scheduler.rules"||exit 1
-remote_exec "udevadm control --reload-rules && udevadm trigger"||exit 1) > \
-/dev/null 2>&1&
-show_progress $! "Configuring I/O scheduler" "I/O scheduler configured"
+run_with_progress "Configuring CPU governor ($governor)" "CPU governor configured" _configure_cpu_governor
+run_with_progress "Configuring I/O scheduler" "I/O scheduler configured" _configure_io_scheduler
 if [[ ${PVE_REPO_TYPE:-no-subscription} != "enterprise" ]];then
 log "configure_system_services: removing subscription notice (non-enterprise)"
-(remote_copy "templates/remove-subscription-nag.sh" "/tmp/remove-subscription-nag.sh"||exit 1
-remote_exec "chmod +x /tmp/remove-subscription-nag.sh && /tmp/remove-subscription-nag.sh && rm -f /tmp/remove-subscription-nag.sh"||exit 1) > \
-/dev/null 2>&1&
-show_progress $! "Removing Proxmox subscription notice" "Subscription notice removed"
+run_with_progress "Removing Proxmox subscription notice" "Subscription notice removed" _remove_subscription_notice
 fi
 }
 configure_tailscale(){
@@ -4484,76 +4615,95 @@ add_log "$CLR_ORANGE├─$CLR_RESET $CLR_YELLOW⚠️$CLR_RESET Tailscale insta
 add_log "$CLR_ORANGE│$CLR_RESET   ${CLR_GRAY}After reboot: tailscale up --ssh$CLR_RESET"
 fi
 }
+_config_admin_user(){
+remote_exec 'useradd -m -s /bin/bash -G sudo '"'$ADMIN_USERNAME'"''||return 1
+remote_exec 'echo '"'$ADMIN_USERNAME:$ADMIN_PASSWORD'"' | chpasswd'||return 1
+remote_exec 'mkdir -p /home/'"'$ADMIN_USERNAME'"'/.ssh && chmod 700 /home/'"'$ADMIN_USERNAME'"'/.ssh'||return 1
+local escaped_key="${SSH_PUBLIC_KEY//\'/\'\\\'\'}"
+remote_exec "echo '$escaped_key' > /home/'$ADMIN_USERNAME'/.ssh/authorized_keys"||return 1
+remote_exec 'chmod 600 /home/'"'$ADMIN_USERNAME'"'/.ssh/authorized_keys'||return 1
+remote_exec 'chown -R '"'$ADMIN_USERNAME:$ADMIN_USERNAME'"' /home/'"'$ADMIN_USERNAME'"'/.ssh'||return 1
+remote_exec 'echo '"'$ADMIN_USERNAME ALL=(ALL) NOPASSWD:ALL'"' > /etc/sudoers.d/'"'$ADMIN_USERNAME'"''||return 1
+remote_exec 'chmod 440 /etc/sudoers.d/'"'$ADMIN_USERNAME'"''||return 1
+remote_exec "pveum user add $ADMIN_USERNAME@pam 2>/dev/null || true"
+remote_exec "pveum acl modify / -user $ADMIN_USERNAME@pam -role Administrator"||{
+log "WARNING: Failed to grant Proxmox Administrator role"
+}
+remote_exec "pveum user modify root@pam -enable 0"||{
+log "WARNING: Failed to disable root user in Proxmox UI"
+}
+}
+configure_admin_user(){
+log "Creating admin user: $ADMIN_USERNAME"
+if ! run_with_progress "Creating admin user" "Admin user created" _config_admin_user;then
+log "ERROR: Failed to create admin user"
+return 1
+fi
+log "Admin user $ADMIN_USERNAME created successfully"
+return 0
+}
+declare -A FIREWALL_PORT_RULES=(
+[stealth]=""
+[strict]="$PORT_SSH"
+[standard]="$PORT_SSH $PORT_PROXMOX_UI")
+declare -A BRIDGE_IFACES=(
+[internal]="vmbr0"
+[external]="vmbr1"
+[both]="vmbr0 vmbr1")
+declare -A BRIDGE_DESCRIPTIONS=(
+[vmbr0_internal]="private NAT network"
+[vmbr0_external]="external bridge"
+[vmbr0_both]="private NAT network"
+[vmbr1_external]="external bridge"
+[vmbr1_both]="public IPs")
 _generate_port_rules(){
 local mode="$1"
-local rules=""
-case "$mode" in
-stealth)rules="# Stealth mode: all public ports blocked
+local ports="${FIREWALL_PORT_RULES[$mode]:-${FIREWALL_PORT_RULES[standard]}}"
+if [[ -z $ports ]];then
+printf '%s\n' "# Stealth mode: all public ports blocked
         # Access only via Tailscale VPN or VM bridges"
-;;
-strict)rules="# SSH access (port $PORT_SSH)
-        tcp dport $PORT_SSH ct state new accept"
-;;
-standard)rules="# SSH access (port $PORT_SSH)
-        tcp dport $PORT_SSH ct state new accept
-
-        # Proxmox Web UI (port $PORT_PROXMOX_UI)
-        tcp dport $PORT_PROXMOX_UI ct state new accept"
-;;
-*)log "WARNING: Unknown firewall mode: $mode, using standard"
-rules="# SSH access (port $PORT_SSH)
-        tcp dport $PORT_SSH ct state new accept
-
-        # Proxmox Web UI (port $PORT_PROXMOX_UI)
-        tcp dport $PORT_PROXMOX_UI ct state new accept"
+return
+fi
+local first=true
+for port in $ports;do
+local desc=""
+case "$port" in
+"$PORT_SSH")desc="SSH";;
+"$PORT_PROXMOX_UI")desc="Proxmox Web UI";;
+*)desc="Service"
 esac
-printf '%s\n' "$rules"
+$first||printf '\n'
+printf '        # %s access (port %s)\n' "$desc" "$port"
+printf '        tcp dport %s ct state new accept' "$port"
+first=false
+done
+printf '\n'
+}
+_generate_bridge_rules(){
+local chain="$1"
+local mode="${BRIDGE_MODE:-internal}"
+local ifaces="${BRIDGE_IFACES[$mode]:-${BRIDGE_IFACES[internal]}}"
+local first=true
+for iface in $ifaces;do
+local desc="${BRIDGE_DESCRIPTIONS[${iface}_$mode]:-bridge}"
+$first||printf '\n'
+case "$chain" in
+input)printf '        # Allow traffic from %s (%s)\n' "$iface" "$desc"
+printf '        iifname "%s" accept' "$iface"
+;;
+forward)printf '        # Allow forwarding for %s (%s)\n' "$iface" "$desc"
+printf '        iifname "%s" accept\n' "$iface"
+printf '        oifname "%s" accept' "$iface"
+esac
+first=false
+done
+printf '\n'
 }
 _generate_bridge_input_rules(){
-local mode="${BRIDGE_MODE:-internal}"
-local rules=""
-case "$mode" in
-internal)rules='# Allow traffic from internal bridge (vmbr0 - private NAT network)
-        iifname "vmbr0" accept'
-;;
-external)rules='# Allow traffic from external bridge (vmbr1 - public IPs)
-        iifname "vmbr1" accept'
-;;
-both)rules='# Allow traffic from internal bridge (vmbr0 - private NAT network)
-        iifname "vmbr0" accept
-
-        # Allow traffic from external bridge (vmbr1 - public IPs)
-        iifname "vmbr1" accept'
-;;
-*)log "WARNING: Unknown bridge mode: $mode, using internal"
-rules='# Allow traffic from internal bridge (vmbr0 - private NAT network)
-        iifname "vmbr0" accept'
-esac
-printf '%s\n' "$rules"
+_generate_bridge_rules "input"
 }
 _generate_bridge_forward_rules(){
-local mode="${BRIDGE_MODE:-internal}"
-local rules=""
-case "$mode" in
-internal)rules='# Allow forwarding for internal bridge (VM traffic)
-        iifname "vmbr0" accept
-        oifname "vmbr0" accept'
-;;
-external)rules='# Allow forwarding for external bridge (VM traffic)
-        iifname "vmbr1" accept
-        oifname "vmbr1" accept'
-;;
-both)rules='# Allow forwarding for both bridges (VM traffic)
-        iifname "vmbr0" accept
-        iifname "vmbr1" accept
-        oifname "vmbr0" accept
-        oifname "vmbr1" accept'
-;;
-*)rules='# Allow forwarding for internal bridge (VM traffic)
-        iifname "vmbr0" accept
-        oifname "vmbr0" accept'
-esac
-printf '%s\n' "$rules"
+_generate_bridge_rules "forward"
 }
 _generate_tailscale_rules(){
 if [[ $INSTALL_TAILSCALE == "yes" ]];then
@@ -4627,8 +4777,6 @@ log "Skipping firewall configuration (INSTALL_FIREWALL=$INSTALL_FIREWALL)"
 return 0
 fi
 log "Configuring nftables firewall (mode: $FIREWALL_MODE, bridge: $BRIDGE_MODE)"
-(_config_nftables||exit 1) > \
-/dev/null 2>&1&
 local mode_display=""
 case "$FIREWALL_MODE" in
 stealth)mode_display="stealth (Tailscale only)";;
@@ -4636,12 +4784,10 @@ strict)mode_display="strict (SSH only)";;
 standard)mode_display="standard (SSH + Web UI)";;
 *)mode_display="$FIREWALL_MODE"
 esac
-show_progress $! "Configuring nftables firewall" "Firewall configured ($mode_display)"
-local exit_code=$?
-if [[ $exit_code -ne 0 ]];then
+if ! run_with_progress "Configuring nftables firewall" "Firewall configured ($mode_display)" _config_nftables;then
 log "WARNING: Firewall setup failed"
-return 0
 fi
+return 0
 }
 _config_fail2ban(){
 deploy_template "templates/fail2ban-jail.local" "/etc/fail2ban/jail.local" \
@@ -4744,39 +4890,24 @@ log "ERROR: Failed to configure vnstat"
 return 1
 }
 }
-_config_prometheus(){
-remote_exec '
-    mkdir -p /var/lib/prometheus/node-exporter
-    chown prometheus:prometheus /var/lib/prometheus/node-exporter
-  '||{
-log "ERROR: Failed to create Prometheus collector directory"
-return 1
+_config_promtail(){
+remote_exec 'mkdir -p /etc/promtail'||return 1
+deploy_template "templates/promtail.yml" "/etc/promtail/promtail.yml" \
+"HOSTNAME=$PVE_HOSTNAME"||return 1
+deploy_template "templates/promtail.service" "/etc/systemd/system/promtail.service"||return 1
+remote_exec 'mkdir -p /var/lib/promtail'||return 1
+remote_enable_services "promtail"
 }
-remote_copy "templates/prometheus-node-exporter" "/etc/default/prometheus-node-exporter"||{
-log "ERROR: Failed to deploy Prometheus config"
-return 1
-}
-remote_copy "templates/proxmox-metrics.sh" "/usr/local/bin/proxmox-metrics.sh"||{
-log "ERROR: Failed to deploy Proxmox metrics script"
-return 1
-}
-remote_exec "chmod +x /usr/local/bin/proxmox-metrics.sh"||{
-log "ERROR: Failed to set metrics script permissions"
-return 1
-}
-remote_copy "templates/proxmox-metrics.cron" "/etc/cron.d/proxmox-metrics"||{
-log "ERROR: Failed to deploy Prometheus cron job"
-return 1
-}
-remote_exec "/usr/local/bin/proxmox-metrics.sh" >/dev/null 2>&1||log "WARNING: Initial metrics collection failed (non-fatal)"
-remote_exec '
-    systemctl daemon-reload
-    systemctl enable prometheus-node-exporter
-  '||{
-log "ERROR: Failed to enable Prometheus node exporter"
-return 1
-}
-log "Prometheus node exporter listening on :$PORT_PROMETHEUS_NODE with textfile collector"
+configure_promtail(){
+if [[ $INSTALL_PROMTAIL != "yes" ]];then
+log "Skipping promtail (not requested)"
+return 0
+fi
+log "Configuring promtail"
+if ! run_with_progress "Configuring promtail" "promtail configured" _config_promtail;then
+log "WARNING: promtail setup failed"
+fi
+return 0
 }
 _config_netdata(){
 local bind_to="127.0.0.1"
@@ -4813,14 +4944,22 @@ run_remote "Installing yazi" '
   ' "Yazi installed"
 }
 _config_yazi(){
-remote_exec 'mkdir -p /root/.config/yazi'||{
+remote_exec 'mkdir -p /home/'"'$ADMIN_USERNAME'"'/.config/yazi'||{
 log "ERROR: Failed to create yazi config directory"
 return 1
 }
-remote_copy "templates/yazi-theme.toml" "/root/.config/yazi/theme.toml"||{
+remote_copy "templates/yazi-theme.toml" "/home/$ADMIN_USERNAME/.config/yazi/theme.toml"||{
 log "ERROR: Failed to deploy yazi theme"
 return 1
 }
+remote_exec 'chown -R '"'$ADMIN_USERNAME:$ADMIN_USERNAME'"' /home/'"'$ADMIN_USERNAME'"'/.config/yazi'||{
+log "ERROR: Failed to set yazi config ownership"
+return 1
+}
+}
+_install_and_config_yazi(){
+_install_yazi||return 1
+_config_yazi||return 1
 }
 configure_yazi(){
 if [[ $INSTALL_YAZI != "yes" ]];then
@@ -4828,15 +4967,10 @@ log "Skipping yazi (not requested)"
 return 0
 fi
 log "Installing and configuring yazi"
-(_install_yazi||exit 1
-_config_yazi||exit 1) > \
-/dev/null 2>&1&
-show_progress $! "Installing and configuring yazi" "Yazi configured"
-local exit_code=$?
-if [[ $exit_code -ne 0 ]];then
+if ! run_with_progress "Installing yazi" "Yazi configured" _install_and_config_yazi;then
 log "WARNING: Yazi setup failed"
-return 0
 fi
+return 0
 }
 _config_nvim(){
 remote_exec '
@@ -4901,15 +5035,15 @@ LETSENCRYPT_FIRSTBOOT=true
 }
 create_api_token(){
 [[ $INSTALL_API_TOKEN != "yes" ]]&&return 0
-log "INFO: Creating Proxmox API token: $API_TOKEN_NAME"
+log "INFO: Creating Proxmox API token for $ADMIN_USERNAME: $API_TOKEN_NAME"
 local existing
-existing=$(remote_exec "pveum user token list root@pam 2>/dev/null | grep -q '$API_TOKEN_NAME' && echo 'exists' || echo ''"||true)
+existing=$(remote_exec "pveum user token list $ADMIN_USERNAME@pam 2>/dev/null | grep -q '$API_TOKEN_NAME' && echo 'exists' || echo ''"||true)
 if [[ $existing == "exists" ]];then
 log "WARNING: Token $API_TOKEN_NAME exists, removing first"
-remote_exec "pveum user token remove root@pam $API_TOKEN_NAME"||true
+remote_exec "pveum user token remove $ADMIN_USERNAME@pam $API_TOKEN_NAME"||true
 fi
 local output
-output=$(remote_exec "pveum user token add root@pam $API_TOKEN_NAME --privsep 0 --expire 0 --output-format json 2>&1"||true)
+output=$(remote_exec "pveum user token add $ADMIN_USERNAME@pam $API_TOKEN_NAME --privsep 0 --expire 0 --output-format json 2>&1"||true)
 if [[ -z $output ]];then
 log "ERROR: Failed to create API token - empty output"
 return 1
@@ -4924,7 +5058,7 @@ log "DEBUG: pveum output: $output"
 return 1
 fi
 API_TOKEN_VALUE="$token_value"
-API_TOKEN_ID="root@pam!$API_TOKEN_NAME"
+API_TOKEN_ID="$ADMIN_USERNAME@pam!$API_TOKEN_NAME"
 (umask 0077
 cat >/tmp/pve-install-api-token.env <<EOF
 API_TOKEN_VALUE=$token_value
@@ -5060,9 +5194,9 @@ return 0
 }
 configure_ssh_hardening(){
 _ssh_hardening_impl(){
-remote_copy "templates/sshd_config" "/etc/ssh/sshd_config"||return 1
-remote_exec "mkdir -p /root/.ssh && chmod 700 /root/.ssh"||return 1
-remote_exec 'chmod 600 /root/.ssh/authorized_keys && [ "$(stat -c %a /root/.ssh/authorized_keys)" = "600" ]'||return 1
+deploy_template "templates/sshd_config" "/etc/ssh/sshd_config" \
+"ADMIN_USERNAME=$ADMIN_USERNAME"||return 1
+remote_exec "systemctl restart sshd"||return 1
 }
 if ! run_with_progress "Deploying SSH hardening" "Security hardening configured" _ssh_hardening_impl;then
 log "ERROR: SSH hardening failed - system may be insecure"
@@ -5082,7 +5216,8 @@ apply_template_vars "./templates/validation.sh" \
 "INSTALL_LYNIS=${INSTALL_LYNIS:-no}" \
 "INSTALL_NEEDRESTART=${INSTALL_NEEDRESTART:-no}" \
 "INSTALL_VNSTAT=${INSTALL_VNSTAT:-no}" \
-"INSTALL_PROMETHEUS=${INSTALL_PROMETHEUS:-no}" \
+"INSTALL_PROMTAIL=${INSTALL_PROMTAIL:-no}" \
+"ADMIN_USERNAME=$ADMIN_USERNAME" \
 "INSTALL_NETDATA=${INSTALL_NETDATA:-no}" \
 "INSTALL_YAZI=${INSTALL_YAZI:-no}" \
 "INSTALL_NVIM=${INSTALL_NVIM:-no}" \
@@ -5167,9 +5302,9 @@ _parallel_config_needrestart(){
 [[ ${INSTALL_NEEDRESTART:-} != "yes" ]]&&return 0
 _config_needrestart&&parallel_mark_configured "needrestart"
 }
-_parallel_config_prometheus(){
-[[ ${INSTALL_PROMETHEUS:-} != "yes" ]]&&return 0
-_config_prometheus&&parallel_mark_configured "prometheus"
+_parallel_config_promtail(){
+[[ ${INSTALL_PROMTAIL:-} != "yes" ]]&&return 0
+_config_promtail&&parallel_mark_configured "promtail"
 }
 _parallel_config_vnstat(){
 [[ ${INSTALL_VNSTAT:-} != "yes" ]]&&return 0
@@ -5216,16 +5351,16 @@ for pid in "${pids[@]}";do wait "$pid" 2>/dev/null||true;done) > \
 /dev/null 2>&1&
 local special_pid=$!
 run_parallel_group "Configuring tools" "Tools configured" \
-_parallel_config_prometheus \
+_parallel_config_promtail \
 _parallel_config_vnstat \
 _parallel_config_ringbuffer \
 _parallel_config_nvim
 wait $special_pid 2>/dev/null||true
 configure_ssl_certificate
 if [[ $INSTALL_API_TOKEN == "yes" ]];then
-(create_api_token||exit 1) >/dev/null 2>&1&
-show_progress $! "Creating API token" "API token created"
+run_with_progress "Creating API token" "API token created" create_api_token
 fi
+configure_admin_user
 configure_ssh_hardening
 validate_installation
 finalize_vm
@@ -5248,8 +5383,11 @@ fi
 output+="\n"
 }
 _cred_field "Hostname         " "$CLR_CYAN$PVE_HOSTNAME.$DOMAIN_SUFFIX$CLR_RESET"
-_cred_field "Username         " "root"
-_cred_field "Password         " "$CLR_ORANGE$NEW_ROOT_PASSWORD$CLR_RESET"
+output+="\n"
+_cred_field "Admin User       " "$CLR_CYAN$ADMIN_USERNAME$CLR_RESET"
+_cred_field "Admin Password   " "$CLR_ORANGE$ADMIN_PASSWORD$CLR_RESET" "(SSH + Proxmox UI)"
+output+="\n"
+_cred_field "Root Password    " "$CLR_ORANGE$NEW_ROOT_PASSWORD$CLR_RESET" "(console/KVM only)"
 output+="\n"
 local has_tailscale=""
 [[ -n $TAILSCALE_IP && $TAILSCALE_IP != "pending" && $TAILSCALE_IP != "not authenticated" ]]&&has_tailscale="yes"
@@ -5257,23 +5395,23 @@ case "${FIREWALL_MODE:-standard}" in
 stealth)if
 [[ $has_tailscale == "yes" ]]
 then
-_cred_field "SSH              " "${CLR_CYAN}ssh root@$TAILSCALE_IP$CLR_RESET" "(Tailscale)"
+_cred_field "SSH              " "${CLR_CYAN}ssh $ADMIN_USERNAME@$TAILSCALE_IP$CLR_RESET" "(Tailscale)"
 _cred_field "Web UI           " "${CLR_CYAN}https://$TAILSCALE_IP:8006$CLR_RESET" "(Tailscale)"
 else
 _cred_field "SSH              " "${CLR_YELLOW}blocked$CLR_RESET" "(stealth mode)"
 _cred_field "Web UI           " "${CLR_YELLOW}blocked$CLR_RESET" "(stealth mode)"
 fi
 ;;
-strict)_cred_field "SSH              " "${CLR_CYAN}ssh root@$MAIN_IPV4$CLR_RESET"
+strict)_cred_field "SSH              " "${CLR_CYAN}ssh $ADMIN_USERNAME@$MAIN_IPV4$CLR_RESET"
 if [[ $has_tailscale == "yes" ]];then
-_cred_field "" "${CLR_CYAN}ssh root@$TAILSCALE_IP$CLR_RESET" "(Tailscale)"
+_cred_field "" "${CLR_CYAN}ssh $ADMIN_USERNAME@$TAILSCALE_IP$CLR_RESET" "(Tailscale)"
 _cred_field "Web UI           " "${CLR_CYAN}https://$TAILSCALE_IP:8006$CLR_RESET" "(Tailscale)"
 else
 _cred_field "Web UI           " "${CLR_YELLOW}blocked$CLR_RESET" "(strict mode)"
 fi
 ;;
-*)_cred_field "SSH              " "${CLR_CYAN}ssh root@$MAIN_IPV4$CLR_RESET"
-[[ $has_tailscale == "yes" ]]&&_cred_field "" "${CLR_CYAN}ssh root@$TAILSCALE_IP$CLR_RESET" "(Tailscale)"
+*)_cred_field "SSH              " "${CLR_CYAN}ssh $ADMIN_USERNAME@$MAIN_IPV4$CLR_RESET"
+[[ $has_tailscale == "yes" ]]&&_cred_field "" "${CLR_CYAN}ssh $ADMIN_USERNAME@$TAILSCALE_IP$CLR_RESET" "(Tailscale)"
 _cred_field "Web UI           " "${CLR_CYAN}https://$MAIN_IPV4:8006$CLR_RESET"
 [[ $has_tailscale == "yes" ]]&&_cred_field "" "${CLR_CYAN}https://$TAILSCALE_IP:8006$CLR_RESET" "(Tailscale)"
 esac
