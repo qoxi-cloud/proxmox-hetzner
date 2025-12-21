@@ -172,6 +172,7 @@ configure_base_system() {
   # Note: locales package already installed via install_base_packages()
   local locale_name="${LOCALE%%.UTF-8}" # Remove .UTF-8 suffix for sed pattern
   run_remote "Configuring UTF-8 locales" "
+        set -e
         # Enable user's selected locale
         sed -i 's/# ${locale_name}.UTF-8/${locale_name}.UTF-8/' /etc/locale.gen
         # Also enable en_US as fallback (many tools expect it)
@@ -200,6 +201,7 @@ configure_shell() {
     # Install Oh-My-Zsh for admin user
     # shellcheck disable=SC2016 # Single quotes intentional - executed on remote system
     run_remote "Installing Oh-My-Zsh" '
+            set -e
             export RUNZSH=no
             export CHSH=no
             export HOME=/home/'"'$ADMIN_USERNAME'"'
@@ -209,10 +211,14 @@ configure_shell() {
     # Parallel git clones for theme and plugins (all independent after Oh-My-Zsh)
     # shellcheck disable=SC2016 # Single quotes intentional - executed on remote system
     run_remote "Installing ZSH theme and plugins" '
+            set -e
             git clone --depth=1 https://github.com/romkatv/powerlevel10k.git /home/'"'$ADMIN_USERNAME'"'/.oh-my-zsh/custom/themes/powerlevel10k &
+            pid1=$!
             git clone --depth=1 https://github.com/zsh-users/zsh-autosuggestions /home/'"'$ADMIN_USERNAME'"'/.oh-my-zsh/custom/plugins/zsh-autosuggestions &
+            pid2=$!
             git clone --depth=1 https://github.com/zsh-users/zsh-syntax-highlighting /home/'"'$ADMIN_USERNAME'"'/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting &
-            wait
+            pid3=$!
+            wait $pid1 $pid2 $pid3
             chown -R '"'$ADMIN_USERNAME:$ADMIN_USERNAME'"' /home/'"'$ADMIN_USERNAME'"'/.oh-my-zsh
         ' "ZSH theme and plugins installed"
 
