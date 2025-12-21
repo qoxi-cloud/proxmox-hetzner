@@ -384,10 +384,8 @@ make_answer_toml() {
   log "ZFS_POOL_DISKS=(${ZFS_POOL_DISKS[*]})"
 
   # Create virtio mapping in background (pass values as args since arrays can't be exported)
-  (
+  run_with_progress "Creating disk mapping" "Disk mapping created" \
     create_virtio_mapping "$BOOT_DISK" "${ZFS_POOL_DISKS[@]}"
-  ) &
-  show_progress $! "Creating disk mapping" "Disk mapping created"
 
   # Load mapping into current shell
   load_virtio_mapping || {
