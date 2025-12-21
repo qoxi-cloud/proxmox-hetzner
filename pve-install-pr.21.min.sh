@@ -17,7 +17,7 @@ readonly HEX_GRAY="#585858"
 readonly HEX_WHITE="#ffffff"
 readonly HEX_GOLD="#d7af5f"
 readonly HEX_NONE="7"
-readonly VERSION="2.0.410-pr.21"
+readonly VERSION="2.0.411-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-installer}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -100,6 +100,12 @@ readonly WIZ_FIREWALL_MODES="Stealth (Tailscale only)
 Strict (SSH only)
 Standard (SSH + Web UI)
 Disabled"
+readonly WIZ_TOGGLE_OPTIONS="Enabled
+Disabled"
+readonly WIZ_PASSWORD_OPTIONS="Manual entry
+Generate password"
+readonly WIZ_SSH_KEY_OPTIONS="Use detected key
+Enter different key"
 BOOT_DISK=""
 ZFS_POOL_DISKS=()
 SYSTEM_UTILITIES="btop iotop ncdu tmux pigz smartmontools jq bat fastfetch sysstat nethogs ethtool"
@@ -2539,7 +2545,7 @@ while true;do
 _wiz_start_edit
 _show_input_footer "filter" 3
 local choice
-choice=$(printf '%s\n' "Manual entry\nGenerate password"|_wiz_choose \
+choice=$(printf '%s\n' "$WIZ_PASSWORD_OPTIONS"|_wiz_choose \
 --header="Password:")
 if [[ -z $choice ]];then
 return
@@ -2902,16 +2908,28 @@ local options=""
 if [[ $pool_count -eq 1 ]];then
 options="Single disk"
 elif [[ $pool_count -eq 2 ]];then
-options="RAID-0 (striped)\nRAID-1 (mirror)"
+options="RAID-0 (striped)
+RAID-1 (mirror)"
 elif [[ $pool_count -eq 3 ]];then
-options="RAID-0 (striped)\nRAID-1 (mirror)\nRAID-Z1 (parity)"
+options="RAID-0 (striped)
+RAID-1 (mirror)
+RAID-Z1 (parity)"
 elif [[ $pool_count -eq 4 ]];then
-options="RAID-0 (striped)\nRAID-1 (mirror)\nRAID-Z1 (parity)\nRAID-Z2 (double parity)\nRAID-10 (striped mirrors)"
+options="RAID-0 (striped)
+RAID-1 (mirror)
+RAID-Z1 (parity)
+RAID-Z2 (double parity)
+RAID-10 (striped mirrors)"
 elif [[ $pool_count -ge 5 ]];then
-options="RAID-0 (striped)\nRAID-1 (mirror)\nRAID-Z1 (parity)\nRAID-Z2 (double parity)\nRAID-Z3 (triple parity)\nRAID-10 (striped mirrors)"
+options="RAID-0 (striped)
+RAID-1 (mirror)
+RAID-Z1 (parity)
+RAID-Z2 (double parity)
+RAID-Z3 (triple parity)
+RAID-10 (striped mirrors)"
 fi
 local item_count
-item_count=$(printf '%s\n' "$options"|wc -l)
+item_count=$(wc -l <<<"$options")
 _show_input_footer "filter" "$((item_count+1))"
 local selected
 selected=$(printf '%s\n' "$options"|_wiz_choose \
@@ -2961,7 +2979,7 @@ _wiz_description \
 ""
 _show_input_footer "filter" 3
 local selected
-selected=$(printf '%s\n' "Enabled\nDisabled"|_wiz_choose \
+selected=$(printf '%s\n' "$WIZ_TOGGLE_OPTIONS"|_wiz_choose \
 --header="Tailscale:")
 case "$selected" in
 Enabled)local auth_key=""
@@ -3320,7 +3338,7 @@ _wiz_description \
 ""
 _show_input_footer "filter" 3
 local selected
-selected=$(printf '%s\n' "Enabled\nDisabled"|_wiz_choose \
+selected=$(printf '%s\n' "$WIZ_TOGGLE_OPTIONS"|_wiz_choose \
 --header="API Token (privileged, no expiration):")
 case "$selected" in
 Enabled)_wiz_input_screen "Enter API token name (default: automation)"
@@ -3358,7 +3376,7 @@ printf '%s\n' "${CLR_GRAY}Key:$CLR_RESET     $SSH_KEY_SHORT"
 _wiz_blank_line
 _show_input_footer "filter" 3
 local choice
-choice=$(printf '%s\n' "Use detected key\nEnter different key"|_wiz_choose \
+choice=$(printf '%s\n' "$WIZ_SSH_KEY_OPTIONS"|_wiz_choose \
 --header="SSH Key:")
 if [[ -z $choice ]];then
 return
@@ -3408,11 +3426,11 @@ for i in "${!DRIVES[@]}";do
 local disk_name="${DRIVE_NAMES[$i]}"
 local disk_size="${DRIVE_SIZES[$i]}"
 local disk_model="${DRIVE_MODELS[$i]:0:25}"
-options+="\n$disk_name - $disk_size  $disk_model"
+options+=$'\n'"$disk_name - $disk_size  $disk_model"
 done
 _show_input_footer "filter" "$((DRIVE_COUNT+2))"
 local selected
-selected=$(printf '%s\n' "$options"|_wiz_choose \
+selected=$(printf '%s' "$options"|_wiz_choose \
 --header="Boot disk:")
 if [[ -n $selected ]];then
 local old_boot_disk="$BOOT_DISK"
@@ -3454,7 +3472,8 @@ local disk_name="${DRIVE_NAMES[$i]}"
 local disk_size="${DRIVE_SIZES[$i]}"
 local disk_model="${DRIVE_MODELS[$i]:0:25}"
 local disk_label="$disk_name - $disk_size  $disk_model"
-options+="$disk_label\n"
+[[ -n $options ]]&&options+=$'\n'
+options+="$disk_label"
 for pool_disk in "${ZFS_POOL_DISKS[@]}";do
 if [[ $pool_disk == "/dev/$disk_name" ]];then
 preselected+=("$disk_label")
@@ -3463,7 +3482,6 @@ fi
 done
 fi
 done
-options="${options%\\n}"
 local available_count
 if [[ -n $BOOT_DISK ]];then
 available_count=$((DRIVE_COUNT-1))
