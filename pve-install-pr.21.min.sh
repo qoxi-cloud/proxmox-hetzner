@@ -17,7 +17,7 @@ readonly HEX_GRAY="#585858"
 readonly HEX_WHITE="#ffffff"
 readonly HEX_GOLD="#d7af5f"
 readonly HEX_NONE="7"
-readonly VERSION="2.0.477-pr.21"
+readonly VERSION="2.0.479-pr.21"
 readonly TERM_WIDTH=69
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-installer}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
@@ -4471,7 +4471,7 @@ _remove_subscription_notice(){
 remote_copy "templates/remove-subscription-nag.sh" "/tmp/remove-subscription-nag.sh"||return 1
 remote_exec "chmod +x /tmp/remove-subscription-nag.sh && /tmp/remove-subscription-nag.sh && rm -f /tmp/remove-subscription-nag.sh"||return 1
 }
-configure_base_system(){
+_config_base_system(){
 run_with_progress "Copying configuration files" "Configuration files copied" _copy_config_files
 run_with_progress "Applying sysctl settings" "Sysctl settings applied" remote_exec "sysctl --system"
 run_with_progress "Applying basic system settings" "Basic system settings applied" _apply_basic_settings
@@ -4520,7 +4520,7 @@ run_with_progress "Installing locale configuration files" "Locale files installe
 run_with_progress "Configuring fastfetch" "Fastfetch configured" _configure_fastfetch
 run_with_progress "Configuring bat" "Bat configured" _configure_bat
 }
-configure_shell(){
+_config_shell(){
 if [[ $SHELL_TYPE == "zsh" ]];then
 remote_run "Installing Oh-My-Zsh" '
             set -e
@@ -4545,7 +4545,7 @@ else
 add_log "$CLR_ORANGE├─$CLR_RESET Default shell: Bash $CLR_CYAN✓$CLR_RESET"
 fi
 }
-configure_system_services(){
+_config_system_services(){
 run_with_progress "Configuring chrony" "Chrony configured" _configure_chrony
 run_with_progress "Configuring Unattended Upgrades" "Unattended Upgrades configured" _configure_unattended_upgrades
 remote_run "Configuring nf_conntrack" '
@@ -4561,10 +4561,16 @@ log "configure_system_services: removing subscription notice (non-enterprise)"
 run_with_progress "Removing Proxmox subscription notice" "Subscription notice removed" _remove_subscription_notice
 fi
 }
-configure_tailscale(){
-if [[ $INSTALL_TAILSCALE != "yes" ]];then
-return 0
-fi
+configure_base_system(){
+_config_base_system
+}
+configure_shell(){
+_config_shell
+}
+configure_system_services(){
+_config_system_services
+}
+_config_tailscale(){
 remote_run "Starting Tailscale" '
         set -e
         systemctl enable tailscaled
@@ -4617,6 +4623,10 @@ TAILSCALE_HOSTNAME=""
 add_log "$CLR_ORANGE├─$CLR_RESET $CLR_YELLOW⚠️$CLR_RESET Tailscale installed but not authenticated"
 add_log "$CLR_ORANGE│$CLR_RESET   ${CLR_GRAY}After reboot: tailscale up --ssh$CLR_RESET"
 fi
+}
+configure_tailscale(){
+[[ $INSTALL_TAILSCALE != "yes" ]]&&return 0
+_config_tailscale
 }
 _config_admin_user(){
 remote_exec 'useradd -m -s /bin/bash -G sudo '"'$ADMIN_USERNAME'"''||return 1
@@ -4800,6 +4810,11 @@ log "ERROR: Failed to deploy fail2ban filter"
 return 1
 }
 remote_enable_services "fail2ban"
+parallel_mark_configured "fail2ban"
+}
+configure_fail2ban(){
+[[ ${INSTALL_FIREWALL:-} != "yes" || ${FIREWALL_MODE:-standard} == "stealth" ]]&&return 0
+_config_fail2ban
 }
 _config_apparmor(){
 remote_exec 'mkdir -p /etc/default/grub.d'
@@ -4811,6 +4826,11 @@ remote_exec '
 log "ERROR: Failed to configure AppArmor"
 return 1
 }
+parallel_mark_configured "apparmor"
+}
+configure_apparmor(){
+[[ ${INSTALL_APPARMOR:-} != "yes" ]]&&return 0
+_config_apparmor
 }
 _config_auditd(){
 remote_exec 'mkdir -p /etc/audit/rules.d'
@@ -4829,6 +4849,11 @@ log "ERROR: Failed to configure auditd"
 return 1
 }
 remote_enable_services "auditd"
+parallel_mark_configured "auditd"
+}
+configure_auditd(){
+[[ ${INSTALL_AUDITD:-} != "yes" ]]&&return 0
+_config_auditd
 }
 _config_aide(){
 deploy_systemd_timer "aide-check"||return 1
@@ -4839,6 +4864,11 @@ remote_exec '
 log "ERROR: Failed to initialize AIDE"
 return 1
 }
+parallel_mark_configured "aide"
+}
+configure_aide(){
+[[ ${INSTALL_AIDE:-} != "yes" ]]&&return 0
+_config_aide
 }
 _config_chkrootkit(){
 deploy_systemd_timer "chkrootkit-scan"||return 1
@@ -4846,6 +4876,11 @@ remote_exec 'mkdir -p /var/log/chkrootkit'||{
 log "ERROR: Failed to configure chkrootkit"
 return 1
 }
+parallel_mark_configured "chkrootkit"
+}
+configure_chkrootkit(){
+[[ ${INSTALL_CHKROOTKIT:-} != "yes" ]]&&return 0
+_config_chkrootkit
 }
 _config_lynis(){
 deploy_systemd_timer "lynis-audit"||return 1
@@ -4853,6 +4888,11 @@ remote_exec 'mkdir -p /var/log/lynis'||{
 log "ERROR: Failed to configure Lynis"
 return 1
 }
+parallel_mark_configured "lynis"
+}
+configure_lynis(){
+[[ ${INSTALL_LYNIS:-} != "yes" ]]&&return 0
+_config_lynis
 }
 _config_needrestart(){
 remote_exec 'mkdir -p /etc/needrestart/conf.d'
@@ -4860,10 +4900,20 @@ remote_copy "templates/needrestart.conf" "/etc/needrestart/conf.d/50-autorestart
 log "ERROR: Failed to deploy needrestart config"
 return 1
 }
+parallel_mark_configured "needrestart"
+}
+configure_needrestart(){
+[[ ${INSTALL_NEEDRESTART:-} != "yes" ]]&&return 0
+_config_needrestart
 }
 _config_ringbuffer(){
 local ringbuffer_interface="${DEFAULT_INTERFACE:-eth0}"
 deploy_systemd_service "network-ringbuffer" "RINGBUFFER_INTERFACE=$ringbuffer_interface"
+parallel_mark_configured "ringbuffer"
+}
+configure_ringbuffer(){
+[[ ${INSTALL_RINGBUFFER:-} != "yes" ]]&&return 0
+_config_ringbuffer
 }
 _config_vnstat(){
 local iface="${INTERFACE_NAME:-eth0}"
@@ -4879,6 +4929,11 @@ remote_exec "
 log "ERROR: Failed to configure vnstat"
 return 1
 }
+parallel_mark_configured "vnstat"
+}
+configure_vnstat(){
+[[ ${INSTALL_VNSTAT:-} != "yes" ]]&&return 0
+_config_vnstat
 }
 _config_promtail(){
 remote_exec 'mkdir -p /etc/promtail'||return 1
@@ -4887,6 +4942,7 @@ deploy_template "templates/promtail.yml" "/etc/promtail/promtail.yml" \
 deploy_template "templates/promtail.service" "/etc/systemd/system/promtail.service"||return 1
 remote_exec 'mkdir -p /var/lib/promtail'||return 1
 remote_enable_services "promtail"
+parallel_mark_configured "promtail"
 }
 configure_promtail(){
 if [[ $INSTALL_PROMTAIL != "yes" ]];then
@@ -4971,13 +5027,14 @@ remote_exec '
 log "ERROR: Failed to configure nvim alternatives"
 return 1
 }
+parallel_mark_configured "nvim"
 }
-configure_ssl_certificate(){
-log "configure_ssl_certificate: SSL_TYPE=$SSL_TYPE"
-if [[ $SSL_TYPE != "letsencrypt" ]];then
-log "configure_ssl_certificate: skipping (self-signed)"
-return 0
-fi
+configure_nvim(){
+[[ ${INSTALL_NVIM:-} != "yes" ]]&&return 0
+_config_nvim
+}
+_config_ssl(){
+log "_config_ssl: SSL_TYPE=$SSL_TYPE"
 local cert_domain="${FQDN:-$PVE_HOSTNAME.$DOMAIN_SUFFIX}"
 log "configure_ssl_certificate: domain=$cert_domain, email=$EMAIL"
 if ! apply_template_vars "./templates/letsencrypt-firstboot.sh" \
@@ -5011,6 +5068,13 @@ remote_run "Configuring Let's Encrypt templates" '
     ' "First-boot certificate service configured"
 LETSENCRYPT_DOMAIN="$cert_domain"
 LETSENCRYPT_FIRSTBOOT=true
+}
+configure_ssl_certificate(){
+if [[ $SSL_TYPE != "letsencrypt" ]];then
+log "configure_ssl_certificate: skipping (self-signed)"
+return 0
+fi
+_config_ssl
 }
 create_api_token(){
 [[ $INSTALL_API_TOKEN != "yes" ]]&&return 0
@@ -5051,7 +5115,7 @@ EOF
 log "INFO: API token created successfully: $API_TOKEN_ID"
 return 0
 }
-configure_zfs_arc(){
+_config_zfs_arc(){
 log "INFO: Configuring ZFS ARC memory allocation (mode: $ZFS_ARC_MODE)"
 local total_ram_mb
 total_ram_mb=$(free -m|awk 'NR==2 {print $2}')
@@ -5084,7 +5148,7 @@ remote_run "Configuring ZFS ARC memory" "
   "
 log "INFO: ZFS ARC memory limit configured: ${arc_max_mb}MB"
 }
-configure_zfs_scrub(){
+_config_zfs_scrub(){
 log "INFO: Configuring ZFS scrub schedule"
 remote_copy "templates/zfs-scrub.service" "/etc/systemd/system/zfs-scrub@.service"||{
 log "ERROR: Failed to deploy ZFS scrub service"
@@ -5105,7 +5169,13 @@ remote_run "Enabling ZFS scrub timers" "
   "
 log "INFO: ZFS scrub schedule configured (monthly, 1st Sunday at 2:00 AM)"
 }
-configure_zfs_pool(){
+configure_zfs_arc(){
+_config_zfs_arc
+}
+configure_zfs_scrub(){
+_config_zfs_scrub
+}
+_config_zfs_pool(){
 if [[ -z $BOOT_DISK ]];then
 log "INFO: BOOT_DISK not set, skipping separate ZFS pool creation (all-ZFS mode)"
 return 0
@@ -5150,13 +5220,16 @@ log "INFO: ZFS pool 'tank' created successfully"
 log "INFO: Proxmox storage configured: tank (VMs), local (ISO/templates/backups)"
 return 0
 }
-configure_ssh_hardening(){
-_ssh_hardening_impl(){
+configure_zfs_pool(){
+_config_zfs_pool
+}
+_config_ssh_hardening(){
 deploy_template "templates/sshd_config" "/etc/ssh/sshd_config" \
 "ADMIN_USERNAME=$ADMIN_USERNAME"||return 1
 remote_exec "systemctl restart sshd"||return 1
 }
-if ! run_with_progress "Deploying SSH hardening" "Security hardening configured" _ssh_hardening_impl;then
+configure_ssh_hardening(){
+if ! run_with_progress "Deploying SSH hardening" "Security hardening configured" _config_ssh_hardening;then
 log "ERROR: SSH hardening failed - system may be insecure"
 exit 1
 fi
@@ -5237,50 +5310,6 @@ log "WARNING: QEMU process did not exit cleanly within 120 seconds"
 kill -9 "$QEMU_PID" 2>/dev/null||true
 fi
 }
-_parallel_config_apparmor(){
-[[ ${INSTALL_APPARMOR:-} != "yes" ]]&&return 0
-_config_apparmor&&parallel_mark_configured "apparmor"
-}
-_parallel_config_fail2ban(){
-[[ ${INSTALL_FIREWALL:-} != "yes" || ${FIREWALL_MODE:-standard} == "stealth" ]]&&return 0
-_config_fail2ban&&parallel_mark_configured "fail2ban"
-}
-_parallel_config_auditd(){
-[[ ${INSTALL_AUDITD:-} != "yes" ]]&&return 0
-_config_auditd&&parallel_mark_configured "auditd"
-}
-_parallel_config_aide(){
-[[ ${INSTALL_AIDE:-} != "yes" ]]&&return 0
-_config_aide&&parallel_mark_configured "aide"
-}
-_parallel_config_chkrootkit(){
-[[ ${INSTALL_CHKROOTKIT:-} != "yes" ]]&&return 0
-_config_chkrootkit&&parallel_mark_configured "chkrootkit"
-}
-_parallel_config_lynis(){
-[[ ${INSTALL_LYNIS:-} != "yes" ]]&&return 0
-_config_lynis&&parallel_mark_configured "lynis"
-}
-_parallel_config_needrestart(){
-[[ ${INSTALL_NEEDRESTART:-} != "yes" ]]&&return 0
-_config_needrestart&&parallel_mark_configured "needrestart"
-}
-_parallel_config_promtail(){
-[[ ${INSTALL_PROMTAIL:-} != "yes" ]]&&return 0
-_config_promtail&&parallel_mark_configured "promtail"
-}
-_parallel_config_vnstat(){
-[[ ${INSTALL_VNSTAT:-} != "yes" ]]&&return 0
-_config_vnstat&&parallel_mark_configured "vnstat"
-}
-_parallel_config_ringbuffer(){
-[[ ${INSTALL_RINGBUFFER:-} != "yes" ]]&&return 0
-_config_ringbuffer&&parallel_mark_configured "ringbuffer"
-}
-_parallel_config_nvim(){
-[[ ${INSTALL_NVIM:-} != "yes" ]]&&return 0
-_config_nvim&&parallel_mark_configured "nvim"
-}
 configure_proxmox_via_ssh(){
 log "Starting Proxmox configuration via SSH"
 make_templates
@@ -5295,13 +5324,13 @@ batch_install_packages
 configure_tailscale
 configure_firewall
 run_parallel_group "Configuring security" "Security features configured" \
-_parallel_config_apparmor \
-_parallel_config_fail2ban \
-_parallel_config_auditd \
-_parallel_config_aide \
-_parallel_config_chkrootkit \
-_parallel_config_lynis \
-_parallel_config_needrestart
+configure_apparmor \
+configure_fail2ban \
+configure_auditd \
+configure_aide \
+configure_chkrootkit \
+configure_lynis \
+configure_needrestart
 (local pids=()
 if [[ $INSTALL_NETDATA == "yes" ]];then
 configure_netdata&
@@ -5315,10 +5344,10 @@ for pid in "${pids[@]}";do wait "$pid" 2>/dev/null||true;done) > \
 /dev/null 2>&1&
 local special_pid=$!
 run_parallel_group "Configuring tools" "Tools configured" \
-_parallel_config_promtail \
-_parallel_config_vnstat \
-_parallel_config_ringbuffer \
-_parallel_config_nvim
+configure_promtail \
+configure_vnstat \
+configure_ringbuffer \
+configure_nvim
 wait $special_pid 2>/dev/null||true
 configure_ssl_certificate
 if [[ $INSTALL_API_TOKEN == "yes" ]];then
