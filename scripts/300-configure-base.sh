@@ -31,7 +31,9 @@ _copy_config_files() {
 _apply_basic_settings() {
   remote_exec "[ -f /etc/apt/sources.list ] && mv /etc/apt/sources.list /etc/apt/sources.list.bak" || return 1
   remote_exec "echo '$PVE_HOSTNAME' > /etc/hostname" || return 1
-  remote_exec "systemctl disable --now rpcbind rpcbind.socket 2>/dev/null" || true
+  remote_exec "systemctl disable --now rpcbind rpcbind.socket" || {
+    log "WARNING: Failed to disable rpcbind"
+  }
 }
 
 # Installs locale configuration files
