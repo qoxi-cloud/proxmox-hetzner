@@ -13,13 +13,11 @@ configure_ssh_hardening() {
 
   # shellcheck disable=SC2317,SC2329 # invoked indirectly by run_with_progress
   _ssh_hardening_impl() {
-    remote_copy "templates/sshd_config" "/etc/ssh/sshd_config" || return 1
-    # Ensure .ssh directory with correct permissions (SSH key from answer.toml)
-    remote_exec "mkdir -p /root/.ssh && chmod 700 /root/.ssh" || return 1
-    # Set authorized_keys permissions - file must exist from Proxmox install
-    # Verify permissions were applied correctly
-    # shellcheck disable=SC2016
-    remote_exec 'chmod 600 /root/.ssh/authorized_keys && [ "$(stat -c %a /root/.ssh/authorized_keys)" = "600" ]' || return 1
+    # Apply ADMIN_USERNAME template variable to sshd_config
+    deploy_template "templates/sshd_config" "/etc/ssh/sshd_config" \
+      "ADMIN_USERNAME=${ADMIN_USERNAME}" || return 1
+    # Restart SSH to apply new config
+    remote_exec "systemctl restart sshd" || return 1
   }
 
   if ! run_with_progress "Deploying SSH hardening" "Security hardening configured" _ssh_hardening_impl; then
@@ -50,7 +48,8 @@ validate_installation() {
     "INSTALL_LYNIS=${INSTALL_LYNIS:-no}" \
     "INSTALL_NEEDRESTART=${INSTALL_NEEDRESTART:-no}" \
     "INSTALL_VNSTAT=${INSTALL_VNSTAT:-no}" \
-    "INSTALL_PROMETHEUS=${INSTALL_PROMETHEUS:-no}" \
+    "INSTALL_PROMTAIL=${INSTALL_PROMTAIL:-no}" \
+    "ADMIN_USERNAME=${ADMIN_USERNAME}" \
     "INSTALL_NETDATA=${INSTALL_NETDATA:-no}" \
     "INSTALL_YAZI=${INSTALL_YAZI:-no}" \
     "INSTALL_NVIM=${INSTALL_NVIM:-no}" \
@@ -171,9 +170,9 @@ _parallel_config_needrestart() {
   _config_needrestart && parallel_mark_configured "needrestart"
 }
 
-_parallel_config_prometheus() {
-  [[ ${INSTALL_PROMETHEUS:-} != "yes" ]] && return 0
-  _config_prometheus && parallel_mark_configured "prometheus"
+_parallel_config_promtail() {
+  [[ ${INSTALL_PROMTAIL:-} != "yes" ]] && return 0
+  _config_promtail && parallel_mark_configured "promtail"
 }
 
 _parallel_config_vnstat() {
@@ -258,7 +257,7 @@ configure_proxmox_via_ssh() {
 
   # Parallel config for apt-installed tools (packages already installed by batch)
   run_parallel_group "Configuring tools" "Tools configured" \
-    _parallel_config_prometheus \
+    _parallel_config_promtail \
     _parallel_config_vnstat \
     _parallel_config_ringbuffer \
     _parallel_config_nvim
@@ -276,8 +275,10 @@ configure_proxmox_via_ssh() {
   fi
 
   # ==========================================================================
-  # PHASE 6: Validation & Finalization
+  # PHASE 6: Admin User & SSH Hardening
   # ==========================================================================
+  # Create admin user BEFORE SSH hardening (which blocks root login)
+  configure_admin_user
   configure_ssh_hardening
   validate_installation
   finalize_vm
