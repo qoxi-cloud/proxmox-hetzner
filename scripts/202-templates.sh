@@ -7,6 +7,7 @@
 _modify_template_files() {
   apply_common_template_vars "./templates/hosts"
   apply_common_template_vars "./templates/interfaces"
+  postprocess_interfaces_bridge_mode "./templates/interfaces"
   postprocess_interfaces_ipv6 "./templates/interfaces"
   apply_common_template_vars "./templates/resolv.conf"
   apply_template_vars "./templates/cpupower.service" "CPU_GOVERNOR=${CPU_GOVERNOR:-performance}"
@@ -74,8 +75,7 @@ _download_templates_parallel() {
 make_templates() {
   log "Starting template preparation"
   mkdir -p ./templates
-  local interfaces_template="interfaces.${BRIDGE_MODE:-internal}"
-  log "Using interfaces template: $interfaces_template"
+  log "Using bridge mode: ${BRIDGE_MODE:-internal}"
 
   # Select Proxmox repository template based on PVE_REPO_TYPE
   local proxmox_sources_template="proxmox.sources"
@@ -95,7 +95,7 @@ make_templates() {
     "./templates/proxmox.sources:${proxmox_sources_template}"
     "./templates/sshd_config:sshd_config"
     "./templates/resolv.conf:resolv.conf"
-    "./templates/interfaces:${interfaces_template}"
+    "./templates/interfaces:interfaces"
     # Locale
     "./templates/locale.sh:locale.sh"
     "./templates/default-locale:default-locale"

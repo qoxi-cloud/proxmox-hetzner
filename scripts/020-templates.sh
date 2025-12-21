@@ -107,6 +107,52 @@ apply_common_template_vars() {
     "PORT_PROXMOX_UI=${PORT_PROXMOX_UI:-8006}"
 }
 
+# Post-processes interfaces template based on bridge mode.
+# Removes sections not applicable to the selected mode.
+# Parameters:
+#   $1 - Path to interfaces file
+# Uses: BRIDGE_MODE global variable
+postprocess_interfaces_bridge_mode() {
+  local file="$1"
+  local mode="${BRIDGE_MODE:-internal}"
+
+  if [[ ! -f $file ]]; then
+    log "ERROR: Interfaces file not found: $file"
+    return 1
+  fi
+
+  log "Processing interfaces for bridge mode: $mode"
+
+  case "$mode" in
+    internal)
+      # Keep: IFACE_STATIC, VMBR0_NAT
+      # Remove: IFACE_MANUAL, VMBR0_EXTERNAL, VMBR1
+      sed -i '/^# === IFACE_MANUAL_START ===/,/^# === IFACE_MANUAL_END ===/d' "$file"
+      sed -i '/^# === VMBR0_EXTERNAL_START ===/,/^# === VMBR0_EXTERNAL_END ===/d' "$file"
+      sed -i '/^# === VMBR1_START ===/,/^# === VMBR1_END ===/d' "$file"
+      ;;
+    external)
+      # Keep: IFACE_MANUAL, VMBR0_EXTERNAL
+      # Remove: IFACE_STATIC, VMBR0_NAT, VMBR1
+      sed -i '/^# === IFACE_STATIC_START ===/,/^# === IFACE_STATIC_END ===/d' "$file"
+      sed -i '/^# === VMBR0_NAT_START ===/,/^# === VMBR0_NAT_END ===/d' "$file"
+      sed -i '/^# === VMBR1_START ===/,/^# === VMBR1_END ===/d' "$file"
+      ;;
+    both)
+      # Keep: IFACE_MANUAL, VMBR0_EXTERNAL, VMBR1
+      # Remove: IFACE_STATIC, VMBR0_NAT
+      sed -i '/^# === IFACE_STATIC_START ===/,/^# === IFACE_STATIC_END ===/d' "$file"
+      sed -i '/^# === VMBR0_NAT_START ===/,/^# === VMBR0_NAT_END ===/d' "$file"
+      ;;
+  esac
+
+  # Clean up remaining section markers
+  sed -i '/^# === [A-Z0-9_]*_START ===/d; /^# === [A-Z0-9_]*_END ===/d' "$file"
+
+  # Remove any double blank lines left by section removal
+  sed -i '/^$/N;/^\n$/d' "$file"
+}
+
 # Post-processes interfaces template when IPv6 is disabled.
 # Removes inet6 sections to prevent invalid config with empty addresses.
 # Parameters:
