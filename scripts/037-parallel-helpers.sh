@@ -96,23 +96,16 @@ batch_install_packages() {
     '
   fi
 
-  (
-    # shellcheck disable=SC2086,SC2016
-    remote_exec '
+  # Use run_remote for reliable execution (pipes script to bash -s, better for long scripts)
+  # run_remote exits on failure, so no need for error handling here
+  # shellcheck disable=SC2086
+  run_remote "Installing packages (${#packages[@]})" '
       set -e
       export DEBIAN_FRONTEND=noninteractive
       '"$repo_setup"'
       apt-get update -qq
       apt-get install -yqq '"${packages[*]}"'
-    ' || exit 1
-  ) >/dev/null 2>&1 &
-  show_progress $! "Installing packages (${#packages[@]})" "Packages installed"
-
-  local exit_code=$?
-  if [[ $exit_code -ne 0 ]]; then
-    log "WARNING: Batch package installation failed"
-    return 1
-  fi
+    ' "Packages installed"
 
   # Show installed packages as subtasks
   log_subtasks "${packages[@]}"

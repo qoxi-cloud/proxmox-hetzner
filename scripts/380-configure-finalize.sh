@@ -96,12 +96,18 @@ validate_installation() {
 }
 
 # Finalizes VM by powering it off and waiting for QEMU to exit.
+# Uses SIGTERM to QEMU process for ACPI shutdown (SSH is disabled after hardening)
 finalize_vm() {
-  # Power off the VM
-  remote_exec "poweroff" >/dev/null 2>&1 &
+  # Send SIGTERM to QEMU for graceful ACPI shutdown
+  # This is more reliable than SSH after hardening disables password auth
+  (
+    if kill -0 "$QEMU_PID" 2>/dev/null; then
+      kill -TERM "$QEMU_PID" 2>/dev/null || true
+    fi
+  ) &
   show_progress $! "Powering off the VM"
 
-  # Wait for QEMU to exit with background process
+  # Wait for QEMU to exit
   (
     local timeout=120
     local elapsed=0
@@ -220,6 +226,7 @@ configure_proxmox_via_ssh() {
   # PHASE 3: Security Configuration (parallel after batch install)
   # ==========================================================================
   # Batch install security & optional packages first
+  # Uses run_remote internally - exits on failure
   batch_install_packages
 
   # Tailscale (needs package installed, needed for firewall rules)
@@ -275,10 +282,15 @@ configure_proxmox_via_ssh() {
   fi
 
   # ==========================================================================
-  # PHASE 6: SSH Hardening & Finalization
+  # PHASE 6: Validation & Finalization
   # ==========================================================================
-  # Admin user created in Phase 1 (needed for user-specific configs)
-  configure_ssh_hardening
+  # Validate BEFORE SSH hardening (after hardening, password SSH is disabled)
   validate_installation
+
+  # SSH hardening is the LAST SSH operation - after this, password auth is disabled
+  # and root login is blocked. Only admin user with SSH key can connect.
+  configure_ssh_hardening
+
+  # Power off VM - SSH no longer available, use QEMU ACPI shutdown
   finalize_vm
 }

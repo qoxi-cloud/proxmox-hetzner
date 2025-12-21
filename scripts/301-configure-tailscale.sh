@@ -14,6 +14,7 @@ configure_tailscale() {
 
   # Start tailscaled (package already installed via batch_install_packages)
   run_remote "Starting Tailscale" '
+        set -e
         systemctl enable tailscaled
         systemctl start tailscaled
         # Wait for tailscaled socket to be ready (up to 3s)
@@ -21,6 +22,7 @@ configure_tailscale() {
           tailscale status &>/dev/null && break
           sleep 1
         done
+        true  # Ensure exit 0 if loop completes without break
     ' "Tailscale started"
 
   # If auth key is provided, authenticate Tailscale
@@ -59,8 +61,9 @@ configure_tailscale() {
 
     # Configure Tailscale Serve for Proxmox Web UI
     if [[ $TAILSCALE_WEBUI == "yes" ]]; then
-      remote_exec "tailscale serve --bg --https=443 https://127.0.0.1:8006" >/dev/null 2>&1 &
-      show_progress $! "Configuring Tailscale Serve" "Proxmox Web UI available via Tailscale Serve"
+      run_remote "Configuring Tailscale Serve" \
+        'tailscale serve --bg --https=443 https://127.0.0.1:8006' \
+        "Proxmox Web UI available via Tailscale Serve"
     fi
 
     # Deploy OpenSSH disable service when firewall is in stealth mode
