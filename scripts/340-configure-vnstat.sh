@@ -15,9 +15,9 @@ _config_vnstat() {
   # Add main interface and bridge interfaces to vnstat monitoring
   remote_exec "
     mkdir -p /var/lib/vnstat
-    vnstat --add -i '${iface}' 2>/dev/null || true
+    vnstat --add -i '${iface}'
     for bridge in vmbr0 vmbr1; do
-      ip link show \"\$bridge\" &>/dev/null && vnstat --add -i \"\$bridge\" 2>/dev/null || true
+      ip link show \"\$bridge\" &>/dev/null && vnstat --add -i \"\$bridge\"
     done
     systemctl enable vnstat
   " || {
