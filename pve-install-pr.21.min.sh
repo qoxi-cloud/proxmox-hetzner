@@ -17,7 +17,7 @@ readonly HEX_GRAY="#585858"
 readonly HEX_WHITE="#ffffff"
 readonly HEX_GOLD="#d7af5f"
 readonly HEX_NONE="7"
-readonly VERSION="2.0.470-pr.21"
+readonly VERSION="2.0.471-pr.21"
 readonly TERM_WIDTH=69
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-installer}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
@@ -4797,7 +4797,7 @@ _config_apparmor(){
 remote_exec 'mkdir -p /etc/default/grub.d'
 remote_copy "templates/apparmor-grub.cfg" "/etc/default/grub.d/apparmor.cfg"
 remote_exec '
-    update-grub 2>/dev/null || true
+    update-grub
     systemctl enable apparmor.service
   '||{
 log "ERROR: Failed to configure AppArmor"
@@ -4812,10 +4812,10 @@ return 1
 }
 remote_exec '
     mkdir -p /var/log/audit
-    sed -i "s/^max_log_file = .*/max_log_file = 50/" /etc/audit/auditd.conf 2>/dev/null || true
-    sed -i "s/^num_logs = .*/num_logs = 10/" /etc/audit/auditd.conf 2>/dev/null || true
-    sed -i "s/^max_log_file_action = .*/max_log_file_action = ROTATE/" /etc/audit/auditd.conf 2>/dev/null || true
-    augenrules --load 2>/dev/null || true
+    sed -i "s/^max_log_file = .*/max_log_file = 50/" /etc/audit/auditd.conf
+    sed -i "s/^num_logs = .*/num_logs = 10/" /etc/audit/auditd.conf
+    sed -i "s/^max_log_file_action = .*/max_log_file_action = ROTATE/" /etc/audit/auditd.conf
+    augenrules --load
   '||{
 log "ERROR: Failed to configure auditd"
 return 1
@@ -4825,7 +4825,7 @@ remote_enable_services "auditd"
 _config_aide(){
 deploy_systemd_timer "aide-check"||return 1
 remote_exec '
-    aideinit -y -f 2>/dev/null || true
+    aideinit -y -f
     [[ -f /var/lib/aide/aide.db.new ]] && mv /var/lib/aide/aide.db.new /var/lib/aide/aide.db
   '||{
 log "ERROR: Failed to initialize AIDE"
