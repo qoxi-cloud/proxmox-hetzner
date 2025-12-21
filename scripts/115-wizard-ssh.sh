@@ -85,3 +85,109 @@ _edit_ssh_key() {
     fi
   done
 }
+
+# =============================================================================
+# Admin User Editors
+# =============================================================================
+
+_edit_admin_username() {
+  while true; do
+    _wiz_start_edit
+
+    _wiz_description \
+      "Non-root admin username for SSH and Proxmox access:" \
+      "" \
+      "  Root SSH login will be {{cyan:completely disabled}}." \
+      "  All SSH access must use this admin account." \
+      "  The admin user will have sudo privileges." \
+      ""
+
+    _show_input_footer
+
+    local new_username
+    new_username=$(
+      _wiz_input \
+        --placeholder "e.g., sysadmin, deploy, operator" \
+        --value "$ADMIN_USERNAME" \
+        --prompt "Admin username: "
+    )
+
+    # If empty (cancelled), return to menu
+    if [[ -z $new_username ]]; then
+      return
+    fi
+
+    # Validate username
+    if validate_admin_username "$new_username"; then
+      ADMIN_USERNAME="$new_username"
+      break
+    else
+      show_validation_error "Invalid username. Use lowercase letters/numbers, 1-32 chars. Reserved names (root, admin) not allowed."
+    fi
+  done
+}
+
+_edit_admin_password() {
+  while true; do
+    _wiz_start_edit
+
+    # 1 header + 2 options (Manual/Generate)
+    _show_input_footer "filter" 3
+
+    local choice
+    choice=$(
+      printf '%s\n' "$WIZ_PASSWORD_OPTIONS" | _wiz_choose \
+        --header="Admin Password:"
+    )
+
+    # If user cancelled (Esc)
+    if [[ -z $choice ]]; then
+      return
+    fi
+
+    case "$choice" in
+      "Generate password")
+        ADMIN_PASSWORD=$(generate_password "$DEFAULT_PASSWORD_LENGTH")
+
+        _wiz_start_edit
+        _wiz_hide_cursor
+        _wiz_warn "Please save this password - it will be required for sudo and Proxmox UI"
+        _wiz_blank_line
+        printf '%s\n' "${CLR_CYAN}Generated admin password:${CLR_RESET} ${CLR_ORANGE}${ADMIN_PASSWORD}${CLR_RESET}"
+        _wiz_blank_line
+        printf '%s\n' "${CLR_GRAY}Press any key to continue...${CLR_RESET}"
+        read -n 1 -s -r
+        break
+        ;;
+      "Manual entry")
+        _wiz_start_edit
+        _show_input_footer
+
+        local new_password
+        new_password=$(
+          _wiz_input \
+            --password \
+            --placeholder "Enter admin password" \
+            --prompt "Admin Password: "
+        )
+
+        # If empty or cancelled, return to menu
+        if [[ -z $new_password ]]; then
+          continue
+        fi
+
+        # Validate password
+        local password_error
+        password_error=$(get_password_error "$new_password")
+        if [[ -n $password_error ]]; then
+          show_validation_error "$password_error"
+          continue
+        fi
+
+        # Password is valid
+        ADMIN_PASSWORD="$new_password"
+        break
+        ;;
+    esac
+  done
+}
