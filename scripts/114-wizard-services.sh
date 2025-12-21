@@ -402,9 +402,9 @@ _edit_features_monitoring() {
   _wiz_description \
     "Monitoring features (use Space to toggle):" \
     "" \
-    "  {{cyan:vnstat}}:     Network traffic monitoring" \
-    "  {{cyan:netdata}}:    Real-time monitoring (port 19999)" \
-    "  {{cyan:prometheus}}: Node exporter for metrics (port 9100)" \
+    "  {{cyan:vnstat}}:   Network traffic monitoring" \
+    "  {{cyan:netdata}}:  Real-time monitoring (port 19999)" \
+    "  {{cyan:promtail}}: Log collector for Loki" \
     ""
 
   _show_input_footer "checkbox" 4
@@ -412,7 +412,7 @@ _edit_features_monitoring() {
   local preselected=()
   [[ $INSTALL_VNSTAT == "yes" ]] && preselected+=("vnstat")
   [[ $INSTALL_NETDATA == "yes" ]] && preselected+=("netdata")
-  [[ $INSTALL_PROMETHEUS == "yes" ]] && preselected+=("prometheus")
+  [[ $INSTALL_PROMTAIL == "yes" ]] && preselected+=("promtail")
 
   local gum_args=(
     --no-limit
@@ -432,15 +432,15 @@ _edit_features_monitoring() {
   done
 
   local selected
-  selected=$(printf '%s\n' vnstat netdata prometheus | _wiz_choose "${gum_args[@]}")
+  selected=$(printf '%s\n' vnstat netdata promtail | _wiz_choose "${gum_args[@]}")
 
   INSTALL_VNSTAT="no"
   INSTALL_NETDATA="no"
-  INSTALL_PROMETHEUS="no"
+  INSTALL_PROMTAIL="no"
 
   [[ $selected == *vnstat* ]] && INSTALL_VNSTAT="yes"
   [[ $selected == *netdata* ]] && INSTALL_NETDATA="yes"
-  [[ $selected == *prometheus* ]] && INSTALL_PROMETHEUS="yes"
+  [[ $selected == *promtail* ]] && INSTALL_PROMTAIL="yes"
 }
 
 # =============================================================================
