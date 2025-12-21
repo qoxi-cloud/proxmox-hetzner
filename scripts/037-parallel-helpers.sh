@@ -58,7 +58,7 @@ batch_install_packages() {
 
   # Monitoring packages
   [[ $INSTALL_VNSTAT == "yes" ]] && packages+=(vnstat)
-  [[ $INSTALL_PROMETHEUS == "yes" ]] && packages+=(prometheus-node-exporter)
+  [[ $INSTALL_PROMTAIL == "yes" ]] && packages+=(promtail)
   [[ $INSTALL_NETDATA == "yes" ]] && packages+=(netdata)
 
   # Tools packages
