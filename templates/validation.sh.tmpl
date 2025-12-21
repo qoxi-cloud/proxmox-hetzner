@@ -184,8 +184,11 @@ if [[ -f /etc/ssh/sshd_config ]]; then
 	# Critical: password auth must be disabled
 	_check_config /etc/ssh/sshd_config "^PasswordAuthentication[[:space:]]+no" "Password auth not disabled" && _ok "Password auth disabled"
 
-	# Root login should be key-only
-	_check_config /etc/ssh/sshd_config "^PermitRootLogin[[:space:]]+(prohibit-password|without-password)" "Root login not restricted to key" && _ok "Root login key-only"
+	# Root login should be completely disabled
+	_check_config /etc/ssh/sshd_config "^PermitRootLogin[[:space:]]+no" "Root login not disabled" && _ok "Root login disabled"
+
+	# AllowUsers should restrict to admin user
+	_check_config /etc/ssh/sshd_config "^AllowUsers[[:space:]]+" "AllowUsers not configured" && _ok "AllowUsers configured"
 
 	# Public key auth must be enabled
 	_check_config /etc/ssh/sshd_config "^PubkeyAuthentication[[:space:]]+yes" "Pubkey auth not enabled" && _ok "Pubkey auth enabled"
@@ -201,15 +204,36 @@ if [[ -f /etc/ssh/sshd_config ]]; then
 		fi
 	fi
 
-	# Verify SSH key exists
-	[[ -f /root/.ssh/authorized_keys && -s /root/.ssh/authorized_keys ]] && _ok "SSH authorized_keys configured" ||
-		_fail "No SSH keys in authorized_keys"
+	# Verify admin user SSH key exists
+	[[ -f /home/{{ADMIN_USERNAME}}/.ssh/authorized_keys && -s /home/{{ADMIN_USERNAME}}/.ssh/authorized_keys ]] && _ok "Admin SSH authorized_keys configured" ||
+		_fail "No SSH keys for admin user"
 
-	# SSH permissions
-	[[ $(stat -c %a /root/.ssh 2>/dev/null) == "700" ]] && _ok "/root/.ssh permissions correct (700)" ||
-		_warn "/root/.ssh permissions may be incorrect"
-	[[ $(stat -c %a /root/.ssh/authorized_keys 2>/dev/null) == "600" ]] && _ok "authorized_keys permissions correct (600)" ||
-		_warn "authorized_keys permissions may be incorrect"
+	# Admin SSH permissions
+	[[ $(stat -c %a /home/{{ADMIN_USERNAME}}/.ssh 2>/dev/null) == "700" ]] && _ok "Admin .ssh permissions correct (700)" ||
+		_warn "Admin .ssh permissions may be incorrect"
+	[[ $(stat -c %a /home/{{ADMIN_USERNAME}}/.ssh/authorized_keys 2>/dev/null) == "600" ]] && _ok "Admin authorized_keys permissions correct (600)" ||
+		_warn "Admin authorized_keys permissions may be incorrect"
+fi
+
+# =============================================================================
+# Admin User
+# =============================================================================
+echo ""
+echo "=== Admin User ==="
+
+# Check admin user exists
+if id "{{ADMIN_USERNAME}}" &>/dev/null; then
+	_ok "Admin user '{{ADMIN_USERNAME}}' exists"
+
+	# Check admin is in sudo group
+	groups "{{ADMIN_USERNAME}}" | grep -qw "sudo" && _ok "Admin user in sudo group" ||
+		_fail "Admin user not in sudo group"
+
+	# Check home directory exists
+	[[ -d /home/{{ADMIN_USERNAME}} ]] && _ok "Admin home directory exists" ||
+		_fail "Admin home directory missing"
+else
+	_fail "Admin user '{{ADMIN_USERNAME}}' does not exist"
 fi
 
 # =============================================================================
@@ -407,26 +431,18 @@ if [[ "{{INSTALL_VNSTAT}}" == "yes" ]]; then
 fi
 
 # =============================================================================
-# Prometheus
+# Promtail
 # =============================================================================
-if [[ "{{INSTALL_PROMETHEUS}}" == "yes" ]]; then
+if [[ "{{INSTALL_PROMTAIL}}" == "yes" ]]; then
 	echo ""
-	echo "=== Prometheus Node Exporter ==="
-	_check_pkg prometheus-node-exporter && _ok "prometheus-node-exporter installed"
-	_check_svc_enabled prometheus-node-exporter && _ok "prometheus-node-exporter enabled"
-	_check_file /etc/default/prometheus-node-exporter && _ok "Exporter config exists"
+	echo "=== Promtail Log Collector ==="
+	_check_pkg promtail && _ok "promtail installed"
+	_check_svc_enabled promtail && _ok "promtail enabled"
+	_check_file /etc/promtail/promtail.yml && _ok "Promtail config exists"
 
-	# Check textfile collector directory
-	[[ -d /var/lib/prometheus/node-exporter ]] && _ok "Textfile collector directory exists" ||
-		_warn "Textfile collector directory missing"
-
-	# Check custom metrics script
-	_check_file /usr/local/bin/proxmox-metrics.sh && _ok "Proxmox metrics script exists"
-	[[ -x /usr/local/bin/proxmox-metrics.sh ]] && _ok "Metrics script is executable" ||
-		_warn "Metrics script not executable"
-
-	# Check cron job
-	_check_file /etc/cron.d/proxmox-metrics && _ok "Metrics cron job exists"
+	# Check positions directory
+	[[ -d /var/lib/promtail ]] && _ok "Positions directory exists" ||
+		_warn "Positions directory missing"
 fi
 
 # =============================================================================
