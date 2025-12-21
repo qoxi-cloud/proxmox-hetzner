@@ -21,7 +21,7 @@ _edit_tailscale() {
 
   local selected
   selected=$(
-    printf '%s\n' "Enabled\nDisabled" | _wiz_choose \
+    printf '%s\n' "$WIZ_TOGGLE_OPTIONS" | _wiz_choose \
       --header="Tailscale:"
   )
 
@@ -515,7 +515,7 @@ _edit_api_token() {
 
   local selected
   selected=$(
-    printf '%s\n' "Enabled\nDisabled" | _wiz_choose \
+    printf '%s\n' "$WIZ_TOGGLE_OPTIONS" | _wiz_choose \
       --header="API Token (privileged, no expiration):"
   )
 

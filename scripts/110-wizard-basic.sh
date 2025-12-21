@@ -157,7 +157,7 @@ _edit_password() {
 
     local choice
     choice=$(
-      printf '%s\n' "Manual entry\nGenerate password" | _wiz_choose \
+      printf '%s\n' "$WIZ_PASSWORD_OPTIONS" | _wiz_choose \
         --header="Password:"
     )
 

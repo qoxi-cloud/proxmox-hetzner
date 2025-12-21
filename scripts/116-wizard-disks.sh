@@ -22,14 +22,14 @@ _edit_boot_disk() {
     local disk_name="${DRIVE_NAMES[$i]}"
     local disk_size="${DRIVE_SIZES[$i]}"
     local disk_model="${DRIVE_MODELS[$i]:0:25}"
-    options+="\n${disk_name} - ${disk_size}  ${disk_model}"
+    options+=$'\n'"${disk_name} - ${disk_size}  ${disk_model}"
   done
 
   _show_input_footer "filter" "$((DRIVE_COUNT + 2))"
 
   local selected
   selected=$(
-    printf '%s\n' "$options" | _wiz_choose \
+    printf '%s' "$options" | _wiz_choose \
       --header="Boot disk:"
   )
 
@@ -81,7 +81,8 @@ _edit_pool_disks() {
         local disk_size="${DRIVE_SIZES[$i]}"
         local disk_model="${DRIVE_MODELS[$i]:0:25}"
         local disk_label="${disk_name} - ${disk_size}  ${disk_model}"
-        options+="${disk_label}\n"
+        [[ -n $options ]] && options+=$'\n'
+        options+="${disk_label}"
 
         # Check if this disk is already in pool
         for pool_disk in "${ZFS_POOL_DISKS[@]}"; do
@@ -92,7 +93,6 @@ _edit_pool_disks() {
         done
       fi
     done
-    options="${options%\\n}"
 
     local available_count
     if [[ -n $BOOT_DISK ]]; then

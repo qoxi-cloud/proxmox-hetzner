@@ -183,6 +183,21 @@ Strict (SSH only)
 Standard (SSH + Web UI)
 Disabled"
 
+# Common toggle options (reusable for multiple menus)
+# shellcheck disable=SC2034
+readonly WIZ_TOGGLE_OPTIONS="Enabled
+Disabled"
+
+# Password entry options
+# shellcheck disable=SC2034
+readonly WIZ_PASSWORD_OPTIONS="Manual entry
+Generate password"
+
+# SSH key options (when key detected)
+# shellcheck disable=SC2034
+readonly WIZ_SSH_KEY_OPTIONS="Use detected key
+Enter different key"
+
 # =============================================================================
 # Disk configuration
 # =============================================================================

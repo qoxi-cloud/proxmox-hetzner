@@ -25,17 +25,29 @@ _edit_zfs_mode() {
   if [[ $pool_count -eq 1 ]]; then
     options="Single disk"
   elif [[ $pool_count -eq 2 ]]; then
-    options="RAID-0 (striped)\nRAID-1 (mirror)"
+    options="RAID-0 (striped)
+RAID-1 (mirror)"
   elif [[ $pool_count -eq 3 ]]; then
-    options="RAID-0 (striped)\nRAID-1 (mirror)\nRAID-Z1 (parity)"
+    options="RAID-0 (striped)
+RAID-1 (mirror)
+RAID-Z1 (parity)"
   elif [[ $pool_count -eq 4 ]]; then
-    options="RAID-0 (striped)\nRAID-1 (mirror)\nRAID-Z1 (parity)\nRAID-Z2 (double parity)\nRAID-10 (striped mirrors)"
+    options="RAID-0 (striped)
+RAID-1 (mirror)
+RAID-Z1 (parity)
+RAID-Z2 (double parity)
+RAID-10 (striped mirrors)"
   elif [[ $pool_count -ge 5 ]]; then
-    options="RAID-0 (striped)\nRAID-1 (mirror)\nRAID-Z1 (parity)\nRAID-Z2 (double parity)\nRAID-Z3 (triple parity)\nRAID-10 (striped mirrors)"
+    options="RAID-0 (striped)
+RAID-1 (mirror)
+RAID-Z1 (parity)
+RAID-Z2 (double parity)
+RAID-Z3 (triple parity)
+RAID-10 (striped mirrors)"
   fi
 
   local item_count
-  item_count=$(printf '%s\n' "$options" | wc -l)
+  item_count=$(wc -l <<<"$options")
   _show_input_footer "filter" "$((item_count + 1))"
 
   local selected

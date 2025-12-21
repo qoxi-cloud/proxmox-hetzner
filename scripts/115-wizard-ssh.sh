@@ -30,7 +30,7 @@ _edit_ssh_key() {
 
       local choice
       choice=$(
-        printf '%s\n' "Use detected key\nEnter different key" | _wiz_choose \
+        printf '%s\n' "$WIZ_SSH_KEY_OPTIONS" | _wiz_choose \
           --header="SSH Key:"
       )
 
