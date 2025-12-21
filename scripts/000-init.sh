@@ -32,6 +32,9 @@ readonly HEX_NONE="7"
 # Version (MAJOR only - MINOR.PATCH added by CI from git tags/commits)
 readonly VERSION="2"
 
+# Terminal width for centering (wizard UI, headers, etc.)
+readonly TERM_WIDTH=69
+
 # =============================================================================
 # Configuration constants
 # =============================================================================

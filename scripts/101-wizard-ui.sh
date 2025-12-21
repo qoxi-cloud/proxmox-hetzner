@@ -68,10 +68,9 @@ _wiz_render_nav() {
   local total=${#WIZ_SCREENS[@]}
   local col=$_NAV_COL_WIDTH
 
-  # Calculate padding to center relative to footer width (69 chars)
+  # Calculate padding to center relative to terminal width
   local nav_width=$((col * total))
-  local footer_width=69
-  local pad_left=$(((footer_width - nav_width) / 2))
+  local pad_left=$(((TERM_WIDTH - nav_width) / 2))
   local padding=""
   ((pad_left > 0)) && padding=$(printf '%*s' $pad_left '')
 
