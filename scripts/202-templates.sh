@@ -3,6 +3,19 @@
 # Template preparation and download
 # =============================================================================
 
+# Modifies template files with variable substitution
+_modify_template_files() {
+  apply_common_template_vars "./templates/hosts"
+  apply_common_template_vars "./templates/interfaces"
+  postprocess_interfaces_ipv6 "./templates/interfaces"
+  apply_common_template_vars "./templates/resolv.conf"
+  apply_template_vars "./templates/cpupower.service" "CPU_GOVERNOR=${CPU_GOVERNOR:-performance}"
+  # Locale templates - substitute {{LOCALE}} with actual locale value
+  apply_common_template_vars "./templates/locale.sh"
+  apply_common_template_vars "./templates/default-locale"
+  apply_common_template_vars "./templates/environment"
+}
+
 # Downloads all templates in parallel using aria2c.
 # Falls back to sequential wget if aria2c unavailable.
 # Parameters:
@@ -145,10 +158,8 @@ make_templates() {
   )
 
   # Download all templates in parallel
-  (
-    _download_templates_parallel "${template_list[@]}" || exit 1
-  ) >/dev/null 2>&1 &
-  if ! show_progress $! "Downloading template files"; then
+  if ! run_with_progress "Downloading template files" "Template files downloaded" \
+    _download_templates_parallel "${template_list[@]}"; then
     log "ERROR: Failed to download template files"
     exit 1
   fi
@@ -161,16 +172,5 @@ make_templates() {
   fi
 
   # Modify template files in background with progress
-  (
-    apply_common_template_vars "./templates/hosts"
-    apply_common_template_vars "./templates/interfaces"
-    postprocess_interfaces_ipv6 "./templates/interfaces"
-    apply_common_template_vars "./templates/resolv.conf"
-    apply_template_vars "./templates/cpupower.service" "CPU_GOVERNOR=${CPU_GOVERNOR:-performance}"
-    # Locale templates - substitute {{LOCALE}} with actual locale value
-    apply_common_template_vars "./templates/locale.sh"
-    apply_common_template_vars "./templates/default-locale"
-    apply_common_template_vars "./templates/environment"
-  ) &
-  show_progress $! "Modifying template files"
+  run_with_progress "Modifying template files" "Template files modified" _modify_template_files
 }
