@@ -17,7 +17,7 @@ readonly HEX_GRAY="#585858"
 readonly HEX_WHITE="#ffffff"
 readonly HEX_GOLD="#d7af5f"
 readonly HEX_NONE="7"
-readonly VERSION="2.0.413-pr.21"
+readonly VERSION="2.0.414-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-installer}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -1764,7 +1764,14 @@ TASK_INDEX=$((LOG_COUNT-1))
 complete_task(){
 local task_index="$1"
 local message="$2"
-LOG_LINES[task_index]="$message $CLR_CYAN✓$CLR_RESET"
+local status="${3:-success}"
+local indicator
+case "$status" in
+error)indicator="$CLR_RED✗$CLR_RESET";;
+warning)indicator="$CLR_YELLOW⚠$CLR_RESET";;
+*)indicator="$CLR_CYAN✓$CLR_RESET"
+esac
+LOG_LINES[task_index]="$message $indicator"
 render_logs
 }
 add_subtask_log(){
@@ -5101,11 +5108,10 @@ WARN:*)add_log "$CLR_ORANGE│$CLR_RESET   $CLR_YELLOW$line$CLR_RESET"
 esac
 done <<<"$validation_output"
 if ((errors>0));then
-LOG_LINES[task_idx]="$CLR_ORANGE├─$CLR_RESET Validation: $CLR_RED$errors error(s)$CLR_RESET, $CLR_YELLOW$warnings warning(s)$CLR_RESET $CLR_RED✗$CLR_RESET"
-render_logs
+complete_task "$task_idx" "$CLR_ORANGE├─$CLR_RESET Validation: $CLR_RED$errors error(s)$CLR_RESET, $CLR_YELLOW$warnings warning(s)$CLR_RESET" "error"
 log "ERROR: Installation validation failed with $errors error(s)"
 elif ((warnings>0));then
-complete_task "$task_idx" "$CLR_ORANGE├─$CLR_RESET Validation passed with $CLR_YELLOW$warnings warning(s)$CLR_RESET"
+complete_task "$task_idx" "$CLR_ORANGE├─$CLR_RESET Validation passed with $CLR_YELLOW$warnings warning(s)$CLR_RESET" "warning"
 else
 complete_task "$task_idx" "$CLR_ORANGE├─$CLR_RESET Validation passed"
 fi
