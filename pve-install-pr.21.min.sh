@@ -17,7 +17,7 @@ readonly HEX_GRAY="#585858"
 readonly HEX_WHITE="#ffffff"
 readonly HEX_GOLD="#d7af5f"
 readonly HEX_NONE="7"
-readonly VERSION="2.0.424-pr.21"
+readonly VERSION="2.0.425-pr.21"
 readonly TERM_WIDTH=69
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-installer}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
@@ -1757,7 +1757,7 @@ render_logs
 }
 _render_install_header(){
 printf '\033[%d;0H' "$((LOGO_HEIGHT+1))"
-printf '\n%s\n\n' "$(format_wizard_header "Installing Proxmox")"
+printf '%s\n\n' "$(format_wizard_header "Installing Proxmox")"
 }
 render_logs(){
 _render_install_header
