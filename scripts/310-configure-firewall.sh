@@ -5,108 +5,103 @@
 # Package installed via batch_install_packages() in 037-parallel-helpers.sh
 # =============================================================================
 
+# -----------------------------------------------------------------------------
+# Rule definitions (data-driven configuration)
+# -----------------------------------------------------------------------------
+
+# Port rules by firewall mode: "port1 port2 ..."
+# Empty = no public ports (stealth mode)
+declare -A FIREWALL_PORT_RULES=(
+  [stealth]=""
+  [strict]="${PORT_SSH}"
+  [standard]="${PORT_SSH} ${PORT_PROXMOX_UI}"
+)
+
+# Bridge interfaces by bridge mode
+declare -A BRIDGE_IFACES=(
+  [internal]="vmbr0"
+  [external]="vmbr1"
+  [both]="vmbr0 vmbr1"
+)
+
+# Bridge descriptions for comments (key format: iface_mode)
+declare -A BRIDGE_DESCRIPTIONS=(
+  [vmbr0_internal]="private NAT network"
+  [vmbr0_external]="external bridge"
+  [vmbr0_both]="private NAT network"
+  [vmbr1_external]="external bridge"
+  [vmbr1_both]="public IPs"
+)
+
+# -----------------------------------------------------------------------------
+# Rule generators
+# -----------------------------------------------------------------------------
+
 # Generate port rules based on firewall mode
 _generate_port_rules() {
   local mode="$1"
-  local rules=""
+  local ports="${FIREWALL_PORT_RULES[$mode]:-${FIREWALL_PORT_RULES[standard]}}"
 
-  case "$mode" in
-    stealth)
-      # Stealth mode: only bridges, tailscale, loopback - no SSH or Web UI on public IP
-      rules="# Stealth mode: all public ports blocked
+  if [[ -z $ports ]]; then
+    printf '%s\n' "# Stealth mode: all public ports blocked
         # Access only via Tailscale VPN or VM bridges"
-      ;;
-    strict)
-      # Strict mode: only SSH allowed
-      rules="# SSH access (port ${PORT_SSH})
-        tcp dport ${PORT_SSH} ct state new accept"
-      ;;
-    standard)
-      # Standard mode: SSH + Proxmox Web UI
-      rules="# SSH access (port ${PORT_SSH})
-        tcp dport ${PORT_SSH} ct state new accept
+    return
+  fi
 
-        # Proxmox Web UI (port ${PORT_PROXMOX_UI})
-        tcp dport ${PORT_PROXMOX_UI} ct state new accept"
-      ;;
-    *)
-      log "WARNING: Unknown firewall mode: $mode, using standard"
-      rules="# SSH access (port ${PORT_SSH})
-        tcp dport ${PORT_SSH} ct state new accept
+  local first=true
+  for port in $ports; do
+    local desc=""
+    case "$port" in
+      "${PORT_SSH}") desc="SSH" ;;
+      "${PORT_PROXMOX_UI}") desc="Proxmox Web UI" ;;
+      *) desc="Service" ;;
+    esac
 
-        # Proxmox Web UI (port ${PORT_PROXMOX_UI})
-        tcp dport ${PORT_PROXMOX_UI} ct state new accept"
-      ;;
-  esac
+    $first || printf '\n'
+    printf '        # %s access (port %s)\n' "$desc" "$port"
+    printf '        tcp dport %s ct state new accept' "$port"
+    first=false
+  done
+  printf '\n'
+}
 
-  printf '%s\n' "$rules"
+# Generate bridge rules for input or forward chain
+# Parameters:
+#   $1 - chain type: "input" or "forward"
+_generate_bridge_rules() {
+  local chain="$1"
+  local mode="${BRIDGE_MODE:-internal}"
+  local ifaces="${BRIDGE_IFACES[$mode]:-${BRIDGE_IFACES[internal]}}"
+
+  local first=true
+  for iface in $ifaces; do
+    local desc="${BRIDGE_DESCRIPTIONS[${iface}_${mode}]:-bridge}"
+    $first || printf '\n'
+
+    case "$chain" in
+      input)
+        printf '        # Allow traffic from %s (%s)\n' "$iface" "$desc"
+        printf '        iifname "%s" accept' "$iface"
+        ;;
+      forward)
+        printf '        # Allow forwarding for %s (%s)\n' "$iface" "$desc"
+        printf '        iifname "%s" accept\n' "$iface"
+        printf '        oifname "%s" accept' "$iface"
+        ;;
+    esac
+    first=false
+  done
+  printf '\n'
 }
 
 # Generate bridge input rules based on BRIDGE_MODE
 _generate_bridge_input_rules() {
-  local mode="${BRIDGE_MODE:-internal}"
-  local rules=""
-
-  case "$mode" in
-    internal)
-      # Internal NAT only - vmbr0
-      rules='# Allow traffic from internal bridge (vmbr0 - private NAT network)
-        iifname "vmbr0" accept'
-      ;;
-    external)
-      # External bridge only - vmbr1
-      rules='# Allow traffic from external bridge (vmbr1 - public IPs)
-        iifname "vmbr1" accept'
-      ;;
-    both)
-      # Both bridges
-      rules='# Allow traffic from internal bridge (vmbr0 - private NAT network)
-        iifname "vmbr0" accept
-
-        # Allow traffic from external bridge (vmbr1 - public IPs)
-        iifname "vmbr1" accept'
-      ;;
-    *)
-      log "WARNING: Unknown bridge mode: $mode, using internal"
-      rules='# Allow traffic from internal bridge (vmbr0 - private NAT network)
-        iifname "vmbr0" accept'
-      ;;
-  esac
-
-  printf '%s\n' "$rules"
+  _generate_bridge_rules "input"
 }
 
 # Generate bridge forward rules based on BRIDGE_MODE
 _generate_bridge_forward_rules() {
-  local mode="${BRIDGE_MODE:-internal}"
-  local rules=""
-
-  case "$mode" in
-    internal)
-      rules='# Allow forwarding for internal bridge (VM traffic)
-        iifname "vmbr0" accept
-        oifname "vmbr0" accept'
-      ;;
-    external)
-      rules='# Allow forwarding for external bridge (VM traffic)
-        iifname "vmbr1" accept
-        oifname "vmbr1" accept'
-      ;;
-    both)
-      rules='# Allow forwarding for both bridges (VM traffic)
-        iifname "vmbr0" accept
-        iifname "vmbr1" accept
-        oifname "vmbr0" accept
-        oifname "vmbr1" accept'
-      ;;
-    *)
-      rules='# Allow forwarding for internal bridge (VM traffic)
-        iifname "vmbr0" accept
-        oifname "vmbr0" accept'
-      ;;
-  esac
-
-  printf '%s\n' "$rules"
+  _generate_bridge_rules "forward"
 }
 
 # Generate Tailscale rules if enabled
