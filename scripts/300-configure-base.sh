@@ -50,18 +50,24 @@ _configure_fastfetch() {
   remote_exec "grep -q 'profile.d/fastfetch.sh' /etc/bash.bashrc || echo '[ -f /etc/profile.d/fastfetch.sh ] && . /etc/profile.d/fastfetch.sh' >> /etc/bash.bashrc" || return 1
 }
 
-# Configures bat with Visual Studio Dark+ theme
+# Configures bat with Visual Studio Dark+ theme for admin user
 _configure_bat() {
   remote_exec "ln -sf /usr/bin/batcat /usr/local/bin/bat" || return 1
-  remote_exec "mkdir -p /root/.config/bat" || return 1
-  remote_copy "templates/bat-config" "/root/.config/bat/config" || return 1
+  # shellcheck disable=SC2016
+  remote_exec 'mkdir -p /home/'"'$ADMIN_USERNAME'"'/.config/bat' || return 1
+  remote_copy "templates/bat-config" "/home/${ADMIN_USERNAME}/.config/bat/config" || return 1
+  # shellcheck disable=SC2016
+  remote_exec 'chown -R '"'$ADMIN_USERNAME:$ADMIN_USERNAME'"' /home/'"'$ADMIN_USERNAME'"'/.config/bat' || return 1
 }
 
-# Configures ZSH files and default shell
+# Configures ZSH files and default shell for admin user
 _configure_zsh_files() {
-  remote_copy "templates/zshrc" "/root/.zshrc" || return 1
-  remote_copy "templates/p10k.zsh" "/root/.p10k.zsh" || return 1
-  remote_exec "chsh -s /bin/zsh root" || return 1
+  remote_copy "templates/zshrc" "/home/${ADMIN_USERNAME}/.zshrc" || return 1
+  remote_copy "templates/p10k.zsh" "/home/${ADMIN_USERNAME}/.p10k.zsh" || return 1
+  # shellcheck disable=SC2016
+  remote_exec 'chown '"'$ADMIN_USERNAME:$ADMIN_USERNAME'"' /home/'"'$ADMIN_USERNAME'"'/.zshrc /home/'"'$ADMIN_USERNAME'"'/.p10k.zsh' || return 1
+  # shellcheck disable=SC2016
+  remote_exec 'chsh -s /bin/zsh '"'$ADMIN_USERNAME'"'' || return 1
 }
 
 # Configures chrony NTP service
@@ -185,25 +191,29 @@ configure_base_system() {
   run_with_progress "Configuring bat" "Bat configured" _configure_bat
 }
 
-# Configures default shell for root user.
+# Configures default shell for admin user.
 # Optionally installs ZSH with Oh-My-Zsh and Powerlevel10k theme.
 # Note: zsh, git, curl packages already installed via install_base_packages()
 configure_shell() {
-  # Configure default shell for root
+  # Configure default shell for admin user (root login is disabled)
   if [[ $SHELL_TYPE == "zsh" ]]; then
+    # Install Oh-My-Zsh for admin user
     # shellcheck disable=SC2016 # Single quotes intentional - executed on remote system
     run_remote "Installing Oh-My-Zsh" '
             export RUNZSH=no
             export CHSH=no
-            sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+            export HOME=/home/'"'$ADMIN_USERNAME'"'
+            su - '"'$ADMIN_USERNAME'"' -c "sh -c \"\$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)\" \"\" --unattended"
         ' "Oh-My-Zsh installed"
 
     # Parallel git clones for theme and plugins (all independent after Oh-My-Zsh)
+    # shellcheck disable=SC2016 # Single quotes intentional - executed on remote system
     run_remote "Installing ZSH theme and plugins" '
-            git clone --depth=1 https://github.com/romkatv/powerlevel10k.git /root/.oh-my-zsh/custom/themes/powerlevel10k &
-            git clone --depth=1 https://github.com/zsh-users/zsh-autosuggestions /root/.oh-my-zsh/custom/plugins/zsh-autosuggestions &
-            git clone --depth=1 https://github.com/zsh-users/zsh-syntax-highlighting /root/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting &
+            git clone --depth=1 https://github.com/romkatv/powerlevel10k.git /home/'"'$ADMIN_USERNAME'"'/.oh-my-zsh/custom/themes/powerlevel10k &
+            git clone --depth=1 https://github.com/zsh-users/zsh-autosuggestions /home/'"'$ADMIN_USERNAME'"'/.oh-my-zsh/custom/plugins/zsh-autosuggestions &
+            git clone --depth=1 https://github.com/zsh-users/zsh-syntax-highlighting /home/'"'$ADMIN_USERNAME'"'/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting &
             wait
+            chown -R '"'$ADMIN_USERNAME:$ADMIN_USERNAME'"' /home/'"'$ADMIN_USERNAME'"'/.oh-my-zsh
         ' "ZSH theme and plugins installed"
 
     run_with_progress "Configuring ZSH" "ZSH with Powerlevel10k configured" _configure_zsh_files

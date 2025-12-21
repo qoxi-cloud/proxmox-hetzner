@@ -465,10 +465,10 @@ if [[ "{{INSTALL_YAZI}}" == "yes" ]]; then
 	echo ""
 	echo "=== Yazi ==="
 	_check_cmd yazi && _ok "yazi command available"
-	_check_file /root/.config/yazi/theme.toml && _ok "Yazi theme configured"
+	_check_file /home/{{ADMIN_USERNAME}}/.config/yazi/theme.toml && _ok "Yazi theme configured"
 
 	# Verify theme is Catppuccin
-	_check_config /root/.config/yazi/theme.toml "catppuccin\|Catppuccin" "Catppuccin theme not set" && _ok "Catppuccin theme active" || true
+	_check_config /home/{{ADMIN_USERNAME}}/.config/yazi/theme.toml "catppuccin\|Catppuccin" "Catppuccin theme not set" && _ok "Catppuccin theme active" || true
 fi
 
 # =============================================================================
@@ -501,32 +501,32 @@ if [[ "{{INSTALL_RINGBUFFER}}" == "yes" ]]; then
 fi
 
 # =============================================================================
-# ZSH Shell
+# ZSH Shell (for admin user)
 # =============================================================================
 if [[ "{{SHELL_TYPE}}" == "zsh" ]]; then
 	echo ""
 	echo "=== ZSH ==="
 	_check_pkg zsh && _ok "zsh package installed"
-	_check_file /root/.zshrc && _ok "zshrc exists"
-	_check_file /root/.p10k.zsh && _ok "p10k config exists"
+	_check_file /home/{{ADMIN_USERNAME}}/.zshrc && _ok "zshrc exists"
+	_check_file /home/{{ADMIN_USERNAME}}/.p10k.zsh && _ok "p10k config exists"
 
-	# Check root shell is zsh
-	if getent passwd root | grep -q "/bin/zsh\|/usr/bin/zsh"; then
-		_ok "Root shell is zsh"
+	# Check admin user shell is zsh
+	if getent passwd {{ADMIN_USERNAME}} | grep -q "/bin/zsh\|/usr/bin/zsh"; then
+		_ok "Admin user shell is zsh"
 	else
-		_warn "Root shell may not be zsh"
+		_warn "Admin user shell may not be zsh"
 	fi
 
 	# Check Oh-My-Zsh installed
-	[[ -d /root/.oh-my-zsh ]] && _ok "Oh-My-Zsh installed" || _warn "Oh-My-Zsh directory missing"
+	[[ -d /home/{{ADMIN_USERNAME}}/.oh-my-zsh ]] && _ok "Oh-My-Zsh installed" || _warn "Oh-My-Zsh directory missing"
 
 	# Check Powerlevel10k theme
-	[[ -d /root/.oh-my-zsh/custom/themes/powerlevel10k ]] && _ok "Powerlevel10k theme installed" ||
+	[[ -d /home/{{ADMIN_USERNAME}}/.oh-my-zsh/custom/themes/powerlevel10k ]] && _ok "Powerlevel10k theme installed" ||
 		_warn "Powerlevel10k theme missing"
 
 	# Check plugins
-	[[ -d /root/.oh-my-zsh/custom/plugins/zsh-autosuggestions ]] && _ok "zsh-autosuggestions plugin installed" || _warn "zsh-autosuggestions missing"
-	[[ -d /root/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting ]] && _ok "zsh-syntax-highlighting plugin installed" || _warn "zsh-syntax-highlighting missing"
+	[[ -d /home/{{ADMIN_USERNAME}}/.oh-my-zsh/custom/plugins/zsh-autosuggestions ]] && _ok "zsh-autosuggestions plugin installed" || _warn "zsh-autosuggestions missing"
+	[[ -d /home/{{ADMIN_USERNAME}}/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting ]] && _ok "zsh-syntax-highlighting plugin installed" || _warn "zsh-syntax-highlighting missing"
 fi
 
 # =============================================================================

@@ -1,9 +1,10 @@
 # shellcheck shell=bash
 # =============================================================================
 # Configure non-root admin user
-# Creates admin user with sudo privileges, sets up SSH key access
+# Creates admin user with sudo privileges, deploys SSH key directly from wizard
 # Grants Proxmox Administrator role and disables root@pam
 # Root access is blocked for both SSH and Proxmox UI
+# SSH key is NOT in answer.toml - it's deployed here directly to admin user
 # =============================================================================
 
 # Configuration function for admin user
@@ -20,9 +21,10 @@ _config_admin_user() {
   # shellcheck disable=SC2016
   remote_exec 'mkdir -p /home/'"'$ADMIN_USERNAME'"'/.ssh && chmod 700 /home/'"'$ADMIN_USERNAME'"'/.ssh' || return 1
 
-  # Copy SSH key from root to admin user
-  # shellcheck disable=SC2016
-  remote_exec 'cp /root/.ssh/authorized_keys /home/'"'$ADMIN_USERNAME'"'/.ssh/authorized_keys' || return 1
+  # Deploy SSH key directly to admin user (not copied from root - root has no SSH access)
+  # Escape single quotes in the key for shell safety
+  local escaped_key="${SSH_PUBLIC_KEY//\'/\'\\\'\'}"
+  remote_exec "echo '${escaped_key}' > /home/'$ADMIN_USERNAME'/.ssh/authorized_keys" || return 1
 
   # Set correct permissions and ownership
   # shellcheck disable=SC2016
@@ -51,9 +53,10 @@ _config_admin_user() {
   }
 }
 
-# Creates admin user with sudo privileges and SSH key access.
+# Creates admin user with sudo privileges and deploys SSH key directly.
 # Parameters: Uses global ADMIN_USERNAME, ADMIN_PASSWORD, SSH_PUBLIC_KEY
 # Called before SSH hardening (which blocks root login)
+# SSH key is deployed directly here, not via answer.toml
 configure_admin_user() {
   log "Creating admin user: $ADMIN_USERNAME"
   if ! run_with_progress "Creating admin user" "Admin user created" _config_admin_user; then

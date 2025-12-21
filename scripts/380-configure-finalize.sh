@@ -4,12 +4,12 @@
 # =============================================================================
 
 # Configures SSH hardening with key-based authentication only.
-# Deploys hardened sshd_config (SSH key already added via answer.toml).
-# Side effects: Disables password authentication on remote system
+# Deploys hardened sshd_config (SSH key is deployed to admin user in 302-configure-admin.sh).
+# Side effects: Disables password authentication, blocks root login
 configure_ssh_hardening() {
   # Deploy SSH hardening LAST (after all other operations)
   # CRITICAL: This must succeed - if it fails, system remains with password auth enabled
-  # NOTE: SSH key was already deployed via answer.toml root_ssh_keys parameter
+  # NOTE: SSH key was deployed to admin user in 302-configure-admin.sh (root has no SSH access)
 
   # shellcheck disable=SC2317,SC2329 # invoked indirectly by run_with_progress
   _ssh_hardening_impl() {

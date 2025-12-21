@@ -432,15 +432,9 @@ make_answer_toml() {
   # This allows conditional sections (ZFS vs LVM parameters)
   log "Generating answer.toml for autoinstall"
 
-  # Prepare SSH keys array (TOML multiline array format)
-  # Note: Use kebab-case for TOML keys (root-ssh-keys, not root_ssh_keys)
-  local ssh_keys_toml=""
-  if [[ -n $SSH_PUBLIC_KEY ]]; then
-    # Escape the SSH key for TOML (escape backslashes and quotes)
-    local escaped_key="${SSH_PUBLIC_KEY//\\/\\\\}"
-    escaped_key="${escaped_key//\"/\\\"}"
-    ssh_keys_toml="root-ssh-keys = [\"$escaped_key\"]"
-  fi
+  # NOTE: SSH key is NOT added to answer.toml anymore.
+  # SSH key is deployed directly to the admin user in 302-configure-admin.sh
+  # Root login is disabled for both SSH and Proxmox UI.
 
   # Escape password for TOML (critical for user-entered passwords)
   local escaped_password="${NEW_ROOT_PASSWORD//\\/\\\\}" # Escape backslashes first
@@ -457,15 +451,6 @@ make_answer_toml() {
     timezone = "$TIMEZONE"
     root-password = "$escaped_password"
     reboot-on-error = false
-EOF
-
-  # Add SSH keys if available
-  if [[ -n $ssh_keys_toml ]]; then
-    printf '%s\n' "    $ssh_keys_toml" >>./answer.toml
-  fi
-
-  # Generate [network] section
-  cat >>./answer.toml <<EOF
 
 [network]
     source = "from-dhcp"

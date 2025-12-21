@@ -3,6 +3,7 @@
 # Yazi file manager configuration
 # Modern terminal file manager with image preview support
 # Dependencies (curl, file, unzip) installed via batch_install_packages()
+# Config is deployed to admin user's home directory (not root)
 # =============================================================================
 
 # Installation function for yazi - downloads binary from GitHub
@@ -24,15 +25,23 @@ _install_yazi() {
 
 # Configuration function for yazi
 _config_yazi() {
-  # Create config directory
-  remote_exec 'mkdir -p /root/.config/yazi' || {
+  # Create config directory for admin user
+  # shellcheck disable=SC2016
+  remote_exec 'mkdir -p /home/'"'$ADMIN_USERNAME'"'/.config/yazi' || {
     log "ERROR: Failed to create yazi config directory"
     return 1
   }
 
   # Copy theme
-  remote_copy "templates/yazi-theme.toml" "/root/.config/yazi/theme.toml" || {
+  remote_copy "templates/yazi-theme.toml" "/home/${ADMIN_USERNAME}/.config/yazi/theme.toml" || {
     log "ERROR: Failed to deploy yazi theme"
+    return 1
+  }
+
+  # Set correct ownership
+  # shellcheck disable=SC2016
+  remote_exec 'chown -R '"'$ADMIN_USERNAME:$ADMIN_USERNAME'"' /home/'"'$ADMIN_USERNAME'"'/.config/yazi' || {
+    log "ERROR: Failed to set yazi config ownership"
     return 1
   }
 }
