@@ -17,7 +17,7 @@ readonly HEX_GRAY="#585858"
 readonly HEX_WHITE="#ffffff"
 readonly HEX_GOLD="#d7af5f"
 readonly HEX_NONE="7"
-readonly VERSION="2.0.473-pr.21"
+readonly VERSION="2.0.474-pr.21"
 readonly TERM_WIDTH=69
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-installer}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
@@ -835,7 +835,7 @@ log "_remote_exec_with_progress: completed successfully"
 fi
 return $exit_code
 }
-run_remote(){
+remote_run(){
 local message="$1"
 local script="$2"
 local done_message="${3:-$message}"
@@ -1010,7 +1010,7 @@ if [[ ${SHELL_TYPE:-bash} == "zsh" ]];then
 packages="$packages zsh git curl"
 fi
 log "Installing base packages: $packages"
-run_remote "Installing system packages" "
+remote_run "Installing system packages" "
     set -e
     export DEBIAN_FRONTEND=noninteractive
     apt-get update -qq
@@ -1062,7 +1062,7 @@ repo_setup+='
       echo "deb [signed-by=/usr/share/keyrings/netdata-archive-keyring.gpg] https://repo.netdata.cloud/repos/stable/debian/ bookworm/" > /etc/apt/sources.list.d/netdata.list
     '
 fi
-run_remote "Installing packages (${#packages[@]})" '
+remote_run "Installing packages (${#packages[@]})" '
       set -e
       export DEBIAN_FRONTEND=noninteractive
       '"$repo_setup"'
@@ -4470,7 +4470,7 @@ run_with_progress "Applying basic system settings" "Basic system settings applie
 log "configure_base_system: PVE_REPO_TYPE=${PVE_REPO_TYPE:-no-subscription}"
 if [[ ${PVE_REPO_TYPE:-no-subscription} == "enterprise" ]];then
 log "configure_base_system: configuring enterprise repository"
-run_remote "Configuring enterprise repository" '
+remote_run "Configuring enterprise repository" '
             for repo_file in /etc/apt/sources.list.d/*.list /etc/apt/sources.list.d/*.sources; do
                 [ -f "$repo_file" ] || continue
                 if grep -q "pve-no-subscription\|pvetest" "$repo_file" 2>/dev/null; then
@@ -4480,13 +4480,13 @@ run_remote "Configuring enterprise repository" '
         ' "Enterprise repository configured"
 if [[ -n $PVE_SUBSCRIPTION_KEY ]];then
 log "configure_base_system: registering subscription key"
-run_remote "Registering subscription key" \
+remote_run "Registering subscription key" \
 "pvesubscription set '$PVE_SUBSCRIPTION_KEY' 2>/dev/null || true" \
 "Subscription key registered"
 fi
 else
 log "configure_base_system: configuring ${PVE_REPO_TYPE:-no-subscription} repository"
-run_remote "Configuring ${PVE_REPO_TYPE:-no-subscription} repository" '
+remote_run "Configuring ${PVE_REPO_TYPE:-no-subscription} repository" '
             for repo_file in /etc/apt/sources.list.d/*.list /etc/apt/sources.list.d/*.sources; do
                 [ -f "$repo_file" ] || continue
                 if grep -q "enterprise.proxmox.com" "$repo_file" 2>/dev/null; then
@@ -4501,7 +4501,7 @@ run_remote "Configuring ${PVE_REPO_TYPE:-no-subscription} repository" '
 fi
 install_base_packages
 local locale_name="${LOCALE%%.UTF-8}"
-run_remote "Configuring UTF-8 locales" "
+remote_run "Configuring UTF-8 locales" "
         set -e
         sed -i 's/# $locale_name.UTF-8/$locale_name.UTF-8/' /etc/locale.gen
         sed -i 's/# en_US.UTF-8/en_US.UTF-8/' /etc/locale.gen
@@ -4514,14 +4514,14 @@ run_with_progress "Configuring bat" "Bat configured" _configure_bat
 }
 configure_shell(){
 if [[ $SHELL_TYPE == "zsh" ]];then
-run_remote "Installing Oh-My-Zsh" '
+remote_run "Installing Oh-My-Zsh" '
             set -e
             export RUNZSH=no
             export CHSH=no
             export HOME=/home/'"'$ADMIN_USERNAME'"'
             su - '"'$ADMIN_USERNAME'"' -c "sh -c \"\$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)\" \"\" --unattended"
         ' "Oh-My-Zsh installed"
-run_remote "Installing ZSH theme and plugins" '
+remote_run "Installing ZSH theme and plugins" '
             set -e
             git clone --depth=1 https://github.com/romkatv/powerlevel10k.git /home/'"'$ADMIN_USERNAME'"'/.oh-my-zsh/custom/themes/powerlevel10k &
             pid1=$!
@@ -4540,7 +4540,7 @@ fi
 configure_system_services(){
 run_with_progress "Configuring chrony" "Chrony configured" _configure_chrony
 run_with_progress "Configuring Unattended Upgrades" "Unattended Upgrades configured" _configure_unattended_upgrades
-run_remote "Configuring nf_conntrack" '
+remote_run "Configuring nf_conntrack" '
         if ! grep -q "nf_conntrack" /etc/modules 2>/dev/null; then
             echo "nf_conntrack" >> /etc/modules
         fi
@@ -4557,7 +4557,7 @@ configure_tailscale(){
 if [[ $INSTALL_TAILSCALE != "yes" ]];then
 return 0
 fi
-run_remote "Starting Tailscale" '
+remote_run "Starting Tailscale" '
         set -e
         systemctl enable tailscaled
         systemctl start tailscaled
@@ -4587,7 +4587,7 @@ TAILSCALE_IP=$(cat "$tmp_ip" 2>/dev/null||echo "pending")
 TAILSCALE_HOSTNAME=$(cat "$tmp_hostname" 2>/dev/null||printf '\n')
 complete_task "$TASK_INDEX" "$CLR_ORANGE├─$CLR_RESET Tailscale authenticated. IP: $TAILSCALE_IP"
 if [[ $TAILSCALE_WEBUI == "yes" ]];then
-run_remote "Configuring Tailscale Serve" \
+remote_run "Configuring Tailscale Serve" \
 'tailscale serve --bg --https=443 https://127.0.0.1:8006' \
 "Proxmox Web UI available via Tailscale Serve"
 fi
@@ -4912,7 +4912,7 @@ fi
 return 0
 }
 _install_yazi(){
-run_remote "Installing yazi" '
+remote_run "Installing yazi" '
     set -e
     YAZI_VERSION=$(curl -s https://api.github.com/repos/sxyazi/yazi/releases/latest | grep "tag_name" | cut -d "\"" -f 4 | sed "s/^v//")
     curl -sL "https://github.com/sxyazi/yazi/releases/download/v${YAZI_VERSION}/yazi-x86_64-unknown-linux-gnu.zip" -o /tmp/yazi.zip
@@ -4990,7 +4990,7 @@ if ! remote_copy "./templates/letsencrypt-firstboot.service" "/tmp/letsencrypt-f
 log "ERROR: Failed to copy letsencrypt-firstboot.service"
 return 1
 fi
-run_remote "Configuring Let's Encrypt templates" '
+remote_run "Configuring Let's Encrypt templates" '
         set -e
         mkdir -p /etc/letsencrypt/renewal-hooks/deploy
         mv /tmp/letsencrypt-deploy-hook.sh /etc/letsencrypt/renewal-hooks/deploy/proxmox.sh
@@ -5068,7 +5068,7 @@ return 1
 esac
 local arc_max_bytes=$((arc_max_mb*1024*1024))
 log "INFO: ZFS ARC: ${arc_max_mb}MB (Total RAM: ${total_ram_mb}MB, Mode: $ZFS_ARC_MODE)"
-run_remote "Configuring ZFS ARC memory" "
+remote_run "Configuring ZFS ARC memory" "
     echo 'options zfs zfs_arc_max=$arc_max_bytes' >/etc/modprobe.d/zfs.conf
     if [[ -f /sys/module/zfs/parameters/zfs_arc_max ]]; then
       echo '$arc_max_bytes' >/sys/module/zfs/parameters/zfs_arc_max 2>/dev/null || true
@@ -5086,7 +5086,7 @@ remote_copy "templates/zfs-scrub.timer" "/etc/systemd/system/zfs-scrub@.timer"||
 log "ERROR: Failed to deploy ZFS scrub timer"
 return 1
 }
-run_remote "Enabling ZFS scrub timers" "
+remote_run "Enabling ZFS scrub timers" "
     systemctl daemon-reload
     if zpool list rpool &>/dev/null; then
       systemctl enable --now zfs-scrub@rpool.timer
@@ -5122,7 +5122,7 @@ log "ERROR: Failed to build zpool create command"
 return 1
 fi
 log "INFO: ZFS pool command: $pool_cmd"
-if ! run_remote "Creating ZFS pool 'tank'" "
+if ! remote_run "Creating ZFS pool 'tank'" "
     set -e
     $pool_cmd
     zfs set compression=lz4 tank
