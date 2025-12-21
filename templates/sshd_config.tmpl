@@ -19,8 +19,11 @@ HostKey /etc/ssh/ssh_host_ed25519_key
 # ------------------------------------------
 # Authentication: Hardened settings
 # ------------------------------------------
-# Disable root password login, only allow key-based
-PermitRootLogin prohibit-password
+# Disable root login completely - use admin user with sudo
+PermitRootLogin no
+
+# Restrict SSH access to admin user only
+AllowUsers {{ADMIN_USERNAME}}
 
 # Disable password authentication entirely
 PasswordAuthentication no
