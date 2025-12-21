@@ -17,7 +17,7 @@ readonly HEX_GRAY="#585858"
 readonly HEX_WHITE="#ffffff"
 readonly HEX_GOLD="#d7af5f"
 readonly HEX_NONE="7"
-readonly VERSION="2.0.464-pr.21"
+readonly VERSION="2.0.465-pr.21"
 readonly TERM_WIDTH=69
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-installer}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
@@ -5320,6 +5320,7 @@ _config_nvim&&parallel_mark_configured "nvim"
 configure_proxmox_via_ssh(){
 log "Starting Proxmox configuration via SSH"
 make_templates
+configure_admin_user
 configure_base_system
 configure_shell
 configure_system_services
@@ -5359,7 +5360,6 @@ configure_ssl_certificate
 if [[ $INSTALL_API_TOKEN == "yes" ]];then
 run_with_progress "Creating API token" "API token created" create_api_token
 fi
-configure_admin_user
 configure_ssh_hardening
 validate_installation
 finalize_vm
