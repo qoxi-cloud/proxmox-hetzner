@@ -26,16 +26,6 @@ calculate_log_area() {
 declare -a LOG_LINES=()
 LOG_COUNT=0
 
-# Save cursor position after logo
-save_cursor_position() {
-  printf '\033[s'
-}
-
-# Restore cursor to saved position
-restore_cursor_position() {
-  printf '\033[u'
-}
-
 # Add log entry
 add_log() {
   local message="$1"
@@ -44,9 +34,15 @@ add_log() {
   render_logs
 }
 
+# Render header in wizard style (centered like completion screen)
+_render_install_header() {
+  tput cup "$LOGO_HEIGHT" 0
+  printf '\n%s\n\n' "                     ${CLR_ORANGE}●${CLR_RESET} ${CLR_CYAN}Installing Proxmox${CLR_RESET} ${CLR_ORANGE}●${CLR_RESET}"
+}
+
 # Render all logs (with auto-scroll, no flicker)
 render_logs() {
-  restore_cursor_position
+  _render_install_header
 
   local start_line=0
   local lines_printed=0
@@ -97,13 +93,6 @@ add_subtask_log() {
   add_log "${CLR_ORANGE}│${CLR_RESET}   ${CLR_GRAY}${message}${CLR_RESET}"
 }
 
-# Render header in wizard style (centered like completion screen)
-_render_install_header() {
-  printf '\n'
-  printf '%s\n' "                     ${CLR_ORANGE}●${CLR_RESET} ${CLR_CYAN}Installing Proxmox${CLR_RESET} ${CLR_ORANGE}●${CLR_RESET}"
-  printf '\n'
-}
-
 # Start live installation display
 start_live_installation() {
   # Override show_progress with live version
@@ -117,12 +106,6 @@ start_live_installation() {
   tput civis # Hide cursor immediately
   _wiz_clear
   show_banner
-
-  # Wizard-style header
-  _render_install_header
-
-  # Save cursor position after header (logs start here)
-  save_cursor_position
 
   # Set trap to restore cursor and exit alternate buffer on exit
   trap 'tput cnorm; tput rmcup' EXIT RETURN
