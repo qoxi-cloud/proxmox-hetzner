@@ -1721,7 +1721,7 @@ TERM_HEIGHT=$(tput lines)
 TERM_WIDTH=$(tput cols)
 }
 LOGO_HEIGHT=${BANNER_HEIGHT:-9}
-HEADER_HEIGHT=3
+HEADER_HEIGHT=2
 calculate_log_area(){
 get_terminal_dimensions
 LOG_AREA_HEIGHT=$((TERM_HEIGHT-LOGO_HEIGHT-HEADER_HEIGHT-1))
@@ -1736,7 +1736,7 @@ render_logs
 }
 _render_install_header(){
 tput cup "$LOGO_HEIGHT" 0
-printf '\n%s\n\n' "                     $CLR_ORANGE●$CLR_RESET ${CLR_CYAN}Installing Proxmox$CLR_RESET $CLR_ORANGE●$CLR_RESET"
+printf '\n%s\n' "                     $CLR_ORANGE●$CLR_RESET ${CLR_CYAN}Installing Proxmox$CLR_RESET $CLR_ORANGE●$CLR_RESET"
 }
 render_logs(){
 _render_install_header
