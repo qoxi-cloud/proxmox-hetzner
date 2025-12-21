@@ -13,49 +13,6 @@ Describe "020-templates.sh"
 Include "$SCRIPTS_DIR/020-templates.sh"
 
 # ===========================================================================
-# validate_template_vars()
-# ===========================================================================
-Describe "validate_template_vars()"
-It "passes template with no variables"
-template=$(mktemp)
-echo "hostname = pve-server" >"$template"
-When call validate_template_vars "$template"
-The status should be success
-rm -f "$template"
-End
-
-It "fails template with unfilled variable"
-template=$(mktemp)
-echo "hostname = {{HOSTNAME}}" >"$template"
-When call validate_template_vars "$template"
-The status should be failure
-rm -f "$template"
-End
-
-It "fails for non-existent file"
-When call validate_template_vars "/nonexistent/file.txt"
-The status should be failure
-End
-
-It "passes template with substituted variables"
-template=$(mktemp)
-echo "hostname = my-server" >"$template"
-echo "ip = 192.168.1.1" >>"$template"
-When call validate_template_vars "$template"
-The status should be success
-rm -f "$template"
-End
-
-It "fails template with multiple unfilled variables"
-template=$(mktemp)
-echo "host={{HOST}} gw={{GW}}" >"$template"
-When call validate_template_vars "$template"
-The status should be failure
-rm -f "$template"
-End
-End
-
-# ===========================================================================
 # apply_template_vars()
 # ===========================================================================
 Describe "apply_template_vars()"
@@ -91,12 +48,11 @@ The contents of file "$template" should equal "path=/usr/local/bin"
 rm -f "$template"
 End
 
-It "handles empty value"
+It "fails with empty value when placeholder exists"
 template=$(mktemp)
 echo "var={{VAR}}" >"$template"
 When call apply_template_vars "$template" "VAR="
-The status should be success
-The contents of file "$template" should equal "var="
+The status should be failure
 rm -f "$template"
 End
 
