@@ -17,7 +17,7 @@ readonly HEX_GRAY="#585858"
 readonly HEX_WHITE="#ffffff"
 readonly HEX_GOLD="#d7af5f"
 readonly HEX_NONE="7"
-readonly VERSION="2.0.469-pr.21"
+readonly VERSION="2.0.470-pr.21"
 readonly TERM_WIDTH=69
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-installer}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
@@ -4797,10 +4797,7 @@ _config_apparmor(){
 remote_exec 'mkdir -p /etc/default/grub.d'
 remote_copy "templates/apparmor-grub.cfg" "/etc/default/grub.d/apparmor.cfg"
 remote_exec '
-    # Update GRUB with AppArmor kernel parameters
     update-grub 2>/dev/null || true
-
-    # Enable AppArmor to start on boot (will activate after reboot)
     systemctl enable apparmor.service
   '||{
 log "ERROR: Failed to configure AppArmor"
@@ -4828,13 +4825,8 @@ remote_enable_services "auditd"
 _config_aide(){
 deploy_systemd_timer "aide-check"||return 1
 remote_exec '
-    echo "Initializing AIDE database (this may take several minutes)..."
     aideinit -y -f 2>/dev/null || true
-
-    # Move new database to active location
-    if [[ -f /var/lib/aide/aide.db.new ]]; then
-      mv /var/lib/aide/aide.db.new /var/lib/aide/aide.db
-    fi
+    [[ -f /var/lib/aide/aide.db.new ]] && mv /var/lib/aide/aide.db.new /var/lib/aide/aide.db
   '||{
 log "ERROR: Failed to initialize AIDE"
 return 1
@@ -4871,14 +4863,9 @@ deploy_template "templates/vnstat.conf" "/etc/vnstat.conf" "INTERFACE_NAME=$ifac
 remote_exec "
     mkdir -p /var/lib/vnstat
     vnstat --add -i '$iface' 2>/dev/null || true
-
-    # Also monitor bridge interfaces if they exist
     for bridge in vmbr0 vmbr1; do
-      if ip link show \"\$bridge\" &>/dev/null; then
-        vnstat --add -i \"\$bridge\" 2>/dev/null || true
-      fi
+      ip link show \"\$bridge\" &>/dev/null && vnstat --add -i \"\$bridge\" 2>/dev/null || true
     done
-
     systemctl enable vnstat
   "||{
 log "ERROR: Failed to configure vnstat"
@@ -4969,8 +4956,6 @@ remote_exec '
     update-alternatives --install /usr/bin/vi vi /usr/bin/nvim 60
     update-alternatives --install /usr/bin/vim vim /usr/bin/nvim 60
     update-alternatives --install /usr/bin/editor editor /usr/bin/nvim 60
-
-    # Set nvim as default
     update-alternatives --set vi /usr/bin/nvim
     update-alternatives --set vim /usr/bin/nvim
     update-alternatives --set editor /usr/bin/nvim
