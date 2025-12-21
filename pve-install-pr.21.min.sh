@@ -17,7 +17,7 @@ readonly HEX_GRAY="#585858"
 readonly HEX_WHITE="#ffffff"
 readonly HEX_GOLD="#d7af5f"
 readonly HEX_NONE="7"
-readonly VERSION="2.0.474-pr.21"
+readonly VERSION="2.0.476-pr.21"
 readonly TERM_WIDTH=69
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-installer}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
@@ -4411,7 +4411,9 @@ done
 _apply_basic_settings(){
 remote_exec "[ -f /etc/apt/sources.list ] && mv /etc/apt/sources.list /etc/apt/sources.list.bak"||return 1
 remote_exec "echo '$PVE_HOSTNAME' > /etc/hostname"||return 1
-remote_exec "systemctl disable --now rpcbind rpcbind.socket 2>/dev/null"||true
+remote_exec "systemctl disable --now rpcbind rpcbind.socket"||{
+log "WARNING: Failed to disable rpcbind"
+}
 }
 _install_locale_files(){
 remote_copy "templates/locale.sh" "/etc/profile.d/locale.sh"||return 1
@@ -4862,9 +4864,9 @@ local iface="${INTERFACE_NAME:-eth0}"
 deploy_template "templates/vnstat.conf" "/etc/vnstat.conf" "INTERFACE_NAME=$iface"||return 1
 remote_exec "
     mkdir -p /var/lib/vnstat
-    vnstat --add -i '$iface' 2>/dev/null || true
+    vnstat --add -i '$iface'
     for bridge in vmbr0 vmbr1; do
-      ip link show \"\$bridge\" &>/dev/null && vnstat --add -i \"\$bridge\" 2>/dev/null || true
+      ip link show \"\$bridge\" &>/dev/null && vnstat --add -i \"\$bridge\"
     done
     systemctl enable vnstat
   "||{
