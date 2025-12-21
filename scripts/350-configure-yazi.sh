@@ -37,6 +37,12 @@ _config_yazi() {
   }
 }
 
+# Combined install and config for run_with_progress
+_install_and_config_yazi() {
+  _install_yazi || return 1
+  _config_yazi || return 1
+}
+
 # Installs and configures yazi file manager with Catppuccin theme.
 # Deploys custom theme configuration.
 configure_yazi() {
@@ -48,16 +54,8 @@ configure_yazi() {
 
   log "Installing and configuring yazi"
 
-  # Install and configure using helper (with background progress)
-  (
-    _install_yazi || exit 1
-    _config_yazi || exit 1
-  ) >/dev/null 2>&1 &
-  show_progress $! "Installing and configuring yazi" "Yazi configured"
-
-  local exit_code=$?
-  if [[ $exit_code -ne 0 ]]; then
+  if ! run_with_progress "Installing yazi" "Yazi configured" _install_and_config_yazi; then
     log "WARNING: Yazi setup failed"
-    return 0 # Non-fatal error
   fi
+  return 0 # Non-fatal error
 }
