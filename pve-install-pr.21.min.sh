@@ -17,7 +17,7 @@ readonly HEX_GRAY="#585858"
 readonly HEX_WHITE="#ffffff"
 readonly HEX_GOLD="#d7af5f"
 readonly HEX_NONE="7"
-readonly VERSION="2.0.412-pr.21"
+readonly VERSION="2.0.413-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-installer}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -5085,7 +5085,8 @@ local validation_script
 validation_script=$(cat "./templates/validation.sh")
 log "Validation script generated"
 printf '%s\n' "$validation_script" >>"$LOG_FILE"
-add_log "$CLR_ORANGE├─$CLR_RESET Validating installation..."
+start_task "$CLR_ORANGE├─$CLR_RESET Validating installation"
+local task_idx=$TASK_INDEX
 local validation_output
 validation_output=$(printf '%s\n' "$validation_script"|remote_exec 'bash -s' 2>&1)||true
 printf '%s\n' "$validation_output" >>"$LOG_FILE"
@@ -5100,12 +5101,13 @@ WARN:*)add_log "$CLR_ORANGE│$CLR_RESET   $CLR_YELLOW$line$CLR_RESET"
 esac
 done <<<"$validation_output"
 if ((errors>0));then
-add_log "$CLR_ORANGE├─$CLR_RESET Validation: $CLR_RED$errors error(s)$CLR_RESET, $CLR_YELLOW$warnings warning(s)$CLR_RESET $CLR_RED✗$CLR_RESET"
+LOG_LINES[task_idx]="$CLR_ORANGE├─$CLR_RESET Validation: $CLR_RED$errors error(s)$CLR_RESET, $CLR_YELLOW$warnings warning(s)$CLR_RESET $CLR_RED✗$CLR_RESET"
+render_logs
 log "ERROR: Installation validation failed with $errors error(s)"
 elif ((warnings>0));then
-add_log "$CLR_ORANGE├─$CLR_RESET Validation passed with $CLR_YELLOW$warnings warning(s)$CLR_RESET $CLR_CYAN✓$CLR_RESET"
+complete_task "$task_idx" "$CLR_ORANGE├─$CLR_RESET Validation passed with $CLR_YELLOW$warnings warning(s)$CLR_RESET"
 else
-add_log "$CLR_ORANGE├─$CLR_RESET Validation passed $CLR_CYAN✓$CLR_RESET"
+complete_task "$task_idx" "$CLR_ORANGE├─$CLR_RESET Validation passed"
 fi
 }
 finalize_vm(){
