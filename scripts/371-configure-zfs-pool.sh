@@ -44,34 +44,19 @@ configure_zfs_pool() {
 
   log "INFO: ZFS pool command: $pool_cmd"
 
-  # Create pool and configure Proxmox storage
+  # Create pool with RAID config, set ZFS properties, create VM dataset, configure Proxmox storage
   if ! run_remote "Creating ZFS pool 'tank'" "
     set -e
-
-    # Create ZFS pool with specified RAID configuration
     $pool_cmd
-
-    # Set recommended ZFS properties
     zfs set compression=lz4 tank
     zfs set atime=off tank
     zfs set relatime=on tank
     zfs set xattr=sa tank
     zfs set dnodesize=auto tank
-
-    # Create dataset for VM disks
     zfs create tank/vm-disks
-
-    # Add tank pool to Proxmox storage config
     pvesm add zfspool tank --pool tank/vm-disks --content images,rootdir
-
-    # Configure local storage (boot disk ext4) for ISO/templates/backups
     pvesm set local --content iso,vztmpl,backup,snippets
-
-    # Verify pool was created
-    if ! zpool list | grep -q '^tank '; then
-      echo 'ERROR: ZFS pool tank not found after creation'
-      exit 1
-    fi
+    zpool list | grep -q '^tank ' || { echo 'ERROR: ZFS pool tank not found'; exit 1; }
   " "ZFS pool 'tank' created"; then
     log "ERROR: Failed to create ZFS pool 'tank'"
     return 1

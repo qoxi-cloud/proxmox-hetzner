@@ -43,12 +43,9 @@ configure_zfs_arc() {
 
   log "INFO: ZFS ARC: ${arc_max_mb}MB (Total RAM: ${total_ram_mb}MB, Mode: $ZFS_ARC_MODE)"
 
-  # Apply configuration via SSH
+  # Set ZFS ARC limit in modprobe config (persistent) and apply to running kernel
   run_remote "Configuring ZFS ARC memory" "
-    # Set ZFS ARC limit in modprobe config (persistent across reboots)
     echo 'options zfs zfs_arc_max=$arc_max_bytes' >/etc/modprobe.d/zfs.conf
-
-    # Apply limit to currently running kernel module (if ZFS loaded)
     if [[ -f /sys/module/zfs/parameters/zfs_arc_max ]]; then
       echo '$arc_max_bytes' >/sys/module/zfs/parameters/zfs_arc_max 2>/dev/null || true
     fi
@@ -74,19 +71,14 @@ configure_zfs_scrub() {
     return 1
   }
 
+  # Enable scrub timers for rpool (boot) and tank (data) if they exist
   run_remote "Enabling ZFS scrub timers" "
     systemctl daemon-reload
-
-    # Enable scrub timer for rpool (boot/system pool)
     if zpool list rpool &>/dev/null; then
       systemctl enable --now zfs-scrub@rpool.timer
-      echo 'Enabled scrub timer for rpool'
     fi
-
-    # Enable scrub timer for tank (data pool) if exists
     if zpool list tank &>/dev/null; then
       systemctl enable --now zfs-scrub@tank.timer
-      echo 'Enabled scrub timer for tank'
     fi
   "
 

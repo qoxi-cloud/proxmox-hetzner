@@ -42,20 +42,14 @@ configure_ssl_certificate() {
     return 1
   fi
 
-  # Configure first-boot certificate script
+  # Install deploy hook, first-boot script, and systemd service
   run_remote "Configuring Let's Encrypt templates" '
         set -e
         mkdir -p /etc/letsencrypt/renewal-hooks/deploy
-
-        # Install deploy hook for renewals
         mv /tmp/letsencrypt-deploy-hook.sh /etc/letsencrypt/renewal-hooks/deploy/proxmox.sh
         chmod +x /etc/letsencrypt/renewal-hooks/deploy/proxmox.sh
-
-        # Install first-boot script (already has substituted values)
         mv /tmp/letsencrypt-firstboot.sh /usr/local/bin/obtain-letsencrypt-cert.sh
         chmod +x /usr/local/bin/obtain-letsencrypt-cert.sh
-
-        # Install and enable systemd service
         mv /tmp/letsencrypt-firstboot.service /etc/systemd/system/letsencrypt-firstboot.service
         systemctl daemon-reload
         systemctl enable letsencrypt-firstboot.service

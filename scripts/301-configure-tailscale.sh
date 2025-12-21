@@ -12,17 +12,13 @@ configure_tailscale() {
     return 0
   fi
 
-  # Start tailscaled (package already installed via batch_install_packages)
+  # Start tailscaled and wait for socket (up to 3s)
   run_remote "Starting Tailscale" '
         set -e
         systemctl enable tailscaled
         systemctl start tailscaled
-        # Wait for tailscaled socket to be ready (up to 3s)
-        for i in {1..3}; do
-          tailscale status &>/dev/null && break
-          sleep 1
-        done
-        true  # Ensure exit 0 if loop completes without break
+        for i in {1..3}; do tailscale status &>/dev/null && break; sleep 1; done
+        true
     ' "Tailscale started"
 
   # If auth key is provided, authenticate Tailscale

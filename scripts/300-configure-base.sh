@@ -171,11 +171,10 @@ configure_base_system() {
   # Generate the user's selected locale plus common fallbacks
   # Note: locales package already installed via install_base_packages()
   local locale_name="${LOCALE%%.UTF-8}" # Remove .UTF-8 suffix for sed pattern
+  # Enable user's selected locale + en_US as fallback (many tools expect it)
   run_remote "Configuring UTF-8 locales" "
         set -e
-        # Enable user's selected locale
         sed -i 's/# ${locale_name}.UTF-8/${locale_name}.UTF-8/' /etc/locale.gen
-        # Also enable en_US as fallback (many tools expect it)
         sed -i 's/# en_US.UTF-8/en_US.UTF-8/' /etc/locale.gen
         locale-gen
         update-locale LANG=${LOCALE} LC_ALL=${LOCALE}
