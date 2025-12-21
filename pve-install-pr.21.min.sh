@@ -17,7 +17,7 @@ readonly HEX_GRAY="#585858"
 readonly HEX_WHITE="#ffffff"
 readonly HEX_GOLD="#d7af5f"
 readonly HEX_NONE="7"
-readonly VERSION="2.0.411-pr.21"
+readonly VERSION="2.0.412-pr.21"
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-installer}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
 GITHUB_BASE_URL="https://github.com/$GITHUB_REPO/raw/refs/heads/$GITHUB_BRANCH"
@@ -4001,10 +4001,10 @@ if ! command -v vgchange &>/dev/null;then
 return 0
 fi
 log "Deactivating LVM volume groups..."
-vgchange -an 2>/dev/null||true
+vgchange -an &>/dev/null||true
 if command -v vgs &>/dev/null;then
 while IFS= read -r vg;do
-if [[ -n $vg ]];then vgchange -an "$vg" 2>/dev/null||true;fi
+if [[ -n $vg ]];then vgchange -an "$vg" &>/dev/null||true;fi
 done < <(vgs --noheadings -o vg_name 2>/dev/null)
 fi
 }
@@ -4113,6 +4113,7 @@ exit 1
 fi
 }
 boot_proxmox_with_port_forwarding(){
+_deactivate_lvm
 setup_qemu_config
 if ! check_port_available "$SSH_PORT";then
 print_error "Port $SSH_PORT is already in use"
