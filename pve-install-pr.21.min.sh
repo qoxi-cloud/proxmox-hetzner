@@ -17,7 +17,7 @@ readonly HEX_GRAY="#585858"
 readonly HEX_WHITE="#ffffff"
 readonly HEX_GOLD="#d7af5f"
 readonly HEX_NONE="7"
-readonly VERSION="2.0.466-pr.21"
+readonly VERSION="2.0.467-pr.21"
 readonly TERM_WIDTH=69
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-installer}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
@@ -4502,6 +4502,7 @@ fi
 install_base_packages
 local locale_name="${LOCALE%%.UTF-8}"
 run_remote "Configuring UTF-8 locales" "
+        set -e
         # Enable user's selected locale
         sed -i 's/# $locale_name.UTF-8/$locale_name.UTF-8/' /etc/locale.gen
         # Also enable en_US as fallback (many tools expect it)
@@ -4516,16 +4517,21 @@ run_with_progress "Configuring bat" "Bat configured" _configure_bat
 configure_shell(){
 if [[ $SHELL_TYPE == "zsh" ]];then
 run_remote "Installing Oh-My-Zsh" '
+            set -e
             export RUNZSH=no
             export CHSH=no
             export HOME=/home/'"'$ADMIN_USERNAME'"'
             su - '"'$ADMIN_USERNAME'"' -c "sh -c \"\$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)\" \"\" --unattended"
         ' "Oh-My-Zsh installed"
 run_remote "Installing ZSH theme and plugins" '
+            set -e
             git clone --depth=1 https://github.com/romkatv/powerlevel10k.git /home/'"'$ADMIN_USERNAME'"'/.oh-my-zsh/custom/themes/powerlevel10k &
+            pid1=$!
             git clone --depth=1 https://github.com/zsh-users/zsh-autosuggestions /home/'"'$ADMIN_USERNAME'"'/.oh-my-zsh/custom/plugins/zsh-autosuggestions &
+            pid2=$!
             git clone --depth=1 https://github.com/zsh-users/zsh-syntax-highlighting /home/'"'$ADMIN_USERNAME'"'/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting &
-            wait
+            pid3=$!
+            wait $pid1 $pid2 $pid3
             chown -R '"'$ADMIN_USERNAME:$ADMIN_USERNAME'"' /home/'"'$ADMIN_USERNAME'"'/.oh-my-zsh
         ' "ZSH theme and plugins installed"
 run_with_progress "Configuring ZSH" "ZSH with Powerlevel10k configured" _configure_zsh_files
