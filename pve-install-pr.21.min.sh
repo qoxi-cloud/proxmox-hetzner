@@ -17,7 +17,7 @@ readonly HEX_GRAY="#585858"
 readonly HEX_WHITE="#ffffff"
 readonly HEX_GOLD="#d7af5f"
 readonly HEX_NONE="7"
-readonly VERSION="2.0.479-pr.21"
+readonly VERSION="2.0.480-pr.21"
 readonly TERM_WIDTH=69
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-installer}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-feat/interactive-config-table}"
@@ -4908,7 +4908,7 @@ _config_needrestart
 }
 _config_ringbuffer(){
 local ringbuffer_interface="${DEFAULT_INTERFACE:-eth0}"
-deploy_systemd_service "network-ringbuffer" "RINGBUFFER_INTERFACE=$ringbuffer_interface"
+deploy_systemd_service "network-ringbuffer" "RINGBUFFER_INTERFACE=$ringbuffer_interface"||return 1
 parallel_mark_configured "ringbuffer"
 }
 configure_ringbuffer(){
