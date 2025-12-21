@@ -10,7 +10,7 @@
 _config_ringbuffer() {
   local ringbuffer_interface="${DEFAULT_INTERFACE:-eth0}"
 
-  deploy_systemd_service "network-ringbuffer" "RINGBUFFER_INTERFACE=${ringbuffer_interface}"
+  deploy_systemd_service "network-ringbuffer" "RINGBUFFER_INTERFACE=${ringbuffer_interface}" || return 1
   parallel_mark_configured "ringbuffer"
 }
 
