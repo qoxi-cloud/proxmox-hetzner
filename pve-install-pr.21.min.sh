@@ -17,7 +17,7 @@ readonly HEX_GRAY="#585858"
 readonly HEX_WHITE="#ffffff"
 readonly HEX_GOLD="#d7af5f"
 readonly HEX_NONE="7"
-readonly VERSION="2.0.504-pr.21"
+readonly VERSION="2.0.505-pr.21"
 readonly TERM_WIDTH=80
 readonly BANNER_WIDTH=51
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-installer}"
@@ -2269,9 +2269,9 @@ fi
 _wiz_hide_cursor(){ printf '\033[?25l';}
 _wiz_show_cursor(){ printf '\033[?25h';}
 _wiz_blank_line(){ printf '\n';}
-_wiz_error(){ gum style --foreground "$HEX_RED" "$WIZ_NOTIFY_INDENT$*";}
+_wiz_error(){ gum style --foreground "$HEX_RED" "$WIZ_NOTIFY_INDENT✗ $*";}
 _wiz_warn(){ gum style --foreground "$HEX_YELLOW" "$WIZ_NOTIFY_INDENT$*";}
-_wiz_info(){ gum style --foreground "$HEX_CYAN" "$WIZ_NOTIFY_INDENT$*";}
+_wiz_info(){ gum style --foreground "$HEX_CYAN" "$WIZ_NOTIFY_INDENT✓ $*";}
 _wiz_dim(){ gum style --foreground "$HEX_GRAY" "$WIZ_NOTIFY_INDENT$*";}
 _wiz_description(){
 local output=""
@@ -3283,7 +3283,7 @@ rm -f "$dns_result_file"
 printf "\r%-80s\r" " "
 if [[ $dns_result -eq 1 ]];then
 _wiz_hide_cursor
-_wiz_error "✗ Domain does not resolve to any IP address"
+_wiz_error "Domain does not resolve to any IP address"
 _wiz_blank_line
 _wiz_dim "Please configure DNS A record:"
 _wiz_dim "  $CLR_ORANGE$FQDN$CLR_RESET → $CLR_ORANGE$MAIN_IPV4$CLR_RESET"
@@ -3294,7 +3294,7 @@ SSL_TYPE="self-signed"
 return
 elif [[ $dns_result -eq 2 ]];then
 _wiz_hide_cursor
-_wiz_error "✗ Domain resolves to wrong IP address"
+_wiz_error "Domain resolves to wrong IP address"
 _wiz_blank_line
 _wiz_dim "Current DNS: $CLR_ORANGE$FQDN$CLR_RESET → $CLR_RED$DNS_RESOLVED_IP$CLR_RESET"
 _wiz_dim "Expected:    $CLR_ORANGE$FQDN$CLR_RESET → $CLR_ORANGE$MAIN_IPV4$CLR_RESET"
@@ -3306,7 +3306,7 @@ sleep 5
 SSL_TYPE="self-signed"
 return
 else
-_wiz_info "✓ DNS resolution successful"
+_wiz_info "DNS resolution successful"
 _wiz_dim "  $CLR_ORANGE$FQDN$CLR_RESET → $CLR_CYAN$DNS_RESOLVED_IP$CLR_RESET"
 sleep 3
 SSL_TYPE="$ssl_type"
@@ -3656,7 +3656,7 @@ _rebuild_pool_disks
 if [[ ${#ZFS_POOL_DISKS[@]} -eq 0 ]];then
 _wiz_start_edit
 _wiz_hide_cursor
-_wiz_error "✗ Cannot use this boot disk: No disks left for ZFS pool"
+_wiz_error "Cannot use this boot disk: No disks left for ZFS pool"
 _wiz_blank_line
 _wiz_dim "At least one disk must remain for the ZFS pool."
 _wiz_blank_line
