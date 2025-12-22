@@ -17,7 +17,7 @@ readonly HEX_GRAY="#585858"
 readonly HEX_WHITE="#ffffff"
 readonly HEX_GOLD="#d7af5f"
 readonly HEX_NONE="7"
-readonly VERSION="2.0.492-pr.21"
+readonly VERSION="2.0.493-pr.21"
 readonly TERM_WIDTH=80
 readonly BANNER_WIDTH=51
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-installer}"
@@ -2281,10 +2281,9 @@ printf '%b' "$output"
 _wiz_confirm(){
 local prompt="$1"
 shift
-local term_width dialog_width left_pad
-term_width=$(tput cols 2>/dev/null||echo 80)
+local dialog_width left_pad
 dialog_width=$((${#prompt}+20))
-left_pad=$(((term_width-dialog_width)/2))
+left_pad=$(((TERM_WIDTH-dialog_width)/2))
 ((left_pad<0))&&left_pad=0
 gum confirm "$prompt" "$@" \
 --padding "0 0 0 $left_pad" \
