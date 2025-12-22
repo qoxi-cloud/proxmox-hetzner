@@ -17,7 +17,7 @@ readonly HEX_GRAY="#585858"
 readonly HEX_WHITE="#ffffff"
 readonly HEX_GOLD="#d7af5f"
 readonly HEX_NONE="7"
-readonly VERSION="2.0.500-pr.21"
+readonly VERSION="2.0.501-pr.21"
 readonly TERM_WIDTH=80
 readonly BANNER_WIDTH=51
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-installer}"
@@ -4594,14 +4594,14 @@ remote_run "Installing Oh-My-Zsh" '
         ' "Oh-My-Zsh installed"
 remote_run "Installing ZSH theme and plugins" '
             set -e
-            git clone --depth=1 https://github.com/romkatv/powerlevel10k.git /home/$ADMIN_USERNAME/.oh-my-zsh/custom/themes/powerlevel10k &
+            git clone --depth=1 https://github.com/romkatv/powerlevel10k.git /home/'"$ADMIN_USERNAME"'/.oh-my-zsh/custom/themes/powerlevel10k &
             pid1=$!
-            git clone --depth=1 https://github.com/zsh-users/zsh-autosuggestions /home/$ADMIN_USERNAME/.oh-my-zsh/custom/plugins/zsh-autosuggestions &
+            git clone --depth=1 https://github.com/zsh-users/zsh-autosuggestions /home/'"$ADMIN_USERNAME"'/.oh-my-zsh/custom/plugins/zsh-autosuggestions &
             pid2=$!
-            git clone --depth=1 https://github.com/zsh-users/zsh-syntax-highlighting /home/$ADMIN_USERNAME/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting &
+            git clone --depth=1 https://github.com/zsh-users/zsh-syntax-highlighting /home/'"$ADMIN_USERNAME"'/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting &
             pid3=$!
             wait $pid1 $pid2 $pid3
-            chown -R $ADMIN_USERNAME:$ADMIN_USERNAME /home/$ADMIN_USERNAME/.oh-my-zsh
+            chown -R '"$ADMIN_USERNAME"':'"$ADMIN_USERNAME"' /home/'"$ADMIN_USERNAME"'/.oh-my-zsh
         ' "ZSH theme and plugins installed"
 run_with_progress "Configuring ZSH" "ZSH with Powerlevel10k configured" _configure_zsh_files
 else
@@ -4688,13 +4688,13 @@ _config_tailscale
 _config_admin_user(){
 remote_exec 'useradd -m -s /bin/bash -G sudo '"$ADMIN_USERNAME"''||return 1
 remote_exec 'echo '"$ADMIN_USERNAME:$ADMIN_PASSWORD"' | chpasswd'||return 1
-remote_exec 'mkdir -p /home/$ADMIN_USERNAME/.ssh && chmod 700 /home/$ADMIN_USERNAME/.ssh'||return 1
+remote_exec "mkdir -p /home/$ADMIN_USERNAME/.ssh && chmod 700 /home/$ADMIN_USERNAME/.ssh"||return 1
 local escaped_key="${SSH_PUBLIC_KEY//\'/\'\\\'\'}"
 remote_exec "echo '$escaped_key' > /home/$ADMIN_USERNAME/.ssh/authorized_keys"||return 1
-remote_exec 'chmod 600 /home/$ADMIN_USERNAME/.ssh/authorized_keys'||return 1
-remote_exec 'chown -R $ADMIN_USERNAME:$ADMIN_USERNAME /home/$ADMIN_USERNAME/.ssh'||return 1
-remote_exec 'echo '"$ADMIN_USERNAME"' ALL=(ALL) NOPASSWD:ALL > /etc/sudoers.d/'"$ADMIN_USERNAME"''||return 1
-remote_exec 'chmod 440 /etc/sudoers.d/'"$ADMIN_USERNAME"''||return 1
+remote_exec "chmod 600 /home/$ADMIN_USERNAME/.ssh/authorized_keys"||return 1
+remote_exec "chown -R $ADMIN_USERNAME:$ADMIN_USERNAME /home/$ADMIN_USERNAME/.ssh"||return 1
+remote_exec "echo '$ADMIN_USERNAME ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/$ADMIN_USERNAME"||return 1
+remote_exec "chmod 440 /etc/sudoers.d/$ADMIN_USERNAME"||return 1
 remote_exec "pveum user list 2>/dev/null | grep -q '$ADMIN_USERNAME@pam' || pveum user add $ADMIN_USERNAME@pam"
 remote_exec "pveum acl modify / -user $ADMIN_USERNAME@pam -role Administrator"||{
 log "WARNING: Failed to grant Proxmox Administrator role"
