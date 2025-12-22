@@ -210,7 +210,7 @@ _edit_ssl() {
       _wiz_error "Domain does not resolve to any IP address"
       _wiz_blank_line
       _wiz_dim "Please configure DNS A record:"
-      _wiz_dim "  ${CLR_ORANGE}${FQDN}${CLR_RESET} → ${CLR_ORANGE}${MAIN_IPV4}${CLR_RESET}"
+      _wiz_dim "${CLR_ORANGE}${FQDN}${CLR_RESET} → ${CLR_ORANGE}${MAIN_IPV4}${CLR_RESET}"
       _wiz_blank_line
       _wiz_dim "Falling back to self-signed certificate."
       sleep 5
@@ -233,7 +233,7 @@ _edit_ssl() {
     else
       # Success
       _wiz_info "DNS resolution successful"
-      _wiz_dim "  ${CLR_ORANGE}${FQDN}${CLR_RESET} → ${CLR_CYAN}${DNS_RESOLVED_IP}${CLR_RESET}"
+      _wiz_dim "${CLR_ORANGE}${FQDN}${CLR_RESET} → ${CLR_CYAN}${DNS_RESOLVED_IP}${CLR_RESET}"
       sleep 3
       SSL_TYPE="$ssl_type"
     fi
