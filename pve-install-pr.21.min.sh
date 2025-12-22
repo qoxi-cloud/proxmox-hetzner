@@ -17,7 +17,7 @@ readonly HEX_GRAY="#585858"
 readonly HEX_WHITE="#ffffff"
 readonly HEX_GOLD="#d7af5f"
 readonly HEX_NONE="7"
-readonly VERSION="2.0.507-pr.21"
+readonly VERSION="2.0.508-pr.21"
 readonly TERM_WIDTH=80
 readonly BANNER_WIDTH=51
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-installer}"
@@ -4839,18 +4839,27 @@ nat_rules=$(_generate_nat_rules)
 tailscale_rules=$(_generate_tailscale_rules)
 local nftables_conf="$template_content"
 nftables_conf="${nftables_conf//\{\{BRIDGE_MODE\}\}/$BRIDGE_MODE}"
-nftables_conf=$(printf '%s\n' "$nftables_conf"|sed "/# === FIREWALL_RULES_START ===/,/# === FIREWALL_RULES_END ===/c\\
-        # === FIREWALL_RULES_START ===\\
-$port_rules\\
-        # === FIREWALL_RULES_END ===")
-nftables_conf=$(printf '%s\n' "$nftables_conf"|sed "/# === BRIDGE_INPUT_RULES ===/c\\
-$bridge_input_rules")
-nftables_conf=$(printf '%s\n' "$nftables_conf"|sed "/# === TAILSCALE_RULES ===/c\\
-$tailscale_rules")
-nftables_conf=$(printf '%s\n' "$nftables_conf"|sed "/# === BRIDGE_FORWARD_RULES ===/c\\
-$bridge_forward_rules")
-nftables_conf=$(printf '%s\n' "$nftables_conf"|sed "/# === NAT_RULES ===/c\\
-$nat_rules")
+nftables_conf=$(printf '%s\n' "$nftables_conf"|awk -v rules="$port_rules" '
+    /# === FIREWALL_RULES_START ===/ { skip=1; print "        # === FIREWALL_RULES_START ==="; print rules; next }
+    /# === FIREWALL_RULES_END ===/ { skip=0; print "        # === FIREWALL_RULES_END ==="; next }
+    !skip { print }
+  ')
+nftables_conf=$(printf '%s\n' "$nftables_conf"|awk -v rules="$bridge_input_rules" '
+    /# === BRIDGE_INPUT_RULES ===/ { print rules; next }
+    { print }
+  ')
+nftables_conf=$(printf '%s\n' "$nftables_conf"|awk -v rules="$tailscale_rules" '
+    /# === TAILSCALE_RULES ===/ { print rules; next }
+    { print }
+  ')
+nftables_conf=$(printf '%s\n' "$nftables_conf"|awk -v rules="$bridge_forward_rules" '
+    /# === BRIDGE_FORWARD_RULES ===/ { print rules; next }
+    { print }
+  ')
+nftables_conf=$(printf '%s\n' "$nftables_conf"|awk -v rules="$nat_rules" '
+    /# === NAT_RULES ===/ { print rules; next }
+    { print }
+  ')
 printf '%s\n' "$nftables_conf" >"./templates/nftables.conf.generated"
 log "Generated nftables config:"
 log "  Bridge mode: $BRIDGE_MODE"
@@ -5301,15 +5310,21 @@ return 0
 configure_zfs_pool(){
 _config_zfs_pool
 }
-_config_ssh_hardening(){
+_deploy_ssh_config(){
 deploy_template "templates/sshd_config" "/etc/ssh/sshd_config" \
 "ADMIN_USERNAME=$ADMIN_USERNAME"||return 1
-remote_exec "systemctl restart sshd"||return 1
 }
-configure_ssh_hardening(){
-if ! run_with_progress "Deploying SSH hardening" "Security hardening configured" _config_ssh_hardening;then
-log "ERROR: SSH hardening failed - system may be insecure"
-exit 1
+deploy_ssh_hardening_config(){
+if ! run_with_progress "Deploying SSH hardening config" "SSH config deployed" _deploy_ssh_config;then
+log "ERROR: SSH config deploy failed"
+return 1
+fi
+}
+restart_ssh_service(){
+log "Restarting SSH to apply hardening"
+if ! run_with_progress "Applying SSH hardening" "SSH hardening active" \
+remote_exec "systemctl restart sshd";then
+log "WARNING: SSH restart failed - config will apply on reboot"
 fi
 }
 validate_installation(){
@@ -5431,8 +5446,9 @@ configure_ssl_certificate
 if [[ $INSTALL_API_TOKEN == "yes" ]];then
 run_with_progress "Creating API token" "API token created" create_api_token
 fi
+deploy_ssh_hardening_config
 validate_installation
-configure_ssh_hardening
+restart_ssh_service
 finalize_vm
 }
 _render_completion_screen(){
