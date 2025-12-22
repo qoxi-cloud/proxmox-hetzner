@@ -55,19 +55,13 @@ _configure_fastfetch() {
 # Configures bat with Visual Studio Dark+ theme for admin user
 _configure_bat() {
   remote_exec "ln -sf /usr/bin/batcat /usr/local/bin/bat" || return 1
-  # shellcheck disable=SC2016
-  remote_exec 'mkdir -p /home/$ADMIN_USERNAME/.config/bat' || return 1
-  remote_copy "templates/bat-config" "/home/${ADMIN_USERNAME}/.config/bat/config" || return 1
-  # shellcheck disable=SC2016
-  remote_exec 'chown -R $ADMIN_USERNAME:$ADMIN_USERNAME /home/$ADMIN_USERNAME/.config/bat' || return 1
+  deploy_user_config "templates/bat-config" ".config/bat/config" || return 1
 }
 
 # Configures ZSH files and default shell for admin user
 _configure_zsh_files() {
-  remote_copy "templates/zshrc" "/home/${ADMIN_USERNAME}/.zshrc" || return 1
-  remote_copy "templates/p10k.zsh" "/home/${ADMIN_USERNAME}/.p10k.zsh" || return 1
-  # shellcheck disable=SC2016
-  remote_exec 'chown $ADMIN_USERNAME:$ADMIN_USERNAME /home/$ADMIN_USERNAME/.zshrc /home/$ADMIN_USERNAME/.p10k.zsh' || return 1
+  deploy_user_config "templates/zshrc" ".zshrc" || return 1
+  deploy_user_config "templates/p10k.zsh" ".p10k.zsh" || return 1
   # shellcheck disable=SC2016
   remote_exec 'chsh -s /bin/zsh '"$ADMIN_USERNAME"'' || return 1
 }

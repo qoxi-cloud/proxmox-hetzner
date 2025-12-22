@@ -4,6 +4,42 @@
 # Reduces duplication in configure scripts by providing common patterns
 # =============================================================================
 
+# Deploys a config file to admin user's home directory.
+# Creates parent directories and sets correct ownership.
+# Uses global ADMIN_USERNAME.
+# Parameters:
+#   $1 - Template source path (e.g., "templates/bat-config")
+#   $2 - Relative path from home (e.g., ".config/bat/config")
+# Returns: 0 on success, 1 on failure
+# Example: deploy_user_config "templates/bat-config" ".config/bat/config"
+deploy_user_config() {
+  local template="$1"
+  local relative_path="$2"
+  local dest="/home/${ADMIN_USERNAME}/${relative_path}"
+  local dest_dir
+  dest_dir="$(dirname "$dest")"
+
+  # Create parent directory if needed (skip if deploying to home root)
+  if [[ "$dest_dir" != "/home/${ADMIN_USERNAME}" ]]; then
+    remote_exec "mkdir -p '$dest_dir'" || {
+      log "ERROR: Failed to create directory $dest_dir"
+      return 1
+    }
+  fi
+
+  # Copy file
+  remote_copy "$template" "$dest" || {
+    log "ERROR: Failed to copy $template to $dest"
+    return 1
+  }
+
+  # Set ownership
+  remote_exec "chown ${ADMIN_USERNAME}:${ADMIN_USERNAME} '$dest'" || {
+    log "ERROR: Failed to set ownership on $dest"
+    return 1
+  }
+}
+
 # Runs a command in background with progress indicator.
 # Simplifies the common pattern of (cmd) >/dev/null 2>&1 & show_progress
 # Parameters:
