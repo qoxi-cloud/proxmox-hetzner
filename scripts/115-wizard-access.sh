@@ -101,7 +101,7 @@ _edit_admin_username() {
     _wiz_start_edit
 
     _wiz_description \
-      " Non-root admin username for SSH and Proxmox access:" \
+      "  Non-root admin username for SSH and Proxmox access:" \
       "" \
       "  Root SSH login will be {{cyan:completely disabled}}." \
       "  All SSH access must use this admin account." \
@@ -212,7 +212,7 @@ _edit_api_token() {
   _wiz_start_edit
 
   _wiz_description \
-    " Proxmox API token for automation:" \
+    "  Proxmox API token for automation:" \
     "" \
     "  {{cyan:Enabled}}:  Create privileged token (Terraform, Ansible)" \
     "  {{cyan:Disabled}}: No API token" \

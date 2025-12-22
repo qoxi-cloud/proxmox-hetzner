@@ -12,7 +12,7 @@ _edit_boot_disk() {
 
   # Show description about boot disk modes
   _wiz_description \
-    " Separate boot disk selection (auto-detected by disk size):" \
+    "  Separate boot disk selection (auto-detected by disk size):" \
     "" \
     "  {{cyan:None}}: All disks in ZFS rpool (system + VMs)" \
     "  {{cyan:Disk}}: Boot disk uses ext4 (system + ISO/templates)" \
@@ -71,7 +71,7 @@ _edit_pool_disks() {
     _wiz_start_edit
 
     _wiz_description \
-      " Select disks for ZFS storage pool:" \
+      "  Select disks for ZFS storage pool:" \
       "" \
       "  These disks will store VMs, containers, and data." \
       "  RAID level is auto-selected based on disk count." \

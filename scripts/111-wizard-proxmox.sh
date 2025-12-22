@@ -10,7 +10,7 @@ _edit_iso_version() {
   _wiz_start_edit
 
   _wiz_description \
-    " Proxmox VE version to install:" \
+    "  Proxmox VE version to install:" \
     "" \
     "  Latest version recommended for new installations." \
     ""
@@ -44,7 +44,7 @@ _edit_repository() {
   _wiz_start_edit
 
   _wiz_description \
-    " Proxmox VE package repository:" \
+    "  Proxmox VE package repository:" \
     "" \
     "  {{cyan:No-subscription}}: Free updates, community tested" \
     "  {{cyan:Enterprise}}:      Stable updates, requires license" \

@@ -27,13 +27,9 @@ _config_tailscale() {
     # shellcheck disable=SC2064
     trap "rm -f '$tmp_ip' '$tmp_hostname'" RETURN
 
-    # Build and execute tailscale up command with proper quoting
+    # Build and execute tailscale up command (SSH always enabled)
     (
-      if [[ $TAILSCALE_SSH == "yes" ]]; then
-        remote_exec "tailscale up --authkey='$TAILSCALE_AUTH_KEY' --ssh" || exit 1
-      else
-        remote_exec "tailscale up --authkey='$TAILSCALE_AUTH_KEY'" || exit 1
-      fi
+      remote_exec "tailscale up --authkey='$TAILSCALE_AUTH_KEY' --ssh" || exit 1
       # Get IP and hostname in one call using tailscale status --json
       remote_exec "tailscale status --json | jq -r '[(.Self.TailscaleIPs[0] // \"pending\"), (.Self.DNSName // \"\" | rtrimstr(\".\"))] | @tsv'" 2>/dev/null | {
         IFS=$'\t' read -r ip hostname

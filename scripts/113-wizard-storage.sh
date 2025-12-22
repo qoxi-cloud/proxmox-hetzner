@@ -11,7 +11,7 @@ _edit_zfs_mode() {
   _wiz_start_edit
 
   _wiz_description \
-    " ZFS RAID level for data pool:" \
+    "  ZFS RAID level for data pool:" \
     "" \
     "  {{cyan:RAID-0}}:  Max capacity, no redundancy (all disks)" \
     "  {{cyan:RAID-1}}:  Mirror, 50% capacity (2+ disks)" \
@@ -76,7 +76,7 @@ _edit_zfs_arc() {
   _wiz_start_edit
 
   _wiz_description \
-    " ZFS Adaptive Replacement Cache (ARC) memory allocation:" \
+    "  ZFS Adaptive Replacement Cache (ARC) memory allocation:" \
     "" \
     "  {{cyan:VM-focused}}:      Fixed 4GB for ARC (more RAM for VMs)" \
     "  {{cyan:Balanced}}:        25-40% of RAM based on total size" \

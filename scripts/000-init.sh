@@ -432,8 +432,7 @@ INSTALL_UNATTENDED_UPGRADES="" # Automatic security updates
 # Set: Wizard (114-wizard-services.sh)
 INSTALL_TAILSCALE=""  # Enable Tailscale VPN
 TAILSCALE_AUTH_KEY="" # Pre-auth key for automatic login
-TAILSCALE_SSH=""      # Enable Tailscale SSH (yes/no)
-TAILSCALE_WEBUI=""    # Expose Proxmox UI via Tailscale (yes/no)
+TAILSCALE_WEBUI=""    # Expose Proxmox UI via Tailscale Serve (yes/no)
 
 # --- Network Settings ---
 # Set: Wizard (112-wizard-network.sh)

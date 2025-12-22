@@ -11,7 +11,7 @@ _edit_tailscale() {
   _wiz_start_edit
 
   _wiz_description \
-    " Tailscale VPN with stealth mode:" \
+    "  Tailscale VPN with stealth mode:" \
     "" \
     "  {{cyan:Enabled}}:  Access via Tailscale only (blocks public SSH)" \
     "  {{cyan:Disabled}}: Standard access via public IP" \
@@ -57,8 +57,30 @@ _edit_tailscale() {
       if [[ -n $auth_key ]]; then
         INSTALL_TAILSCALE="yes"
         TAILSCALE_AUTH_KEY="$auth_key"
-        TAILSCALE_SSH="yes"
-        TAILSCALE_WEBUI="yes"
+
+        # Ask about web access via Tailscale Serve
+        _wiz_start_edit
+        _wiz_description \
+          "  Expose Proxmox Web UI via Tailscale Serve?" \
+          "" \
+          "  {{cyan:Enabled}}:  Access Web UI at https://<tailscale-hostname>" \
+          "  {{cyan:Disabled}}: Web UI only via direct IP" \
+          "" \
+          "  Uses: tailscale serve --bg --https=443 https://127.0.0.1:8006" \
+          ""
+
+        _show_input_footer "filter" 3
+
+        local webui_selected
+        if webui_selected=$(printf '%s\n' "$WIZ_TOGGLE_OPTIONS" | _wiz_choose --header="Tailscale Web UI:"); then
+          case "$webui_selected" in
+            Enabled) TAILSCALE_WEBUI="yes" ;;
+            Disabled) TAILSCALE_WEBUI="no" ;;
+          esac
+        else
+          TAILSCALE_WEBUI="no" # Default to no on cancel
+        fi
+
         SSL_TYPE="self-signed" # Tailscale uses its own certs
         # Suggest stealth firewall mode when Tailscale is enabled
         if [[ -z $INSTALL_FIREWALL ]]; then
@@ -69,7 +91,6 @@ _edit_tailscale() {
         # Auth key required - disable Tailscale if not provided
         INSTALL_TAILSCALE="no"
         TAILSCALE_AUTH_KEY=""
-        TAILSCALE_SSH=""
         TAILSCALE_WEBUI=""
         SSL_TYPE="" # Let user choose
       fi
@@ -77,7 +98,6 @@ _edit_tailscale() {
     Disabled)
       INSTALL_TAILSCALE="no"
       TAILSCALE_AUTH_KEY=""
-      TAILSCALE_SSH=""
       TAILSCALE_WEBUI=""
       SSL_TYPE="" # Let user choose
       # Suggest standard firewall when Tailscale is disabled
@@ -96,7 +116,7 @@ _edit_ssl() {
   _wiz_start_edit
 
   _wiz_description \
-    " SSL certificate for Proxmox web interface:" \
+    "  SSL certificate for Proxmox web interface:" \
     "" \
     "  {{cyan:Self-signed}}:   Works always, browser shows warning" \
     "  {{cyan:Let's Encrypt}}: Trusted cert, requires public DNS" \
@@ -229,7 +249,7 @@ _edit_shell() {
   _wiz_start_edit
 
   _wiz_description \
-    " Default shell for root user:" \
+    "  Default shell for root user:" \
     "" \
     "  {{cyan:ZSH}}:  Modern shell with Powerlevel10k prompt" \
     "  {{cyan:Bash}}: Standard shell (minimal changes)" \
@@ -301,7 +321,7 @@ _edit_power_profile() {
   fi
 
   _wiz_description \
-    " CPU frequency scaling governor:" \
+    "  CPU frequency scaling governor:" \
     "" \
     "${descriptions[@]}" \
     ""
@@ -343,7 +363,7 @@ _edit_features_security() {
   _wiz_start_edit
 
   _wiz_description \
-    " Security features (use Space to toggle):" \
+    "  Security features (use Space to toggle):" \
     "" \
     "  {{cyan:apparmor}}:    Mandatory access control (MAC)" \
     "  {{cyan:auditd}}:      Security audit logging" \
@@ -387,7 +407,7 @@ _edit_features_monitoring() {
   _wiz_start_edit
 
   _wiz_description \
-    " Monitoring features (use Space to toggle):" \
+    "  Monitoring features (use Space to toggle):" \
     "" \
     "  {{cyan:vnstat}}:   Network traffic monitoring" \
     "  {{cyan:netdata}}:  Real-time monitoring (port 19999)" \
@@ -422,7 +442,7 @@ _edit_features_tools() {
   _wiz_start_edit
 
   _wiz_description \
-    " Tools (use Space to toggle):" \
+    "  Tools (use Space to toggle):" \
     "" \
     "  {{cyan:yazi}}:       Terminal file manager (Catppuccin theme)" \
     "  {{cyan:nvim}}:       Neovim as default editor" \

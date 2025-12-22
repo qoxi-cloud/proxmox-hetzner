@@ -33,7 +33,7 @@ _edit_bridge_mode() {
   _wiz_start_edit
 
   _wiz_description \
-    " Network bridge configuration for VMs:" \
+    "  Network bridge configuration for VMs:" \
     "" \
     "  {{cyan:Internal}}: Private network with NAT (10.x.x.x)" \
     "  {{cyan:External}}: VMs get public IPs directly (routed mode)" \
@@ -62,7 +62,7 @@ _edit_private_subnet() {
   _wiz_start_edit
 
   _wiz_description \
-    " Private network for VMs (NAT to internet):" \
+    "  Private network for VMs (NAT to internet):" \
     "" \
     "  {{cyan:10.0.0.0/24}}:    Class A private (default)" \
     "  {{cyan:192.168.1.0/24}}: Class C private (home-style)" \
@@ -118,7 +118,7 @@ _edit_bridge_mtu() {
   _wiz_start_edit
 
   _wiz_description \
-    " MTU for private bridge (VM-to-VM traffic):" \
+    "  MTU for private bridge (VM-to-VM traffic):" \
     "" \
     "  {{cyan:9000}}:  Jumbo frames (better VM performance)" \
     "  {{cyan:1500}}:  Standard MTU (safe default)" \
@@ -145,7 +145,7 @@ _edit_ipv6() {
   _wiz_start_edit
 
   _wiz_description \
-    " IPv6 network configuration:" \
+    "  IPv6 network configuration:" \
     "" \
     "  {{cyan:Auto}}:     Use detected IPv6 from provider" \
     "  {{cyan:Manual}}:   Specify custom IPv6 address/gateway" \
@@ -249,7 +249,7 @@ _edit_firewall() {
   _wiz_start_edit
 
   _wiz_description \
-    " Host firewall (nftables):" \
+    "  Host firewall (nftables):" \
     "" \
     "  {{cyan:Stealth}}:  Blocks ALL incoming (Tailscale/bridges only)" \
     "  {{cyan:Strict}}:   Allows SSH only (port 22)" \
