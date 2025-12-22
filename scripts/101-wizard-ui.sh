@@ -213,16 +213,48 @@ _wiz_show_cursor() { printf '\033[?25h'; }
 _wiz_blank_line() { printf '\n'; }
 
 # Outputs red error-styled text with notification indent and error icon.
-_wiz_error() { gum style --foreground "$HEX_RED" "${WIZ_NOTIFY_INDENT}✗ $*"; }
+# Supports gum style flags (e.g., --bold) before the message.
+_wiz_error() {
+  local flags=()
+  while [[ ${1:-} == --* ]]; do
+    flags+=("$1")
+    shift
+  done
+  gum style --foreground "$HEX_RED" "${flags[@]}" "${WIZ_NOTIFY_INDENT}✗ $*"
+}
 
 # Outputs yellow warning-styled text with notification indent.
-_wiz_warn() { gum style --foreground "$HEX_YELLOW" "${WIZ_NOTIFY_INDENT}$*"; }
+# Supports gum style flags (e.g., --bold) before the message.
+_wiz_warn() {
+  local flags=()
+  while [[ ${1:-} == --* ]]; do
+    flags+=("$1")
+    shift
+  done
+  gum style --foreground "$HEX_YELLOW" "${flags[@]}" "${WIZ_NOTIFY_INDENT}$*"
+}
 
 # Outputs cyan info-styled text with notification indent and success icon.
-_wiz_info() { gum style --foreground "$HEX_CYAN" "${WIZ_NOTIFY_INDENT}✓ $*"; }
+# Supports gum style flags (e.g., --bold) before the message.
+_wiz_info() {
+  local flags=()
+  while [[ ${1:-} == --* ]]; do
+    flags+=("$1")
+    shift
+  done
+  gum style --foreground "$HEX_CYAN" "${flags[@]}" "${WIZ_NOTIFY_INDENT}✓ $*"
+}
 
 # Outputs gray dimmed text with notification indent.
-_wiz_dim() { gum style --foreground "$HEX_GRAY" "${WIZ_NOTIFY_INDENT}$*"; }
+# Supports gum style flags (e.g., --bold) before the message.
+_wiz_dim() {
+  local flags=()
+  while [[ ${1:-} == --* ]]; do
+    flags+=("$1")
+    shift
+  done
+  gum style --foreground "$HEX_GRAY" "${flags[@]}" "${WIZ_NOTIFY_INDENT}$*"
+}
 
 # Displays a description block for menu screens with inline color support.
 # Outputs all lines at once for flicker-free rendering.
