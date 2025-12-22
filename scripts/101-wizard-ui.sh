@@ -245,10 +245,9 @@ _wiz_confirm() {
 
   # Calculate left padding to center the dialog
   # Dialog width: prompt + "Yes" + "No" buttons (~20 chars for buttons/spacing)
-  local term_width dialog_width left_pad
-  term_width=$(tput cols 2>/dev/null || echo 80)
+  local dialog_width left_pad
   dialog_width=$((${#prompt} + 20))
-  left_pad=$(((term_width - dialog_width) / 2))
+  left_pad=$(((TERM_WIDTH - dialog_width) / 2))
   ((left_pad < 0)) && left_pad=0
 
   gum confirm "$prompt" "$@" \
