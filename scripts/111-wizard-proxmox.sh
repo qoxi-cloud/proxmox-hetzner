@@ -4,6 +4,8 @@
 # iso_version, repository
 # =============================================================================
 
+# Edits Proxmox ISO version via searchable list.
+# Fetches available ISOs (last 5) and updates PROXMOX_ISO_VERSION global.
 _edit_iso_version() {
   _wiz_start_edit
 
@@ -35,6 +37,9 @@ _edit_iso_version() {
   PROXMOX_ISO_VERSION="$selected"
 }
 
+# Edits Proxmox package repository type.
+# Prompts for subscription key if enterprise repo selected.
+# Updates PVE_REPO_TYPE and PVE_SUBSCRIPTION_KEY globals.
 _edit_repository() {
   _wiz_start_edit
 

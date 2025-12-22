@@ -7,7 +7,9 @@
 # Helper functions for run_with_progress
 # =============================================================================
 
-# Copies all configuration files in parallel
+# Copies essential configuration files to remote system in parallel.
+# Files: hosts, interfaces, sysctl, debian.sources, proxmox.sources, resolv.conf
+# Returns: 0 on success, 1 if any copy fails
 _copy_config_files() {
   local -a copy_pids=()
   remote_copy "templates/hosts" "/etc/hosts" >/dev/null 2>&1 &
@@ -27,7 +29,9 @@ _copy_config_files() {
   done
 }
 
-# Applies basic system settings (hostname, disable rpcbind)
+# Applies basic system settings: backs up sources.list, sets hostname.
+# Disables rpcbind service (not needed for Proxmox).
+# Returns: 0 on success, 1 on critical failure
 _apply_basic_settings() {
   remote_exec "[ -f /etc/apt/sources.list ] && mv /etc/apt/sources.list /etc/apt/sources.list.bak" || return 1
   remote_exec "echo '$PVE_HOSTNAME' > /etc/hostname" || return 1
@@ -36,7 +40,9 @@ _apply_basic_settings() {
   }
 }
 
-# Installs locale configuration files
+# Copies locale template files to remote system.
+# Files: locale.sh (profile.d), default-locale, environment
+# Returns: 0 on success, 1 on failure
 _install_locale_files() {
   remote_copy "templates/locale.sh" "/etc/profile.d/locale.sh" || return 1
   remote_exec "chmod +x /etc/profile.d/locale.sh" || return 1
@@ -44,7 +50,9 @@ _install_locale_files() {
   remote_copy "templates/environment" "/etc/environment" || return 1
 }
 
-# Configures fastfetch shell integration
+# Configures fastfetch shell integration for login shells.
+# Installs to profile.d and adds to bash.bashrc for interactive shells.
+# Returns: 0 on success, 1 on failure
 _configure_fastfetch() {
   remote_copy "templates/fastfetch.sh" "/etc/profile.d/fastfetch.sh" || return 1
   remote_exec "chmod +x /etc/profile.d/fastfetch.sh" || return 1
@@ -52,13 +60,17 @@ _configure_fastfetch() {
   remote_exec "grep -q 'profile.d/fastfetch.sh' /etc/bash.bashrc || echo '[ -f /etc/profile.d/fastfetch.sh ] && . /etc/profile.d/fastfetch.sh' >> /etc/bash.bashrc" || return 1
 }
 
-# Configures bat with Visual Studio Dark+ theme for admin user
+# Configures bat (batcat) with Visual Studio Dark+ theme.
+# Creates symlink from batcat to bat, deploys config to admin user.
+# Returns: 0 on success, 1 on failure
 _configure_bat() {
   remote_exec "ln -sf /usr/bin/batcat /usr/local/bin/bat" || return 1
   deploy_user_config "templates/bat-config" ".config/bat/config" || return 1
 }
 
-# Configures ZSH files and default shell for admin user
+# Configures ZSH as default shell for admin user.
+# Deploys .zshrc and .p10k.zsh (Powerlevel10k config).
+# Returns: 0 on success, 1 on failure
 _configure_zsh_files() {
   deploy_user_config "templates/zshrc" ".zshrc" || return 1
   deploy_user_config "templates/p10k.zsh" ".p10k.zsh" || return 1
@@ -66,21 +78,27 @@ _configure_zsh_files() {
   remote_exec 'chsh -s /bin/zsh '"$ADMIN_USERNAME"'' || return 1
 }
 
-# Configures chrony NTP service
+# Configures chrony NTP service with custom config.
+# Restarts service to apply new configuration.
+# Returns: 0 on success, 1 on failure
 _configure_chrony() {
   remote_exec "systemctl stop chrony" || true
   remote_copy "templates/chrony" "/etc/chrony/chrony.conf" || return 1
   remote_exec "systemctl enable chrony" || return 1
 }
 
-# Configures unattended-upgrades
+# Configures unattended-upgrades for automatic security updates.
+# Deploys 50unattended-upgrades and 20auto-upgrades configs.
+# Returns: 0 on success, 1 on failure
 _configure_unattended_upgrades() {
   remote_copy "templates/50unattended-upgrades" "/etc/apt/apt.conf.d/50unattended-upgrades" || return 1
   remote_copy "templates/20auto-upgrades" "/etc/apt/apt.conf.d/20auto-upgrades" || return 1
   remote_exec "systemctl enable unattended-upgrades" || return 1
 }
 
-# Configures CPU governor service
+# Configures CPU frequency scaling governor via systemd service.
+# Uses CPU_GOVERNOR global (default: performance).
+# Returns: 0 on success, 1 on failure
 _configure_cpu_governor() {
   local governor="${CPU_GOVERNOR:-performance}"
   remote_copy "templates/cpupower.service" "/etc/systemd/system/cpupower.service" || return 1
@@ -91,13 +109,17 @@ _configure_cpu_governor() {
   " || return 1
 }
 
-# Configures I/O scheduler udev rules
+# Configures I/O scheduler via udev rules.
+# Uses none for NVMe, mq-deadline for SSD, bfq for HDD.
+# Returns: 0 on success, 1 on failure
 _configure_io_scheduler() {
   remote_copy "templates/60-io-scheduler.rules" "/etc/udev/rules.d/60-io-scheduler.rules" || return 1
   remote_exec "udevadm control --reload-rules && udevadm trigger" || return 1
 }
 
-# Removes Proxmox subscription notice
+# Removes Proxmox subscription notice from web UI.
+# Only called for non-enterprise installations.
+# Returns: 0 on success, 1 on failure
 _remove_subscription_notice() {
   remote_copy "templates/remove-subscription-nag.sh" "/tmp/remove-subscription-nag.sh" || return 1
   remote_exec "chmod +x /tmp/remove-subscription-nag.sh && /tmp/remove-subscription-nag.sh && rm -f /tmp/remove-subscription-nag.sh" || return 1
@@ -107,7 +129,9 @@ _remove_subscription_notice() {
 # Private implementation functions
 # =============================================================================
 
-# Private implementation - configures base system
+# Main implementation for base system configuration.
+# Copies templates, configures repos, installs packages, sets up locales.
+# Side effects: Modifies remote system, installs packages
 _config_base_system() {
   # Copy template files to VM (parallel for better performance)
   run_with_progress "Copying configuration files" "Configuration files copied" _copy_config_files
@@ -185,7 +209,9 @@ _config_base_system() {
   run_with_progress "Configuring bat" "Bat configured" _configure_bat
 }
 
-# Private implementation - configures default shell
+# Configures default shell for admin user.
+# Installs Oh-My-Zsh with Powerlevel10k theme if ZSH selected.
+# Side effects: Clones git repos, modifies admin user shell
 _config_shell() {
   # Configure default shell for admin user (root login is disabled)
   if [[ $SHELL_TYPE == "zsh" ]]; then
@@ -219,7 +245,9 @@ _config_shell() {
   fi
 }
 
-# Private implementation - configures system services
+# Configures system services: chrony, unattended-upgrades, CPU governor.
+# Removes subscription notice for non-enterprise installations.
+# Side effects: Enables/configures multiple systemd services
 _config_system_services() {
   # Configure NTP time synchronization with chrony (package already installed)
   run_with_progress "Configuring chrony" "Chrony configured" _configure_chrony

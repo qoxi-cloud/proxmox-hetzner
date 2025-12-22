@@ -3,7 +3,9 @@
 # SSH hardening and finalization
 # =============================================================================
 
-# Private implementation - deploys SSH hardening config
+# Deploys hardened SSH configuration to remote system.
+# Uses sshd_config template with ADMIN_USERNAME substitution.
+# Side effects: Restarts sshd, disables password auth
 # shellcheck disable=SC2317 # invoked indirectly by run_with_progress
 _config_ssh_hardening() {
   # Apply ADMIN_USERNAME template variable to sshd_config

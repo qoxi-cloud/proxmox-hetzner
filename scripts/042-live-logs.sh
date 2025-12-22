@@ -3,7 +3,8 @@
 # Live installation logs with logo and auto-scroll
 # =============================================================================
 
-# Get terminal dimensions
+# Gets current terminal dimensions for log area calculations.
+# Side effects: Sets _LOG_TERM_HEIGHT and _LOG_TERM_WIDTH globals
 get_terminal_dimensions() {
   _LOG_TERM_HEIGHT=$(tput lines)
   _LOG_TERM_WIDTH=$(tput cols)
@@ -16,7 +17,9 @@ LOGO_HEIGHT=${BANNER_HEIGHT:-9}
 # Fixed header height (title label + line with dot + 2 blank lines)
 HEADER_HEIGHT=4
 
-# Calculate available space for logs
+# Calculates available vertical space for log display.
+# Subtracts banner height and header from terminal height.
+# Side effects: Sets LOG_AREA_HEIGHT global
 calculate_log_area() {
   get_terminal_dimensions
   LOG_AREA_HEIGHT=$((_LOG_TERM_HEIGHT - LOGO_HEIGHT - HEADER_HEIGHT - 1))
@@ -26,7 +29,10 @@ calculate_log_area() {
 declare -a LOG_LINES=()
 LOG_COUNT=0
 
-# Add log entry
+# Adds a log entry to the live display and triggers re-render.
+# Parameters:
+#   $1 - Message to display
+# Side effects: Appends to LOG_LINES array, increments LOG_COUNT
 add_log() {
   local message="$1"
   LOG_LINES+=("$message")
@@ -34,7 +40,8 @@ add_log() {
   render_logs
 }
 
-# Render header in wizard style (continuation of wizard nav)
+# Renders installation header in wizard style with progress indicator.
+# Positions cursor below banner and displays "Installing Proxmox" header.
 _render_install_header() {
   # Use ANSI escape instead of tput for speed
   printf '\033[%d;0H' "$((LOGO_HEIGHT + 1))"
@@ -43,7 +50,9 @@ _render_install_header() {
   _wiz_blank_line
 }
 
-# Render all logs (with auto-scroll, no flicker)
+# Renders all log lines with auto-scroll behavior.
+# Shows most recent logs that fit in LOG_AREA_HEIGHT, clears remaining lines.
+# Uses ANSI escapes for flicker-free updates.
 render_logs() {
   _render_install_header
 
@@ -64,18 +73,22 @@ render_logs() {
   done
 }
 
-# Start task (shows working ellipsis ...)
+# Starts a task with "..." suffix indicating work in progress.
+# Parameters:
+#   $1 - Task description message
+# Side effects: Adds log entry, sets TASK_INDEX to current position
 start_task() {
   local message="$1"
   add_log "$message..."
   TASK_INDEX=$((LOG_COUNT - 1))
 }
 
-# Complete task with status indicator
+# Completes a task by updating its log line with status indicator.
 # Parameters:
-#   $1 - task index
-#   $2 - message
-#   $3 - status: "success" (default, ✓), "error" (✗), "warning" (⚠)
+#   $1 - Task index in LOG_LINES array
+#   $2 - Final message to display
+#   $3 - Status: "success" (default, ✓), "error" (✗), "warning" (⚠)
+# Side effects: Updates LOG_LINES[task_index], re-renders logs
 complete_task() {
   local task_index="$1"
   local message="$2"
@@ -90,13 +103,17 @@ complete_task() {
   render_logs
 }
 
-# Add sub-task log entry (indented with tree structure)
+# Adds an indented sub-task log entry with tree structure prefix.
+# Parameters:
+#   $1 - Subtask message to display
 add_subtask_log() {
   local message="$1"
   add_log "${CLR_ORANGE}│${CLR_RESET}   ${CLR_GRAY}${message}${CLR_RESET}"
 }
 
-# Start live installation display
+# Starts live installation display in alternate screen buffer.
+# Overrides show_progress with live version, hides cursor.
+# Side effects: Enters alternate screen, sets up EXIT trap
 start_live_installation() {
   # Override show_progress with live version
   # shellcheck disable=SC2317,SC2329
@@ -114,13 +131,21 @@ start_live_installation() {
   trap 'tput cnorm; tput rmcup' EXIT RETURN
 }
 
-# Finish live installation display
+# Finishes live installation display and restores normal terminal.
+# Shows cursor and exits alternate screen buffer.
 finish_live_installation() {
   tput cnorm # Show cursor
   tput rmcup # Exit alternate screen buffer
 }
 
-# Live version of show_progress - updates the live log display
+# Live version of show_progress that updates the live log display.
+# Shows animated dots while waiting for process, updates status on completion.
+# Parameters:
+#   $1 - PID of process to wait for
+#   $2 - Progress message (shown while running)
+#   $3 - Done message (optional, defaults to $2)
+#   $4 - Optional "--silent" flag to suppress output on success
+# Returns: Exit code from the waited process
 live_show_progress() {
   local pid=$1
   local message="${2:-Processing}"
@@ -166,13 +191,18 @@ live_show_progress() {
   return $exit_code
 }
 
-# Add a live log entry for subtask info
+# Adds a live log entry for subtask info with tree structure.
+# Parameters:
+#   $1 - Subtask message
 live_log_subtask() {
   local message="$1"
   add_subtask_log "$message"
 }
 
-# Log multiple items as comma-separated list wrapped across lines
+# Logs multiple items as comma-separated list wrapped across lines.
+# Automatically wraps long lines at max_width characters.
+# Parameters:
+#   $@ - Items to display (array or space-separated string)
 # Usage: log_subtasks "${array[@]}" or log_subtasks $string
 # Output: │   item1, item2, item3,
 #         │   item4, item5

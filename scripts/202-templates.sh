@@ -3,7 +3,9 @@
 # Template preparation and download
 # =============================================================================
 
-# Modifies template files with variable substitution
+# Applies variable substitution to all template files.
+# Handles hosts, interfaces, resolv.conf, cpupower, and locale templates.
+# Uses postprocess functions for bridge mode and IPv6 in interfaces.
 _modify_template_files() {
   apply_common_template_vars "./templates/hosts"
   apply_common_template_vars "./templates/interfaces"

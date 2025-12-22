@@ -7,6 +7,9 @@
 # Main wizard loop
 # =============================================================================
 
+# Main wizard navigation and input loop.
+# Handles arrow key navigation, screen switching, field editing.
+# Returns: 0 when user presses 'S' to start installation
 _wizard_main() {
   local selection=0
 
@@ -104,7 +107,8 @@ _wizard_main() {
 # Edit screen helpers
 # =============================================================================
 
-# Display footer with key hints below current cursor position
+# Displays footer with key hints below current cursor position.
+# Reserves space for component and shows appropriate navigation hints.
 # Parameters:
 #   $1 - type: "input" (default), "filter", or "checkbox"
 #   $2 - lines for component (default: 1 for input, used for filter/checkbox height)
@@ -195,6 +199,9 @@ _validate_config() {
 # Main wizard entry point
 # =============================================================================
 
+# Main entry point for the configuration wizard.
+# Runs in alternate screen buffer with hidden cursor.
+# Loops until all required configuration is complete.
 show_gum_config_editor() {
   # Enter alternate screen buffer and hide cursor (like vim/less)
   tput smcup # alternate screen

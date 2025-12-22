@@ -4,6 +4,9 @@
 # boot_disk, pool_disks
 # =============================================================================
 
+# Edits boot disk selection for ext4 system partition.
+# Options: none (all in rpool) or select specific disk.
+# Updates BOOT_DISK global and rebuilds pool disk list.
 _edit_boot_disk() {
   _wiz_start_edit
 
@@ -59,6 +62,9 @@ _edit_boot_disk() {
   fi
 }
 
+# Edits ZFS pool disk selection via multi-select checkbox.
+# Excludes boot disk if set. Requires at least one disk.
+# Updates ZFS_POOL_DISKS array and adjusts ZFS_RAID if needed.
 _edit_pool_disks() {
   # Pool disk selection with retry loop (like other editors)
   while true; do
@@ -136,7 +142,9 @@ _edit_pool_disks() {
   done
 }
 
-# Helper: rebuild pool disks after boot disk change
+# Rebuilds ZFS_POOL_DISKS array after boot disk change.
+# Includes all drives except the selected boot disk.
+# Side effects: Updates ZFS_POOL_DISKS, calls _update_zfs_mode_options
 _rebuild_pool_disks() {
   ZFS_POOL_DISKS=()
   for drive in "${DRIVES[@]}"; do
@@ -145,7 +153,9 @@ _rebuild_pool_disks() {
   _update_zfs_mode_options
 }
 
-# Helper: adjust ZFS_RAID if current mode incompatible with pool disk count
+# Resets ZFS_RAID if current mode is incompatible with pool disk count.
+# Called after pool disk changes to ensure valid RAID selection.
+# Side effects: May clear ZFS_RAID global if invalid
 _update_zfs_mode_options() {
   local pool_count=${#ZFS_POOL_DISKS[@]}
   # Reset ZFS_RAID if incompatible

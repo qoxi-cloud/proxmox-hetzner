@@ -4,8 +4,11 @@
 # hostname, email, password, timezone, keyboard, country
 # =============================================================================
 
-# Maps country code to locale (language_COUNTRY.UTF-8)
-# Uses most common language for each country
+# Maps ISO country code to system locale string.
+# Uses most common language for each country (e.g., 'us' → 'en_US.UTF-8').
+# Parameters:
+#   $1 - Two-letter ISO country code (lowercase)
+# Returns: Locale string via stdout (e.g., 'en_US.UTF-8')
 _country_to_locale() {
   local country="${1:-us}"
   country="${country,,}" # lowercase
@@ -60,12 +63,15 @@ _country_to_locale() {
   esac
 }
 
-# Updates LOCALE based on current COUNTRY
+# Updates LOCALE global based on current COUNTRY selection.
+# Side effects: Sets LOCALE global, logs change
 _update_locale_from_country() {
   LOCALE=$(_country_to_locale "$COUNTRY")
   log "Set LOCALE=$LOCALE from COUNTRY=$COUNTRY"
 }
 
+# Edits hostname and domain settings via input dialogs.
+# Validates hostname format and updates PVE_HOSTNAME, DOMAIN_SUFFIX, FQDN.
 _edit_hostname() {
   # Hostname input loop
   while true; do
@@ -120,6 +126,8 @@ _edit_hostname() {
   FQDN="${PVE_HOSTNAME}.${DOMAIN_SUFFIX}"
 }
 
+# Edits admin email address via input dialog.
+# Validates email format and updates EMAIL global.
 _edit_email() {
   while true; do
     _wiz_start_edit
@@ -148,6 +156,9 @@ _edit_email() {
   done
 }
 
+# Edits root password via manual entry or generation.
+# Shows generated password for user to save.
+# Updates NEW_ROOT_PASSWORD and PASSWORD_GENERATED globals.
 _edit_password() {
   while true; do
     _wiz_start_edit
@@ -209,6 +220,9 @@ _edit_password() {
   done
 }
 
+# Edits timezone via searchable filter list.
+# Auto-selects country based on timezone if mapping exists.
+# Updates TIMEZONE and optionally COUNTRY/LOCALE globals.
 _edit_timezone() {
   _wiz_start_edit
 
@@ -229,6 +243,8 @@ _edit_timezone() {
   fi
 }
 
+# Edits keyboard layout via searchable filter list.
+# Updates KEYBOARD global with selected layout.
 _edit_keyboard() {
   _wiz_start_edit
 
@@ -243,6 +259,8 @@ _edit_keyboard() {
   KEYBOARD="$selected"
 }
 
+# Edits country code via searchable filter list.
+# Updates COUNTRY and LOCALE globals.
 _edit_country() {
   _wiz_start_edit
 

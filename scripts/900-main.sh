@@ -3,7 +3,9 @@
 # Finish and reboot
 # =============================================================================
 
-# Render completion screen in wizard style
+# Renders wizard-style completion screen with credentials and access info.
+# Shows hostname, admin user, SSH/Web UI access based on firewall mode.
+# Side effects: Clears screen, outputs to stdout
 _render_completion_screen() {
   local output=""
   local banner_output
@@ -98,7 +100,9 @@ _render_completion_screen() {
   printf '%b' "$output"
 }
 
-# Handle completion screen input
+# Handles user input on completion screen.
+# Enter = reboot, Q = exit without reboot.
+# Side effects: May reboot system or exit script
 _completion_screen_input() {
   while true; do
     _render_completion_screen
@@ -129,6 +133,8 @@ _completion_screen_input() {
   done
 }
 
+# Finishes live installation display and shows completion screen.
+# Prompts user to reboot or exit without reboot.
 reboot_to_main_os() {
   # Finish live installation display
   finish_live_installation

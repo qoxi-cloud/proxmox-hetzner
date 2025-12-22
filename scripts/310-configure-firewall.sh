@@ -37,7 +37,10 @@ declare -A BRIDGE_DESCRIPTIONS=(
 # Rule generators
 # -----------------------------------------------------------------------------
 
-# Generate port rules based on firewall mode
+# Generates nftables port accept rules based on firewall mode.
+# Parameters:
+#   $1 - Firewall mode (stealth, strict, standard)
+# Returns: nftables rule text via stdout
 _generate_port_rules() {
   local mode="$1"
   local ports="${FIREWALL_PORT_RULES[$mode]:-${FIREWALL_PORT_RULES[standard]}}"
@@ -65,9 +68,11 @@ _generate_port_rules() {
   printf '\n'
 }
 
-# Generate bridge rules for input or forward chain
+# Generates nftables bridge interface rules for a specific chain.
 # Parameters:
-#   $1 - chain type: "input" or "forward"
+#   $1 - Chain type: "input" or "forward"
+# Uses: BRIDGE_MODE global for interface selection
+# Returns: nftables rule text via stdout
 _generate_bridge_rules() {
   local chain="$1"
   local mode="${BRIDGE_MODE:-internal}"
@@ -94,17 +99,21 @@ _generate_bridge_rules() {
   printf '\n'
 }
 
-# Generate bridge input rules based on BRIDGE_MODE
+# Generates bridge input chain rules. Wrapper for _generate_bridge_rules.
+# Returns: nftables rule text via stdout
 _generate_bridge_input_rules() {
   _generate_bridge_rules "input"
 }
 
-# Generate bridge forward rules based on BRIDGE_MODE
+# Generates bridge forward chain rules. Wrapper for _generate_bridge_rules.
+# Returns: nftables rule text via stdout
 _generate_bridge_forward_rules() {
   _generate_bridge_rules "forward"
 }
 
-# Generate Tailscale rules if enabled
+# Generates nftables rules for Tailscale interface if enabled.
+# Uses: INSTALL_TAILSCALE global
+# Returns: nftables rule text via stdout
 _generate_tailscale_rules() {
   if [[ $INSTALL_TAILSCALE == "yes" ]]; then
     printf '%s\n' '# Allow Tailscale VPN interface
@@ -114,7 +123,10 @@ _generate_tailscale_rules() {
   fi
 }
 
-# Generate NAT masquerade rules based on BRIDGE_MODE and PRIVATE_SUBNET
+# Generates NAT masquerade rules for private subnet internet access.
+# Only generates rules for internal/both modes (private networks).
+# Uses: BRIDGE_MODE, PRIVATE_SUBNET globals
+# Returns: nftables rule text via stdout
 _generate_nat_rules() {
   local mode="${BRIDGE_MODE:-internal}"
   local subnet="${PRIVATE_SUBNET:-10.0.0.0/24}"
@@ -136,7 +148,9 @@ _generate_nat_rules() {
   printf '%s\n' "$rules"
 }
 
-# Configuration function for nftables
+# Main implementation for nftables configuration.
+# Generates rules from template, validates syntax, enables service.
+# Side effects: Writes /etc/nftables.conf, enables nftables service
 _config_nftables() {
   # Set up iptables-nft compatibility layer for tools that call iptables directly
   remote_exec '

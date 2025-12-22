@@ -4,6 +4,9 @@
 # Admin user, SSH key, API token
 # =============================================================================
 
+# Edits SSH public key for admin user access.
+# Auto-detects key from Rescue System if available.
+# Validates key format using ssh-keygen. Updates SSH_PUBLIC_KEY global.
 _edit_ssh_key() {
   while true; do
     _wiz_start_edit
@@ -90,6 +93,9 @@ _edit_ssh_key() {
 # Admin User Editors
 # =============================================================================
 
+# Edits non-root admin username for SSH and Proxmox access.
+# Validates username format (lowercase, no reserved names).
+# Updates ADMIN_USERNAME global.
 _edit_admin_username() {
   while true; do
     _wiz_start_edit
@@ -127,6 +133,9 @@ _edit_admin_username() {
   done
 }
 
+# Edits admin password via manual entry or generation.
+# Shows generated password for user to save.
+# Updates ADMIN_PASSWORD global.
 _edit_admin_password() {
   while true; do
     _wiz_start_edit
@@ -196,6 +205,9 @@ _edit_admin_password() {
 # API Token Editor
 # =============================================================================
 
+# Edits Proxmox API token creation settings.
+# Prompts for token name if enabled (default: automation).
+# Updates INSTALL_API_TOKEN and API_TOKEN_NAME globals.
 _edit_api_token() {
   _wiz_start_edit
 

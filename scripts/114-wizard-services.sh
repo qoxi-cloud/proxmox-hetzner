@@ -4,6 +4,9 @@
 # tailscale, ssl, shell, power_profile, features
 # =============================================================================
 
+# Edits Tailscale VPN configuration.
+# Prompts for auth key if enabled, validates key format.
+# Updates INSTALL_TAILSCALE, TAILSCALE_AUTH_KEY, SSL_TYPE, FIREWALL_MODE globals.
 _edit_tailscale() {
   _wiz_start_edit
 
@@ -86,6 +89,9 @@ _edit_tailscale() {
   esac
 }
 
+# Edits SSL certificate type for Proxmox web interface.
+# Validates FQDN and DNS resolution for Let's Encrypt.
+# Updates SSL_TYPE global. Falls back to self-signed on validation failure.
 _edit_ssl() {
   _wiz_start_edit
 
@@ -216,6 +222,9 @@ _edit_ssl() {
   fi
 }
 
+# Edits default shell for root user.
+# Options: zsh (with Powerlevel10k) or bash.
+# Updates SHELL_TYPE global.
 _edit_shell() {
   _wiz_start_edit
 
@@ -240,6 +249,9 @@ _edit_shell() {
   esac
 }
 
+# Edits CPU frequency scaling governor.
+# Dynamically detects available governors from sysfs.
+# Updates CPU_GOVERNOR global.
 _edit_power_profile() {
   _wiz_start_edit
 
@@ -324,6 +336,9 @@ _edit_power_profile() {
 # Features - Security
 # =============================================================================
 
+# Edits security feature toggles via multi-select checkbox.
+# Options: apparmor, auditd, aide, chkrootkit, lynis, needrestart.
+# Updates corresponding INSTALL_* globals.
 _edit_features_security() {
   _wiz_start_edit
 
@@ -365,6 +380,9 @@ _edit_features_security() {
 # Features - Monitoring
 # =============================================================================
 
+# Edits monitoring feature toggles via multi-select checkbox.
+# Options: vnstat, netdata, promtail.
+# Updates corresponding INSTALL_* globals.
 _edit_features_monitoring() {
   _wiz_start_edit
 
@@ -397,6 +415,9 @@ _edit_features_monitoring() {
 # Features - Tools
 # =============================================================================
 
+# Edits tools feature toggles via multi-select checkbox.
+# Options: yazi (file manager), nvim (editor), ringbuffer (network tuning).
+# Updates corresponding INSTALL_* globals.
 _edit_features_tools() {
   _wiz_start_edit
 

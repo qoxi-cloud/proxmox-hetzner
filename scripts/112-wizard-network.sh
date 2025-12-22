@@ -4,6 +4,9 @@
 # interface, bridge_mode, private_subnet, bridge_mtu, ipv6, firewall
 # =============================================================================
 
+# Edits primary network interface via selection list.
+# Uses cached interface list from system detection.
+# Updates INTERFACE_NAME global.
 _edit_interface() {
   _wiz_start_edit
 
@@ -23,6 +26,9 @@ _edit_interface() {
   INTERFACE_NAME="$selected"
 }
 
+# Edits network bridge mode for VM networking.
+# Options: internal (NAT), external (routed), both.
+# Updates BRIDGE_MODE global.
 _edit_bridge_mode() {
   _wiz_start_edit
 
@@ -49,6 +55,9 @@ _edit_bridge_mode() {
   esac
 }
 
+# Edits private subnet for NAT bridge.
+# Supports preset options or custom CIDR input.
+# Updates PRIVATE_SUBNET global.
 _edit_private_subnet() {
   _wiz_start_edit
 
@@ -102,6 +111,9 @@ _edit_private_subnet() {
   fi
 }
 
+# Edits private bridge MTU for VM-to-VM traffic.
+# Options: 9000 (jumbo frames) or 1500 (standard).
+# Updates BRIDGE_MTU global.
 _edit_bridge_mtu() {
   _wiz_start_edit
 
@@ -126,6 +138,9 @@ _edit_bridge_mtu() {
   esac
 }
 
+# Edits IPv6 configuration mode and address/gateway.
+# Modes: auto (detected), manual (custom input), disabled.
+# Updates IPV6_MODE, IPV6_ADDRESS, IPV6_GATEWAY, MAIN_IPV6 globals.
 _edit_ipv6() {
   _wiz_start_edit
 
@@ -227,6 +242,9 @@ _edit_ipv6() {
   fi
 }
 
+# Edits host firewall mode.
+# Modes: stealth (Tailscale only), strict (SSH), standard (SSH+Web), disabled.
+# Updates INSTALL_FIREWALL and FIREWALL_MODE globals.
 _edit_firewall() {
   _wiz_start_edit
 

@@ -4,6 +4,9 @@
 # zfs_mode, zfs_arc
 # =============================================================================
 
+# Edits ZFS RAID level for data pool.
+# Options vary based on pool disk count (single, raid0/1, raidz1/2/3, raid10).
+# Updates ZFS_RAID global.
 _edit_zfs_mode() {
   _wiz_start_edit
 
@@ -66,6 +69,9 @@ RAID-10 (striped mirrors)"
   esac
 }
 
+# Edits ZFS ARC memory allocation strategy.
+# Options: vm-focused (4GB), balanced (25-40%), storage-focused (50%).
+# Updates ZFS_ARC_MODE global.
 _edit_zfs_arc() {
   _wiz_start_edit
 

@@ -18,7 +18,10 @@ WIZ_CURRENT_SCREEN=0
 # Navigation column width
 _NAV_COL_WIDTH=10
 
-# Helper: repeat character N times
+# Repeats a character N times for building navigation lines.
+# Parameters:
+#   $1 - Character to repeat
+#   $2 - Number of repetitions
 _nav_repeat() {
   local char="$1" count="$2" i
   for ((i = 0; i < count; i++)); do
@@ -26,8 +29,11 @@ _nav_repeat() {
   done
 }
 
-# Helper: get color for screen state
-# Returns: color code based on screen index vs current
+# Gets color code for screen state in navigation header.
+# Parameters:
+#   $1 - Screen index to check
+#   $2 - Current active screen index
+# Returns: CLR_ORANGE (current), CLR_CYAN (completed), CLR_GRAY (pending)
 _nav_color() {
   local idx="$1" current="$2"
   if [[ $idx -eq $current ]]; then
@@ -39,7 +45,11 @@ _nav_color() {
   fi
 }
 
-# Helper: get dot symbol for screen state
+# Gets dot symbol for screen state in navigation header.
+# Parameters:
+#   $1 - Screen index to check
+#   $2 - Current active screen index
+# Returns: ◉ (current), ● (completed), ○ (pending)
 _nav_dot() {
   local idx="$1" current="$2"
   if [[ $idx -eq $current ]]; then
@@ -51,7 +61,12 @@ _nav_dot() {
   fi
 }
 
-# Helper: get line style (thick for completed, thin otherwise)
+# Gets connecting line style for navigation header.
+# Parameters:
+#   $1 - Screen index
+#   $2 - Current active screen index
+#   $3 - Line length in characters
+# Returns: ━━━ (completed screens) or ─── (pending screens)
 _nav_line() {
   local idx="$1" current="$2" len="$3"
   if [[ $idx -lt $current ]]; then
@@ -61,8 +76,9 @@ _nav_line() {
   fi
 }
 
-# Render the screen navigation header with wizard-style dots
-# Uses project colors: CLR_CYAN (blue) for completed, CLR_ORANGE for active
+# Renders the screen navigation header with wizard-style dots.
+# Shows: screen names row + dots with connecting lines row.
+# Uses: CLR_CYAN for completed, CLR_ORANGE for active, CLR_GRAY for pending.
 _wiz_render_nav() {
   local current=$WIZ_CURRENT_SCREEN
   local total=${#WIZ_SCREENS[@]}
@@ -129,8 +145,9 @@ _wiz_render_nav() {
 # Key reading helper
 # =============================================================================
 
-# Read a single key press (handles arrow keys as escape sequences)
-# Returns: Key name in WIZ_KEY variable
+# Reads a single key press with arrow key support.
+# Handles ANSI escape sequences for arrow keys.
+# Side effects: Sets WIZ_KEY to: up, down, left, right, enter, quit, esc, or key char
 _wiz_read_key() {
   local key
   IFS= read -rsn1 key
@@ -160,23 +177,32 @@ _wiz_read_key() {
 # UI rendering helpers
 # =============================================================================
 
-# Hide/show cursor
+# Hides terminal cursor.
 _wiz_hide_cursor() { printf '\033[?25l'; }
+
+# Shows terminal cursor.
 _wiz_show_cursor() { printf '\033[?25h'; }
 
-# Blank line helper
+# Outputs a blank line.
 _wiz_blank_line() { printf '\n'; }
 
-# Text styling helpers
+# Outputs red error-styled text.
 _wiz_error() { gum style --foreground "$HEX_RED" "$@"; }
+
+# Outputs yellow warning-styled text.
 _wiz_warn() { gum style --foreground "$HEX_YELLOW" "$@"; }
+
+# Outputs cyan info-styled text.
 _wiz_info() { gum style --foreground "$HEX_CYAN" "$@"; }
+
+# Outputs gray dimmed text.
 _wiz_dim() { gum style --foreground "$HEX_GRAY" "$@"; }
 
-# Displays a description block for menu screens.
-# Outputs all lines at once to avoid line-by-line rendering.
-# Supports {{cyan:text}} syntax for inline highlighting.
-# Usage: _wiz_description "Line 1" "Line 2" "" "Line 4 with {{cyan:highlight}}"
+# Displays a description block for menu screens with inline color support.
+# Outputs all lines at once for flicker-free rendering.
+# Parameters:
+#   $@ - Lines to display, supports {{cyan:text}} syntax for highlights
+# Usage: _wiz_description "Line 1" "Line 2" "" "Line with {{cyan:highlight}}"
 _wiz_description() {
   local output=""
   for line in "$@"; do
@@ -188,7 +214,8 @@ _wiz_description() {
   printf '%b' "$output"
 }
 
-# Gum component wrappers with consistent styling
+# Gum confirm wrapper with consistent project styling.
+# Parameters: Same as gum confirm
 _wiz_confirm() {
   gum confirm "$@" \
     --padding "0 0 0 1" \
@@ -196,6 +223,8 @@ _wiz_confirm() {
     --selected.background "$HEX_ORANGE"
 }
 
+# Gum choose wrapper for single-select menus with project styling.
+# Parameters: Same as gum choose
 _wiz_choose() {
   gum choose \
     --padding "0 0 0 1" \
@@ -208,7 +237,9 @@ _wiz_choose() {
     "$@"
 }
 
-# Multi-select checkbox variant (for feature toggles)
+# Gum choose wrapper for multi-select checkboxes (feature toggles).
+# Uses no-limit mode with checkmark indicators.
+# Parameters: Same as gum choose
 _wiz_choose_multi() {
   gum choose \
     --no-limit \
@@ -224,6 +255,8 @@ _wiz_choose_multi() {
     "$@"
 }
 
+# Gum input wrapper for text entry with project styling.
+# Parameters: Same as gum input
 _wiz_input() {
   gum input \
     --padding "0 0 0 1" \
@@ -233,6 +266,8 @@ _wiz_input() {
     "$@"
 }
 
+# Gum filter wrapper for searchable lists with project styling.
+# Parameters: Same as gum filter
 _wiz_filter() {
   gum filter \
     --padding "0 0 0 1" \
@@ -246,20 +281,23 @@ _wiz_filter() {
     "$@"
 }
 
-# Clear screen in alternate buffer (faster than clear)
+# Clears screen using ANSI escape (faster than clear command).
 _wiz_clear() {
   printf '\033[H\033[J'
 }
 
-# Clear screen and show banner (common pattern in editors)
+# Clears screen and shows banner for edit screens.
+# Common pattern used at start of field editor functions.
 _wiz_start_edit() {
   _wiz_clear
   show_banner
   _wiz_blank_line
 }
 
-# Show input screen with optional description
-# Usage: _wiz_input_screen "Description line 1" "Description line 2" ...
+# Prepares screen for input with optional description lines.
+# Clears screen, shows banner, displays description, and adds footer.
+# Parameters:
+#   $@ - Optional description lines to display above input
 _wiz_input_screen() {
   _wiz_start_edit
   # Show description lines if provided
@@ -324,8 +362,9 @@ _wiz_config_complete() {
 # Display value formatters
 # =============================================================================
 
-# Build all display values for current state
-# Sets global _DSP_* variables for use in render functions
+# Builds formatted display values from current configuration state.
+# Converts internal values to user-friendly display strings.
+# Side effects: Sets _DSP_* global variables for menu rendering
 _wiz_build_display_values() {
   # Password
   _DSP_PASS=""

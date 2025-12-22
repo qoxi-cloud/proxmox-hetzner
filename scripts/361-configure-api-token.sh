@@ -4,6 +4,9 @@
 # Configure Proxmox API Token
 # =============================================================================
 
+# Creates privileged Proxmox API token for automation (Terraform, Ansible).
+# Token has Administrator role with no expiration.
+# Side effects: Sets API_TOKEN_VALUE, API_TOKEN_ID globals, writes to /tmp
 create_api_token() {
   [[ $INSTALL_API_TOKEN != "yes" ]] && return 0
 

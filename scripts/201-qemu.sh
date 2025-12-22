@@ -126,7 +126,8 @@ _kill_processes_by_pattern() {
   pkill -9 "$pattern" 2>/dev/null || true
 }
 
-# Internal: stops mdadm RAID arrays.
+# Stops all mdadm RAID arrays to release drive locks.
+# Iterates over /dev/md* devices if mdadm is available.
 _stop_mdadm_arrays() {
   if ! command -v mdadm &>/dev/null; then
     return 0
@@ -143,7 +144,8 @@ _stop_mdadm_arrays() {
   done
 }
 
-# Internal: deactivates LVM volume groups.
+# Deactivates all LVM volume groups to release drive locks.
+# Uses vgchange -an to deactivate all VGs.
 _deactivate_lvm() {
   if ! command -v vgchange &>/dev/null; then
     return 0
@@ -160,7 +162,8 @@ _deactivate_lvm() {
   fi
 }
 
-# Internal: unmounts filesystems on target drives.
+# Unmounts all filesystems on target drives (DRIVES global).
+# Uses findmnt for efficient mount point detection.
 _unmount_drive_filesystems() {
   [[ -z ${DRIVES[*]} ]] && return 0
 
@@ -186,7 +189,8 @@ _unmount_drive_filesystems() {
   done
 }
 
-# Internal: kills processes holding drives open.
+# Kills processes holding drives open using lsof/fuser.
+# Iterates over DRIVES global array.
 _kill_drive_holders() {
   [[ -z ${DRIVES[*]} ]] && return 0
 

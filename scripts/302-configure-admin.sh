@@ -7,7 +7,10 @@
 # SSH key is NOT in answer.toml - it's deployed here directly to admin user
 # =============================================================================
 
-# Configuration function for admin user
+# Creates admin user with full privileges on remote system.
+# Sets up: home dir, password, SSH key, passwordless sudo, Proxmox role.
+# Disables root@pam in Proxmox UI for security.
+# Uses globals: ADMIN_USERNAME, ADMIN_PASSWORD, SSH_PUBLIC_KEY
 _config_admin_user() {
   # Create user with home directory and bash shell, add to sudo group
   # shellcheck disable=SC2016
