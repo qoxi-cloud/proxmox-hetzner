@@ -25,7 +25,7 @@ _install_yazi() {
 _config_yazi() {
   # Create config directory for admin user
   # shellcheck disable=SC2016
-  remote_exec 'mkdir -p /home/'"'$ADMIN_USERNAME'"'/.config/yazi' || {
+  remote_exec 'mkdir -p /home/$ADMIN_USERNAME/.config/yazi' || {
     log "ERROR: Failed to create yazi config directory"
     return 1
   }
@@ -38,7 +38,7 @@ _config_yazi() {
 
   # Set correct ownership
   # shellcheck disable=SC2016
-  remote_exec 'chown -R '"'$ADMIN_USERNAME:$ADMIN_USERNAME'"' /home/'"'$ADMIN_USERNAME'"'/.config/yazi' || {
+  remote_exec 'chown -R $ADMIN_USERNAME:$ADMIN_USERNAME /home/$ADMIN_USERNAME/.config/yazi' || {
     log "ERROR: Failed to set yazi config ownership"
     return 1
   }

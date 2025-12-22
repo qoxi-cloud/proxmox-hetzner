@@ -56,10 +56,10 @@ _configure_fastfetch() {
 _configure_bat() {
   remote_exec "ln -sf /usr/bin/batcat /usr/local/bin/bat" || return 1
   # shellcheck disable=SC2016
-  remote_exec 'mkdir -p /home/'"'$ADMIN_USERNAME'"'/.config/bat' || return 1
+  remote_exec 'mkdir -p /home/$ADMIN_USERNAME/.config/bat' || return 1
   remote_copy "templates/bat-config" "/home/${ADMIN_USERNAME}/.config/bat/config" || return 1
   # shellcheck disable=SC2016
-  remote_exec 'chown -R '"'$ADMIN_USERNAME:$ADMIN_USERNAME'"' /home/'"'$ADMIN_USERNAME'"'/.config/bat' || return 1
+  remote_exec 'chown -R $ADMIN_USERNAME:$ADMIN_USERNAME /home/$ADMIN_USERNAME/.config/bat' || return 1
 }
 
 # Configures ZSH files and default shell for admin user
@@ -67,9 +67,9 @@ _configure_zsh_files() {
   remote_copy "templates/zshrc" "/home/${ADMIN_USERNAME}/.zshrc" || return 1
   remote_copy "templates/p10k.zsh" "/home/${ADMIN_USERNAME}/.p10k.zsh" || return 1
   # shellcheck disable=SC2016
-  remote_exec 'chown '"'$ADMIN_USERNAME:$ADMIN_USERNAME'"' /home/'"'$ADMIN_USERNAME'"'/.zshrc /home/'"'$ADMIN_USERNAME'"'/.p10k.zsh' || return 1
+  remote_exec 'chown $ADMIN_USERNAME:$ADMIN_USERNAME /home/$ADMIN_USERNAME/.zshrc /home/$ADMIN_USERNAME/.p10k.zsh' || return 1
   # shellcheck disable=SC2016
-  remote_exec 'chsh -s /bin/zsh '"'$ADMIN_USERNAME'"'' || return 1
+  remote_exec 'chsh -s /bin/zsh '"$ADMIN_USERNAME"'' || return 1
 }
 
 # Configures chrony NTP service
@@ -201,22 +201,22 @@ _config_shell() {
             set -e
             export RUNZSH=no
             export CHSH=no
-            export HOME=/home/'"'$ADMIN_USERNAME'"'
-            su - '"'$ADMIN_USERNAME'"' -c "sh -c \"\$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)\" \"\" --unattended"
+            export HOME=/home/'"$ADMIN_USERNAME"'
+            su - '"$ADMIN_USERNAME"' -c "sh -c \"\$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)\" \"\" --unattended"
         ' "Oh-My-Zsh installed"
 
     # Parallel git clones for theme and plugins (all independent after Oh-My-Zsh)
     # shellcheck disable=SC2016 # Single quotes intentional - executed on remote system
     remote_run "Installing ZSH theme and plugins" '
             set -e
-            git clone --depth=1 https://github.com/romkatv/powerlevel10k.git /home/'"'$ADMIN_USERNAME'"'/.oh-my-zsh/custom/themes/powerlevel10k &
+            git clone --depth=1 https://github.com/romkatv/powerlevel10k.git /home/$ADMIN_USERNAME/.oh-my-zsh/custom/themes/powerlevel10k &
             pid1=$!
-            git clone --depth=1 https://github.com/zsh-users/zsh-autosuggestions /home/'"'$ADMIN_USERNAME'"'/.oh-my-zsh/custom/plugins/zsh-autosuggestions &
+            git clone --depth=1 https://github.com/zsh-users/zsh-autosuggestions /home/$ADMIN_USERNAME/.oh-my-zsh/custom/plugins/zsh-autosuggestions &
             pid2=$!
-            git clone --depth=1 https://github.com/zsh-users/zsh-syntax-highlighting /home/'"'$ADMIN_USERNAME'"'/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting &
+            git clone --depth=1 https://github.com/zsh-users/zsh-syntax-highlighting /home/$ADMIN_USERNAME/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting &
             pid3=$!
             wait $pid1 $pid2 $pid3
-            chown -R '"'$ADMIN_USERNAME:$ADMIN_USERNAME'"' /home/'"'$ADMIN_USERNAME'"'/.oh-my-zsh
+            chown -R $ADMIN_USERNAME:$ADMIN_USERNAME /home/$ADMIN_USERNAME/.oh-my-zsh
         ' "ZSH theme and plugins installed"
 
     run_with_progress "Configuring ZSH" "ZSH with Powerlevel10k configured" _configure_zsh_files

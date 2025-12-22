@@ -11,32 +11,32 @@
 _config_admin_user() {
   # Create user with home directory and bash shell, add to sudo group
   # shellcheck disable=SC2016
-  remote_exec 'useradd -m -s /bin/bash -G sudo '"'$ADMIN_USERNAME'"'' || return 1
+  remote_exec 'useradd -m -s /bin/bash -G sudo '"$ADMIN_USERNAME"'' || return 1
 
   # Set admin password
   # shellcheck disable=SC2016
-  remote_exec 'echo '"'${ADMIN_USERNAME}:${ADMIN_PASSWORD}'"' | chpasswd' || return 1
+  remote_exec 'echo '"${ADMIN_USERNAME}:${ADMIN_PASSWORD}"' | chpasswd' || return 1
 
   # Set up SSH directory for admin
   # shellcheck disable=SC2016
-  remote_exec 'mkdir -p /home/'"'$ADMIN_USERNAME'"'/.ssh && chmod 700 /home/'"'$ADMIN_USERNAME'"'/.ssh' || return 1
+  remote_exec 'mkdir -p /home/$ADMIN_USERNAME/.ssh && chmod 700 /home/$ADMIN_USERNAME/.ssh' || return 1
 
   # Deploy SSH key directly to admin user (not copied from root - root has no SSH access)
   # Escape single quotes in the key for shell safety
   local escaped_key="${SSH_PUBLIC_KEY//\'/\'\\\'\'}"
-  remote_exec "echo '${escaped_key}' > /home/'$ADMIN_USERNAME'/.ssh/authorized_keys" || return 1
+  remote_exec "echo '${escaped_key}' > /home/${ADMIN_USERNAME}/.ssh/authorized_keys" || return 1
 
   # Set correct permissions and ownership
   # shellcheck disable=SC2016
-  remote_exec 'chmod 600 /home/'"'$ADMIN_USERNAME'"'/.ssh/authorized_keys' || return 1
+  remote_exec 'chmod 600 /home/$ADMIN_USERNAME/.ssh/authorized_keys' || return 1
   # shellcheck disable=SC2016
-  remote_exec 'chown -R '"'$ADMIN_USERNAME:$ADMIN_USERNAME'"' /home/'"'$ADMIN_USERNAME'"'/.ssh' || return 1
+  remote_exec 'chown -R $ADMIN_USERNAME:$ADMIN_USERNAME /home/$ADMIN_USERNAME/.ssh' || return 1
 
   # Configure passwordless sudo for admin
   # shellcheck disable=SC2016
-  remote_exec 'echo '"'$ADMIN_USERNAME ALL=(ALL) NOPASSWD:ALL'"' > /etc/sudoers.d/'"'$ADMIN_USERNAME'"'' || return 1
+  remote_exec 'echo '"$ADMIN_USERNAME"' ALL=(ALL) NOPASSWD:ALL > /etc/sudoers.d/'"$ADMIN_USERNAME"'' || return 1
   # shellcheck disable=SC2016
-  remote_exec 'chmod 440 /etc/sudoers.d/'"'$ADMIN_USERNAME'"'' || return 1
+  remote_exec 'chmod 440 /etc/sudoers.d/'"$ADMIN_USERNAME"'' || return 1
 
   # Grant Proxmox UI access to admin user
   # Create PAM user in Proxmox (will auth against Linux PAM)
