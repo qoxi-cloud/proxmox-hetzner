@@ -111,10 +111,15 @@ format_wizard_header() {
   # Calculate line segments: left line + dot + right line = line_width
   # Dot takes 1 char, so each side = (line_width - 1) / 2
   local half=$(((line_width - 1) / 2))
-  local left_line right_line
-  # Use same line styles as wizard: ━ for completed (left), ─ for pending (right)
-  left_line=$(printf '%*s' "$half" '' | tr ' ' '━')
-  right_line=$(printf '%*s' "$((line_width - 1 - half))" '' | tr ' ' '─')
+  local left_line="" right_line="" i
+
+  # Use loop instead of tr (tr breaks multi-byte unicode chars on macOS)
+  for ((i = 0; i < half; i++)); do
+    left_line+="━"
+  done
+  for ((i = 0; i < line_width - 1 - half; i++)); do
+    right_line+="─"
+  done
 
   # Center title above the dot (dot is at position 'half' from line start)
   local title_len=${#title}
