@@ -17,7 +17,7 @@ readonly HEX_GRAY="#585858"
 readonly HEX_WHITE="#ffffff"
 readonly HEX_GOLD="#d7af5f"
 readonly HEX_NONE="7"
-readonly VERSION="2.0.497-pr.21"
+readonly VERSION="2.0.498-pr.21"
 readonly TERM_WIDTH=80
 readonly BANNER_WIDTH=51
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-installer}"
@@ -2288,8 +2288,9 @@ left_pad=$(((TERM_WIDTH-content_width)/2))
 local footer_text
 footer_text="$CLR_GRAY[$CLR_ORANGE←→$CLR_GRAY] toggle  [${CLR_ORANGE}Enter$CLR_GRAY] submit  [${CLR_ORANGE}Y$CLR_GRAY] yes  [${CLR_ORANGE}N$CLR_GRAY] no$CLR_RESET"
 _wiz_blank_line
+_wiz_blank_line
 printf '%s\n' "$(_wiz_center "$footer_text")"
-tput cuu 4
+tput cuu 5
 gum confirm "$prompt" "$@" \
 --no-show-help \
 --padding "0 0 0 $left_pad" \
