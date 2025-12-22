@@ -17,7 +17,7 @@ readonly HEX_GRAY="#585858"
 readonly HEX_WHITE="#ffffff"
 readonly HEX_GOLD="#d7af5f"
 readonly HEX_NONE="7"
-readonly VERSION="2.0.482-pr.21"
+readonly VERSION="2.0.483-pr.21"
 readonly TERM_WIDTH=80
 readonly BANNER_WIDTH=51
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-installer}"
@@ -1147,6 +1147,27 @@ return 0
 parallel_mark_configured(){
 local feature="$1"
 [[ -n ${PARALLEL_RESULT_DIR:-} ]]&&printf '%s' "$feature" >>"$PARALLEL_RESULT_DIR/ran_$$"
+}
+deploy_user_config(){
+local template="$1"
+local relative_path="$2"
+local dest="/home/$ADMIN_USERNAME/$relative_path"
+local dest_dir
+dest_dir="$(dirname "$dest")"
+if [[ $dest_dir != "/home/$ADMIN_USERNAME" ]];then
+remote_exec "mkdir -p '$dest_dir'"||{
+log "ERROR: Failed to create directory $dest_dir"
+return 1
+}
+fi
+remote_copy "$template" "$dest"||{
+log "ERROR: Failed to copy $template to $dest"
+return 1
+}
+remote_exec "chown $ADMIN_USERNAME:$ADMIN_USERNAME '$dest'"||{
+log "ERROR: Failed to set ownership on $dest"
+return 1
+}
 }
 run_with_progress(){
 local message="$1"
@@ -4446,14 +4467,11 @@ remote_exec "grep -q 'profile.d/fastfetch.sh' /etc/bash.bashrc || echo '[ -f /et
 }
 _configure_bat(){
 remote_exec "ln -sf /usr/bin/batcat /usr/local/bin/bat"||return 1
-remote_exec 'mkdir -p /home/$ADMIN_USERNAME/.config/bat'||return 1
-remote_copy "templates/bat-config" "/home/$ADMIN_USERNAME/.config/bat/config"||return 1
-remote_exec 'chown -R $ADMIN_USERNAME:$ADMIN_USERNAME /home/$ADMIN_USERNAME/.config/bat'||return 1
+deploy_user_config "templates/bat-config" ".config/bat/config"||return 1
 }
 _configure_zsh_files(){
-remote_copy "templates/zshrc" "/home/$ADMIN_USERNAME/.zshrc"||return 1
-remote_copy "templates/p10k.zsh" "/home/$ADMIN_USERNAME/.p10k.zsh"||return 1
-remote_exec 'chown $ADMIN_USERNAME:$ADMIN_USERNAME /home/$ADMIN_USERNAME/.zshrc /home/$ADMIN_USERNAME/.p10k.zsh'||return 1
+deploy_user_config "templates/zshrc" ".zshrc"||return 1
+deploy_user_config "templates/p10k.zsh" ".p10k.zsh"||return 1
 remote_exec 'chsh -s /bin/zsh '"$ADMIN_USERNAME"''||return 1
 }
 _configure_chrony(){
@@ -4999,16 +5017,8 @@ remote_run "Installing yazi" '
   ' "Yazi installed"
 }
 _config_yazi(){
-remote_exec 'mkdir -p /home/$ADMIN_USERNAME/.config/yazi'||{
-log "ERROR: Failed to create yazi config directory"
-return 1
-}
-remote_copy "templates/yazi-theme.toml" "/home/$ADMIN_USERNAME/.config/yazi/theme.toml"||{
+deploy_user_config "templates/yazi-theme.toml" ".config/yazi/theme.toml"||{
 log "ERROR: Failed to deploy yazi theme"
-return 1
-}
-remote_exec 'chown -R $ADMIN_USERNAME:$ADMIN_USERNAME /home/$ADMIN_USERNAME/.config/yazi'||{
-log "ERROR: Failed to set yazi config ownership"
 return 1
 }
 }
