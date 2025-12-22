@@ -17,7 +17,7 @@ readonly HEX_GRAY="#585858"
 readonly HEX_WHITE="#ffffff"
 readonly HEX_GOLD="#d7af5f"
 readonly HEX_NONE="7"
-readonly VERSION="2.0.503-pr.21"
+readonly VERSION="2.0.504-pr.21"
 readonly TERM_WIDTH=80
 readonly BANNER_WIDTH=51
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-installer}"
@@ -2269,10 +2269,10 @@ fi
 _wiz_hide_cursor(){ printf '\033[?25l';}
 _wiz_show_cursor(){ printf '\033[?25h';}
 _wiz_blank_line(){ printf '\n';}
-_wiz_error(){ gum style --foreground "$HEX_RED" "$@";}
-_wiz_warn(){ gum style --foreground "$HEX_YELLOW" "$@";}
-_wiz_info(){ gum style --foreground "$HEX_CYAN" "$@";}
-_wiz_dim(){ gum style --foreground "$HEX_GRAY" "$@";}
+_wiz_error(){ gum style --foreground "$HEX_RED" "$WIZ_NOTIFY_INDENT$*";}
+_wiz_warn(){ gum style --foreground "$HEX_YELLOW" "$WIZ_NOTIFY_INDENT$*";}
+_wiz_info(){ gum style --foreground "$HEX_CYAN" "$WIZ_NOTIFY_INDENT$*";}
+_wiz_dim(){ gum style --foreground "$HEX_GRAY" "$WIZ_NOTIFY_INDENT$*";}
 _wiz_description(){
 local output=""
 for line in "$@";do
@@ -2758,7 +2758,7 @@ case "$choice" in
 PASSWORD_GENERATED="yes"
 _wiz_start_edit
 _wiz_hide_cursor
-_wiz_warn "${WIZ_NOTIFY_INDENT}Please save this password - it will be required for login"
+_wiz_warn "Please save this password - it will be required for login"
 _wiz_blank_line
 printf '%s\n' "$WIZ_NOTIFY_INDENT${CLR_CYAN}Generated password:$CLR_RESET $CLR_ORANGE$NEW_ROOT_PASSWORD$CLR_RESET"
 _wiz_blank_line
@@ -3475,7 +3475,7 @@ detected_key=$(get_rescue_ssh_key)
 if [[ -n $detected_key ]];then
 parse_ssh_key "$detected_key"
 _wiz_hide_cursor
-_wiz_warn "${WIZ_NOTIFY_INDENT}Detected SSH key from Rescue System:"
+_wiz_warn "Detected SSH key from Rescue System:"
 _wiz_blank_line
 printf '%s\n' "$WIZ_NOTIFY_INDENT${CLR_GRAY}Type:$CLR_RESET    $SSH_KEY_TYPE"
 printf '%s\n' "$WIZ_NOTIFY_INDENT${CLR_GRAY}Key:$CLR_RESET     $SSH_KEY_SHORT"
@@ -3560,7 +3560,7 @@ case "$choice" in
 "Generate password")ADMIN_PASSWORD=$(generate_password "$DEFAULT_PASSWORD_LENGTH")
 _wiz_start_edit
 _wiz_hide_cursor
-_wiz_warn "${WIZ_NOTIFY_INDENT}Please save this password - it will be required for sudo and Proxmox UI"
+_wiz_warn "Please save this password - it will be required for sudo and Proxmox UI"
 _wiz_blank_line
 printf '%s\n' "$WIZ_NOTIFY_INDENT${CLR_CYAN}Generated admin password:$CLR_RESET $CLR_ORANGE$ADMIN_PASSWORD$CLR_RESET"
 _wiz_blank_line
@@ -3656,11 +3656,11 @@ _rebuild_pool_disks
 if [[ ${#ZFS_POOL_DISKS[@]} -eq 0 ]];then
 _wiz_start_edit
 _wiz_hide_cursor
-_wiz_error "$WIZ_NOTIFY_INDENT✗ Cannot use this boot disk: No disks left for ZFS pool"
+_wiz_error "✗ Cannot use this boot disk: No disks left for ZFS pool"
 _wiz_blank_line
-_wiz_dim "${WIZ_NOTIFY_INDENT}At least one disk must remain for the ZFS pool."
+_wiz_dim "At least one disk must remain for the ZFS pool."
 _wiz_blank_line
-_wiz_dim "${WIZ_NOTIFY_INDENT}Press any key to continue..."
+_wiz_dim "Press any key to continue..."
 read -r -n 1
 BOOT_DISK="$old_boot_disk"
 _rebuild_pool_disks
