@@ -17,7 +17,7 @@ readonly HEX_GRAY="#585858"
 readonly HEX_WHITE="#ffffff"
 readonly HEX_GOLD="#d7af5f"
 readonly HEX_NONE="7"
-readonly VERSION="2.0.489-pr.21"
+readonly VERSION="2.0.490-pr.21"
 readonly TERM_WIDTH=80
 readonly BANNER_WIDTH=51
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-installer}"
@@ -1168,7 +1168,7 @@ return 0
 }
 parallel_mark_configured(){
 local feature="$1"
-[[ -n ${PARALLEL_RESULT_DIR:-} ]]&&printf '%s' "$feature" >>"$PARALLEL_RESULT_DIR/ran_$$"
+[[ -n ${PARALLEL_RESULT_DIR:-} ]]&&printf '%s' "$feature" >"$PARALLEL_RESULT_DIR/ran_$BASHPID"
 }
 deploy_user_config(){
 local template="$1"
