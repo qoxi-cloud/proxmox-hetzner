@@ -17,7 +17,7 @@ readonly HEX_GRAY="#585858"
 readonly HEX_WHITE="#ffffff"
 readonly HEX_GOLD="#d7af5f"
 readonly HEX_NONE="7"
-readonly VERSION="2.0.487-pr.21"
+readonly VERSION="2.0.488-pr.21"
 readonly TERM_WIDTH=80
 readonly BANNER_WIDTH=51
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-installer}"
@@ -2061,13 +2061,15 @@ for ((i=0; i<component_lines; i++));do
 _wiz_blank_line
 done
 _wiz_blank_line
+local footer_text
 case "$type" in
-filter)printf '%s\n' "$CLR_GRAY[$CLR_ORANGE↑↓$CLR_GRAY] navigate  [${CLR_ORANGE}Enter$CLR_GRAY] select  [${CLR_ORANGE}Esc$CLR_GRAY] cancel$CLR_RESET"
+filter)footer_text="$CLR_GRAY[$CLR_ORANGE↑↓$CLR_GRAY] navigate  [${CLR_ORANGE}Enter$CLR_GRAY] select  [${CLR_ORANGE}Esc$CLR_GRAY] cancel$CLR_RESET"
 ;;
-checkbox)printf '%s\n' "$CLR_GRAY[$CLR_ORANGE↑↓$CLR_GRAY] navigate  [${CLR_ORANGE}Space$CLR_GRAY] toggle  [${CLR_ORANGE}Enter$CLR_GRAY] confirm  [${CLR_ORANGE}Esc$CLR_GRAY] cancel$CLR_RESET"
+checkbox)footer_text="$CLR_GRAY[$CLR_ORANGE↑↓$CLR_GRAY] navigate  [${CLR_ORANGE}Space$CLR_GRAY] toggle  [${CLR_ORANGE}Enter$CLR_GRAY] confirm  [${CLR_ORANGE}Esc$CLR_GRAY] cancel$CLR_RESET"
 ;;
-*)printf '%s\n' "$CLR_GRAY[${CLR_ORANGE}Enter$CLR_GRAY] confirm  [${CLR_ORANGE}Esc$CLR_GRAY] cancel$CLR_RESET"
+*)footer_text="$CLR_GRAY[${CLR_ORANGE}Enter$CLR_GRAY] confirm  [${CLR_ORANGE}Esc$CLR_GRAY] cancel$CLR_RESET"
 esac
+printf '%s\n' "$(_wiz_center "$footer_text")"
 tput cuu $((component_lines+2))
 }
 _validate_config(){
@@ -2126,6 +2128,17 @@ done
 WIZ_SCREENS=("Basic" "Proxmox" "Network" "Storage" "Services" "Access")
 WIZ_CURRENT_SCREEN=0
 _NAV_COL_WIDTH=10
+_wiz_center(){
+local text="$1"
+local term_width
+term_width=$(tput cols 2>/dev/null||echo 80)
+local visible_text
+visible_text=$(printf '%s' "$text"|sed 's/\x1b\[[0-9;]*m//g')
+local text_len=${#visible_text}
+local padding=$(((term_width-text_len)/2))
+((padding<0))&&padding=0
+printf '%*s%s' "$padding" "" "$text"
+}
 _nav_repeat(){
 local char="$1" count="$2" i
 for ((i=0; i<count; i++));do
@@ -2582,7 +2595,7 @@ nav_hint+="[$left_clr←$CLR_GRAY] prev  "
 nav_hint+="[$CLR_ORANGE↑↓$CLR_GRAY] navigate  [${CLR_ORANGE}Enter$CLR_GRAY] edit  "
 nav_hint+="[$right_clr→$CLR_GRAY] next  "
 nav_hint+="[${start_clr}S$CLR_GRAY] start  [${CLR_ORANGE}Q$CLR_GRAY] quit"
-output+="$CLR_GRAY$nav_hint$CLR_RESET"
+output+="$(_wiz_center "$CLR_GRAY$nav_hint$CLR_RESET")"
 _wiz_clear
 printf '%b' "$output"
 }
@@ -5408,7 +5421,8 @@ _cred_field "API Secret       " "$CLR_ORANGE$API_TOKEN_VALUE$CLR_RESET"
 fi
 fi
 output+="\n"
-output+="$CLR_GRAY[${CLR_ORANGE}Enter$CLR_GRAY] reboot  [${CLR_ORANGE}Q$CLR_GRAY] quit without reboot$CLR_RESET"
+local footer_text="$CLR_GRAY[${CLR_ORANGE}Enter$CLR_GRAY] reboot  [${CLR_ORANGE}Q$CLR_GRAY] quit without reboot$CLR_RESET"
+output+="$(_wiz_center "$footer_text")"
 _wiz_clear
 printf '%b' "$output"
 }
