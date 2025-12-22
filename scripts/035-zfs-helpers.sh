@@ -168,6 +168,14 @@ build_zpool_command() {
       # RAID10: pair up disks for striped mirrors
       # Example: mirror vda vdb mirror vdc vdd
       local vdev_count=${#vdevs[@]}
+      if ((vdev_count < 4)); then
+        log "ERROR: raid10 requires at least 4 vdevs, got $vdev_count"
+        return 1
+      fi
+      if ((vdev_count % 2 != 0)); then
+        log "ERROR: raid10 requires even number of vdevs, got $vdev_count"
+        return 1
+      fi
       for ((i = 0; i < vdev_count; i += 2)); do
         cmd+=" mirror ${vdevs[$i]} ${vdevs[$((i + 1))]}"
       done
