@@ -17,7 +17,7 @@ readonly HEX_GRAY="#585858"
 readonly HEX_WHITE="#ffffff"
 readonly HEX_GOLD="#d7af5f"
 readonly HEX_NONE="7"
-readonly VERSION="2.0.485-pr.21"
+readonly VERSION="2.0.487-pr.21"
 readonly TERM_WIDTH=80
 readonly BANNER_WIDTH=51
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-installer}"
@@ -107,6 +107,18 @@ readonly WIZ_PASSWORD_OPTIONS="Manual entry
 Generate password"
 readonly WIZ_SSH_KEY_OPTIONS="Use detected key
 Enter different key"
+readonly WIZ_FEATURES_SECURITY="apparmor
+auditd
+aide
+chkrootkit
+lynis
+needrestart"
+readonly WIZ_FEATURES_MONITORING="vnstat
+netdata
+promtail"
+readonly WIZ_FEATURES_TOOLS="yazi
+nvim
+ringbuffer"
 BOOT_DISK=""
 ZFS_POOL_DISKS=()
 SYSTEM_UTILITIES="btop iotop ncdu tmux pigz smartmontools jq bat fastfetch sysstat nethogs ethtool"
@@ -2251,6 +2263,20 @@ gum choose \
 --no-show-help \
 "$@"
 }
+_wiz_choose_multi(){
+gum choose \
+--no-limit \
+--padding "0 0 0 1" \
+--header.foreground "$HEX_CYAN" \
+--cursor "$CLR_ORANGE›$CLR_RESET " \
+--cursor.foreground "$HEX_NONE" \
+--cursor-prefix "◦ " \
+--selected.foreground "$HEX_WHITE" \
+--selected-prefix "$CLR_CYAN✓$CLR_RESET " \
+--unselected-prefix "◦ " \
+--no-show-help \
+"$@"
+}
 _wiz_input(){
 gum input \
 --padding "0 0 0 1" \
@@ -2675,9 +2701,7 @@ while true;do
 _wiz_start_edit
 _show_input_footer "filter" 3
 local choice
-choice=$(printf '%s\n' "$WIZ_PASSWORD_OPTIONS"|_wiz_choose \
---header="Password:")
-if [[ -z $choice ]];then
+if ! choice=$(printf '%s\n' "$WIZ_PASSWORD_OPTIONS"|_wiz_choose --header="Password:");then
 return
 fi
 case "$choice" in
@@ -2719,39 +2743,39 @@ _edit_timezone(){
 _wiz_start_edit
 _show_input_footer "filter" 6
 local selected
-selected=$(echo "$WIZ_TIMEZONES"|_wiz_filter --prompt "Timezone: ")
-if [[ -n $selected ]];then
+if ! selected=$(echo "$WIZ_TIMEZONES"|_wiz_filter --prompt "Timezone: ");then
+return
+fi
 TIMEZONE="$selected"
 local country_code="${TZ_TO_COUNTRY[$selected]:-}"
 if [[ -n $country_code ]];then
 COUNTRY="$country_code"
 _update_locale_from_country
 fi
-fi
 }
 _edit_keyboard(){
 _wiz_start_edit
 _show_input_footer "filter" 6
 local selected
-selected=$(echo "$WIZ_KEYBOARD_LAYOUTS"|_wiz_filter --prompt "Keyboard: ")
-if [[ -n $selected ]];then
-KEYBOARD="$selected"
+if ! selected=$(echo "$WIZ_KEYBOARD_LAYOUTS"|_wiz_filter --prompt "Keyboard: ");then
+return
 fi
+KEYBOARD="$selected"
 }
 _edit_country(){
 _wiz_start_edit
 _show_input_footer "filter" 6
 local selected
-selected=$(echo "$WIZ_COUNTRIES"|_wiz_filter --prompt "Country: ")
-if [[ -n $selected ]];then
+if ! selected=$(echo "$WIZ_COUNTRIES"|_wiz_filter --prompt "Country: ");then
+return
+fi
 COUNTRY="$selected"
 _update_locale_from_country
-fi
 }
 _edit_iso_version(){
 _wiz_start_edit
 _wiz_description \
-"Proxmox VE version to install:" \
+" Proxmox VE version to install:" \
 "" \
 "  Latest version recommended for new installations." \
 ""
@@ -2765,14 +2789,15 @@ return
 fi
 _show_input_footer "filter" 6
 local selected
-selected=$(printf '%s\n' "$iso_list"|_wiz_choose \
---header="Proxmox Version:")
-[[ -n $selected ]]&&PROXMOX_ISO_VERSION="$selected"
+if ! selected=$(printf '%s\n' "$iso_list"|_wiz_choose --header="Proxmox Version:");then
+return
+fi
+PROXMOX_ISO_VERSION="$selected"
 }
 _edit_repository(){
 _wiz_start_edit
 _wiz_description \
-"Proxmox VE package repository:" \
+" Proxmox VE package repository:" \
 "" \
 "  {{cyan:No-subscription}}: Free updates, community tested" \
 "  {{cyan:Enterprise}}:      Stable updates, requires license" \
@@ -2780,9 +2805,9 @@ _wiz_description \
 ""
 _show_input_footer "filter" 4
 local selected
-selected=$(printf '%s\n' "$WIZ_REPO_TYPES"|_wiz_choose \
---header="Repository:")
-if [[ -n $selected ]];then
+if ! selected=$(printf '%s\n' "$WIZ_REPO_TYPES"|_wiz_choose --header="Repository:");then
+return
+fi
 local repo_type=""
 case "$selected" in
 "No-subscription (free)")repo_type="no-subscription";;
@@ -2801,7 +2826,6 @@ PVE_SUBSCRIPTION_KEY="$sub_key"
 else
 PVE_SUBSCRIPTION_KEY=""
 fi
-fi
 }
 _edit_interface(){
 _wiz_start_edit
@@ -2810,14 +2834,15 @@ local available_interfaces=${AVAILABLE_INTERFACES:-$INTERFACE_NAME}
 local footer_size=$((interface_count+1))
 _show_input_footer "filter" "$footer_size"
 local selected
-selected=$(printf '%s\n' "$available_interfaces"|_wiz_choose \
---header="Network Interface:")
-[[ -n $selected ]]&&INTERFACE_NAME="$selected"
+if ! selected=$(printf '%s\n' "$available_interfaces"|_wiz_choose --header="Network Interface:");then
+return
+fi
+INTERFACE_NAME="$selected"
 }
 _edit_bridge_mode(){
 _wiz_start_edit
 _wiz_description \
-"Network bridge configuration for VMs:" \
+" Network bridge configuration for VMs:" \
 "" \
 "  {{cyan:Internal}}: Private network with NAT (10.x.x.x)" \
 "  {{cyan:External}}: VMs get public IPs directly (routed mode)" \
@@ -2825,20 +2850,19 @@ _wiz_description \
 ""
 _show_input_footer "filter" 4
 local selected
-selected=$(printf '%s\n' "$WIZ_BRIDGE_MODES"|_wiz_choose \
---header="Bridge mode:")
-if [[ -n $selected ]];then
+if ! selected=$(printf '%s\n' "$WIZ_BRIDGE_MODES"|_wiz_choose --header="Bridge mode:");then
+return
+fi
 case "$selected" in
 "External bridge")BRIDGE_MODE="external";;
 "Internal NAT")BRIDGE_MODE="internal";;
 "Both")BRIDGE_MODE="both"
 esac
-fi
 }
 _edit_private_subnet(){
 _wiz_start_edit
 _wiz_description \
-"Private network for VMs (NAT to internet):" \
+" Private network for VMs (NAT to internet):" \
 "" \
 "  {{cyan:10.0.0.0/24}}:    Class A private (default)" \
 "  {{cyan:192.168.1.0/24}}: Class C private (home-style)" \
@@ -2846,9 +2870,7 @@ _wiz_description \
 ""
 _show_input_footer "filter" 5
 local selected
-selected=$(printf '%s\n' "$WIZ_PRIVATE_SUBNETS"|_wiz_choose \
---header="Private subnet:")
-if [[ -z $selected ]];then
+if ! selected=$(printf '%s\n' "$WIZ_PRIVATE_SUBNETS"|_wiz_choose --header="Private subnet:");then
 return
 fi
 if [[ $selected == "Custom" ]];then
@@ -2878,15 +2900,16 @@ fi
 _edit_bridge_mtu(){
 _wiz_start_edit
 _wiz_description \
-"MTU for private bridge (VM-to-VM traffic):" \
+" MTU for private bridge (VM-to-VM traffic):" \
 "" \
 "  {{cyan:9000}}:  Jumbo frames (better VM performance)" \
 "  {{cyan:1500}}:  Standard MTU (safe default)" \
 ""
 _show_input_footer "filter" 3
 local selected
-selected=$(printf '%s\n' "$WIZ_BRIDGE_MTU"|_wiz_choose \
---header="Bridge MTU:")
+if ! selected=$(printf '%s\n' "$WIZ_BRIDGE_MTU"|_wiz_choose --header="Bridge MTU:");then
+return
+fi
 case "$selected" in
 "9000 (jumbo frames)")BRIDGE_MTU="9000";;
 "1500 (standard)")BRIDGE_MTU="1500"
@@ -2895,7 +2918,7 @@ esac
 _edit_ipv6(){
 _wiz_start_edit
 _wiz_description \
-"IPv6 network configuration:" \
+" IPv6 network configuration:" \
 "" \
 "  {{cyan:Auto}}:     Use detected IPv6 from provider" \
 "  {{cyan:Manual}}:   Specify custom IPv6 address/gateway" \
@@ -2903,9 +2926,7 @@ _wiz_description \
 ""
 _show_input_footer "filter" 4
 local selected
-selected=$(printf '%s\n' "$WIZ_IPV6_MODES"|_wiz_choose \
---header="IPv6:")
-if [[ -z $selected ]];then
+if ! selected=$(printf '%s\n' "$WIZ_IPV6_MODES"|_wiz_choose --header="IPv6:");then
 return
 fi
 local ipv6_mode=""
@@ -2924,7 +2945,7 @@ local ipv6_addr
 ipv6_addr=$(_wiz_input \
 --placeholder "2001:db8::1/64" \
 --prompt "IPv6 Address: " \
---value "${IPV6_ADDRESS:-${MAIN_IPV6:+$MAIN_IPV6/64}}")
+--value "${IPV6_ADDRESS:-${FIRST_IPV6_CIDR:-$MAIN_IPV6}}")
 if [[ -z $ipv6_addr ]];then
 IPV6_MODE=""
 return
@@ -2969,7 +2990,7 @@ fi
 _edit_firewall(){
 _wiz_start_edit
 _wiz_description \
-"Host firewall (nftables):" \
+" Host firewall (nftables):" \
 "" \
 "  {{cyan:Stealth}}:  Blocks ALL incoming (Tailscale/bridges only)" \
 "  {{cyan:Strict}}:   Allows SSH only (port 22)" \
@@ -2980,9 +3001,9 @@ _wiz_description \
 ""
 _show_input_footer "filter" 5
 local selected
-selected=$(printf '%s\n' "$WIZ_FIREWALL_MODES"|_wiz_choose \
---header="Firewall mode:")
-if [[ -n $selected ]];then
+if ! selected=$(printf '%s\n' "$WIZ_FIREWALL_MODES"|_wiz_choose --header="Firewall mode:");then
+return
+fi
 case "$selected" in
 "Stealth (Tailscale only)")INSTALL_FIREWALL="yes"
 FIREWALL_MODE="stealth"
@@ -2996,12 +3017,11 @@ FIREWALL_MODE="standard"
 "Disabled")INSTALL_FIREWALL="no"
 FIREWALL_MODE=""
 esac
-fi
 }
 _edit_zfs_mode(){
 _wiz_start_edit
 _wiz_description \
-"ZFS RAID level for data pool:" \
+" ZFS RAID level for data pool:" \
 "" \
 "  {{cyan:RAID-0}}:  Max capacity, no redundancy (all disks)" \
 "  {{cyan:RAID-1}}:  Mirror, 50% capacity (2+ disks)" \
@@ -3038,9 +3058,9 @@ local item_count
 item_count=$(wc -l <<<"$options")
 _show_input_footer "filter" "$((item_count+1))"
 local selected
-selected=$(printf '%s\n' "$options"|_wiz_choose \
---header="ZFS mode ($pool_count disks in pool):")
-if [[ -n $selected ]];then
+if ! selected=$(printf '%s\n' "$options"|_wiz_choose --header="ZFS mode ($pool_count disks in pool):");then
+return
+fi
 case "$selected" in
 "Single disk")ZFS_RAID="single";;
 "RAID-0 (striped)")ZFS_RAID="raid0";;
@@ -3050,12 +3070,11 @@ case "$selected" in
 "RAID-Z3 (triple parity)")ZFS_RAID="raidz3";;
 "RAID-10 (striped mirrors)")ZFS_RAID="raid10"
 esac
-fi
 }
 _edit_zfs_arc(){
 _wiz_start_edit
 _wiz_description \
-"ZFS Adaptive Replacement Cache (ARC) memory allocation:" \
+" ZFS Adaptive Replacement Cache (ARC) memory allocation:" \
 "" \
 "  {{cyan:VM-focused}}:      Fixed 4GB for ARC (more RAM for VMs)" \
 "  {{cyan:Balanced}}:        25-40% of RAM based on total size" \
@@ -3063,20 +3082,19 @@ _wiz_description \
 ""
 _show_input_footer "filter" 4
 local selected
-selected=$(printf '%s\n' "$WIZ_ZFS_ARC_MODES"|_wiz_choose \
---header="ZFS ARC memory strategy:")
-if [[ -n $selected ]];then
+if ! selected=$(printf '%s\n' "$WIZ_ZFS_ARC_MODES"|_wiz_choose --header="ZFS ARC memory strategy:");then
+return
+fi
 case "$selected" in
 "VM-focused (4GB fixed)")ZFS_ARC_MODE="vm-focused";;
 "Balanced (25-40% of RAM)")ZFS_ARC_MODE="balanced";;
 "Storage-focused (50% of RAM)")ZFS_ARC_MODE="storage-focused"
 esac
-fi
 }
 _edit_tailscale(){
 _wiz_start_edit
 _wiz_description \
-"Tailscale VPN with stealth mode:" \
+" Tailscale VPN with stealth mode:" \
 "" \
 "  {{cyan:Enabled}}:  Access via Tailscale only (blocks public SSH)" \
 "  {{cyan:Disabled}}: Standard access via public IP" \
@@ -3085,8 +3103,9 @@ _wiz_description \
 ""
 _show_input_footer "filter" 3
 local selected
-selected=$(printf '%s\n' "$WIZ_TOGGLE_OPTIONS"|_wiz_choose \
---header="Tailscale:")
+if ! selected=$(printf '%s\n' "$WIZ_TOGGLE_OPTIONS"|_wiz_choose --header="Tailscale:");then
+return
+fi
 case "$selected" in
 Enabled)local auth_key=""
 while true;do
@@ -3133,15 +3152,16 @@ esac
 _edit_ssl(){
 _wiz_start_edit
 _wiz_description \
-"SSL certificate for Proxmox web interface:" \
+" SSL certificate for Proxmox web interface:" \
 "" \
 "  {{cyan:Self-signed}}:   Works always, browser shows warning" \
 "  {{cyan:Let's Encrypt}}: Trusted cert, requires public DNS" \
 ""
 _show_input_footer "filter" 3
 local selected
-selected=$(printf '%s\n' "$WIZ_SSL_TYPES"|_wiz_choose \
---header="SSL Certificate:")
+if ! selected=$(printf '%s\n' "$WIZ_SSL_TYPES"|_wiz_choose --header="SSL Certificate:");then
+return
+fi
 local ssl_type=""
 case "$selected" in
 "Self-signed")ssl_type="self-signed";;
@@ -3234,21 +3254,20 @@ fi
 _edit_shell(){
 _wiz_start_edit
 _wiz_description \
-"Default shell for root user:" \
+" Default shell for root user:" \
 "" \
 "  {{cyan:ZSH}}:  Modern shell with Powerlevel10k prompt" \
 "  {{cyan:Bash}}: Standard shell (minimal changes)" \
 ""
 _show_input_footer "filter" 3
 local selected
-selected=$(printf '%s\n' "$WIZ_SHELL_OPTIONS"|_wiz_choose \
---header="Shell:")
-if [[ -n $selected ]];then
+if ! selected=$(printf '%s\n' "$WIZ_SHELL_OPTIONS"|_wiz_choose --header="Shell:");then
+return
+fi
 case "$selected" in
 "ZSH")SHELL_TYPE="zsh";;
 "Bash")SHELL_TYPE="bash"
 esac
-fi
 }
 _edit_power_profile(){
 _wiz_start_edit
@@ -3284,7 +3303,7 @@ descriptions=(
 "  {{cyan:Balanced}}:     Dynamic scaling (power efficient)")
 fi
 _wiz_description \
-"CPU frequency scaling governor:" \
+" CPU frequency scaling governor:" \
 "" \
 "${descriptions[@]}" \
 ""
@@ -3292,9 +3311,9 @@ _show_input_footer "filter" $((${#options[@]}+1))
 local options_str
 options_str=$(printf '%s\n' "${options[@]}")
 local selected
-selected=$(printf '%s\n' "$options_str"|_wiz_choose \
---header="Power profile:")
-if [[ -n $selected ]];then
+if ! selected=$(printf '%s\n' "$options_str"|_wiz_choose --header="Power profile:");then
+return
+fi
 case "$selected" in
 "Performance")CPU_GOVERNOR="performance";;
 "Balanced")if
@@ -3308,12 +3327,11 @@ fi
 "Adaptive")CPU_GOVERNOR="schedutil";;
 "Conservative")CPU_GOVERNOR="conservative"
 esac
-fi
 }
 _edit_features_security(){
 _wiz_start_edit
 _wiz_description \
-"Security features (use Space to toggle):" \
+" Security features (use Space to toggle):" \
 "" \
 "  {{cyan:apparmor}}:    Mandatory access control (MAC)" \
 "  {{cyan:auditd}}:      Security audit logging" \
@@ -3323,115 +3341,67 @@ _wiz_description \
 "  {{cyan:needrestart}}: Auto-restart services after updates" \
 ""
 _show_input_footer "checkbox" 7
-local preselected=()
-[[ $INSTALL_APPARMOR == "yes" ]]&&preselected+=("apparmor")
-[[ $INSTALL_AUDITD == "yes" ]]&&preselected+=("auditd")
-[[ $INSTALL_AIDE == "yes" ]]&&preselected+=("aide")
-[[ $INSTALL_CHKROOTKIT == "yes" ]]&&preselected+=("chkrootkit")
-[[ $INSTALL_LYNIS == "yes" ]]&&preselected+=("lynis")
-[[ $INSTALL_NEEDRESTART == "yes" ]]&&preselected+=("needrestart")
-local gum_args=(
---no-limit
---header="Security:"
---header.foreground "$HEX_CYAN"
---cursor "$CLR_ORANGE›$CLR_RESET "
---cursor.foreground "$HEX_NONE"
---cursor-prefix "◦ "
---selected.foreground "$HEX_WHITE"
---selected-prefix "$CLR_CYAN✓$CLR_RESET "
---unselected-prefix "◦ "
---no-show-help)
-for item in "${preselected[@]}";do
-gum_args+=(--selected "$item")
-done
+local gum_args=(--header="Security:")
+[[ $INSTALL_APPARMOR == "yes" ]]&&gum_args+=(--selected "apparmor")
+[[ $INSTALL_AUDITD == "yes" ]]&&gum_args+=(--selected "auditd")
+[[ $INSTALL_AIDE == "yes" ]]&&gum_args+=(--selected "aide")
+[[ $INSTALL_CHKROOTKIT == "yes" ]]&&gum_args+=(--selected "chkrootkit")
+[[ $INSTALL_LYNIS == "yes" ]]&&gum_args+=(--selected "lynis")
+[[ $INSTALL_NEEDRESTART == "yes" ]]&&gum_args+=(--selected "needrestart")
 local selected
-selected=$(printf '%s\n' apparmor auditd aide chkrootkit lynis needrestart|_wiz_choose "${gum_args[@]}")
-INSTALL_APPARMOR="no"
-INSTALL_AUDITD="no"
-INSTALL_AIDE="no"
-INSTALL_CHKROOTKIT="no"
-INSTALL_LYNIS="no"
-INSTALL_NEEDRESTART="no"
-[[ $selected == *apparmor* ]]&&INSTALL_APPARMOR="yes"
-[[ $selected == *auditd* ]]&&INSTALL_AUDITD="yes"
-[[ $selected == *aide* ]]&&INSTALL_AIDE="yes"
-[[ $selected == *chkrootkit* ]]&&INSTALL_CHKROOTKIT="yes"
-[[ $selected == *lynis* ]]&&INSTALL_LYNIS="yes"
-[[ $selected == *needrestart* ]]&&INSTALL_NEEDRESTART="yes"
+if ! selected=$(printf '%s\n' "$WIZ_FEATURES_SECURITY"|_wiz_choose_multi "${gum_args[@]}");then
+return
+fi
+INSTALL_APPARMOR=$([[ $selected == *apparmor* ]]&&echo "yes"||echo "no")
+INSTALL_AUDITD=$([[ $selected == *auditd* ]]&&echo "yes"||echo "no")
+INSTALL_AIDE=$([[ $selected == *aide* ]]&&echo "yes"||echo "no")
+INSTALL_CHKROOTKIT=$([[ $selected == *chkrootkit* ]]&&echo "yes"||echo "no")
+INSTALL_LYNIS=$([[ $selected == *lynis* ]]&&echo "yes"||echo "no")
+INSTALL_NEEDRESTART=$([[ $selected == *needrestart* ]]&&echo "yes"||echo "no")
 }
 _edit_features_monitoring(){
 _wiz_start_edit
 _wiz_description \
-"Monitoring features (use Space to toggle):" \
+" Monitoring features (use Space to toggle):" \
 "" \
 "  {{cyan:vnstat}}:   Network traffic monitoring" \
 "  {{cyan:netdata}}:  Real-time monitoring (port 19999)" \
 "  {{cyan:promtail}}: Log collector for Loki" \
 ""
 _show_input_footer "checkbox" 4
-local preselected=()
-[[ $INSTALL_VNSTAT == "yes" ]]&&preselected+=("vnstat")
-[[ $INSTALL_NETDATA == "yes" ]]&&preselected+=("netdata")
-[[ $INSTALL_PROMTAIL == "yes" ]]&&preselected+=("promtail")
-local gum_args=(
---no-limit
---header="Monitoring:"
---header.foreground "$HEX_CYAN"
---cursor "$CLR_ORANGE›$CLR_RESET "
---cursor.foreground "$HEX_NONE"
---cursor-prefix "◦ "
---selected.foreground "$HEX_WHITE"
---selected-prefix "$CLR_CYAN✓$CLR_RESET "
---unselected-prefix "◦ "
---no-show-help)
-for item in "${preselected[@]}";do
-gum_args+=(--selected "$item")
-done
+local gum_args=(--header="Monitoring:")
+[[ $INSTALL_VNSTAT == "yes" ]]&&gum_args+=(--selected "vnstat")
+[[ $INSTALL_NETDATA == "yes" ]]&&gum_args+=(--selected "netdata")
+[[ $INSTALL_PROMTAIL == "yes" ]]&&gum_args+=(--selected "promtail")
 local selected
-selected=$(printf '%s\n' vnstat netdata promtail|_wiz_choose "${gum_args[@]}")
-INSTALL_VNSTAT="no"
-INSTALL_NETDATA="no"
-INSTALL_PROMTAIL="no"
-[[ $selected == *vnstat* ]]&&INSTALL_VNSTAT="yes"
-[[ $selected == *netdata* ]]&&INSTALL_NETDATA="yes"
-[[ $selected == *promtail* ]]&&INSTALL_PROMTAIL="yes"
+if ! selected=$(printf '%s\n' "$WIZ_FEATURES_MONITORING"|_wiz_choose_multi "${gum_args[@]}");then
+return
+fi
+INSTALL_VNSTAT=$([[ $selected == *vnstat* ]]&&echo "yes"||echo "no")
+INSTALL_NETDATA=$([[ $selected == *netdata* ]]&&echo "yes"||echo "no")
+INSTALL_PROMTAIL=$([[ $selected == *promtail* ]]&&echo "yes"||echo "no")
 }
 _edit_features_tools(){
 _wiz_start_edit
 _wiz_description \
-"Tools (use Space to toggle):" \
+" Tools (use Space to toggle):" \
 "" \
 "  {{cyan:yazi}}:       Terminal file manager (Catppuccin theme)" \
 "  {{cyan:nvim}}:       Neovim as default editor" \
 "  {{cyan:ringbuffer}}: Network ring buffer tuning" \
 ""
 _show_input_footer "checkbox" 4
-local preselected=()
-[[ $INSTALL_YAZI == "yes" ]]&&preselected+=("yazi")
-[[ $INSTALL_NVIM == "yes" ]]&&preselected+=("nvim")
-[[ $INSTALL_RINGBUFFER == "yes" ]]&&preselected+=("ringbuffer")
-local gum_args=(
---no-limit
---header="Tools:"
---header.foreground "$HEX_CYAN"
---cursor "$CLR_ORANGE›$CLR_RESET "
---cursor.foreground "$HEX_NONE"
---cursor-prefix "◦ "
---selected.foreground "$HEX_WHITE"
---selected-prefix "$CLR_CYAN✓$CLR_RESET "
---unselected-prefix "◦ "
---no-show-help)
-for item in "${preselected[@]}";do
-gum_args+=(--selected "$item")
-done
+local gum_args=(--header="Tools:")
+[[ $INSTALL_YAZI == "yes" ]]&&gum_args+=(--selected "yazi")
+[[ $INSTALL_NVIM == "yes" ]]&&gum_args+=(--selected "nvim")
+[[ $INSTALL_RINGBUFFER == "yes" ]]&&gum_args+=(--selected "ringbuffer")
 local selected
-selected=$(printf '%s\n' yazi nvim ringbuffer|_wiz_choose "${gum_args[@]}")
-INSTALL_YAZI="no"
-INSTALL_NVIM="no"
-INSTALL_RINGBUFFER="no"
-[[ $selected == *yazi* ]]&&INSTALL_YAZI="yes"
-[[ $selected == *nvim* ]]&&INSTALL_NVIM="yes"
-[[ $selected == *ringbuffer* ]]&&INSTALL_RINGBUFFER="yes"
+if ! selected=$(printf '%s\n' "$WIZ_FEATURES_TOOLS"|_wiz_choose_multi "${gum_args[@]}");then
+return
+fi
+INSTALL_YAZI=$([[ $selected == *yazi* ]]&&echo "yes"||echo "no")
+INSTALL_NVIM=$([[ $selected == *nvim* ]]&&echo "yes"||echo "no")
+INSTALL_RINGBUFFER=$([[ $selected == *ringbuffer* ]]&&echo "yes"||echo "no")
 }
 _edit_ssh_key(){
 while true;do
@@ -3489,7 +3459,7 @@ _edit_admin_username(){
 while true;do
 _wiz_start_edit
 _wiz_description \
-"Non-root admin username for SSH and Proxmox access:" \
+" Non-root admin username for SSH and Proxmox access:" \
 "" \
 "  Root SSH login will be {{cyan:completely disabled}}." \
 "  All SSH access must use this admin account." \
@@ -3558,7 +3528,7 @@ done
 _edit_api_token(){
 _wiz_start_edit
 _wiz_description \
-"Proxmox API token for automation:" \
+" Proxmox API token for automation:" \
 "" \
 "  {{cyan:Enabled}}:  Create privileged token (Terraform, Ansible)" \
 "  {{cyan:Disabled}}: No API token" \
@@ -3567,8 +3537,9 @@ _wiz_description \
 ""
 _show_input_footer "filter" 3
 local selected
-selected=$(printf '%s\n' "$WIZ_TOGGLE_OPTIONS"|_wiz_choose \
---header="API Token (privileged, no expiration):")
+if ! selected=$(printf '%s\n' "$WIZ_TOGGLE_OPTIONS"|_wiz_choose --header="API Token (privileged, no expiration):");then
+return
+fi
 case "$selected" in
 Enabled)_wiz_input_screen "Enter API token name (default: automation)"
 local token_name
@@ -3591,7 +3562,7 @@ esac
 _edit_boot_disk(){
 _wiz_start_edit
 _wiz_description \
-"Separate boot disk selection (auto-detected by disk size):" \
+" Separate boot disk selection (auto-detected by disk size):" \
 "" \
 "  {{cyan:None}}: All disks in ZFS rpool (system + VMs)" \
 "  {{cyan:Disk}}: Boot disk uses ext4 (system + ISO/templates)" \
@@ -3606,8 +3577,9 @@ options+=$'\n'"$disk_name - $disk_size  $disk_model"
 done
 _show_input_footer "filter" "$((DRIVE_COUNT+2))"
 local selected
-selected=$(printf '%s' "$options"|_wiz_choose \
---header="Boot disk:")
+if ! selected=$(printf '%s' "$options"|_wiz_choose --header="Boot disk:");then
+return
+fi
 if [[ -n $selected ]];then
 local old_boot_disk="$BOOT_DISK"
 if [[ $selected == "None (all in pool)" ]];then
@@ -3635,7 +3607,7 @@ _edit_pool_disks(){
 while true;do
 _wiz_start_edit
 _wiz_description \
-"Select disks for ZFS storage pool:" \
+" Select disks for ZFS storage pool:" \
 "" \
 "  These disks will store VMs, containers, and data." \
 "  RAID level is auto-selected based on disk count." \
@@ -3665,23 +3637,13 @@ else
 available_count=$DRIVE_COUNT
 fi
 _show_input_footer "checkbox" "$((available_count+1))"
-local gum_args=(
---no-limit
---header="ZFS pool disks (min 1):"
---header.foreground "$HEX_CYAN"
---cursor "$CLR_ORANGE›$CLR_RESET "
---cursor.foreground "$HEX_NONE"
---cursor-prefix "◦ "
---selected.foreground "$HEX_WHITE"
---selected-prefix "$CLR_CYAN✓$CLR_RESET "
---unselected-prefix "◦ "
---no-show-help)
+local gum_args=(--header="ZFS pool disks (min 1):")
 for item in "${preselected[@]}";do
 gum_args+=(--selected "$item")
 done
 local selected
 local gum_exit_code=0
-selected=$(printf '%s\n' "$options"|_wiz_choose "${gum_args[@]}")||gum_exit_code=$?
+selected=$(printf '%s\n' "$options"|_wiz_choose_multi "${gum_args[@]}")||gum_exit_code=$?
 if [[ $gum_exit_code -ne 0 ]];then
 return 0
 fi
