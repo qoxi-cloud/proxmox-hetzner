@@ -21,7 +21,7 @@ _edit_ssh_key() {
       parse_ssh_key "$detected_key"
 
       _wiz_hide_cursor
-      _wiz_warn "Detected SSH key from Rescue System:"
+      _wiz_warn "${WIZ_NOTIFY_INDENT}Detected SSH key from Rescue System:"
       _wiz_blank_line
       printf '%s\n' "${WIZ_NOTIFY_INDENT}${CLR_GRAY}Type:${CLR_RESET}    ${SSH_KEY_TYPE}"
       printf '%s\n' "${WIZ_NOTIFY_INDENT}${CLR_GRAY}Key:${CLR_RESET}     ${SSH_KEY_SHORT}"
@@ -160,7 +160,7 @@ _edit_admin_password() {
 
         _wiz_start_edit
         _wiz_hide_cursor
-        _wiz_warn "Please save this password - it will be required for sudo and Proxmox UI"
+        _wiz_warn "${WIZ_NOTIFY_INDENT}Please save this password - it will be required for sudo and Proxmox UI"
         _wiz_blank_line
         printf '%s\n' "${WIZ_NOTIFY_INDENT}${CLR_CYAN}Generated admin password:${CLR_RESET} ${CLR_ORANGE}${ADMIN_PASSWORD}${CLR_RESET}"
         _wiz_blank_line

@@ -49,7 +49,7 @@ _edit_boot_disk() {
     if [[ ${#ZFS_POOL_DISKS[@]} -eq 0 ]]; then
       _wiz_start_edit
       _wiz_hide_cursor
-      _wiz_error "✗ Cannot use this boot disk: No disks left for ZFS pool"
+      _wiz_error "${WIZ_NOTIFY_INDENT}✗ Cannot use this boot disk: No disks left for ZFS pool"
       _wiz_blank_line
       _wiz_dim "${WIZ_NOTIFY_INDENT}At least one disk must remain for the ZFS pool."
       _wiz_blank_line
