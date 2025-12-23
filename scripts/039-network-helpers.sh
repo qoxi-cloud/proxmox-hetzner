@@ -30,26 +30,48 @@ EOF
 # Generates physical interface section with static IP
 # Uses detected CIDR from rescue system (MAIN_IPV4_CIDR, IPV6_CIDR)
 # Falls back to /32 and /128 for Hetzner-style point-to-point routing if not detected
+# Adds pointopoint directive for /32 subnets where gateway is outside the interface subnet
 _generate_iface_static() {
   local ipv4_addr="${MAIN_IPV4_CIDR:-${MAIN_IPV4}/32}"
   local ipv6_addr="${IPV6_CIDR:-${MAIN_IPV6}/128}"
+  local ipv4_prefix="${ipv4_addr##*/}"
+  local ipv6_prefix="${ipv6_addr##*/}"
 
   cat <<EOF
 # Physical interface with host IP
 auto ${INTERFACE_NAME}
 iface ${INTERFACE_NAME} inet static
     address ${ipv4_addr}
+EOF
+
+  # For /32 subnets, gateway is outside interface subnet - add pointopoint route
+  if [[ $ipv4_prefix == "32" ]]; then
+    cat <<EOF
+    pointopoint ${MAIN_IPV4_GW}
+EOF
+  fi
+
+  cat <<EOF
     gateway ${MAIN_IPV4_GW}
     up sysctl --system
 EOF
 
   # Add IPv6 if enabled
   if [[ -n ${MAIN_IPV6:-} && ${IPV6_MODE:-} != "disabled" ]]; then
+    local ipv6_gw="${IPV6_GATEWAY:-fe80::1}"
     cat <<EOF
 
 iface ${INTERFACE_NAME} inet6 static
     address ${ipv6_addr}
-    gateway ${IPV6_GATEWAY:-fe80::1}
+    gateway ${ipv6_gw}
+EOF
+    # For /128 with non-link-local gateway, add explicit on-link route
+    if [[ $ipv6_prefix == "128" && ! $ipv6_gw =~ ^fe80: ]]; then
+      cat <<EOF
+    up ip -6 route add ${ipv6_gw}/128 dev ${INTERFACE_NAME}
+EOF
+    fi
+    cat <<EOF
     accept_ra 2
 EOF
   fi
@@ -60,6 +82,8 @@ EOF
 _generate_vmbr0_external() {
   local ipv4_addr="${MAIN_IPV4_CIDR:-${MAIN_IPV4}/32}"
   local ipv6_addr="${IPV6_CIDR:-${MAIN_IPV6}/128}"
+  local ipv4_prefix="${ipv4_addr##*/}"
+  local ipv6_prefix="${ipv6_addr##*/}"
 
   cat <<EOF
 # vmbr0: External bridge - VMs get IPs from router/DHCP
@@ -67,6 +91,16 @@ _generate_vmbr0_external() {
 auto vmbr0
 iface vmbr0 inet static
     address ${ipv4_addr}
+EOF
+
+  # For /32 subnets, gateway is outside interface subnet - add pointopoint route
+  if [[ $ipv4_prefix == "32" ]]; then
+    cat <<EOF
+    pointopoint ${MAIN_IPV4_GW}
+EOF
+  fi
+
+  cat <<EOF
     gateway ${MAIN_IPV4_GW}
     bridge-ports ${INTERFACE_NAME}
     bridge-stp off
@@ -76,11 +110,20 @@ EOF
 
   # Add IPv6 if enabled
   if [[ -n ${MAIN_IPV6:-} && ${IPV6_MODE:-} != "disabled" ]]; then
+    local ipv6_gw="${IPV6_GATEWAY:-fe80::1}"
     cat <<EOF
 
 iface vmbr0 inet6 static
     address ${ipv6_addr}
-    gateway ${IPV6_GATEWAY:-fe80::1}
+    gateway ${ipv6_gw}
+EOF
+    # For /128 with non-link-local gateway, add explicit on-link route
+    if [[ $ipv6_prefix == "128" && ! $ipv6_gw =~ ^fe80: ]]; then
+      cat <<EOF
+    up ip -6 route add ${ipv6_gw}/128 dev vmbr0
+EOF
+    fi
+    cat <<EOF
     accept_ra 2
 EOF
   fi
