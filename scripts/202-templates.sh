@@ -4,13 +4,11 @@
 # =============================================================================
 
 # Applies variable substitution to all template files.
-# Handles hosts, interfaces, resolv.conf, cpupower, and locale templates.
-# Uses postprocess functions for bridge mode and IPv6 in interfaces.
+# Handles hosts, resolv.conf, cpupower, locale templates.
+# Interfaces is generated via heredoc (039-network-helpers.sh).
 _modify_template_files() {
   apply_common_template_vars "./templates/hosts"
-  apply_common_template_vars "./templates/interfaces"
-  postprocess_interfaces_bridge_mode "./templates/interfaces"
-  postprocess_interfaces_ipv6 "./templates/interfaces"
+  generate_interfaces_file "./templates/interfaces"
   apply_common_template_vars "./templates/resolv.conf"
   apply_template_vars "./templates/cpupower.service" "CPU_GOVERNOR=${CPU_GOVERNOR:-performance}"
   # Locale templates - substitute {{LOCALE}} with actual locale value
@@ -98,7 +96,6 @@ make_templates() {
     "./templates/proxmox.sources:${proxmox_sources_template}"
     "./templates/sshd_config:sshd_config"
     "./templates/resolv.conf:resolv.conf"
-    "./templates/interfaces:interfaces"
     # Locale
     "./templates/locale.sh:locale.sh"
     "./templates/default-locale:default-locale"
