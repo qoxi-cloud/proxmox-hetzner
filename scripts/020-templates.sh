@@ -7,7 +7,7 @@
 # Parameters:
 #   $1 - File path to modify
 #   $@ - VAR=VALUE pairs for substitution (replaces {{VAR}} with VALUE)
-# Returns: 0 on success, 1 if file not found or critical variable empty
+# Returns: 0 on success, 1 if file not found or unsubstituted placeholders remain
 apply_template_vars() {
   local file="$1"
   shift
@@ -19,7 +19,6 @@ apply_template_vars() {
 
   # Build sed command with all substitutions
   local sed_args=()
-  local has_empty_critical=false
 
   if [[ $# -gt 0 ]]; then
     # Use provided VAR=VALUE pairs
@@ -27,10 +26,9 @@ apply_template_vars() {
       local var="${pair%%=*}"
       local value="${pair#*=}"
 
-      # Warn about empty values only if placeholder exists in the file
+      # Debug log for empty values (placeholder will be replaced with empty string)
       if [[ -z $value ]] && grep -qF "{{${var}}}" "$file" 2>/dev/null; then
-        log "WARNING: Template variable $var is empty, placeholder {{${var}}} will remain in $file"
-        has_empty_critical=true
+        log "DEBUG: Template variable $var is empty, {{${var}}} will be replaced with empty string in $file"
       fi
 
       # Escape special characters in value for sed replacement
@@ -52,15 +50,11 @@ apply_template_vars() {
     sed -i "${sed_args[@]}" "$file"
   fi
 
-  # Verify no unsubstituted placeholders remain
+  # Verify no unsubstituted placeholders remain (these were never passed to this function)
   if grep -qE '\{\{[A-Z_]+\}\}' "$file" 2>/dev/null; then
     local remaining
     remaining=$(grep -oE '\{\{[A-Z_]+\}\}' "$file" 2>/dev/null | sort -u | tr '\n' ' ')
     log "WARNING: Unsubstituted placeholders remain in $file: $remaining"
-  fi
-
-  # Return error if critical placeholders would remain
-  if [[ $has_empty_critical == true ]]; then
     return 1
   fi
 
@@ -71,7 +65,7 @@ apply_template_vars() {
 # Substitutes placeholders for IP, hostname, DNS, network settings.
 # Parameters:
 #   $1 - File path to modify
-# Returns: 0 on success, 1 if critical variable is empty
+# Returns: 0 on success, 1 if file not found or unsubstituted placeholders remain
 apply_common_template_vars() {
   local file="$1"
 
