@@ -48,20 +48,20 @@ The contents of file "$template" should equal "path=/usr/local/bin"
 rm -f "$template"
 End
 
-It "fails with empty value when placeholder exists"
+It "allows empty value substitution"
 template=$(mktemp)
 echo "var={{VAR}}" >"$template"
 When call apply_template_vars "$template" "VAR="
-The status should be failure
+The status should be success
+The contents of file "$template" should equal "var="
 rm -f "$template"
 End
 
-It "preserves unmatched variables"
+It "fails when unmatched placeholders remain"
 template=$(mktemp)
 echo "a={{A}} b={{B}}" >"$template"
 When call apply_template_vars "$template" "A=1"
-The status should be success
-The contents of file "$template" should equal "a=1 b={{B}}"
+The status should be failure
 rm -f "$template"
 End
 End
