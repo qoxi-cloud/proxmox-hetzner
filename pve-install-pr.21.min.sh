@@ -17,7 +17,7 @@ readonly HEX_GRAY="#585858"
 readonly HEX_WHITE="#ffffff"
 readonly HEX_GOLD="#d7af5f"
 readonly HEX_NONE="7"
-readonly VERSION="2.0.525-pr.21"
+readonly VERSION="2.0.527-pr.21"
 readonly TERM_WIDTH=80
 readonly BANNER_WIDTH=51
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-installer}"
@@ -2334,125 +2334,7 @@ break
 fi
 done
 }
-WIZ_SCREENS=("Basic" "Proxmox" "Network" "Storage" "Services" "Access")
-WIZ_CURRENT_SCREEN=0
-_NAV_COL_WIDTH=10
 WIZ_NOTIFY_INDENT="   "
-_wiz_center(){
-local text="$1"
-local term_width
-term_width=$(tput cols 2>/dev/null||echo 80)
-local visible_text
-visible_text=$(printf '%s' "$text"|sed 's/\x1b\[[0-9;]*m//g')
-local text_len=${#visible_text}
-local padding=$(((term_width-text_len)/2))
-((padding<0))&&padding=0
-printf '%*s%s' "$padding" "" "$text"
-}
-_nav_repeat(){
-local char="$1" count="$2" i
-for ((i=0; i<count; i++));do
-printf '%s' "$char"
-done
-}
-_nav_color(){
-local idx="$1" current="$2"
-if [[ $idx -eq $current ]];then
-printf '%s\n' "$CLR_ORANGE"
-elif [[ $idx -lt $current ]];then
-printf '%s\n' "$CLR_CYAN"
-else
-printf '%s\n' "$CLR_GRAY"
-fi
-}
-_nav_dot(){
-local idx="$1" current="$2"
-if [[ $idx -eq $current ]];then
-printf '%s\n' "◉"
-elif [[ $idx -lt $current ]];then
-printf '%s\n' "●"
-else
-printf '%s\n' "○"
-fi
-}
-_nav_line(){
-local idx="$1" current="$2" len="$3"
-if [[ $idx -lt $current ]];then
-_nav_repeat "━" "$len"
-else
-_nav_repeat "─" "$len"
-fi
-}
-_wiz_render_nav(){
-local current=$WIZ_CURRENT_SCREEN
-local total=${#WIZ_SCREENS[@]}
-local col=$_NAV_COL_WIDTH
-local nav_width=$((col*total))
-local pad_left=$(((TERM_WIDTH-nav_width)/2))
-local padding=""
-((pad_left>0))&&padding=$(printf '%*s' $pad_left '')
-local labels="$padding"
-for i in "${!WIZ_SCREENS[@]}";do
-local name="${WIZ_SCREENS[$i]}"
-local name_len=${#name}
-local pad_left=$(((col-name_len)/2))
-local pad_right=$((col-name_len-pad_left))
-local centered
-centered=$(printf '%*s%s%*s' $pad_left '' "$name" $pad_right '')
-labels+="$(_nav_color "$i" "$current")$centered$CLR_RESET"
-done
-local dots="$padding"
-local center_pad=$(((col-1)/2))
-local right_pad=$((col-center_pad-1))
-for i in "${!WIZ_SCREENS[@]}";do
-local color line_color dot
-color=$(_nav_color "$i" "$current")
-dot=$(_nav_dot "$i" "$current")
-if [[ $i -eq 0 ]];then
-dots+=$(printf '%*s' $center_pad '')
-dots+="$color$dot$CLR_RESET"
-local line_clr
-line_clr=$([[ $i -lt $current ]]&&echo "$CLR_CYAN"||echo "$CLR_GRAY")
-dots+="$line_clr$(_nav_line "$i" "$current" "$right_pad")$CLR_RESET"
-elif [[ $i -eq $((total-1)) ]];then
-local prev_line_clr
-prev_line_clr=$([[ $((i-1)) -lt $current ]]&&echo "$CLR_CYAN"||echo "$CLR_GRAY")
-dots+="$prev_line_clr$(_nav_line "$((i-1))" "$current" "$center_pad")$CLR_RESET"
-dots+="$color$dot$CLR_RESET"
-else
-local prev_line_clr
-prev_line_clr=$([[ $((i-1)) -lt $current ]]&&echo "$CLR_CYAN"||echo "$CLR_GRAY")
-dots+="$prev_line_clr$(_nav_line "$((i-1))" "$current" "$center_pad")$CLR_RESET"
-dots+="$color$dot$CLR_RESET"
-local next_line_clr
-next_line_clr=$([[ $i -lt $current ]]&&echo "$CLR_CYAN"||echo "$CLR_GRAY")
-dots+="$next_line_clr$(_nav_line "$i" "$current" "$right_pad")$CLR_RESET"
-fi
-done
-printf '%s\n%s\n' "$labels" "$dots"
-}
-_wiz_read_key(){
-local key
-IFS= read -rsn1 key
-if [[ $key == $'\x1b' ]];then
-read -rsn2 -t 0.1 key
-case "$key" in
-'[A')WIZ_KEY="up";;
-'[B')WIZ_KEY="down";;
-'[C')WIZ_KEY="right";;
-'[D')WIZ_KEY="left";;
-*)WIZ_KEY="esc"
-esac
-elif [[ $key == "" ]];then
-WIZ_KEY="enter"
-elif [[ $key == "q" || $key == "Q" ]];then
-WIZ_KEY="quit"
-elif [[ $key == "s" || $key == "S" ]];then
-WIZ_KEY="start"
-else
-WIZ_KEY="$key"
-fi
-}
 _wiz_hide_cursor(){ printf '\033[?25l';}
 _wiz_show_cursor(){ printf '\033[?25h';}
 _wiz_blank_line(){ printf '\n';}
@@ -2584,6 +2466,124 @@ if [[ -n $value ]];then
 printf '%s\n' "$value"
 else
 printf '%s\n' "$CLR_GRAY$placeholder$CLR_RESET"
+fi
+}
+WIZ_SCREENS=("Basic" "Proxmox" "Network" "Storage" "Services" "Access")
+WIZ_CURRENT_SCREEN=0
+_NAV_COL_WIDTH=10
+_wiz_center(){
+local text="$1"
+local term_width
+term_width=$(tput cols 2>/dev/null||echo 80)
+local visible_text
+visible_text=$(printf '%s' "$text"|sed 's/\x1b\[[0-9;]*m//g')
+local text_len=${#visible_text}
+local padding=$(((term_width-text_len)/2))
+((padding<0))&&padding=0
+printf '%*s%s' "$padding" "" "$text"
+}
+_nav_repeat(){
+local char="$1" count="$2" i
+for ((i=0; i<count; i++));do
+printf '%s' "$char"
+done
+}
+_nav_color(){
+local idx="$1" current="$2"
+if [[ $idx -eq $current ]];then
+printf '%s\n' "$CLR_ORANGE"
+elif [[ $idx -lt $current ]];then
+printf '%s\n' "$CLR_CYAN"
+else
+printf '%s\n' "$CLR_GRAY"
+fi
+}
+_nav_dot(){
+local idx="$1" current="$2"
+if [[ $idx -eq $current ]];then
+printf '%s\n' "◉"
+elif [[ $idx -lt $current ]];then
+printf '%s\n' "●"
+else
+printf '%s\n' "○"
+fi
+}
+_nav_line(){
+local idx="$1" current="$2" len="$3"
+if [[ $idx -lt $current ]];then
+_nav_repeat "━" "$len"
+else
+_nav_repeat "─" "$len"
+fi
+}
+_wiz_render_nav(){
+local current=$WIZ_CURRENT_SCREEN
+local total=${#WIZ_SCREENS[@]}
+local col=$_NAV_COL_WIDTH
+local nav_width=$((col*total))
+local pad_left=$(((TERM_WIDTH-nav_width)/2))
+local padding=""
+((pad_left>0))&&padding=$(printf '%*s' $pad_left '')
+local labels="$padding"
+for i in "${!WIZ_SCREENS[@]}";do
+local name="${WIZ_SCREENS[$i]}"
+local name_len=${#name}
+local pad_left=$(((col-name_len)/2))
+local pad_right=$((col-name_len-pad_left))
+local centered
+centered=$(printf '%*s%s%*s' $pad_left '' "$name" $pad_right '')
+labels+="$(_nav_color "$i" "$current")$centered$CLR_RESET"
+done
+local dots="$padding"
+local center_pad=$(((col-1)/2))
+local right_pad=$((col-center_pad-1))
+for i in "${!WIZ_SCREENS[@]}";do
+local color line_color dot
+color=$(_nav_color "$i" "$current")
+dot=$(_nav_dot "$i" "$current")
+if [[ $i -eq 0 ]];then
+dots+=$(printf '%*s' $center_pad '')
+dots+="$color$dot$CLR_RESET"
+local line_clr
+line_clr=$([[ $i -lt $current ]]&&echo "$CLR_CYAN"||echo "$CLR_GRAY")
+dots+="$line_clr$(_nav_line "$i" "$current" "$right_pad")$CLR_RESET"
+elif [[ $i -eq $((total-1)) ]];then
+local prev_line_clr
+prev_line_clr=$([[ $((i-1)) -lt $current ]]&&echo "$CLR_CYAN"||echo "$CLR_GRAY")
+dots+="$prev_line_clr$(_nav_line "$((i-1))" "$current" "$center_pad")$CLR_RESET"
+dots+="$color$dot$CLR_RESET"
+else
+local prev_line_clr
+prev_line_clr=$([[ $((i-1)) -lt $current ]]&&echo "$CLR_CYAN"||echo "$CLR_GRAY")
+dots+="$prev_line_clr$(_nav_line "$((i-1))" "$current" "$center_pad")$CLR_RESET"
+dots+="$color$dot$CLR_RESET"
+local next_line_clr
+next_line_clr=$([[ $i -lt $current ]]&&echo "$CLR_CYAN"||echo "$CLR_GRAY")
+dots+="$next_line_clr$(_nav_line "$i" "$current" "$right_pad")$CLR_RESET"
+fi
+done
+printf '%s\n%s\n' "$labels" "$dots"
+}
+_wiz_read_key(){
+local key
+IFS= read -rsn1 key
+if [[ $key == $'\x1b' ]];then
+read -rsn2 -t 0.1 key
+case "$key" in
+'[A')WIZ_KEY="up";;
+'[B')WIZ_KEY="down";;
+'[C')WIZ_KEY="right";;
+'[D')WIZ_KEY="left";;
+*)WIZ_KEY="esc"
+esac
+elif [[ $key == "" ]];then
+WIZ_KEY="enter"
+elif [[ $key == "q" || $key == "Q" ]];then
+WIZ_KEY="quit"
+elif [[ $key == "s" || $key == "S" ]];then
+WIZ_KEY="start"
+else
+WIZ_KEY="$key"
 fi
 }
 _WIZ_FIELD_COUNT=0
@@ -4006,316 +4006,6 @@ live_log_subtask "Installing proxmox-auto-install-assistant"
 live_log_subtask "Installing xorriso and ovmf"
 fi
 }
-_ISO_LIST_CACHE=""
-_CHECKSUM_CACHE=""
-prefetch_proxmox_iso_info(){
-_ISO_LIST_CACHE=$(curl -s "$PROXMOX_ISO_BASE_URL" 2>/dev/null|grep -oE 'proxmox-ve_[0-9]+\.[0-9]+-[0-9]+\.iso'|sort -uV)||true
-_CHECKSUM_CACHE=$(curl -s "$PROXMOX_CHECKSUM_URL" 2>/dev/null)||true
-}
-get_available_proxmox_isos(){
-local count="${1:-5}"
-printf '%s\n' "$_ISO_LIST_CACHE"|grep -E '^proxmox-ve_(9|[1-9][0-9]+)\.'|tail -n "$count"|tac
-}
-get_proxmox_iso_url(){
-local iso_filename="$1"
-printf '%s\n' "$PROXMOX_ISO_BASE_URL$iso_filename"
-}
-get_iso_version(){
-local iso_filename="$1"
-printf '%s\n' "$iso_filename"|sed -E 's/proxmox-ve_([0-9]+\.[0-9]+-[0-9]+)\.iso/\1/'
-}
-_download_iso_curl(){
-local url="$1"
-local output="$2"
-local max_retries="${DOWNLOAD_RETRY_COUNT:-3}"
-local retry_delay="${DOWNLOAD_RETRY_DELAY:-5}"
-log "Downloading with curl (single connection, resume-enabled)"
-curl -fSL \
---retry "$max_retries" \
---retry-delay "$retry_delay" \
---retry-connrefused \
--C - \
--o "$output" \
-"$url" >>"$LOG_FILE" 2>&1
-}
-_download_iso_wget(){
-local url="$1"
-local output="$2"
-local max_retries="${DOWNLOAD_RETRY_COUNT:-3}"
-log "Downloading with wget (single connection, resume-enabled)"
-wget -q \
---tries="$max_retries" \
---continue \
---timeout=60 \
---waitretry=5 \
--O "$output" \
-"$url" >>"$LOG_FILE" 2>&1
-}
-_download_iso_aria2c(){
-local url="$1"
-local output="$2"
-local checksum="$3"
-local max_retries="${DOWNLOAD_RETRY_COUNT:-3}"
-log "Downloading with aria2c (4 connections, with retries)"
-local aria2_args=(
--x 4
--s 4
--k 4M
---max-tries="$max_retries"
---retry-wait=5
---timeout=60
---connect-timeout=30
---max-connection-per-server=4
---allow-overwrite=true
---auto-file-renaming=false
--o "$output"
---console-log-level=error
---summary-interval=0)
-if [[ -n $checksum ]];then
-aria2_args+=(--checksum=sha-256="$checksum")
-log "aria2c will verify checksum automatically"
-fi
-aria2c "${aria2_args[@]}" "$url" >>"$LOG_FILE" 2>&1
-}
-_download_iso_with_fallback(){
-local url="$1"
-local output="$2"
-local checksum="$3"
-local method_file="${4:-}"
-if command -v aria2c &>/dev/null;then
-log "Trying aria2c (parallel download)..."
-if _download_iso_aria2c "$url" "$output" "$checksum"&&[[ -s $output ]];then
-[[ -n $method_file ]]&&printf '%s\n' "aria2c" >"$method_file"
-return 0
-fi
-log "aria2c failed, trying fallback..."
-rm -f "$output" 2>/dev/null
-fi
-log "Trying curl..."
-if _download_iso_curl "$url" "$output"&&[[ -s $output ]];then
-[[ -n $method_file ]]&&printf '%s\n' "curl" >"$method_file"
-return 0
-fi
-log "curl failed, trying fallback..."
-rm -f "$output" 2>/dev/null
-if command -v wget &>/dev/null;then
-log "Trying wget..."
-if _download_iso_wget "$url" "$output"&&[[ -s $output ]];then
-[[ -n $method_file ]]&&printf '%s\n' "wget" >"$method_file"
-return 0
-fi
-rm -f "$output" 2>/dev/null
-fi
-log "All download methods failed"
-return 1
-}
-download_proxmox_iso(){
-log "Starting Proxmox ISO download"
-if [[ -f "pve.iso" ]];then
-log "Proxmox ISO already exists, skipping download"
-print_success "Proxmox ISO:" "already exists, skipping download"
-return 0
-fi
-if [[ -z $PROXMOX_ISO_VERSION ]];then
-log "ERROR: PROXMOX_ISO_VERSION not set"
-exit 1
-fi
-log "Using selected ISO: $PROXMOX_ISO_VERSION"
-PROXMOX_ISO_URL=$(get_proxmox_iso_url "$PROXMOX_ISO_VERSION")
-log "Found ISO URL: $PROXMOX_ISO_URL"
-ISO_FILENAME=$(basename "$PROXMOX_ISO_URL")
-local expected_checksum=""
-if [[ -n $_CHECKSUM_CACHE ]];then
-expected_checksum=$(printf '%s\n' "$_CHECKSUM_CACHE"|grep "$ISO_FILENAME"|awk '{print $1}')
-fi
-log "Expected checksum: ${expected_checksum:-not available}"
-log "Downloading ISO: $ISO_FILENAME"
-local method_file
-method_file=$(mktemp)
-_download_iso_with_fallback "$PROXMOX_ISO_URL" "pve.iso" "$expected_checksum" "$method_file"&
-show_progress $! "Downloading $ISO_FILENAME" "$ISO_FILENAME downloaded"
-wait $!
-local exit_code=$?
-DOWNLOAD_METHOD=$(cat "$method_file" 2>/dev/null)
-rm -f "$method_file"
-if [[ $exit_code -ne 0 ]]||[[ ! -s "pve.iso" ]];then
-log "ERROR: All download methods failed for Proxmox ISO"
-rm -f pve.iso
-exit 1
-fi
-log "Download successful via $DOWNLOAD_METHOD"
-local iso_size
-iso_size=$(stat -c%s pve.iso 2>/dev/null)||iso_size=0
-log "ISO file size: $(printf '%s\n' "$iso_size"|awk '{printf "%.1fG", $1/1024/1024/1024}')"
-if [[ -n $expected_checksum ]];then
-if [[ $DOWNLOAD_METHOD == "aria2c" ]];then
-log "Checksum already verified by aria2c"
-if type live_log_subtask &>/dev/null 2>&1;then
-live_log_subtask "SHA256: OK (verified by aria2c)"
-fi
-else
-log "Verifying ISO checksum"
-local actual_checksum
-(actual_checksum=$(sha256sum pve.iso|awk '{print $1}')&&printf '%s\n' "$actual_checksum" >/tmp/checksum_result)&
-local checksum_pid=$!
-if type show_progress &>/dev/null 2>&1;then
-show_progress $checksum_pid "Verifying checksum" "Checksum verified"
-else
-wait $checksum_pid
-fi
-actual_checksum=$(cat /tmp/checksum_result 2>/dev/null)
-rm -f /tmp/checksum_result
-if [[ $actual_checksum != "$expected_checksum" ]];then
-log "ERROR: Checksum mismatch! Expected: $expected_checksum, Got: $actual_checksum"
-if type live_log_subtask &>/dev/null 2>&1;then
-live_log_subtask "SHA256: FAILED"
-fi
-rm -f pve.iso
-exit 1
-fi
-log "Checksum verification passed"
-if type live_log_subtask &>/dev/null 2>&1;then
-live_log_subtask "SHA256: OK"
-fi
-fi
-else
-log "WARNING: Could not find checksum for $ISO_FILENAME"
-print_warning "Could not find checksum for $ISO_FILENAME"
-fi
-log "Cleaning up temporary files in /tmp"
-rm -rf /tmp/tmp.* /tmp/pve-* /tmp/checksum_result 2>/dev/null||true
-log "Temporary files cleaned"
-}
-validate_answer_toml(){
-local file="$1"
-local required_fields=("fqdn" "mailto" "timezone" "root-password")
-for field in "${required_fields[@]}";do
-if ! grep -q "^\s*$field\s*=" "$file" 2>/dev/null;then
-log "ERROR: Missing required field in answer.toml: $field"
-return 1
-fi
-done
-if ! grep -q "\[global\]" "$file" 2>/dev/null;then
-log "ERROR: Missing [global] section in answer.toml"
-return 1
-fi
-if command -v proxmox-auto-install-assistant &>/dev/null;then
-log "Validating answer.toml with proxmox-auto-install-assistant"
-if ! proxmox-auto-install-assistant validate-answer "$file" >>"$LOG_FILE" 2>&1;then
-log "ERROR: answer.toml validation failed"
-proxmox-auto-install-assistant validate-answer "$file" >>"$LOG_FILE" 2>&1||true
-return 1
-fi
-log "answer.toml validation passed"
-else
-log "WARNING: proxmox-auto-install-assistant not found, skipping advanced validation"
-fi
-return 0
-}
-make_answer_toml(){
-log "Creating answer.toml for autoinstall"
-log "ZFS_RAID=$ZFS_RAID, BOOT_DISK=$BOOT_DISK"
-log "ZFS_POOL_DISKS=(${ZFS_POOL_DISKS[*]})"
-run_with_progress "Creating disk mapping" "Disk mapping created" \
-create_virtio_mapping "$BOOT_DISK" "${ZFS_POOL_DISKS[@]}"
-load_virtio_mapping||{
-log "ERROR: Failed to load virtio mapping"
-exit 1
-}
-local FILESYSTEM
-local all_disks=()
-if [[ -n $BOOT_DISK ]];then
-FILESYSTEM="ext4"
-all_disks=("$BOOT_DISK")
-if [[ ${#ZFS_POOL_DISKS[@]} -eq 0 ]];then
-log "ERROR: BOOT_DISK set but no pool disks for ZFS tank creation"
-exit 1
-fi
-log "Boot disk mode: ext4 on boot disk, ZFS 'tank' pool will be created from ${#ZFS_POOL_DISKS[@]} pool disk(s)"
-else
-FILESYSTEM="zfs"
-all_disks=("${ZFS_POOL_DISKS[@]}")
-log "All-ZFS mode: ${#all_disks[@]} disk(s) in ZFS rpool ($ZFS_RAID)"
-fi
-DISK_LIST=$(map_disks_to_virtio "toml_array" "${all_disks[@]}")
-if [[ -z $DISK_LIST ]];then
-log "ERROR: Failed to map disks to virtio devices"
-exit 1
-fi
-log "FILESYSTEM=$FILESYSTEM, DISK_LIST=$DISK_LIST"
-log "Generating answer.toml for autoinstall"
-local escaped_password="${NEW_ROOT_PASSWORD//\\/\\\\}"
-escaped_password="${escaped_password//\"/\\\"}"
-cat >./answer.toml <<EOF
-[global]
-    keyboard = "$KEYBOARD"
-    country = "$COUNTRY"
-    fqdn = "$FQDN"
-    mailto = "$EMAIL"
-    timezone = "$TIMEZONE"
-    root-password = "$escaped_password"
-    reboot-on-error = false
-
-[network]
-    source = "from-dhcp"
-
-[disk-setup]
-    filesystem = "$FILESYSTEM"
-    disk-list = $DISK_LIST
-EOF
-if [[ $FILESYSTEM == "zfs" ]];then
-local zfs_raid_value
-zfs_raid_value=$(map_raid_to_toml "$ZFS_RAID")
-log "Using ZFS raid: $zfs_raid_value"
-cat >>./answer.toml <<EOF
-    zfs.raid = "$zfs_raid_value"
-    zfs.compress = "lz4"
-    zfs.checksum = "on"
-EOF
-elif [[ $FILESYSTEM == "ext4" ]]||[[ $FILESYSTEM == "xfs" ]];then
-cat >>./answer.toml <<EOF
-    lvm.swapsize = 0
-EOF
-fi
-if ! validate_answer_toml "./answer.toml";then
-log "ERROR: answer.toml validation failed"
-exit 1
-fi
-log "answer.toml created and validated:"
-cat answer.toml >>"$LOG_FILE"
-if type live_log_subtask &>/dev/null 2>&1;then
-local total_disks=${#ZFS_POOL_DISKS[@]}
-[[ -n $BOOT_DISK ]]&&((total_disks++))
-live_log_subtask "Mapped $total_disks disk(s) to virtio"
-live_log_subtask "Generated answer.toml ($FILESYSTEM)"
-fi
-}
-make_autoinstall_iso(){
-log "Creating autoinstall ISO"
-log "Input: pve.iso exists: $(test -f pve.iso&&echo 'yes'||echo 'no')"
-log "Input: answer.toml exists: $(test -f answer.toml&&echo 'yes'||echo 'no')"
-log "Current directory: $(pwd)"
-log "Files in current directory:"
-ls -la >>"$LOG_FILE" 2>&1
-proxmox-auto-install-assistant prepare-iso pve.iso --fetch-from iso --answer-file answer.toml --output pve-autoinstall.iso >>"$LOG_FILE" 2>&1&
-show_progress $! "Creating autoinstall ISO" "Autoinstall ISO created"
-local exit_code=$?
-if [[ $exit_code -ne 0 ]];then
-log "WARNING: proxmox-auto-install-assistant exited with code $exit_code"
-fi
-if [[ ! -f "./pve-autoinstall.iso" ]];then
-log "ERROR: Autoinstall ISO not found after creation attempt"
-log "Files in current directory after attempt:"
-ls -la >>"$LOG_FILE" 2>&1
-exit 1
-fi
-log "Autoinstall ISO created successfully: $(stat -c%s pve-autoinstall.iso 2>/dev/null|awk '{printf "%.1fM", $1/1024/1024}')"
-if type live_log_subtask &>/dev/null 2>&1;then
-live_log_subtask "Packed ISO with xorriso"
-fi
-log "Removing original ISO to save disk space"
-rm -f pve.iso
-}
 is_uefi_mode(){
 [[ -d /sys/firmware/efi ]]
 }
@@ -4674,6 +4364,316 @@ export PRIVATE_IP_CIDR
 log "Derived PRIVATE_IP_CIDR=$PRIVATE_IP_CIDR from PRIVATE_SUBNET=$PRIVATE_SUBNET"
 fi
 run_with_progress "Modifying template files" "Template files modified" _modify_template_files
+}
+_ISO_LIST_CACHE=""
+_CHECKSUM_CACHE=""
+prefetch_proxmox_iso_info(){
+_ISO_LIST_CACHE=$(curl -s "$PROXMOX_ISO_BASE_URL" 2>/dev/null|grep -oE 'proxmox-ve_[0-9]+\.[0-9]+-[0-9]+\.iso'|sort -uV)||true
+_CHECKSUM_CACHE=$(curl -s "$PROXMOX_CHECKSUM_URL" 2>/dev/null)||true
+}
+get_available_proxmox_isos(){
+local count="${1:-5}"
+printf '%s\n' "$_ISO_LIST_CACHE"|grep -E '^proxmox-ve_(9|[1-9][0-9]+)\.'|tail -n "$count"|tac
+}
+get_proxmox_iso_url(){
+local iso_filename="$1"
+printf '%s\n' "$PROXMOX_ISO_BASE_URL$iso_filename"
+}
+get_iso_version(){
+local iso_filename="$1"
+printf '%s\n' "$iso_filename"|sed -E 's/proxmox-ve_([0-9]+\.[0-9]+-[0-9]+)\.iso/\1/'
+}
+_download_iso_curl(){
+local url="$1"
+local output="$2"
+local max_retries="${DOWNLOAD_RETRY_COUNT:-3}"
+local retry_delay="${DOWNLOAD_RETRY_DELAY:-5}"
+log "Downloading with curl (single connection, resume-enabled)"
+curl -fSL \
+--retry "$max_retries" \
+--retry-delay "$retry_delay" \
+--retry-connrefused \
+-C - \
+-o "$output" \
+"$url" >>"$LOG_FILE" 2>&1
+}
+_download_iso_wget(){
+local url="$1"
+local output="$2"
+local max_retries="${DOWNLOAD_RETRY_COUNT:-3}"
+log "Downloading with wget (single connection, resume-enabled)"
+wget -q \
+--tries="$max_retries" \
+--continue \
+--timeout=60 \
+--waitretry=5 \
+-O "$output" \
+"$url" >>"$LOG_FILE" 2>&1
+}
+_download_iso_aria2c(){
+local url="$1"
+local output="$2"
+local checksum="$3"
+local max_retries="${DOWNLOAD_RETRY_COUNT:-3}"
+log "Downloading with aria2c (4 connections, with retries)"
+local aria2_args=(
+-x 4
+-s 4
+-k 4M
+--max-tries="$max_retries"
+--retry-wait=5
+--timeout=60
+--connect-timeout=30
+--max-connection-per-server=4
+--allow-overwrite=true
+--auto-file-renaming=false
+-o "$output"
+--console-log-level=error
+--summary-interval=0)
+if [[ -n $checksum ]];then
+aria2_args+=(--checksum=sha-256="$checksum")
+log "aria2c will verify checksum automatically"
+fi
+aria2c "${aria2_args[@]}" "$url" >>"$LOG_FILE" 2>&1
+}
+_download_iso_with_fallback(){
+local url="$1"
+local output="$2"
+local checksum="$3"
+local method_file="${4:-}"
+if command -v aria2c &>/dev/null;then
+log "Trying aria2c (parallel download)..."
+if _download_iso_aria2c "$url" "$output" "$checksum"&&[[ -s $output ]];then
+[[ -n $method_file ]]&&printf '%s\n' "aria2c" >"$method_file"
+return 0
+fi
+log "aria2c failed, trying fallback..."
+rm -f "$output" 2>/dev/null
+fi
+log "Trying curl..."
+if _download_iso_curl "$url" "$output"&&[[ -s $output ]];then
+[[ -n $method_file ]]&&printf '%s\n' "curl" >"$method_file"
+return 0
+fi
+log "curl failed, trying fallback..."
+rm -f "$output" 2>/dev/null
+if command -v wget &>/dev/null;then
+log "Trying wget..."
+if _download_iso_wget "$url" "$output"&&[[ -s $output ]];then
+[[ -n $method_file ]]&&printf '%s\n' "wget" >"$method_file"
+return 0
+fi
+rm -f "$output" 2>/dev/null
+fi
+log "All download methods failed"
+return 1
+}
+download_proxmox_iso(){
+log "Starting Proxmox ISO download"
+if [[ -f "pve.iso" ]];then
+log "Proxmox ISO already exists, skipping download"
+print_success "Proxmox ISO:" "already exists, skipping download"
+return 0
+fi
+if [[ -z $PROXMOX_ISO_VERSION ]];then
+log "ERROR: PROXMOX_ISO_VERSION not set"
+exit 1
+fi
+log "Using selected ISO: $PROXMOX_ISO_VERSION"
+PROXMOX_ISO_URL=$(get_proxmox_iso_url "$PROXMOX_ISO_VERSION")
+log "Found ISO URL: $PROXMOX_ISO_URL"
+ISO_FILENAME=$(basename "$PROXMOX_ISO_URL")
+local expected_checksum=""
+if [[ -n $_CHECKSUM_CACHE ]];then
+expected_checksum=$(printf '%s\n' "$_CHECKSUM_CACHE"|grep "$ISO_FILENAME"|awk '{print $1}')
+fi
+log "Expected checksum: ${expected_checksum:-not available}"
+log "Downloading ISO: $ISO_FILENAME"
+local method_file
+method_file=$(mktemp)
+_download_iso_with_fallback "$PROXMOX_ISO_URL" "pve.iso" "$expected_checksum" "$method_file"&
+show_progress $! "Downloading $ISO_FILENAME" "$ISO_FILENAME downloaded"
+wait $!
+local exit_code=$?
+DOWNLOAD_METHOD=$(cat "$method_file" 2>/dev/null)
+rm -f "$method_file"
+if [[ $exit_code -ne 0 ]]||[[ ! -s "pve.iso" ]];then
+log "ERROR: All download methods failed for Proxmox ISO"
+rm -f pve.iso
+exit 1
+fi
+log "Download successful via $DOWNLOAD_METHOD"
+local iso_size
+iso_size=$(stat -c%s pve.iso 2>/dev/null)||iso_size=0
+log "ISO file size: $(printf '%s\n' "$iso_size"|awk '{printf "%.1fG", $1/1024/1024/1024}')"
+if [[ -n $expected_checksum ]];then
+if [[ $DOWNLOAD_METHOD == "aria2c" ]];then
+log "Checksum already verified by aria2c"
+if type live_log_subtask &>/dev/null 2>&1;then
+live_log_subtask "SHA256: OK (verified by aria2c)"
+fi
+else
+log "Verifying ISO checksum"
+local actual_checksum
+(actual_checksum=$(sha256sum pve.iso|awk '{print $1}')&&printf '%s\n' "$actual_checksum" >/tmp/checksum_result)&
+local checksum_pid=$!
+if type show_progress &>/dev/null 2>&1;then
+show_progress $checksum_pid "Verifying checksum" "Checksum verified"
+else
+wait $checksum_pid
+fi
+actual_checksum=$(cat /tmp/checksum_result 2>/dev/null)
+rm -f /tmp/checksum_result
+if [[ $actual_checksum != "$expected_checksum" ]];then
+log "ERROR: Checksum mismatch! Expected: $expected_checksum, Got: $actual_checksum"
+if type live_log_subtask &>/dev/null 2>&1;then
+live_log_subtask "SHA256: FAILED"
+fi
+rm -f pve.iso
+exit 1
+fi
+log "Checksum verification passed"
+if type live_log_subtask &>/dev/null 2>&1;then
+live_log_subtask "SHA256: OK"
+fi
+fi
+else
+log "WARNING: Could not find checksum for $ISO_FILENAME"
+print_warning "Could not find checksum for $ISO_FILENAME"
+fi
+log "Cleaning up temporary files in /tmp"
+rm -rf /tmp/tmp.* /tmp/pve-* /tmp/checksum_result 2>/dev/null||true
+log "Temporary files cleaned"
+}
+validate_answer_toml(){
+local file="$1"
+local required_fields=("fqdn" "mailto" "timezone" "root-password")
+for field in "${required_fields[@]}";do
+if ! grep -q "^\s*$field\s*=" "$file" 2>/dev/null;then
+log "ERROR: Missing required field in answer.toml: $field"
+return 1
+fi
+done
+if ! grep -q "\[global\]" "$file" 2>/dev/null;then
+log "ERROR: Missing [global] section in answer.toml"
+return 1
+fi
+if command -v proxmox-auto-install-assistant &>/dev/null;then
+log "Validating answer.toml with proxmox-auto-install-assistant"
+if ! proxmox-auto-install-assistant validate-answer "$file" >>"$LOG_FILE" 2>&1;then
+log "ERROR: answer.toml validation failed"
+proxmox-auto-install-assistant validate-answer "$file" >>"$LOG_FILE" 2>&1||true
+return 1
+fi
+log "answer.toml validation passed"
+else
+log "WARNING: proxmox-auto-install-assistant not found, skipping advanced validation"
+fi
+return 0
+}
+make_answer_toml(){
+log "Creating answer.toml for autoinstall"
+log "ZFS_RAID=$ZFS_RAID, BOOT_DISK=$BOOT_DISK"
+log "ZFS_POOL_DISKS=(${ZFS_POOL_DISKS[*]})"
+run_with_progress "Creating disk mapping" "Disk mapping created" \
+create_virtio_mapping "$BOOT_DISK" "${ZFS_POOL_DISKS[@]}"
+load_virtio_mapping||{
+log "ERROR: Failed to load virtio mapping"
+exit 1
+}
+local FILESYSTEM
+local all_disks=()
+if [[ -n $BOOT_DISK ]];then
+FILESYSTEM="ext4"
+all_disks=("$BOOT_DISK")
+if [[ ${#ZFS_POOL_DISKS[@]} -eq 0 ]];then
+log "ERROR: BOOT_DISK set but no pool disks for ZFS tank creation"
+exit 1
+fi
+log "Boot disk mode: ext4 on boot disk, ZFS 'tank' pool will be created from ${#ZFS_POOL_DISKS[@]} pool disk(s)"
+else
+FILESYSTEM="zfs"
+all_disks=("${ZFS_POOL_DISKS[@]}")
+log "All-ZFS mode: ${#all_disks[@]} disk(s) in ZFS rpool ($ZFS_RAID)"
+fi
+DISK_LIST=$(map_disks_to_virtio "toml_array" "${all_disks[@]}")
+if [[ -z $DISK_LIST ]];then
+log "ERROR: Failed to map disks to virtio devices"
+exit 1
+fi
+log "FILESYSTEM=$FILESYSTEM, DISK_LIST=$DISK_LIST"
+log "Generating answer.toml for autoinstall"
+local escaped_password="${NEW_ROOT_PASSWORD//\\/\\\\}"
+escaped_password="${escaped_password//\"/\\\"}"
+cat >./answer.toml <<EOF
+[global]
+    keyboard = "$KEYBOARD"
+    country = "$COUNTRY"
+    fqdn = "$FQDN"
+    mailto = "$EMAIL"
+    timezone = "$TIMEZONE"
+    root-password = "$escaped_password"
+    reboot-on-error = false
+
+[network]
+    source = "from-dhcp"
+
+[disk-setup]
+    filesystem = "$FILESYSTEM"
+    disk-list = $DISK_LIST
+EOF
+if [[ $FILESYSTEM == "zfs" ]];then
+local zfs_raid_value
+zfs_raid_value=$(map_raid_to_toml "$ZFS_RAID")
+log "Using ZFS raid: $zfs_raid_value"
+cat >>./answer.toml <<EOF
+    zfs.raid = "$zfs_raid_value"
+    zfs.compress = "lz4"
+    zfs.checksum = "on"
+EOF
+elif [[ $FILESYSTEM == "ext4" ]]||[[ $FILESYSTEM == "xfs" ]];then
+cat >>./answer.toml <<EOF
+    lvm.swapsize = 0
+EOF
+fi
+if ! validate_answer_toml "./answer.toml";then
+log "ERROR: answer.toml validation failed"
+exit 1
+fi
+log "answer.toml created and validated:"
+cat answer.toml >>"$LOG_FILE"
+if type live_log_subtask &>/dev/null 2>&1;then
+local total_disks=${#ZFS_POOL_DISKS[@]}
+[[ -n $BOOT_DISK ]]&&((total_disks++))
+live_log_subtask "Mapped $total_disks disk(s) to virtio"
+live_log_subtask "Generated answer.toml ($FILESYSTEM)"
+fi
+}
+make_autoinstall_iso(){
+log "Creating autoinstall ISO"
+log "Input: pve.iso exists: $(test -f pve.iso&&echo 'yes'||echo 'no')"
+log "Input: answer.toml exists: $(test -f answer.toml&&echo 'yes'||echo 'no')"
+log "Current directory: $(pwd)"
+log "Files in current directory:"
+ls -la >>"$LOG_FILE" 2>&1
+proxmox-auto-install-assistant prepare-iso pve.iso --fetch-from iso --answer-file answer.toml --output pve-autoinstall.iso >>"$LOG_FILE" 2>&1&
+show_progress $! "Creating autoinstall ISO" "Autoinstall ISO created"
+local exit_code=$?
+if [[ $exit_code -ne 0 ]];then
+log "WARNING: proxmox-auto-install-assistant exited with code $exit_code"
+fi
+if [[ ! -f "./pve-autoinstall.iso" ]];then
+log "ERROR: Autoinstall ISO not found after creation attempt"
+log "Files in current directory after attempt:"
+ls -la >>"$LOG_FILE" 2>&1
+exit 1
+fi
+log "Autoinstall ISO created successfully: $(stat -c%s pve-autoinstall.iso 2>/dev/null|awk '{printf "%.1fM", $1/1024/1024}')"
+if type live_log_subtask &>/dev/null 2>&1;then
+live_log_subtask "Packed ISO with xorriso"
+fi
+log "Removing original ISO to save disk space"
+rm -f pve.iso
 }
 _copy_config_files(){
 local -a copy_pids=()
