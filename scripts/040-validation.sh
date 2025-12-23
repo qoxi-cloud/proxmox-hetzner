@@ -261,7 +261,8 @@ validate_dns_resolution() {
           ;;
         nslookup)
           # nslookup doesn't have timeout option, use timeout command
-          resolved_ip=$(timeout "$dns_timeout" nslookup -timeout=3 "$fqdn" "$dns_server" 2>/dev/null | awk '/^Address: / {print $2}' | head -1)
+          # Filter out server's Address line (has #port) to get resolved IP
+          resolved_ip=$(timeout "$dns_timeout" nslookup -timeout=3 "$fqdn" "$dns_server" 2>/dev/null | awk '/^Address:/ && !/#/ {print $2; exit}')
           ;;
       esac
 
