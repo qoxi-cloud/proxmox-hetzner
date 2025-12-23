@@ -446,6 +446,11 @@ API_TOKEN_NAME="automation" # Token name (default: automation)
 API_TOKEN_VALUE=""          # Generated token value (set post-install)
 API_TOKEN_ID=""             # Full token ID (user@pam!tokenname)
 
+# --- Proxmox Root Password ---
+# Set: Wizard (110-wizard-basic.sh)
+# Used: SSH passfile for QEMU VM access, answer.toml for Proxmox installer
+NEW_ROOT_PASSWORD="" # Proxmox root password (required, auto-generated if empty)
+
 # --- Admin User ---
 # Set: Wizard (115-wizard-ssh.sh)
 # Used: 302-configure-admin.sh, sshd_config, API token
