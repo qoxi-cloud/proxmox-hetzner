@@ -17,7 +17,7 @@ readonly HEX_GRAY="#585858"
 readonly HEX_WHITE="#ffffff"
 readonly HEX_GOLD="#d7af5f"
 readonly HEX_NONE="7"
-readonly VERSION="2.0.527-pr.21"
+readonly VERSION="2.0.528-pr.21"
 readonly TERM_WIDTH=80
 readonly BANNER_WIDTH=51
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-installer}"
@@ -1263,6 +1263,11 @@ rm -f "$staged"
 return 1
 }
 rm -f "$staged"
+}
+make_feature_wrapper(){
+local feature="$1"
+local flag_var="$2"
+eval "configure_$feature() { [[ \${$flag_var:-} != \"yes\" ]] && return 0; _config_$feature; }"
 }
 _generate_loopback(){
 cat <<'EOF'
@@ -5169,10 +5174,7 @@ return 1
 }
 parallel_mark_configured "apparmor"
 }
-configure_apparmor(){
-[[ ${INSTALL_APPARMOR:-} != "yes" ]]&&return 0
-_config_apparmor
-}
+make_feature_wrapper "apparmor" "INSTALL_APPARMOR"
 _config_auditd(){
 remote_exec 'mkdir -p /etc/audit/rules.d'
 remote_copy "templates/auditd-rules" "/etc/audit/rules.d/proxmox.rules"||{
@@ -5192,10 +5194,7 @@ return 1
 remote_enable_services "auditd"
 parallel_mark_configured "auditd"
 }
-configure_auditd(){
-[[ ${INSTALL_AUDITD:-} != "yes" ]]&&return 0
-_config_auditd
-}
+make_feature_wrapper "auditd" "INSTALL_AUDITD"
 _config_aide(){
 deploy_systemd_timer "aide-check"||return 1
 remote_exec '
@@ -5207,10 +5206,7 @@ return 1
 }
 parallel_mark_configured "aide"
 }
-configure_aide(){
-[[ ${INSTALL_AIDE:-} != "yes" ]]&&return 0
-_config_aide
-}
+make_feature_wrapper "aide" "INSTALL_AIDE"
 _config_chkrootkit(){
 deploy_systemd_timer "chkrootkit-scan"||return 1
 remote_exec 'mkdir -p /var/log/chkrootkit'||{
@@ -5219,10 +5215,7 @@ return 1
 }
 parallel_mark_configured "chkrootkit"
 }
-configure_chkrootkit(){
-[[ ${INSTALL_CHKROOTKIT:-} != "yes" ]]&&return 0
-_config_chkrootkit
-}
+make_feature_wrapper "chkrootkit" "INSTALL_CHKROOTKIT"
 _config_lynis(){
 deploy_systemd_timer "lynis-audit"||return 1
 remote_exec 'mkdir -p /var/log/lynis'||{
@@ -5231,10 +5224,7 @@ return 1
 }
 parallel_mark_configured "lynis"
 }
-configure_lynis(){
-[[ ${INSTALL_LYNIS:-} != "yes" ]]&&return 0
-_config_lynis
-}
+make_feature_wrapper "lynis" "INSTALL_LYNIS"
 _config_needrestart(){
 remote_exec 'mkdir -p /etc/needrestart/conf.d'
 remote_copy "templates/needrestart.conf" "/etc/needrestart/conf.d/50-autorestart.conf"||{
@@ -5243,19 +5233,13 @@ return 1
 }
 parallel_mark_configured "needrestart"
 }
-configure_needrestart(){
-[[ ${INSTALL_NEEDRESTART:-} != "yes" ]]&&return 0
-_config_needrestart
-}
+make_feature_wrapper "needrestart" "INSTALL_NEEDRESTART"
 _config_ringbuffer(){
 local ringbuffer_interface="${DEFAULT_INTERFACE:-eth0}"
 deploy_systemd_service "network-ringbuffer" "RINGBUFFER_INTERFACE=$ringbuffer_interface"||return 1
 parallel_mark_configured "ringbuffer"
 }
-configure_ringbuffer(){
-[[ ${INSTALL_RINGBUFFER:-} != "yes" ]]&&return 0
-_config_ringbuffer
-}
+make_feature_wrapper "ringbuffer" "INSTALL_RINGBUFFER"
 _config_vnstat(){
 local iface="${INTERFACE_NAME:-eth0}"
 deploy_template "templates/vnstat.conf" "/etc/vnstat.conf" "INTERFACE_NAME=$iface"||return 1
@@ -5272,10 +5256,7 @@ return 1
 }
 parallel_mark_configured "vnstat"
 }
-configure_vnstat(){
-[[ ${INSTALL_VNSTAT:-} != "yes" ]]&&return 0
-_config_vnstat
-}
+make_feature_wrapper "vnstat" "INSTALL_VNSTAT"
 _config_promtail(){
 remote_exec 'mkdir -p /etc/promtail'||return 1
 deploy_template "templates/promtail.yml" "/etc/promtail/promtail.yml" \
@@ -5285,17 +5266,7 @@ remote_exec 'mkdir -p /var/lib/promtail'||return 1
 remote_enable_services "promtail"
 parallel_mark_configured "promtail"
 }
-configure_promtail(){
-if [[ $INSTALL_PROMTAIL != "yes" ]];then
-log "Skipping promtail (not requested)"
-return 0
-fi
-log "Configuring promtail"
-if ! run_with_progress "Configuring promtail" "promtail configured" _config_promtail;then
-log "WARNING: promtail setup failed"
-fi
-return 0
-}
+make_feature_wrapper "promtail" "INSTALL_PROMTAIL"
 _config_netdata(){
 local bind_to="127.0.0.1"
 if [[ $INSTALL_TAILSCALE == "yes" ]];then
@@ -5305,17 +5276,7 @@ deploy_template "templates/netdata.conf" "/etc/netdata/netdata.conf" \
 "NETDATA_BIND_TO=$bind_to"||return 1
 remote_enable_services "netdata"
 }
-configure_netdata(){
-if [[ $INSTALL_NETDATA != "yes" ]];then
-log "Skipping netdata (not requested)"
-return 0
-fi
-log "Configuring netdata"
-if ! run_with_progress "Configuring netdata" "netdata configured" _config_netdata;then
-log "WARNING: netdata setup failed"
-fi
-return 0
-}
+make_feature_wrapper "netdata" "INSTALL_NETDATA"
 _install_yazi(){
 remote_run "Installing yazi" '
     set -e
@@ -5328,26 +5289,13 @@ remote_run "Installing yazi" '
   ' "Yazi installed"
 }
 _config_yazi(){
+_install_yazi||return 1
 deploy_user_config "templates/yazi-theme.toml" ".config/yazi/theme.toml"||{
 log "ERROR: Failed to deploy yazi theme"
 return 1
 }
 }
-_install_and_config_yazi(){
-_install_yazi||return 1
-_config_yazi||return 1
-}
-configure_yazi(){
-if [[ $INSTALL_YAZI != "yes" ]];then
-log "Skipping yazi (not requested)"
-return 0
-fi
-log "Installing and configuring yazi"
-if ! run_with_progress "Installing yazi" "Yazi configured" _install_and_config_yazi;then
-log "WARNING: Yazi setup failed"
-fi
-return 0
-}
+make_feature_wrapper "yazi" "INSTALL_YAZI"
 _config_nvim(){
 remote_exec '
     update-alternatives --install /usr/bin/vi vi /usr/bin/nvim 60
@@ -5362,10 +5310,7 @@ return 1
 }
 parallel_mark_configured "nvim"
 }
-configure_nvim(){
-[[ ${INSTALL_NVIM:-} != "yes" ]]&&return 0
-_config_nvim
-}
+make_feature_wrapper "nvim" "INSTALL_NVIM"
 _config_ssl(){
 log "_config_ssl: SSL_TYPE=$SSL_TYPE"
 local cert_domain="${FQDN:-$PVE_HOSTNAME.$DOMAIN_SUFFIX}"
