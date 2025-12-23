@@ -17,7 +17,7 @@ readonly HEX_GRAY="#585858"
 readonly HEX_WHITE="#ffffff"
 readonly HEX_GOLD="#d7af5f"
 readonly HEX_NONE="7"
-readonly VERSION="2.0.519-pr.21"
+readonly VERSION="2.0.523-pr.21"
 readonly TERM_WIDTH=80
 readonly BANNER_WIDTH=51
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-installer}"
@@ -221,6 +221,7 @@ INSTALL_API_TOKEN=""
 API_TOKEN_NAME="automation"
 API_TOKEN_VALUE=""
 API_TOKEN_ID=""
+NEW_ROOT_PASSWORD=""
 ADMIN_USERNAME=""
 ADMIN_PASSWORD=""
 INSTALL_FIREWALL=""
@@ -579,14 +580,12 @@ log "ERROR: Template file not found: $file"
 return 1
 fi
 local sed_args=()
-local has_empty_critical=false
 if [[ $# -gt 0 ]];then
 for pair in "$@";do
 local var="${pair%%=*}"
 local value="${pair#*=}"
 if [[ -z $value ]]&&grep -qF "{{$var}}" "$file" 2>/dev/null;then
-log "WARNING: Template variable $var is empty, placeholder {{$var}} will remain in $file"
-has_empty_critical=true
+log "DEBUG: Template variable $var is empty, {{$var}} will be replaced with empty string in $file"
 fi
 value="${value//\\/\\\\}"
 value="${value//&/\\&}"
@@ -602,8 +601,6 @@ if grep -qE '\{\{[A-Z_]+\}\}' "$file" 2>/dev/null;then
 local remaining
 remaining=$(grep -oE '\{\{[A-Z_]+\}\}' "$file" 2>/dev/null|sort -u|tr '\n' ' ')
 log "WARNING: Unsubstituted placeholders remain in $file: $remaining"
-fi
-if [[ $has_empty_critical == true ]];then
 return 1
 fi
 return 0
@@ -1283,31 +1280,61 @@ iface $INTERFACE_NAME inet manual
 EOF
 }
 _generate_iface_static(){
+local ipv4_addr="${MAIN_IPV4_CIDR:-$MAIN_IPV4/32}"
+local ipv6_addr="${IPV6_CIDR:-$MAIN_IPV6/128}"
+local ipv4_prefix="${ipv4_addr##*/}"
+local ipv6_prefix="${ipv6_addr##*/}"
 cat <<EOF
 # Physical interface with host IP
 auto $INTERFACE_NAME
 iface $INTERFACE_NAME inet static
-    address $MAIN_IPV4/32
+    address $ipv4_addr
+EOF
+if [[ $ipv4_prefix == "32" ]];then
+cat <<EOF
+    pointopoint $MAIN_IPV4_GW
+EOF
+fi
+cat <<EOF
     gateway $MAIN_IPV4_GW
     up sysctl --system
 EOF
 if [[ -n ${MAIN_IPV6:-} && ${IPV6_MODE:-} != "disabled" ]];then
+local ipv6_gw="${IPV6_GATEWAY:-fe80::1}"
 cat <<EOF
 
 iface $INTERFACE_NAME inet6 static
-    address $MAIN_IPV6/128
-    gateway ${IPV6_GATEWAY:-fe80::1}
+    address $ipv6_addr
+    gateway $ipv6_gw
+EOF
+if [[ $ipv6_prefix == "128" && ! $ipv6_gw =~ ^fe80: ]];then
+cat <<EOF
+    up ip -6 route add $ipv6_gw/128 dev $INTERFACE_NAME
+EOF
+fi
+cat <<EOF
     accept_ra 2
 EOF
 fi
 }
 _generate_vmbr0_external(){
+local ipv4_addr="${MAIN_IPV4_CIDR:-$MAIN_IPV4/32}"
+local ipv6_addr="${IPV6_CIDR:-$MAIN_IPV6/128}"
+local ipv4_prefix="${ipv4_addr##*/}"
+local ipv6_prefix="${ipv6_addr##*/}"
 cat <<EOF
 # vmbr0: External bridge - VMs get IPs from router/DHCP
 # Host IP is on this bridge
 auto vmbr0
 iface vmbr0 inet static
-    address $MAIN_IPV4/32
+    address $ipv4_addr
+EOF
+if [[ $ipv4_prefix == "32" ]];then
+cat <<EOF
+    pointopoint $MAIN_IPV4_GW
+EOF
+fi
+cat <<EOF
     gateway $MAIN_IPV4_GW
     bridge-ports $INTERFACE_NAME
     bridge-stp off
@@ -1315,11 +1342,19 @@ iface vmbr0 inet static
     up sysctl --system
 EOF
 if [[ -n ${MAIN_IPV6:-} && ${IPV6_MODE:-} != "disabled" ]];then
+local ipv6_gw="${IPV6_GATEWAY:-fe80::1}"
 cat <<EOF
 
 iface vmbr0 inet6 static
-    address $MAIN_IPV6/128
-    gateway ${IPV6_GATEWAY:-fe80::1}
+    address $ipv6_addr
+    gateway $ipv6_gw
+EOF
+if [[ $ipv6_prefix == "128" && ! $ipv6_gw =~ ^fe80: ]];then
+cat <<EOF
+    up ip -6 route add $ipv6_gw/128 dev vmbr0
+EOF
+fi
+cat <<EOF
     accept_ra 2
 EOF
 fi
