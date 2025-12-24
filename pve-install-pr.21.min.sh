@@ -17,7 +17,7 @@ readonly HEX_GRAY="#585858"
 readonly HEX_WHITE="#ffffff"
 readonly HEX_GOLD="#d7af5f"
 readonly HEX_NONE="7"
-readonly VERSION="2.0.531-pr.21"
+readonly VERSION="2.0.532-pr.21"
 readonly TERM_WIDTH=80
 readonly BANNER_WIDTH=51
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-installer}"
@@ -1289,7 +1289,7 @@ EOF
 }
 _generate_iface_static(){
 local ipv4_addr="${MAIN_IPV4_CIDR:-$MAIN_IPV4/32}"
-local ipv6_addr="${IPV6_CIDR:-$MAIN_IPV6/128}"
+local ipv6_addr="${IPV6_ADDRESS:-${IPV6_CIDR:-$MAIN_IPV6/128}}"
 local ipv4_prefix="${ipv4_addr##*/}"
 local ipv6_prefix="${ipv6_addr##*/}"
 cat <<EOF
@@ -1327,7 +1327,7 @@ fi
 }
 _generate_vmbr0_external(){
 local ipv4_addr="${MAIN_IPV4_CIDR:-$MAIN_IPV4/32}"
-local ipv6_addr="${IPV6_CIDR:-$MAIN_IPV6/128}"
+local ipv6_addr="${IPV6_ADDRESS:-${IPV6_CIDR:-$MAIN_IPV6/128}}"
 local ipv4_prefix="${ipv4_addr##*/}"
 local ipv6_prefix="${ipv6_addr##*/}"
 cat <<EOF
