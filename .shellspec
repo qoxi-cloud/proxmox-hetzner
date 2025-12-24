@@ -8,3 +8,6 @@
 
 # Helper
 --helper spec/spec_helper.sh
+
+# Coverage exclusions (bundled script)
+--kcov-options "--exclude-pattern=pve-install.sh"

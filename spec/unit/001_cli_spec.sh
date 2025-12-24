@@ -7,132 +7,69 @@
 %const SCRIPTS_DIR: "${SHELLSPEC_PROJECT_ROOT}/scripts"
 %const SUPPORT_DIR: "${SHELLSPEC_PROJECT_ROOT}/spec/support"
 
-# Load shared colors
+# Load shared colors (for CLR_* variables used in error messages)
 eval "$(cat "$SUPPORT_DIR/colors.sh")"
 
 Describe "001-cli.sh"
-  # Set up required variables from 000-init.sh before testing
-  setup_vars() {
-    VERSION="2"
-    QEMU_RAM_OVERRIDE=""
-    QEMU_CORES_OVERRIDE=""
-    PROXMOX_ISO_VERSION=""
-  }
-  BeforeAll 'setup_vars'
+  # Disable auto-parse on source
+  BeforeAll '_CLI_PARSE_ON_SOURCE=false; VERSION="2"'
 
-  # Helper to run CLI parsing with arguments
-  # We source only the show_help function, then simulate argument parsing
-  parse_cli_args() {
-    # Reset variables
-    QEMU_RAM_OVERRIDE=""
-    QEMU_CORES_OVERRIDE=""
-    PROXMOX_ISO_VERSION=""
-
-    while [[ $# -gt 0 ]]; do
-      case $1 in
-        -h | --help)
-          printf '%s\n' "help shown"
-          return 0
-          ;;
-        -v | --version)
-          printf '%s\n' "Proxmox Installer v${VERSION}"
-          return 0
-          ;;
-        --qemu-ram)
-          if [[ -z $2 || $2 =~ ^- ]]; then
-            printf '%s\n' "Error: --qemu-ram requires a value in MB"
-            return 1
-          fi
-          if ! [[ $2 =~ ^[0-9]+$ ]] || [[ $2 -lt 2048 ]]; then
-            printf '%s\n' "Error: --qemu-ram must be a number >= 2048 MB"
-            return 1
-          fi
-          if [[ $2 -gt 131072 ]]; then
-            printf '%s\n' "Error: --qemu-ram must be <= 131072 MB (128 GB)"
-            return 1
-          fi
-          QEMU_RAM_OVERRIDE="$2"
-          shift 2
-          ;;
-        --qemu-cores)
-          if [[ -z $2 || $2 =~ ^- ]]; then
-            printf '%s\n' "Error: --qemu-cores requires a value"
-            return 1
-          fi
-          if ! [[ $2 =~ ^[0-9]+$ ]] || [[ $2 -lt 1 ]]; then
-            printf '%s\n' "Error: --qemu-cores must be a positive number"
-            return 1
-          fi
-          if [[ $2 -gt 256 ]]; then
-            printf '%s\n' "Error: --qemu-cores must be <= 256"
-            return 1
-          fi
-          QEMU_CORES_OVERRIDE="$2"
-          shift 2
-          ;;
-        --iso-version)
-          if [[ -z $2 || $2 =~ ^- ]]; then
-            printf '%s\n' "Error: --iso-version requires a filename"
-            return 1
-          fi
-          if ! [[ $2 =~ ^proxmox-ve_[0-9]+\.[0-9]+-[0-9]+\.iso$ ]]; then
-            printf '%s\n' "Error: --iso-version must be in format: proxmox-ve_X.Y-Z.iso"
-            return 1
-          fi
-          PROXMOX_ISO_VERSION="$2"
-          shift 2
-          ;;
-        *)
-          printf '%s\n' "Unknown option: $1"
-          return 1
-          ;;
-      esac
-    done
-  }
+  Include "$SCRIPTS_DIR/001-cli.sh"
 
   # ===========================================================================
-  # show_help() / --help / -h
+  # show_help()
   # ===========================================================================
-  Describe "--help option"
-    It "displays help message with -h"
-      When call parse_cli_args -h
+  Describe "show_help()"
+    It "displays help message"
+      When call show_help
       The status should be success
-      The output should include "help shown"
+      The output should include "Qoxi Automated Installer"
+      The output should include "--help"
+      The output should include "--qemu-ram"
+      The output should include "--qemu-cores"
+      The output should include "--iso-version"
     End
 
-    It "displays help message with --help"
-      When call parse_cli_args --help
-      The status should be success
-      The output should include "help shown"
+    It "shows usage examples"
+      When call show_help
+      The output should include "Examples:"
+      The output should include "Interactive installation"
     End
   End
 
   # ===========================================================================
-  # --version / -v
+  # parse_cli_args() - help/version
   # ===========================================================================
-  Describe "--version option"
-    It "displays version with -v"
+  Describe "parse_cli_args() help and version"
+    It "returns 2 for -h (early exit)"
+      When call parse_cli_args -h
+      The status should equal 2
+      The output should include "Qoxi Automated Installer"
+    End
+
+    It "returns 2 for --help (early exit)"
+      When call parse_cli_args --help
+      The status should equal 2
+      The output should include "Qoxi Automated Installer"
+    End
+
+    It "returns 2 for -v (early exit)"
       When call parse_cli_args -v
-      The status should be success
+      The status should equal 2
       The output should include "Proxmox Installer v"
     End
 
-    It "displays version with --version"
+    It "returns 2 for --version (early exit)"
       When call parse_cli_args --version
-      The status should be success
-      The output should include "Proxmox Installer v"
-    End
-
-    It "includes VERSION number"
-      When call parse_cli_args --version
+      The status should equal 2
       The output should include "v2"
     End
   End
 
   # ===========================================================================
-  # --qemu-ram
+  # parse_cli_args() - --qemu-ram
   # ===========================================================================
-  Describe "--qemu-ram option"
+  Describe "parse_cli_args() --qemu-ram"
     It "accepts valid RAM value (4096)"
       When call parse_cli_args --qemu-ram 4096
       The status should be success
@@ -187,7 +124,7 @@ Describe "001-cli.sh"
       The output should include ">= 2048"
     End
 
-    It "rejects negative number"
+    It "rejects negative number (treated as missing value)"
       When call parse_cli_args --qemu-ram -1024
       The status should be failure
       The output should include "requires a value"
@@ -195,9 +132,9 @@ Describe "001-cli.sh"
   End
 
   # ===========================================================================
-  # --qemu-cores
+  # parse_cli_args() - --qemu-cores
   # ===========================================================================
-  Describe "--qemu-cores option"
+  Describe "parse_cli_args() --qemu-cores"
     It "accepts valid cores value (4)"
       When call parse_cli_args --qemu-cores 4
       The status should be success
@@ -246,7 +183,7 @@ Describe "001-cli.sh"
       The output should include "<= 256"
     End
 
-    It "rejects negative number"
+    It "rejects negative number (treated as missing value)"
       When call parse_cli_args --qemu-cores -4
       The status should be failure
       The output should include "requires a value"
@@ -254,9 +191,9 @@ Describe "001-cli.sh"
   End
 
   # ===========================================================================
-  # --iso-version
+  # parse_cli_args() - --iso-version
   # ===========================================================================
-  Describe "--iso-version option"
+  Describe "parse_cli_args() --iso-version"
     It "accepts valid ISO filename"
       When call parse_cli_args --iso-version proxmox-ve_8.3-1.iso
       The status should be success
@@ -325,9 +262,9 @@ Describe "001-cli.sh"
   End
 
   # ===========================================================================
-  # Unknown options
+  # parse_cli_args() - unknown options
   # ===========================================================================
-  Describe "unknown options"
+  Describe "parse_cli_args() unknown options"
     It "rejects unknown option"
       When call parse_cli_args --unknown
       The status should be failure
@@ -348,9 +285,9 @@ Describe "001-cli.sh"
   End
 
   # ===========================================================================
-  # Multiple options
+  # parse_cli_args() - multiple options
   # ===========================================================================
-  Describe "multiple options"
+  Describe "parse_cli_args() multiple options"
     It "accepts multiple valid options"
       When call parse_cli_args --qemu-ram 8192 --qemu-cores 8
       The status should be success
@@ -374,15 +311,18 @@ Describe "001-cli.sh"
   End
 
   # ===========================================================================
-  # No arguments
+  # parse_cli_args() - no arguments
   # ===========================================================================
-  Describe "no arguments"
+  Describe "parse_cli_args() no arguments"
     It "succeeds with no arguments"
       When call parse_cli_args
       The status should be success
     End
 
-    It "leaves variables empty with no arguments"
+    It "resets variables with no arguments"
+      QEMU_RAM_OVERRIDE="previous"
+      QEMU_CORES_OVERRIDE="previous"
+      PROXMOX_ISO_VERSION="previous"
       When call parse_cli_args
       The variable QEMU_RAM_OVERRIDE should equal ""
       The variable QEMU_CORES_OVERRIDE should equal ""
