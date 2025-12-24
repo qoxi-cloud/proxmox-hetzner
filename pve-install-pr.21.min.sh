@@ -17,7 +17,7 @@ readonly HEX_GRAY="#585858"
 readonly HEX_WHITE="#ffffff"
 readonly HEX_GOLD="#d7af5f"
 readonly HEX_NONE="7"
-readonly VERSION="2.0.532-pr.21"
+readonly VERSION="2.0.533-pr.21"
 readonly TERM_WIDTH=80
 readonly BANNER_WIDTH=51
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-installer}"
@@ -880,15 +880,26 @@ generate_password(){
 local length="${1:-16}"
 tr -dc 'A-Za-z0-9!@#$%^&*' </dev/urandom|head -c "$length"
 }
+_virtio_name_for_index(){
+local idx="$1"
+local letters="abcdefghijklmnopqrstuvwxyz"
+if ((idx<26));then
+printf 'vd%s\n' "${letters:idx:1}"
+else
+local prefix_idx=$(((idx-26)/26))
+local suffix_idx=$(((idx-26)%26))
+printf 'vd%s%s\n' "${letters:prefix_idx:1}" "${letters:suffix_idx:1}"
+fi
+}
 create_virtio_mapping(){
 local boot_disk="$1"
 shift
 local pool_disks=("$@")
 declare -A VIRTIO_MAP
 local virtio_idx=0
-local vdev_letters=(a b c d e f g h i j k l m n o p q r s t u v w x y z)
 if [[ -n $boot_disk ]];then
-local vdev="vd${vdev_letters[$virtio_idx]}"
+local vdev
+vdev="$(_virtio_name_for_index "$virtio_idx")"
 VIRTIO_MAP["$boot_disk"]="$vdev"
 log "Virtio mapping: $boot_disk → /dev/$vdev (boot)"
 ((virtio_idx++))
@@ -898,7 +909,8 @@ if [[ -n ${VIRTIO_MAP[$drive]:-} ]];then
 log "Virtio mapping: $drive already mapped as boot disk, skipping"
 continue
 fi
-local vdev="vd${vdev_letters[$virtio_idx]}"
+local vdev
+vdev="$(_virtio_name_for_index "$virtio_idx")"
 VIRTIO_MAP["$drive"]="$vdev"
 log "Virtio mapping: $drive → /dev/$vdev (pool)"
 ((virtio_idx++))
