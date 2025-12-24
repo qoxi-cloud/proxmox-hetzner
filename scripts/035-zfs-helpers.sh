@@ -4,6 +4,25 @@
 # =============================================================================
 # Reusable ZFS utilities for RAID validation, disk mapping, and pool creation
 
+# Generates virtio device name for a given index.
+# Uses Linux kernel naming: vda-vdz, then vdaa-vdaz, vdba-vdbz, etc.
+# Parameters:
+#   $1 - Index (0-based)
+# Returns: Device name (e.g., "vda", "vdz", "vdaa", "vdba") via stdout
+_virtio_name_for_index() {
+  local idx="$1"
+  local letters="abcdefghijklmnopqrstuvwxyz"
+
+  if ((idx < 26)); then
+    printf 'vd%s\n' "${letters:$idx:1}"
+  else
+    # After vdz: vdaa, vdab, ..., vdaz, vdba, ...
+    local prefix_idx=$(((idx - 26) / 26))
+    local suffix_idx=$(((idx - 26) % 26))
+    printf 'vd%s%s\n' "${letters:$prefix_idx:1}" "${letters:$suffix_idx:1}"
+  fi
+}
+
 # Creates virtio disk mapping file.
 # Maps boot disk (if set) to vda, then pool disks to vdb, vdc, etc.
 # Parameters:
@@ -20,11 +39,11 @@ create_virtio_mapping() {
 
   declare -A VIRTIO_MAP
   local virtio_idx=0
-  local vdev_letters=(a b c d e f g h i j k l m n o p q r s t u v w x y z)
 
   # Add boot disk first (if separate)
   if [[ -n $boot_disk ]]; then
-    local vdev="vd${vdev_letters[$virtio_idx]}"
+    local vdev
+    vdev="$(_virtio_name_for_index "$virtio_idx")"
     VIRTIO_MAP["$boot_disk"]="$vdev"
     log "Virtio mapping: $boot_disk → /dev/$vdev (boot)"
     ((virtio_idx++))
@@ -36,7 +55,8 @@ create_virtio_mapping() {
       log "Virtio mapping: $drive already mapped as boot disk, skipping"
       continue
     fi
-    local vdev="vd${vdev_letters[$virtio_idx]}"
+    local vdev
+    vdev="$(_virtio_name_for_index "$virtio_idx")"
     VIRTIO_MAP["$drive"]="$vdev"
     log "Virtio mapping: $drive → /dev/$vdev (pool)"
     ((virtio_idx++))

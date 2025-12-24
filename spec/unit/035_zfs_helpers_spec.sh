@@ -13,6 +13,51 @@ Describe "035-zfs-helpers.sh"
   Include "$SCRIPTS_DIR/035-zfs-helpers.sh"
 
   # ===========================================================================
+  # _virtio_name_for_index()
+  # ===========================================================================
+  Describe "_virtio_name_for_index()"
+    It "returns vda for index 0"
+      When call _virtio_name_for_index 0
+      The output should equal "vda"
+    End
+
+    It "returns vdb for index 1"
+      When call _virtio_name_for_index 1
+      The output should equal "vdb"
+    End
+
+    It "returns vdz for index 25"
+      When call _virtio_name_for_index 25
+      The output should equal "vdz"
+    End
+
+    It "returns vdaa for index 26"
+      When call _virtio_name_for_index 26
+      The output should equal "vdaa"
+    End
+
+    It "returns vdab for index 27"
+      When call _virtio_name_for_index 27
+      The output should equal "vdab"
+    End
+
+    It "returns vdaz for index 51"
+      When call _virtio_name_for_index 51
+      The output should equal "vdaz"
+    End
+
+    It "returns vdba for index 52"
+      When call _virtio_name_for_index 52
+      The output should equal "vdba"
+    End
+
+    It "returns vdzz for index 701"
+      When call _virtio_name_for_index 701
+      The output should equal "vdzz"
+    End
+  End
+
+  # ===========================================================================
   # map_raid_to_toml()
   # ===========================================================================
   Describe "map_raid_to_toml()"
@@ -180,6 +225,23 @@ Describe "035-zfs-helpers.sh"
       When call cat /tmp/virtio_map.env
       The output should include '[/dev/sda]="vda"'
       The output should include '[/dev/sde]="vde"'
+    End
+
+    It "handles more than 26 drives correctly"
+      # Generate 28 drives: sd{a..z} + sdaa + sdab
+      # shellcheck disable=SC2034
+      disks=()
+      for letter in a b c d e f g h i j k l m n o p q r s t u v w x y z; do
+        disks+=("/dev/sd${letter}")
+      done
+      disks+=("/dev/sdaa" "/dev/sdab")
+      (create_virtio_mapping "" "${disks[@]}") || true
+      When call cat /tmp/virtio_map.env
+      # First drive is vda, last (26th) is vdz, 27th is vdaa, 28th is vdab
+      The output should include '[/dev/sda]="vda"'
+      The output should include '[/dev/sdz]="vdz"'
+      The output should include '[/dev/sdaa]="vdaa"'
+      The output should include '[/dev/sdab]="vdab"'
     End
 
     It "handles nvme device names"
