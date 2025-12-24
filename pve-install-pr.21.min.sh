@@ -17,7 +17,7 @@ readonly HEX_GRAY="#585858"
 readonly HEX_WHITE="#ffffff"
 readonly HEX_GOLD="#d7af5f"
 readonly HEX_NONE="7"
-readonly VERSION="2.0.534-pr.21"
+readonly VERSION="2.0.538-pr.21"
 readonly TERM_WIDTH=80
 readonly BANNER_WIDTH=51
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-installer}"
@@ -1315,6 +1315,7 @@ cat <<EOF
 EOF
 if [[ -n ${MAIN_IPV6:-} && ${IPV6_MODE:-} != "disabled" ]];then
 local ipv6_gw="${IPV6_GATEWAY:-fe80::1}"
+[[ $ipv6_gw == "auto" ]]&&ipv6_gw="fe80::1"
 cat <<EOF
 
 iface $INTERFACE_NAME inet6 static
@@ -1357,6 +1358,7 @@ cat <<EOF
 EOF
 if [[ -n ${MAIN_IPV6:-} && ${IPV6_MODE:-} != "disabled" ]];then
 local ipv6_gw="${IPV6_GATEWAY:-fe80::1}"
+[[ $ipv6_gw == "auto" ]]&&ipv6_gw="fe80::1"
 cat <<EOF
 
 iface vmbr0 inet6 static
