@@ -89,7 +89,7 @@ Describe "301-configure-tailscale.sh"
     # With auth key
     # -------------------------------------------------------------------------
     Describe "with auth key"
-      BeforeEach 'TAILSCALE_AUTH_KEY="tskey-auth-xxxxx"; MOCK_REMOTE_EXEC_RESULT=0'
+      BeforeEach 'TAILSCALE_AUTH_KEY="tskey-auth-xxxxx"; MOCK_REMOTE_EXEC_RESULT=0; MOCK_REMOTE_EXEC_OUTPUT=""'
 
       It "authenticates successfully"
         When call _config_tailscale
@@ -105,27 +105,15 @@ Describe "301-configure-tailscale.sh"
       End
 
       It "sets TAILSCALE_IP from remote response"
-        # Mock remote_exec to output IP and hostname
-        remote_exec() {
-          if [[ $1 == *"tailscale status --json"* ]]; then
-            echo "100.100.100.1	host.tailnet.ts.net"
-            return 0
-          fi
-          return 0
-        }
+        # Use variable-based mock output (variables propagate to subshells, inline functions don't)
+        MOCK_REMOTE_EXEC_OUTPUT=$'100.100.100.1\thost.tailnet.ts.net'
         When call _config_tailscale
         The status should be success
         The variable TAILSCALE_IP should equal "100.100.100.1"
       End
 
       It "sets TAILSCALE_HOSTNAME from remote response"
-        remote_exec() {
-          if [[ $1 == *"tailscale status --json"* ]]; then
-            echo "100.100.100.1	myhost.tailnet.ts.net"
-            return 0
-          fi
-          return 0
-        }
+        MOCK_REMOTE_EXEC_OUTPUT=$'100.100.100.1\tmyhost.tailnet.ts.net'
         When call _config_tailscale
         The status should be success
         The variable TAILSCALE_HOSTNAME should equal "myhost.tailnet.ts.net"
@@ -133,11 +121,9 @@ Describe "301-configure-tailscale.sh"
 
       It "returns empty when no IP from remote (cat succeeds on empty file)"
         # When remote_exec returns nothing, cat reads empty file successfully
-        # The || "pending" only triggers if cat itself fails
-        remote_exec() { return 0; }
+        MOCK_REMOTE_EXEC_OUTPUT=""
         When call _config_tailscale
         The status should be success
-        # Note: cat on empty file succeeds with empty output, "pending" is only for cat failure
         The variable TAILSCALE_IP should equal ""
       End
     End

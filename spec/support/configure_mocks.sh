@@ -13,6 +13,7 @@
 # =============================================================================
 MOCK_REMOTE_RUN_RESULT=0
 MOCK_REMOTE_EXEC_RESULT=0
+MOCK_REMOTE_EXEC_OUTPUT=""
 MOCK_REMOTE_COPY_RESULT=0
 MOCK_APPLY_TEMPLATE_VARS_RESULT=0
 
@@ -43,6 +44,8 @@ remote_run() {
 }
 
 remote_exec() {
+  # Output mock data if configured (visible in subshells via variable inheritance)
+  [[ -n $MOCK_REMOTE_EXEC_OUTPUT ]] && echo "$MOCK_REMOTE_EXEC_OUTPUT"
   return "$MOCK_REMOTE_EXEC_RESULT"
 }
 
