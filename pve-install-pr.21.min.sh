@@ -16,7 +16,7 @@ readonly HEX_ORANGE="#ff8700"
 readonly HEX_GRAY="#585858"
 readonly HEX_WHITE="#ffffff"
 readonly HEX_NONE="7"
-readonly VERSION="2.0.591-pr.21"
+readonly VERSION="2.0.592-pr.21"
 readonly TERM_WIDTH=80
 readonly BANNER_WIDTH=51
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-installer}"
@@ -1265,10 +1265,25 @@ return 1
 fi
 return 0
 }
+deploy_timer_with_logdir(){
+local timer_name="$1"
+local log_dir="$2"
+deploy_systemd_timer "$timer_name"||return 1
+remote_exec "mkdir -p '$log_dir'"||{
+log "ERROR: Failed to create $log_dir"
+return 1
+}
+}
 make_feature_wrapper(){
 local feature="$1"
 local flag_var="$2"
 eval "configure_$feature() { [[ \${$flag_var:-} != \"yes\" ]] && return 0; _config_$feature; }"
+}
+make_condition_wrapper(){
+local feature="$1"
+local var_name="$2"
+local expected_value="$3"
+eval "configure_$feature() { [[ \${$var_name:-} != \"$expected_value\" ]] && return 0; _config_$feature; }"
 }
 deploy_user_config(){
 local template="$1"
@@ -3300,6 +3315,36 @@ fi
 done
 return 0
 }
+_wiz_input_validated(){
+local validate_func="$1"
+local error_msg="$2"
+shift 2
+while true;do
+_wiz_start_edit
+_show_input_footer
+local value
+value=$(_wiz_input "$@")
+[[ -z $value ]]&&return 1
+if "$validate_func" "$value";then
+printf '%s' "$value"
+return 0
+fi
+show_validation_error "$error_msg"
+done
+}
+_wiz_filter_select(){
+local var_name="$1"
+local prompt="$2"
+local data="$3"
+local height="${4:-6}"
+_wiz_start_edit
+_show_input_footer "filter" "$height"
+local selected
+if ! selected=$(printf '%s' "$data"|_wiz_filter --prompt "$prompt");then
+return 1
+fi
+declare -g "$var_name=$selected"
+}
 _country_to_locale(){
 local country="${1:-us}"
 country="${country,,}"
@@ -3356,25 +3401,12 @@ LOCALE=$(_country_to_locale "$COUNTRY")
 log "Set LOCALE=$LOCALE from COUNTRY=$COUNTRY"
 }
 _edit_hostname(){
-while true;do
-_wiz_start_edit
-_show_input_footer
 local new_hostname
-new_hostname=$(_wiz_input \
+new_hostname=$(_wiz_input_validated "validate_hostname" "Invalid hostname format" \
 --placeholder "e.g., pve, proxmox, node1" \
 --value "$PVE_HOSTNAME" \
---prompt "Hostname: ")
-if [[ -z $new_hostname ]];then
-return
-fi
-if validate_hostname "$new_hostname";then
+--prompt "Hostname: ")||return
 PVE_HOSTNAME="$new_hostname"
-break
-else
-show_validation_error "Invalid hostname format"
-fi
-done
-while true;do
 _wiz_start_edit
 _show_input_footer
 local new_domain
@@ -3382,33 +3414,17 @@ new_domain=$(_wiz_input \
 --placeholder "e.g., local, example.com" \
 --value "$DOMAIN_SUFFIX" \
 --prompt "Domain: ")
-if [[ -z $new_domain ]];then
-return
-fi
+[[ -z $new_domain ]]&&return
 DOMAIN_SUFFIX="$new_domain"
-break
-done
 FQDN="$PVE_HOSTNAME.$DOMAIN_SUFFIX"
 }
 _edit_email(){
-while true;do
-_wiz_start_edit
-_show_input_footer
 local new_email
-new_email=$(_wiz_input \
+new_email=$(_wiz_input_validated "validate_email" "Invalid email format" \
 --placeholder "admin@example.com" \
 --value "$EMAIL" \
---prompt "Email: ")
-if [[ -z $new_email ]];then
-return
-fi
-if validate_email "$new_email";then
+--prompt "Email: ")||return
 EMAIL="$new_email"
-break
-else
-show_validation_error "Invalid email format"
-fi
-done
 }
 _edit_password(){
 _wiz_password_editor \
@@ -3419,36 +3435,18 @@ _wiz_password_editor \
 "yes"
 }
 _edit_timezone(){
-_wiz_start_edit
-_show_input_footer "filter" 6
-local selected
-if ! selected=$(echo "$WIZ_TIMEZONES"|_wiz_filter --prompt "Timezone: ");then
-return
-fi
-TIMEZONE="$selected"
-local country_code="${TZ_TO_COUNTRY[$selected]:-}"
+_wiz_filter_select "TIMEZONE" "Timezone: " "$WIZ_TIMEZONES"||return
+local country_code="${TZ_TO_COUNTRY[$TIMEZONE]:-}"
 if [[ -n $country_code ]];then
 COUNTRY="$country_code"
 _update_locale_from_country
 fi
 }
 _edit_keyboard(){
-_wiz_start_edit
-_show_input_footer "filter" 6
-local selected
-if ! selected=$(echo "$WIZ_KEYBOARD_LAYOUTS"|_wiz_filter --prompt "Keyboard: ");then
-return
-fi
-KEYBOARD="$selected"
+_wiz_filter_select "KEYBOARD" "Keyboard: " "$WIZ_KEYBOARD_LAYOUTS"
 }
 _edit_country(){
-_wiz_start_edit
-_show_input_footer "filter" 6
-local selected
-if ! selected=$(echo "$WIZ_COUNTRIES"|_wiz_filter --prompt "Country: ");then
-return
-fi
-COUNTRY="$selected"
+_wiz_filter_select "COUNTRY" "Country: " "$WIZ_COUNTRIES"||return
 _update_locale_from_country
 }
 _edit_iso_version(){
@@ -3996,20 +3994,9 @@ fi
 fi
 }
 _tailscale_get_auth_key(){
-local auth_key=""
-while true;do
-_wiz_start_edit
-_show_input_footer
-auth_key=$(_wiz_input \
+_wiz_input_validated "validate_tailscale_key" "Invalid key format. Expected: tskey-auth-xxx-xxx" \
 --placeholder "tskey-auth-..." \
---prompt "Auth Key: ")
-[[ -z $auth_key ]]&&return
-if validate_tailscale_key "$auth_key";then
-printf '%s' "$auth_key"
-return 0
-fi
-show_validation_error "Invalid key format. Expected: tskey-auth-xxx-xxx"
-done
+--prompt "Auth Key: "
 }
 _tailscale_configure_webui(){
 _wiz_start_edit
@@ -5699,20 +5686,12 @@ parallel_mark_configured "aide"
 }
 make_feature_wrapper "aide" "INSTALL_AIDE"
 _config_chkrootkit(){
-deploy_systemd_timer "chkrootkit-scan"||return 1
-remote_exec 'mkdir -p /var/log/chkrootkit'||{
-log "ERROR: Failed to configure chkrootkit"
-return 1
-}
+deploy_timer_with_logdir "chkrootkit-scan" "/var/log/chkrootkit"||return 1
 parallel_mark_configured "chkrootkit"
 }
 make_feature_wrapper "chkrootkit" "INSTALL_CHKROOTKIT"
 _config_lynis(){
-deploy_systemd_timer "lynis-audit"||return 1
-remote_exec 'mkdir -p /var/log/lynis'||{
-log "ERROR: Failed to configure Lynis"
-return 1
-}
+deploy_timer_with_logdir "lynis-audit" "/var/log/lynis"||return 1
 parallel_mark_configured "lynis"
 }
 make_feature_wrapper "lynis" "INSTALL_LYNIS"
@@ -5820,39 +5799,11 @@ make_feature_wrapper "nvim" "INSTALL_NVIM"
 _config_ssl(){
 log "_config_ssl: SSL_TYPE=$SSL_TYPE"
 local cert_domain="${FQDN:-$PVE_HOSTNAME.$DOMAIN_SUFFIX}"
-log "configure_ssl_certificate: domain=$cert_domain, email=$EMAIL"
-local staged
-staged=$(mktemp)||{
-log "ERROR: Failed to create temp file for letsencrypt-firstboot.sh"
-return 1
-}
-cp "./templates/letsencrypt-firstboot.sh" "$staged"||{
-log "ERROR: Failed to stage letsencrypt-firstboot.sh"
-rm -f "$staged"
-return 1
-}
-if ! apply_template_vars "$staged" \
-"CERT_DOMAIN=$cert_domain" \
-"CERT_EMAIL=$EMAIL";then
-log "ERROR: Failed to apply template variables to letsencrypt-firstboot.sh"
-rm -f "$staged"
-return 1
-fi
-if ! remote_copy "./templates/letsencrypt-deploy-hook.sh" "/tmp/letsencrypt-deploy-hook.sh";then
-log "ERROR: Failed to copy letsencrypt-deploy-hook.sh"
-rm -f "$staged"
-return 1
-fi
-if ! remote_copy "$staged" "/tmp/letsencrypt-firstboot.sh";then
-log "ERROR: Failed to copy letsencrypt-firstboot.sh"
-rm -f "$staged"
-return 1
-fi
-rm -f "$staged"
-if ! remote_copy "./templates/letsencrypt-firstboot.service" "/tmp/letsencrypt-firstboot.service";then
-log "ERROR: Failed to copy letsencrypt-firstboot.service"
-return 1
-fi
+log "_config_ssl: domain=$cert_domain, email=$EMAIL"
+deploy_template "templates/letsencrypt-firstboot.sh" "/tmp/letsencrypt-firstboot.sh" \
+"CERT_DOMAIN=$cert_domain" "CERT_EMAIL=$EMAIL"||return 1
+remote_copy "templates/letsencrypt-deploy-hook.sh" "/tmp/letsencrypt-deploy-hook.sh"||return 1
+remote_copy "templates/letsencrypt-firstboot.service" "/tmp/letsencrypt-firstboot.service"||return 1
 remote_run "Configuring Let's Encrypt templates" '
         set -e
         mkdir -p /etc/letsencrypt/renewal-hooks/deploy
@@ -5867,13 +5818,8 @@ remote_run "Configuring Let's Encrypt templates" '
 LETSENCRYPT_DOMAIN="$cert_domain"
 LETSENCRYPT_FIRSTBOOT=true
 }
-configure_ssl_certificate(){
-if [[ $SSL_TYPE != "letsencrypt" ]];then
-log "configure_ssl_certificate: skipping (self-signed)"
-return 0
-fi
-_config_ssl
-}
+make_condition_wrapper "ssl" "SSL_TYPE" "letsencrypt"
+configure_ssl_certificate(){ configure_ssl;}
 create_api_token(){
 [[ $INSTALL_API_TOKEN != "yes" ]]&&return 0
 log "INFO: Creating Proxmox API token for $ADMIN_USERNAME: $API_TOKEN_NAME"
