@@ -6,27 +6,9 @@
 # Prompts for Tailscale auth key with validation.
 # Returns: auth key via stdout, empty if cancelled
 _tailscale_get_auth_key() {
-  local auth_key=""
-
-  while true; do
-    _wiz_start_edit
-    _show_input_footer
-
-    auth_key=$(
-      _wiz_input \
-        --placeholder "tskey-auth-..." \
-        --prompt "Auth Key: "
-    )
-
-    [[ -z $auth_key ]] && return
-
-    if validate_tailscale_key "$auth_key"; then
-      printf '%s' "$auth_key"
-      return 0
-    fi
-
-    show_validation_error "Invalid key format. Expected: tskey-auth-xxx-xxx"
-  done
+  _wiz_input_validated "validate_tailscale_key" "Invalid key format. Expected: tskey-auth-xxx-xxx" \
+    --placeholder "tskey-auth-..." \
+    --prompt "Auth Key: "
 }
 
 # Prompts for Tailscale Web UI (Serve) configuration.

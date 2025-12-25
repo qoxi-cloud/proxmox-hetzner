@@ -8,15 +8,7 @@
 # Configuration function for chkrootkit
 # Sets up weekly scans via systemd timer with logging
 _config_chkrootkit() {
-  # Deploy systemd timer for weekly scans
-  deploy_systemd_timer "chkrootkit-scan" || return 1
-
-  # Ensure log directory exists
-  remote_exec 'mkdir -p /var/log/chkrootkit' || {
-    log "ERROR: Failed to configure chkrootkit"
-    return 1
-  }
-
+  deploy_timer_with_logdir "chkrootkit-scan" "/var/log/chkrootkit" || return 1
   parallel_mark_configured "chkrootkit"
 }
 

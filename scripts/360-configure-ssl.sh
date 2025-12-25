@@ -4,50 +4,20 @@
 # =============================================================================
 
 # Private implementation - configures SSL certificates
-# Called by configure_ssl_certificate() public wrapper
+# Called by configure_ssl() public wrapper
 _config_ssl() {
   log "_config_ssl: SSL_TYPE=$SSL_TYPE"
 
   # Build FQDN if not set
   local cert_domain="${FQDN:-$PVE_HOSTNAME.$DOMAIN_SUFFIX}"
-  log "configure_ssl_certificate: domain=$cert_domain, email=$EMAIL"
+  log "_config_ssl: domain=$cert_domain, email=$EMAIL"
 
-  # Stage template to preserve original, apply substitutions to staged copy
-  local staged
-  staged=$(mktemp) || {
-    log "ERROR: Failed to create temp file for letsencrypt-firstboot.sh"
-    return 1
-  }
-  cp "./templates/letsencrypt-firstboot.sh" "$staged" || {
-    log "ERROR: Failed to stage letsencrypt-firstboot.sh"
-    rm -f "$staged"
-    return 1
-  }
+  # Deploy Let's Encrypt templates to /tmp (moved to final locations by remote_run)
+  deploy_template "templates/letsencrypt-firstboot.sh" "/tmp/letsencrypt-firstboot.sh" \
+    "CERT_DOMAIN=${cert_domain}" "CERT_EMAIL=${EMAIL}" || return 1
 
-  if ! apply_template_vars "$staged" \
-    "CERT_DOMAIN=${cert_domain}" \
-    "CERT_EMAIL=${EMAIL}"; then
-    log "ERROR: Failed to apply template variables to letsencrypt-firstboot.sh"
-    rm -f "$staged"
-    return 1
-  fi
-
-  # Copy Let's Encrypt templates to VM
-  if ! remote_copy "./templates/letsencrypt-deploy-hook.sh" "/tmp/letsencrypt-deploy-hook.sh"; then
-    log "ERROR: Failed to copy letsencrypt-deploy-hook.sh"
-    rm -f "$staged"
-    return 1
-  fi
-  if ! remote_copy "$staged" "/tmp/letsencrypt-firstboot.sh"; then
-    log "ERROR: Failed to copy letsencrypt-firstboot.sh"
-    rm -f "$staged"
-    return 1
-  fi
-  rm -f "$staged"
-  if ! remote_copy "./templates/letsencrypt-firstboot.service" "/tmp/letsencrypt-firstboot.service"; then
-    log "ERROR: Failed to copy letsencrypt-firstboot.service"
-    return 1
-  fi
+  remote_copy "templates/letsencrypt-deploy-hook.sh" "/tmp/letsencrypt-deploy-hook.sh" || return 1
+  remote_copy "templates/letsencrypt-firstboot.service" "/tmp/letsencrypt-firstboot.service" || return 1
 
   # Install deploy hook, first-boot script, and systemd service
   remote_run "Configuring Let's Encrypt templates" '
@@ -68,18 +38,12 @@ _config_ssl() {
 }
 
 # =============================================================================
-# Public wrapper
-# =============================================================================
-
+# Public wrapper (generated via factory)
 # Configures SSL certificates for Proxmox Web UI.
 # For Let's Encrypt, sets up first-boot certificate acquisition.
 # Certbot package installed via batch_install_packages() in 037-parallel-helpers.sh
-# Side effects: Configures systemd service for cert renewal
-configure_ssl_certificate() {
-  # Skip if not using Let's Encrypt
-  if [[ $SSL_TYPE != "letsencrypt" ]]; then
-    log "configure_ssl_certificate: skipping (self-signed)"
-    return 0
-  fi
-  _config_ssl
-}
+# =============================================================================
+make_condition_wrapper "ssl" "SSL_TYPE" "letsencrypt"
+
+# Alias for backwards compatibility (called as configure_ssl_certificate in 381-configure-phases.sh)
+configure_ssl_certificate() { configure_ssl; }

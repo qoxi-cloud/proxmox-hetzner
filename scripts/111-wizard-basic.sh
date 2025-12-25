@@ -7,87 +7,43 @@
 # Edits hostname and domain settings via input dialogs.
 # Validates hostname format and updates PVE_HOSTNAME, DOMAIN_SUFFIX, FQDN.
 _edit_hostname() {
-  # Hostname input loop
-  while true; do
-    _wiz_start_edit
-    _show_input_footer
+  local new_hostname
+  new_hostname=$(_wiz_input_validated "validate_hostname" "Invalid hostname format" \
+    --placeholder "e.g., pve, proxmox, node1" \
+    --value "$PVE_HOSTNAME" \
+    --prompt "Hostname: ") || return
 
-    local new_hostname
-    new_hostname=$(
-      _wiz_input \
-        --placeholder "e.g., pve, proxmox, node1" \
-        --value "$PVE_HOSTNAME" \
-        --prompt "Hostname: "
-    )
+  PVE_HOSTNAME="$new_hostname"
 
-    # If empty (cancelled), return to menu
-    if [[ -z $new_hostname ]]; then
-      return
-    fi
+  # Domain input loop (no validation - accepts any non-empty)
+  _wiz_start_edit
+  _show_input_footer
 
-    # Validate hostname
-    if validate_hostname "$new_hostname"; then
-      PVE_HOSTNAME="$new_hostname"
-      break
-    else
-      show_validation_error "Invalid hostname format"
-    fi
-  done
+  local new_domain
+  new_domain=$(
+    _wiz_input \
+      --placeholder "e.g., local, example.com" \
+      --value "$DOMAIN_SUFFIX" \
+      --prompt "Domain: "
+  )
 
-  # Domain input loop
-  while true; do
-    _wiz_start_edit
-    _show_input_footer
+  # If empty (cancelled), return to menu
+  [[ -z $new_domain ]] && return
 
-    local new_domain
-    new_domain=$(
-      _wiz_input \
-        --placeholder "e.g., local, example.com" \
-        --value "$DOMAIN_SUFFIX" \
-        --prompt "Domain: "
-    )
-
-    # If empty (cancelled), return to menu
-    if [[ -z $new_domain ]]; then
-      return
-    fi
-
-    # Accept any non-empty domain (validation happens later if Let's Encrypt selected)
-    DOMAIN_SUFFIX="$new_domain"
-    break
-  done
-
+  DOMAIN_SUFFIX="$new_domain"
   FQDN="${PVE_HOSTNAME}.${DOMAIN_SUFFIX}"
 }
 
 # Edits admin email address via input dialog.
 # Validates email format and updates EMAIL global.
 _edit_email() {
-  while true; do
-    _wiz_start_edit
-    _show_input_footer
+  local new_email
+  new_email=$(_wiz_input_validated "validate_email" "Invalid email format" \
+    --placeholder "admin@example.com" \
+    --value "$EMAIL" \
+    --prompt "Email: ") || return
 
-    local new_email
-    new_email=$(
-      _wiz_input \
-        --placeholder "admin@example.com" \
-        --value "$EMAIL" \
-        --prompt "Email: "
-    )
-
-    # If empty (cancelled), return to menu
-    if [[ -z $new_email ]]; then
-      return
-    fi
-
-    # Validate email
-    if validate_email "$new_email"; then
-      EMAIL="$new_email"
-      break
-    else
-      show_validation_error "Invalid email format"
-    fi
-  done
+  EMAIL="$new_email"
 }
 
 # Edits root password via manual entry or generation.
@@ -106,19 +62,10 @@ _edit_password() {
 # Auto-selects country based on timezone if mapping exists.
 # Updates TIMEZONE and optionally COUNTRY/LOCALE globals.
 _edit_timezone() {
-  _wiz_start_edit
+  _wiz_filter_select "TIMEZONE" "Timezone: " "$WIZ_TIMEZONES" || return
 
-  # Footer for filter: height=5 items + 1 input line = 6 lines for component
-  _show_input_footer "filter" 6
-
-  local selected
-  if ! selected=$(echo "$WIZ_TIMEZONES" | _wiz_filter --prompt "Timezone: "); then
-    return
-  fi
-
-  TIMEZONE="$selected"
   # Auto-select country based on timezone (if mapping exists)
-  local country_code="${TZ_TO_COUNTRY[$selected]:-}"
+  local country_code="${TZ_TO_COUNTRY[$TIMEZONE]:-}"
   if [[ -n $country_code ]]; then
     COUNTRY="$country_code"
     _update_locale_from_country
@@ -128,32 +75,12 @@ _edit_timezone() {
 # Edits keyboard layout via searchable filter list.
 # Updates KEYBOARD global with selected layout.
 _edit_keyboard() {
-  _wiz_start_edit
-
-  # Footer for filter: height=5 items + 1 input line = 6 lines for component
-  _show_input_footer "filter" 6
-
-  local selected
-  if ! selected=$(echo "$WIZ_KEYBOARD_LAYOUTS" | _wiz_filter --prompt "Keyboard: "); then
-    return
-  fi
-
-  KEYBOARD="$selected"
+  _wiz_filter_select "KEYBOARD" "Keyboard: " "$WIZ_KEYBOARD_LAYOUTS"
 }
 
 # Edits country code via searchable filter list.
 # Updates COUNTRY and LOCALE globals.
 _edit_country() {
-  _wiz_start_edit
-
-  # Footer for filter: height=5 items + 1 input line = 6 lines for component
-  _show_input_footer "filter" 6
-
-  local selected
-  if ! selected=$(echo "$WIZ_COUNTRIES" | _wiz_filter --prompt "Country: "); then
-    return
-  fi
-
-  COUNTRY="$selected"
+  _wiz_filter_select "COUNTRY" "Country: " "$WIZ_COUNTRIES" || return
   _update_locale_from_country
 }

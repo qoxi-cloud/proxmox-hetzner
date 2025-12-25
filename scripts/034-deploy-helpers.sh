@@ -41,6 +41,28 @@ run_parallel_copies() {
 }
 
 # =============================================================================
+# Timer with log directory helper
+# =============================================================================
+
+# Deploys a systemd timer and creates associated log directory.
+# Common pattern for security scanners (chkrootkit, lynis, aide).
+# Parameters:
+#   $1 - Timer name (e.g., "chkrootkit-scan")
+#   $2 - Log directory path (e.g., "/var/log/chkrootkit")
+# Returns: 0 on success, 1 on failure
+deploy_timer_with_logdir() {
+  local timer_name="$1"
+  local log_dir="$2"
+
+  deploy_systemd_timer "$timer_name" || return 1
+
+  remote_exec "mkdir -p '$log_dir'" || {
+    log "ERROR: Failed to create $log_dir"
+    return 1
+  }
+}
+
+# =============================================================================
 # Feature wrapper factory
 # =============================================================================
 
@@ -58,4 +80,22 @@ make_feature_wrapper() {
   local feature="$1"
   local flag_var="$2"
   eval "configure_${feature}() { [[ \${${flag_var}:-} != \"yes\" ]] && return 0; _config_${feature}; }"
+}
+
+# Creates a configure_* wrapper that checks if VAR equals expected VALUE.
+# Use for features with non-boolean conditions (e.g., SSL_TYPE == "letsencrypt").
+# Parameters:
+#   $1 - Feature name (e.g., "ssl")
+#   $2 - Variable name to check (e.g., "SSL_TYPE")
+#   $3 - Expected value (e.g., "letsencrypt")
+# Side effects: Defines configure_<feature>() function globally
+# Example:
+#   make_condition_wrapper "ssl" "SSL_TYPE" "letsencrypt"
+#   # Creates: configure_ssl() that guards _config_ssl()
+# shellcheck disable=SC2086,SC2154
+make_condition_wrapper() {
+  local feature="$1"
+  local var_name="$2"
+  local expected_value="$3"
+  eval "configure_${feature}() { [[ \${${var_name}:-} != \"${expected_value}\" ]] && return 0; _config_${feature}; }"
 }
