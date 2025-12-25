@@ -127,8 +127,9 @@ start_live_installation() {
   _wiz_clear
   show_banner
 
-  # Set trap to restore cursor and exit alternate buffer on exit
-  trap 'tput cnorm; tput rmcup' EXIT RETURN
+  # Chain with existing cleanup handler - restore terminal THEN run global cleanup
+  # shellcheck disable=SC2064
+  trap "tput cnorm 2>/dev/null; tput rmcup 2>/dev/null; cleanup_and_error_handler" EXIT
 }
 
 # Finishes live installation display and restores normal terminal.

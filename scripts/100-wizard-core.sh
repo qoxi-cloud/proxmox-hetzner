@@ -208,7 +208,9 @@ show_gum_config_editor() {
   # Enter alternate screen buffer and hide cursor (like vim/less)
   tput smcup # alternate screen
   _wiz_hide_cursor
-  trap '_wiz_show_cursor; tput rmcup' EXIT
+  # Chain with existing cleanup handler - restore terminal THEN run global cleanup
+  # shellcheck disable=SC2064
+  trap "_wiz_show_cursor; tput rmcup 2>/dev/null; cleanup_and_error_handler" EXIT
 
   # Run wizard loop until configuration is complete
   while true; do
