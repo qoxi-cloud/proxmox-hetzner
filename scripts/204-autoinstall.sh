@@ -60,7 +60,15 @@ make_answer_toml() {
   local virtio_pool_disks=()
   if [[ $USE_EXISTING_POOL == "yes" ]]; then
     log "Using existing pool mode - existing pool disks will be passed to QEMU for import"
-    virtio_pool_disks=("${EXISTING_POOL_DISKS[@]}")
+    # Filter to only include disks that actually exist on the host
+    # (pool metadata may contain stale virtio device names from previous installations)
+    for disk in "${EXISTING_POOL_DISKS[@]}"; do
+      if [[ -b $disk ]]; then
+        virtio_pool_disks+=("$disk")
+      else
+        log "WARNING: Pool disk $disk does not exist on host, skipping"
+      fi
+    done
   else
     virtio_pool_disks=("${ZFS_POOL_DISKS[@]}")
   fi
