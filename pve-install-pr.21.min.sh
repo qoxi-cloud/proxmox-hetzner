@@ -17,7 +17,7 @@ readonly HEX_GRAY="#585858"
 readonly HEX_WHITE="#ffffff"
 readonly HEX_GOLD="#d7af5f"
 readonly HEX_NONE="7"
-readonly VERSION="2.0.554-pr.21"
+readonly VERSION="2.0.557-pr.21"
 readonly TERM_WIDTH=80
 readonly BANNER_WIDTH=51
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-installer}"
@@ -767,23 +767,27 @@ return 0
 wait_for_ssh_ready(){
 local timeout="${1:-120}"
 ssh-keygen -f "/root/.ssh/known_hosts" -R "[localhost]:$SSH_PORT" 2>/dev/null||true
+local port_timeout=$((timeout*3/4))
+local ssh_timeout=$((timeout-port_timeout))
 local port_check=0
-for _ in {1..10};do
+local elapsed=0
+while ((elapsed<port_timeout));do
 if (echo >/dev/tcp/localhost/"$SSH_PORT") 2>/dev/null;then
 port_check=1
 break
 fi
-sleep 1
+sleep 2
+((elapsed+=2))
 done
 if [[ $port_check -eq 0 ]];then
 print_error "Port $SSH_PORT is not accessible"
-log "ERROR: Port $SSH_PORT not accessible after 10 attempts"
+log "ERROR: Port $SSH_PORT not accessible after ${port_timeout}s"
 return 1
 fi
 local passfile
 passfile=$(_ssh_get_passfile)
 (local elapsed=0
-while ((elapsed<timeout));do
+while ((elapsed<ssh_timeout));do
 if sshpass -f "$passfile" ssh -p "$SSH_PORT" $SSH_OPTS root@localhost 'echo ready' >/dev/null 2>&1;then
 exit 0
 fi
@@ -1161,8 +1165,8 @@ for j in $(seq 0 $((count-1)));do
 [[ -f "$result_dir/fail_$j" ]]&&((failures++))
 done
 if [[ $failures -gt 0 ]];then
-log "WARNING: $failures/$count functions failed in group '$group_name'"
-return 0
+log "ERROR: $failures/$count functions failed in group '$group_name'"
+return $failures
 fi
 return 0
 }
@@ -1179,6 +1183,10 @@ dest_dir="$(dirname "$dest")"
 if [[ $dest_dir != "/home/$ADMIN_USERNAME" ]];then
 remote_exec "mkdir -p '$dest_dir'"||{
 log "ERROR: Failed to create directory $dest_dir"
+return 1
+}
+remote_exec "chown -R $ADMIN_USERNAME:$ADMIN_USERNAME '$dest_dir'"||{
+log "ERROR: Failed to set ownership on $dest_dir"
 return 1
 }
 fi
@@ -5666,14 +5674,18 @@ configure_zfs_scrub
 batch_install_packages
 configure_tailscale
 configure_firewall
-run_parallel_group "Configuring security" "Security features configured" \
+if ! run_parallel_group "Configuring security" "Security features configured" \
 configure_apparmor \
 configure_fail2ban \
 configure_auditd \
 configure_aide \
 configure_chkrootkit \
 configure_lynis \
-configure_needrestart
+configure_needrestart;then
+log "ERROR: Security configuration failed - aborting installation"
+print_error "Security hardening failed. Check $LOG_FILE for details."
+return 1
+fi
 (local pids=()
 if [[ $INSTALL_NETDATA == "yes" ]];then
 configure_netdata&
