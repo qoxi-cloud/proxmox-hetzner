@@ -4,18 +4,27 @@
 # =============================================================================
 
 # Installs ZFS tools if not available.
-# On Hetzner rescue, uses their install script (compiles from source).
-# On other systems, tries apt-get.
+# Checks for rescue system install scripts, falls back to apt.
 # Side effects: May install ZFS packages
 _install_zfs_if_needed() {
   command -v zpool &>/dev/null && return 0
 
-  # Check for Hetzner rescue install script
-  if [[ -x /root/.oldroot/nfs/install/zfs.sh ]]; then
-    # Hetzner rescue: auto-accept license and install
-    echo "y" | /root/.oldroot/nfs/install/zfs.sh >/dev/null 2>&1 || true
-  elif [[ -f /etc/debian_version ]]; then
-    # Debian/Ubuntu: try apt
+  # Common rescue system ZFS install scripts (auto-accept prompts)
+  local zfs_scripts=(
+    "/root/.oldroot/nfs/install/zfs.sh" # Hetzner
+    "/root/zfs-install.sh"              # Generic
+    "/usr/local/bin/install-zfs"        # Some providers
+  )
+
+  for script in "${zfs_scripts[@]}"; do
+    if [[ -x $script ]]; then
+      echo "y" | "$script" >/dev/null 2>&1 || true
+      command -v zpool &>/dev/null && return 0
+    fi
+  done
+
+  # Fallback: try apt on Debian-based systems
+  if [[ -f /etc/debian_version ]]; then
     apt-get install -qq -y zfsutils-linux >/dev/null 2>&1 || true
   fi
 }
