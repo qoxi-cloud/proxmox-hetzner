@@ -16,7 +16,7 @@ readonly HEX_ORANGE="#ff8700"
 readonly HEX_GRAY="#585858"
 readonly HEX_WHITE="#ffffff"
 readonly HEX_NONE="7"
-readonly VERSION="2.0.603-pr.21"
+readonly VERSION="2.0.605-pr.21"
 readonly TERM_WIDTH=80
 readonly BANNER_WIDTH=51
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-installer}"
@@ -815,9 +815,10 @@ return 0
 }
 wait_for_ssh_ready(){
 local timeout="${1:-120}"
+local start_time
+start_time=$(date +%s)
 ssh-keygen -f "/root/.ssh/known_hosts" -R "[localhost]:$SSH_PORT" 2>/dev/null||true
 local port_timeout=$((timeout*3/4))
-local ssh_timeout=$((timeout-port_timeout))
 local port_check=0
 local elapsed=0
 while ((elapsed<port_timeout));do
@@ -832,6 +833,11 @@ if [[ $port_check -eq 0 ]];then
 print_error "Port $SSH_PORT is not accessible"
 log "ERROR: Port $SSH_PORT not accessible after ${port_timeout}s"
 return 1
+fi
+local actual_elapsed=$(($(date +%s)-start_time))
+local ssh_timeout=$((timeout-actual_elapsed))
+if ((ssh_timeout<10));then
+ssh_timeout=10
 fi
 local passfile
 passfile=$(_ssh_get_passfile)
@@ -1186,6 +1192,10 @@ _run_parallel_task(){
 local result_dir="$1"
 local idx="$2"
 local func="$3"
+show_progress(){
+wait "$1" 2>/dev/null
+return $?
+}
 trap "touch '$result_dir/fail_$idx' 2>/dev/null" EXIT
 if "$func" >/dev/null 2>&1;then
 trap - EXIT
