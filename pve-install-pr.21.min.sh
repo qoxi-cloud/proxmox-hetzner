@@ -16,7 +16,7 @@ readonly HEX_ORANGE="#ff8700"
 readonly HEX_GRAY="#585858"
 readonly HEX_WHITE="#ffffff"
 readonly HEX_NONE="7"
-readonly VERSION="2.0.565-pr.21"
+readonly VERSION="2.0.566-pr.21"
 readonly TERM_WIDTH=80
 readonly BANNER_WIDTH=51
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-installer}"
@@ -125,6 +125,9 @@ nvim
 ringbuffer"
 BOOT_DISK=""
 ZFS_POOL_DISKS=()
+USE_EXISTING_POOL=""
+EXISTING_POOL_NAME=""
+EXISTING_POOL_DISKS=()
 SYSTEM_UTILITIES="btop iotop ncdu tmux pigz smartmontools jq bat fastfetch sysstat nethogs ethtool curl gnupg"
 OPTIONAL_PACKAGES="libguestfs-tools"
 LOG_FILE="/root/pve-install-$(date +%Y%m%d-%H%M%S).log"
@@ -2110,6 +2113,59 @@ fi
 log "Boot disk: ${BOOT_DISK:-all in pool}"
 log "Pool disks: ${ZFS_POOL_DISKS[*]}"
 }
+detect_existing_pools(){
+local pools=()
+local import_output
+if ! import_output=$(zpool import 2>/dev/null);then
+return 0
+fi
+local current_pool=""
+local current_state=""
+local current_disks=""
+local in_config=false
+while IFS= read -r line;do
+if [[ $line =~ ^[[:space:]]*pool:[[:space:]]*(.+)$ ]];then
+if [[ -n $current_pool ]];then
+pools+=("$current_pool|$current_state|$current_disks")
+fi
+current_pool="${BASH_REMATCH[1]}"
+current_state=""
+current_disks=""
+in_config=false
+elif [[ $line =~ ^[[:space:]]*state:[[:space:]]*(.+)$ ]];then
+current_state="${BASH_REMATCH[1]}"
+elif [[ $line =~ ^[[:space:]]*config: ]];then
+in_config=true
+elif [[ $in_config == true && $line =~ ^[[:space:]]+(nvme[0-9]+n[0-9]+|sd[a-z]+|vd[a-z]+)[[:space:]] ]];then
+local disk="${BASH_REMATCH[1]}"
+if [[ -n $current_disks ]];then
+current_disks="$current_disks,/dev/$disk"
+else
+current_disks="/dev/$disk"
+fi
+fi
+done <<<"$import_output"
+if [[ -n $current_pool ]];then
+pools+=("$current_pool|$current_state|$current_disks")
+fi
+for pool in "${pools[@]}";do
+printf '%s\n' "$pool"
+done
+}
+get_pool_disks(){
+local pool_name="$1"
+local pool_info
+while IFS= read -r line;do
+local name="${line%%|*}"
+if [[ $name == "$pool_name" ]];then
+local rest="${line#*|}"
+printf '%s\n' "${rest#*|}"
+return 0
+fi
+done < <(detect_existing_pools)
+return 1
+}
+DETECTED_POOLS=()
 _load_timezones(){
 if command -v timedatectl &>/dev/null;then
 WIZ_TIMEZONES=$(timedatectl list-timezones 2>/dev/null)
@@ -2136,10 +2192,23 @@ while IFS=$'\t' read -r country _ tz _;do
 TZ_TO_COUNTRY["$tz"]="${country,,}"
 done <"$zone_tab"
 }
+_detect_pools(){
+DETECTED_POOLS=()
+while IFS= read -r line;do
+[[ -n $line ]]&&DETECTED_POOLS+=("$line")
+done < <(detect_existing_pools 2>/dev/null)
+if [[ ${#DETECTED_POOLS[@]} -gt 0 ]];then
+log "Detected ${#DETECTED_POOLS[@]} existing ZFS pool(s):"
+for pool in "${DETECTED_POOLS[@]}";do
+log "  - $pool"
+done
+fi
+}
 _load_wizard_data(){
 _load_timezones
 _load_countries
 _build_tz_to_country
+_detect_pools
 }
 show_system_status(){
 detect_drives
@@ -2396,6 +2465,7 @@ bridge_mtu)_edit_bridge_mtu;;
 ipv6)_edit_ipv6;;
 firewall)_edit_firewall;;
 boot_disk)_edit_boot_disk;;
+existing_pool)_edit_existing_pool;;
 pool_disks)_edit_pool_disks;;
 zfs_mode)_edit_zfs_mode;;
 zfs_arc)_edit_zfs_arc;;
@@ -2771,12 +2841,16 @@ _wiz_config_complete(){
 [[ -z $BRIDGE_MODE ]]&&return 1
 [[ -z $PRIVATE_SUBNET ]]&&return 1
 [[ -z $IPV6_MODE ]]&&return 1
+if [[ $USE_EXISTING_POOL == "yes" ]];then
+[[ -z $EXISTING_POOL_NAME ]]&&return 1
+else
 [[ -z $ZFS_RAID ]]&&return 1
+[[ ${#ZFS_POOL_DISKS[@]} -eq 0 ]]&&return 1
+fi
 [[ -z $ZFS_ARC_MODE ]]&&return 1
 [[ -z $SHELL_TYPE ]]&&return 1
 [[ -z $CPU_GOVERNOR ]]&&return 1
 [[ -z $SSH_PUBLIC_KEY ]]&&return 1
-[[ ${#ZFS_POOL_DISKS[@]} -eq 0 ]]&&return 1
 [[ $INSTALL_TAILSCALE != "yes" && -z $SSL_TYPE ]]&&return 1
 [[ $FIREWALL_MODE == "stealth" && $INSTALL_TAILSCALE != "yes" ]]&&return 1
 return 0
@@ -2838,6 +2912,12 @@ _DSP_MTU="${BRIDGE_MTU:-9000}"
 [[ $_DSP_MTU == "9000" ]]&&_DSP_MTU="9000 (jumbo)"
 }
 _dsp_storage(){
+_DSP_EXISTING_POOL=""
+if [[ $USE_EXISTING_POOL == "yes" && -n $EXISTING_POOL_NAME ]];then
+_DSP_EXISTING_POOL="Use: $EXISTING_POOL_NAME (${#EXISTING_POOL_DISKS[@]} disks)"
+else
+_DSP_EXISTING_POOL="Create new"
+fi
 _DSP_ZFS=""
 if [[ -n $ZFS_RAID ]];then
 case "$ZFS_RAID" in
@@ -2849,6 +2929,8 @@ raidz2)_DSP_ZFS="RAID-Z2 (double parity)";;
 raid10)_DSP_ZFS="RAID-10 (striped mirrors)";;
 *)_DSP_ZFS="$ZFS_RAID"
 esac
+elif [[ $USE_EXISTING_POOL == "yes" ]];then
+_DSP_ZFS="(preserved)"
 fi
 _DSP_ARC=""
 if [[ -n $ZFS_ARC_MODE ]];then
@@ -2868,7 +2950,11 @@ break
 fi
 done
 fi
+if [[ $USE_EXISTING_POOL == "yes" ]];then
+_DSP_POOL="(existing pool)"
+else
 _DSP_POOL="${#ZFS_POOL_DISKS[@]} disks"
+fi
 }
 _dsp_services(){
 _DSP_TAILSCALE=""
@@ -2977,9 +3063,14 @@ _add_field "Firewall         " "$(_wiz_fmt "$_DSP_FIREWALL")" "firewall"
 [[ $DRIVE_COUNT -gt 1 ]]
 then
 _add_field "Boot disk        " "$(_wiz_fmt "$_DSP_BOOT")" "boot_disk"
+_add_field "Pool mode        " "$(_wiz_fmt "$_DSP_EXISTING_POOL")" "existing_pool"
+if [[ $USE_EXISTING_POOL != "yes" ]];then
 _add_field "Pool disks       " "$(_wiz_fmt "$_DSP_POOL")" "pool_disks"
-fi
 _add_field "ZFS mode         " "$(_wiz_fmt "$_DSP_ZFS")" "zfs_mode"
+fi
+else
+_add_field "ZFS mode         " "$(_wiz_fmt "$_DSP_ZFS")" "zfs_mode"
+fi
 _add_field "ZFS ARC          " "$(_wiz_fmt "$_DSP_ARC")" "zfs_arc"
 ;;
 4)_add_field "Tailscale        " "$(_wiz_fmt "$_DSP_TAILSCALE")" "tailscale"
@@ -3466,6 +3557,73 @@ FIREWALL_MODE="standard"
 "Disabled")INSTALL_FIREWALL="no"
 FIREWALL_MODE=""
 esac
+}
+_edit_existing_pool(){
+_wiz_start_edit
+local pools=()
+while IFS= read -r line;do
+[[ -n $line ]]&&pools+=("$line")
+done < <(detect_existing_pools)
+if [[ ${#pools[@]} -eq 0 ]];then
+_wiz_description \
+"  {{yellow:No importable ZFS pools detected.}}" \
+"" \
+"  If you have an existing pool, ensure the disks are connected" \
+"  and the pool was properly exported before reinstall." \
+""
+_wiz_dim "Press any key to continue..."
+read -r -n 1
+return
+fi
+_wiz_description \
+"  Preserve existing ZFS pool during reinstall:" \
+"" \
+"  {{cyan:Create new}}: Format pool disks, create fresh ZFS pool" \
+"  {{cyan:Use existing}}: Import pool, preserve all VMs and data" \
+"" \
+"  {{yellow:WARNING}}: Using existing pool skips disk formatting." \
+"  Ensure the pool is healthy before proceeding." \
+""
+local options="Create new pool (format disks)"
+for pool_info in "${pools[@]}";do
+local pool_name="${pool_info%%|*}"
+local rest="${pool_info#*|}"
+local pool_state="${rest%%|*}"
+options+=$'\n'"Use existing: $pool_name ($pool_state)"
+done
+local item_count
+item_count=$(wc -l <<<"$options")
+_show_input_footer "filter" "$((item_count+1))"
+local selected
+if ! selected=$(printf '%s\n' "$options"|_wiz_choose --header="Pool mode:");then
+return
+fi
+if [[ $selected == "Create new pool (format disks)" ]];then
+USE_EXISTING_POOL=""
+EXISTING_POOL_NAME=""
+EXISTING_POOL_DISKS=()
+elif [[ $selected =~ ^Use\ existing:\ ([^[:space:]]+) ]];then
+if [[ -z $BOOT_DISK ]];then
+_wiz_start_edit
+_wiz_hide_cursor
+_wiz_error "Cannot use existing pool without separate boot disk"
+_wiz_blank_line
+_wiz_dim "Select a boot disk first, then enable existing pool."
+_wiz_dim "The boot disk will be formatted for Proxmox system files."
+_wiz_blank_line
+_wiz_dim "Press any key to continue..."
+read -r -n 1
+return
+fi
+USE_EXISTING_POOL="yes"
+EXISTING_POOL_NAME="${BASH_REMATCH[1]}"
+local disks_csv
+disks_csv=$(get_pool_disks "$EXISTING_POOL_NAME")
+IFS=',' read -ra EXISTING_POOL_DISKS <<<"$disks_csv"
+ZFS_POOL_DISKS=()
+ZFS_RAID=""
+log "Selected existing pool: $EXISTING_POOL_NAME with disks: ${EXISTING_POOL_DISKS[*]}"
+fi
 }
 _edit_zfs_mode(){
 _wiz_start_edit
@@ -4785,8 +4943,17 @@ make_answer_toml(){
 log "Creating answer.toml for autoinstall"
 log "ZFS_RAID=$ZFS_RAID, BOOT_DISK=$BOOT_DISK"
 log "ZFS_POOL_DISKS=(${ZFS_POOL_DISKS[*]})"
+log "USE_EXISTING_POOL=$USE_EXISTING_POOL, EXISTING_POOL_NAME=$EXISTING_POOL_NAME"
+log "EXISTING_POOL_DISKS=(${EXISTING_POOL_DISKS[*]})"
+local virtio_pool_disks=()
+if [[ $USE_EXISTING_POOL == "yes" ]];then
+log "Using existing pool mode - pool disks will NOT be passed to QEMU"
+virtio_pool_disks=()
+else
+virtio_pool_disks=("${ZFS_POOL_DISKS[@]}")
+fi
 run_with_progress "Creating disk mapping" "Disk mapping created" \
-create_virtio_mapping "$BOOT_DISK" "${ZFS_POOL_DISKS[@]}"
+create_virtio_mapping "$BOOT_DISK" "${virtio_pool_disks[@]}"
 load_virtio_mapping||{
 log "ERROR: Failed to load virtio mapping"
 exit 1
@@ -4796,11 +4963,19 @@ local all_disks=()
 if [[ -n $BOOT_DISK ]];then
 FILESYSTEM="ext4"
 all_disks=("$BOOT_DISK")
+if [[ $USE_EXISTING_POOL == "yes" ]];then
+if [[ -z $EXISTING_POOL_NAME ]];then
+log "ERROR: USE_EXISTING_POOL=yes but EXISTING_POOL_NAME is empty"
+exit 1
+fi
+log "Boot disk mode: ext4 on boot disk, existing pool '$EXISTING_POOL_NAME' will be imported"
+else
 if [[ ${#ZFS_POOL_DISKS[@]} -eq 0 ]];then
 log "ERROR: BOOT_DISK set but no pool disks for ZFS tank creation"
 exit 1
 fi
 log "Boot disk mode: ext4 on boot disk, ZFS 'tank' pool will be created from ${#ZFS_POOL_DISKS[@]} pool disk(s)"
+fi
 else
 FILESYSTEM="zfs"
 all_disks=("${ZFS_POOL_DISKS[@]}")
@@ -5667,11 +5842,30 @@ _config_zfs_arc
 configure_zfs_scrub(){
 _config_zfs_scrub
 }
-_config_zfs_pool(){
-if [[ -z $BOOT_DISK ]];then
-log "INFO: BOOT_DISK not set, skipping separate ZFS pool creation (all-ZFS mode)"
-return 0
+_config_import_existing_pool(){
+local pool_name="$EXISTING_POOL_NAME"
+log "INFO: Importing existing ZFS pool '$pool_name'"
+if ! remote_run "Importing ZFS pool '$pool_name'" \
+"zpool import -f '$pool_name' 2>/dev/null || zpool import -f -d /dev '$pool_name'" \
+"ZFS pool '$pool_name' imported";then
+log "ERROR: Failed to import ZFS pool '$pool_name'"
+return 1
 fi
+if ! remote_run "Configuring Proxmox storage for '$pool_name'" '
+    if zfs list "'"$pool_name"'/vm-disks" >/dev/null 2>&1; then ds="'"$pool_name"'/vm-disks"
+    else ds=$(zfs list -H -o name -r "'"$pool_name"'" 2>/dev/null | grep -v "^'"$pool_name"'\$" | head -1)
+      [[ -z $ds ]] && { zfs create "'"$pool_name"'/vm-disks"; ds="'"$pool_name"'/vm-disks"; }
+    fi
+    pvesm status "'"$pool_name"'" >/dev/null 2>&1 || pvesm add zfspool "'"$pool_name"'" --pool "$ds" --content images,rootdir
+    pvesm set local --content iso,vztmpl,backup,snippets
+  ' "Proxmox storage configured for '$pool_name'";then
+log "ERROR: Failed to configure Proxmox storage for '$pool_name'"
+return 1
+fi
+log "INFO: Existing ZFS pool '$pool_name' imported and configured"
+return 0
+}
+_config_create_new_pool(){
 log "INFO: Creating separate ZFS pool 'tank' from pool disks"
 if ! load_virtio_mapping;then
 log "ERROR: Failed to load virtio mapping"
@@ -5693,24 +5887,27 @@ return 1
 fi
 log "INFO: ZFS pool command: $pool_cmd"
 if ! remote_run "Creating ZFS pool 'tank'" "
-    set -e
     $pool_cmd
-    zfs set compression=lz4 tank
-    zfs set atime=off tank
-    zfs set relatime=on tank
-    zfs set xattr=sa tank
-    zfs set dnodesize=auto tank
-    zfs create tank/vm-disks
-    pvesm add zfspool tank --pool tank/vm-disks --content images,rootdir
+    zfs set compression=lz4 tank && zfs set atime=off tank && zfs set xattr=sa tank && zfs set dnodesize=auto tank
+    zfs create tank/vm-disks && pvesm add zfspool tank --pool tank/vm-disks --content images,rootdir
     pvesm set local --content iso,vztmpl,backup,snippets
-    zpool list | grep -q '^tank ' || { echo 'ERROR: ZFS pool tank not found'; exit 1; }
   " "ZFS pool 'tank' created";then
 log "ERROR: Failed to create ZFS pool 'tank'"
 return 1
 fi
 log "INFO: ZFS pool 'tank' created successfully"
-log "INFO: Proxmox storage configured: tank (VMs), local (ISO/templates/backups)"
 return 0
+}
+_config_zfs_pool(){
+if [[ -z $BOOT_DISK ]];then
+log "INFO: BOOT_DISK not set, skipping separate ZFS pool (all-ZFS mode)"
+return 0
+fi
+if [[ $USE_EXISTING_POOL == "yes" ]];then
+_config_import_existing_pool
+else
+_config_create_new_pool
+fi
 }
 configure_zfs_pool(){
 _config_zfs_pool
