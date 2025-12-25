@@ -106,9 +106,11 @@ complete_task() {
 # Adds an indented sub-task log entry with tree structure prefix.
 # Parameters:
 #   $1 - Subtask message to display
+#   $2 - Optional color (default: CLR_GRAY)
 add_subtask_log() {
   local message="$1"
-  add_log "${CLR_ORANGE}│${CLR_RESET}   ${CLR_GRAY}${message}${CLR_RESET}"
+  local color="${2:-$CLR_GRAY}"
+  add_log "${CLR_ORANGE}│${CLR_RESET}   ${color}${message}${CLR_RESET}"
 }
 
 # Starts live installation display in alternate screen buffer.
@@ -222,7 +224,7 @@ log_subtasks() {
     fi
 
     if [[ $((${#current_line} + ${#addition})) -gt $max_width && -n $current_line ]]; then
-      add_log "${CLR_ORANGE}│${CLR_RESET}   ${CLR_GRAY}${current_line},${CLR_RESET}"
+      add_subtask_log "${current_line},"
       current_line="$item"
     else
       current_line+="$addition"
@@ -231,6 +233,6 @@ log_subtasks() {
 
   # Print remaining items
   if [[ -n $current_line ]]; then
-    add_log "${CLR_ORANGE}│${CLR_RESET}   ${CLR_GRAY}${current_line}${CLR_RESET}"
+    add_subtask_log "$current_line"
   fi
 }

@@ -93,11 +93,11 @@ validate_installation() {
   while IFS= read -r line; do
     case "$line" in
       FAIL:*)
-        add_log "${CLR_ORANGE}│${CLR_RESET}   ${CLR_RED}${line}${CLR_RESET}"
+        add_subtask_log "$line" "$CLR_RED"
         ((errors++))
         ;;
       WARN:*)
-        add_log "${CLR_ORANGE}│${CLR_RESET}   ${CLR_YELLOW}${line}${CLR_RESET}"
+        add_subtask_log "$line" "$CLR_YELLOW"
         ((warnings++))
         ;;
     esac

@@ -74,7 +74,7 @@ _config_tailscale() {
     TAILSCALE_IP="not authenticated"
     TAILSCALE_HOSTNAME=""
     add_log "${CLR_ORANGE}├─${CLR_RESET} ${CLR_YELLOW}⚠️${CLR_RESET} Tailscale installed but not authenticated"
-    add_log "${CLR_ORANGE}│${CLR_RESET}   ${CLR_GRAY}After reboot: tailscale up --ssh${CLR_RESET}"
+    add_subtask_log "After reboot: tailscale up --ssh"
   fi
 }
 

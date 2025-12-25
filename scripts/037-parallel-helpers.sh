@@ -52,7 +52,7 @@ batch_install_packages() {
   [[ $INSTALL_APPARMOR == "yes" ]] && packages+=(apparmor apparmor-utils)
   [[ $INSTALL_AUDITD == "yes" ]] && packages+=(auditd audispd-plugins)
   [[ $INSTALL_AIDE == "yes" ]] && packages+=(aide aide-common)
-  [[ $INSTALL_CHKROOTKIT == "yes" ]] && packages+=(chkrootkit)
+  [[ $INSTALL_CHKROOTKIT == "yes" ]] && packages+=(chkrootkit binutils)
   [[ $INSTALL_LYNIS == "yes" ]] && packages+=(lynis)
   [[ $INSTALL_NEEDRESTART == "yes" ]] && packages+=(needrestart)
 
