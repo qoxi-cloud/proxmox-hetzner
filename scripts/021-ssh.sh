@@ -146,15 +146,15 @@ check_port_available() {
 # Returns: 0 if SSH ready, 1 on timeout or failure
 wait_for_ssh_ready() {
   local timeout="${1:-120}"
+  local start_time
+  start_time=$(date +%s)
 
   # Clear any stale known_hosts entries
   ssh-keygen -f "/root/.ssh/known_hosts" -R "[localhost]:${SSH_PORT}" 2>/dev/null || true
 
-  # Split timeout: 75% for port check (boot is slow), 25% for SSH verification
-  local port_timeout=$((timeout * 3 / 4))
-  local ssh_timeout=$((timeout - port_timeout))
-
   # Port check - wait for VM to boot and open SSH port
+  # Allow up to 75% of timeout for port check, but track actual elapsed time
+  local port_timeout=$((timeout * 3 / 4))
   local port_check=0
   local elapsed=0
   while ((elapsed < port_timeout)); do
@@ -170,6 +170,13 @@ wait_for_ssh_ready() {
     print_error "Port $SSH_PORT is not accessible"
     log "ERROR: Port $SSH_PORT not accessible after ${port_timeout}s"
     return 1
+  fi
+
+  # Calculate remaining time for SSH verification
+  local actual_elapsed=$(($(date +%s) - start_time))
+  local ssh_timeout=$((timeout - actual_elapsed))
+  if ((ssh_timeout < 10)); then
+    ssh_timeout=10 # Minimum 10s for SSH check
   fi
 
   local passfile
