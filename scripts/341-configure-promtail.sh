@@ -7,17 +7,14 @@
 
 # Configuration function for promtail
 _config_promtail() {
-  # Create config directory
-  remote_exec 'mkdir -p /etc/promtail' || return 1
-
-  # Deploy configuration with hostname
+  # Deploy configuration with hostname (deploy_template creates parent dirs)
   deploy_template "templates/promtail.yml" "/etc/promtail/promtail.yml" \
     "HOSTNAME=${PVE_HOSTNAME}" || return 1
 
   # Deploy systemd service
   deploy_template "templates/promtail.service" "/etc/systemd/system/promtail.service" || return 1
 
-  # Create positions directory
+  # Create positions directory (not handled by deploy_template - different path)
   remote_exec 'mkdir -p /var/lib/promtail' || return 1
 
   # Enable and start service

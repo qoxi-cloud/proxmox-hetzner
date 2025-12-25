@@ -45,18 +45,11 @@ _config_yazi() {
     return 1
   }
 
-  deploy_user_config "templates/yazi-theme.toml" ".config/yazi/theme.toml" || {
-    log "ERROR: Failed to deploy yazi theme"
-    return 1
-  }
-
-  deploy_user_config "templates/yazi-init.lua" ".config/yazi/init.lua" || {
-    log "ERROR: Failed to deploy yazi init.lua"
-    return 1
-  }
-
-  deploy_user_config "templates/yazi-keymap.toml" ".config/yazi/keymap.toml" || {
-    log "ERROR: Failed to deploy yazi keymap"
+  deploy_user_configs \
+    "templates/yazi-theme.toml:.config/yazi/theme.toml" \
+    "templates/yazi-init.lua:.config/yazi/init.lua" \
+    "templates/yazi-keymap.toml:.config/yazi/keymap.toml" || {
+    log "ERROR: Failed to deploy yazi configs"
     return 1
   }
 }

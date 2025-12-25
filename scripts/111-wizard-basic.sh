@@ -94,64 +94,12 @@ _edit_email() {
 # Shows generated password for user to save.
 # Updates NEW_ROOT_PASSWORD and PASSWORD_GENERATED globals.
 _edit_password() {
-  while true; do
-    _wiz_start_edit
-
-    # 1 header + 2 options (Manual/Generate)
-    _show_input_footer "filter" 3
-
-    local choice
-    if ! choice=$(printf '%s\n' "$WIZ_PASSWORD_OPTIONS" | _wiz_choose --header="Password:"); then
-      return
-    fi
-
-    case "$choice" in
-      "Generate password")
-        NEW_ROOT_PASSWORD=$(generate_password "$DEFAULT_PASSWORD_LENGTH")
-        PASSWORD_GENERATED="yes"
-
-        _wiz_start_edit
-        _wiz_hide_cursor
-        _wiz_warn "Please save this password - it will be required for login"
-        _wiz_blank_line
-        printf '%s\n' "${WIZ_NOTIFY_INDENT}${CLR_CYAN}Generated password:${CLR_RESET} ${CLR_ORANGE}${NEW_ROOT_PASSWORD}${CLR_RESET}"
-        _wiz_blank_line
-        printf '%s\n' "${WIZ_NOTIFY_INDENT}${CLR_GRAY}Press any key to continue...${CLR_RESET}"
-        read -n 1 -s -r
-        break
-        ;;
-      "Manual entry")
-        _wiz_start_edit
-        _show_input_footer
-
-        local new_password
-        new_password=$(
-          _wiz_input \
-            --password \
-            --placeholder "Enter password" \
-            --prompt "Password: "
-        )
-
-        # If empty or cancelled, return to menu
-        if [[ -z $new_password ]]; then
-          continue
-        fi
-
-        # Validate password
-        local password_error
-        password_error=$(get_password_error "$new_password")
-        if [[ -n $password_error ]]; then
-          show_validation_error "$password_error"
-          continue
-        fi
-
-        # Password is valid
-        NEW_ROOT_PASSWORD="$new_password"
-        PASSWORD_GENERATED="no"
-        break
-        ;;
-    esac
-  done
+  _wiz_password_editor \
+    "NEW_ROOT_PASSWORD" \
+    "Root Password:" \
+    "it will be required for login" \
+    "Generated root password:" \
+    "yes"
 }
 
 # Edits timezone via searchable filter list.

@@ -157,6 +157,7 @@ remote_enable_services() {
 
 # Deploys a template with variable substitution and copies to remote.
 # Stages template to temp location before substitution to preserve originals.
+# Automatically creates parent directories on remote if needed.
 # Combines apply_template_vars + remote_copy pattern.
 # Parameters:
 #   $1 - Template source path
@@ -189,10 +190,36 @@ deploy_template() {
     }
   fi
 
+  # Create parent directory on remote if needed
+  local dest_dir
+  dest_dir=$(dirname "$dest")
+  remote_exec "mkdir -p '$dest_dir'" || {
+    log "ERROR: Failed to create directory $dest_dir"
+    rm -f "$staged"
+    return 1
+  }
+
   remote_copy "$staged" "$dest" || {
     log "ERROR: Failed to deploy $template to $dest"
     rm -f "$staged"
     return 1
   }
   rm -f "$staged"
+}
+
+# Deploys multiple config files to admin user's home directory.
+# Batch variant of deploy_user_config for efficiency.
+# Parameters:
+#   $@ - Pairs of "template_path:relative_dest" (e.g., "templates/bat-config:.config/bat/config")
+# Returns: 0 on success, 1 on first failure
+# Example:
+#   deploy_user_configs \
+#     "templates/yazi-theme.toml:.config/yazi/theme.toml" \
+#     "templates/yazi-init.lua:.config/yazi/init.lua"
+deploy_user_configs() {
+  for pair in "$@"; do
+    local template="${pair%%:*}"
+    local relative="${pair#*:}"
+    deploy_user_config "$template" "$relative" || return 1
+  done
 }

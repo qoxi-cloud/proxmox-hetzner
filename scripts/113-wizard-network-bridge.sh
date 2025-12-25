@@ -43,16 +43,10 @@ _edit_bridge_mode() {
   # 1 header + 3 items for gum choose
   _show_input_footer "filter" 4
 
-  local selected
-  if ! selected=$(printf '%s\n' "$WIZ_BRIDGE_MODES" | _wiz_choose --header="Bridge mode:"); then
-    return
-  fi
-
-  case "$selected" in
-    "External bridge") BRIDGE_MODE="external" ;;
-    "Internal NAT") BRIDGE_MODE="internal" ;;
-    "Both") BRIDGE_MODE="both" ;;
-  esac
+  _wiz_choose_mapped "BRIDGE_MODE" "Bridge mode:" "WIZ_BRIDGE_MODES" \
+    "External bridge:external" \
+    "Internal NAT:internal" \
+    "Both:both"
 }
 
 # Edits private subnet for NAT bridge.
@@ -127,13 +121,7 @@ _edit_bridge_mtu() {
   # 1 header + 2 items for gum choose
   _show_input_footer "filter" 3
 
-  local selected
-  if ! selected=$(printf '%s\n' "$WIZ_BRIDGE_MTU" | _wiz_choose --header="Bridge MTU:"); then
-    return
-  fi
-
-  case "$selected" in
-    "9000 (jumbo frames)") BRIDGE_MTU="9000" ;;
-    "1500 (standard)") BRIDGE_MTU="1500" ;;
-  esac
+  _wiz_choose_mapped "BRIDGE_MTU" "Bridge MTU:" "WIZ_BRIDGE_MTU" \
+    "9000 (jumbo frames):9000" \
+    "1500 (standard):1500"
 }

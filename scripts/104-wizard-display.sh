@@ -5,6 +5,71 @@
 # Formats configuration values for display in wizard menu
 
 # =============================================================================
+# Display mapping table (internal value → display text)
+# =============================================================================
+
+declare -gA _DSP_MAP=(
+  # Repository types
+  ["repo:no-subscription"]="No-subscription (free)"
+  ["repo:enterprise"]="Enterprise"
+  ["repo:test"]="Test/Development"
+
+  # IPv6 modes
+  ["ipv6:auto"]="Auto"
+  ["ipv6:manual"]="Manual"
+  ["ipv6:disabled"]="Disabled"
+
+  # Bridge modes
+  ["bridge:external"]="External bridge"
+  ["bridge:internal"]="Internal NAT"
+  ["bridge:both"]="Both"
+
+  # Firewall modes
+  ["firewall:stealth"]="Stealth (Tailscale only)"
+  ["firewall:strict"]="Strict (SSH only)"
+  ["firewall:standard"]="Standard (SSH + Web UI)"
+
+  # ZFS RAID
+  ["zfs:single"]="Single disk"
+  ["zfs:raid0"]="RAID-0 (striped)"
+  ["zfs:raid1"]="RAID-1 (mirror)"
+  ["zfs:raidz1"]="RAID-Z1 (parity)"
+  ["zfs:raidz2"]="RAID-Z2 (double parity)"
+  ["zfs:raidz3"]="RAID-Z3 (triple parity)"
+  ["zfs:raid10"]="RAID-10 (striped mirrors)"
+
+  # ZFS ARC
+  ["arc:vm-focused"]="VM-focused (4GB)"
+  ["arc:balanced"]="Balanced (25-40%)"
+  ["arc:storage-focused"]="Storage-focused (50%)"
+
+  # SSL types
+  ["ssl:self-signed"]="Self-signed"
+  ["ssl:letsencrypt"]="Let's Encrypt"
+
+  # Shell types
+  ["shell:zsh"]="ZSH"
+  ["shell:bash"]="Bash"
+
+  # CPU governors
+  ["power:performance"]="Performance"
+  ["power:ondemand"]="Balanced"
+  ["power:powersave"]="Balanced"
+  ["power:schedutil"]="Adaptive"
+  ["power:conservative"]="Conservative"
+)
+
+# Looks up display value from mapping table.
+# Parameters:
+#   $1 - Category (e.g., "repo", "bridge", "zfs")
+#   $2 - Internal value (e.g., "external", "raid1")
+# Returns: Display text via stdout, or original value if not found
+_dsp_lookup() {
+  local key="$1:$2"
+  echo "${_DSP_MAP[$key]:-$2}"
+}
+
+# =============================================================================
 # Display value formatters (grouped by screen)
 # =============================================================================
 
@@ -20,14 +85,7 @@ _dsp_basic() {
 # Formats Proxmox screen values: repository, ISO version
 _dsp_proxmox() {
   _DSP_REPO=""
-  if [[ -n $PVE_REPO_TYPE ]]; then
-    case "$PVE_REPO_TYPE" in
-      no-subscription) _DSP_REPO="No-subscription (free)" ;;
-      enterprise) _DSP_REPO="Enterprise" ;;
-      test) _DSP_REPO="Test/Development" ;;
-      *) _DSP_REPO="$PVE_REPO_TYPE" ;;
-    esac
-  fi
+  [[ -n $PVE_REPO_TYPE ]] && _DSP_REPO=$(_dsp_lookup "repo" "$PVE_REPO_TYPE")
 
   _DSP_ISO=""
   [[ -n $PROXMOX_ISO_VERSION ]] && _DSP_ISO=$(get_iso_version "$PROXMOX_ISO_VERSION")
@@ -37,36 +95,18 @@ _dsp_proxmox() {
 _dsp_network() {
   _DSP_IPV6=""
   if [[ -n $IPV6_MODE ]]; then
-    case "$IPV6_MODE" in
-      auto) _DSP_IPV6="Auto" ;;
-      manual)
-        _DSP_IPV6="Manual"
-        [[ -n $MAIN_IPV6 ]] && _DSP_IPV6+=" (${MAIN_IPV6}, gw: ${IPV6_GATEWAY})"
-        ;;
-      disabled) _DSP_IPV6="Disabled" ;;
-      *) _DSP_IPV6="$IPV6_MODE" ;;
-    esac
+    _DSP_IPV6=$(_dsp_lookup "ipv6" "$IPV6_MODE")
+    # Special case: manual mode shows address details
+    [[ $IPV6_MODE == "manual" && -n $MAIN_IPV6 ]] && _DSP_IPV6+=" (${MAIN_IPV6}, gw: ${IPV6_GATEWAY})"
   fi
 
   _DSP_BRIDGE=""
-  if [[ -n $BRIDGE_MODE ]]; then
-    case "$BRIDGE_MODE" in
-      external) _DSP_BRIDGE="External bridge" ;;
-      internal) _DSP_BRIDGE="Internal NAT" ;;
-      both) _DSP_BRIDGE="Both" ;;
-      *) _DSP_BRIDGE="$BRIDGE_MODE" ;;
-    esac
-  fi
+  [[ -n $BRIDGE_MODE ]] && _DSP_BRIDGE=$(_dsp_lookup "bridge" "$BRIDGE_MODE")
 
   _DSP_FIREWALL=""
   if [[ -n $INSTALL_FIREWALL ]]; then
     if [[ $INSTALL_FIREWALL == "yes" ]]; then
-      case "$FIREWALL_MODE" in
-        stealth) _DSP_FIREWALL="Stealth (Tailscale only)" ;;
-        strict) _DSP_FIREWALL="Strict (SSH only)" ;;
-        standard) _DSP_FIREWALL="Standard (SSH + Web UI)" ;;
-        *) _DSP_FIREWALL="$FIREWALL_MODE" ;;
-      esac
+      _DSP_FIREWALL=$(_dsp_lookup "firewall" "$FIREWALL_MODE")
     else
       _DSP_FIREWALL="Disabled"
     fi
@@ -88,28 +128,13 @@ _dsp_storage() {
 
   _DSP_ZFS=""
   if [[ -n $ZFS_RAID ]]; then
-    case "$ZFS_RAID" in
-      single) _DSP_ZFS="Single disk" ;;
-      raid0) _DSP_ZFS="RAID-0 (striped)" ;;
-      raid1) _DSP_ZFS="RAID-1 (mirror)" ;;
-      raidz1) _DSP_ZFS="RAID-Z1 (parity)" ;;
-      raidz2) _DSP_ZFS="RAID-Z2 (double parity)" ;;
-      raid10) _DSP_ZFS="RAID-10 (striped mirrors)" ;;
-      *) _DSP_ZFS="$ZFS_RAID" ;;
-    esac
+    _DSP_ZFS=$(_dsp_lookup "zfs" "$ZFS_RAID")
   elif [[ $USE_EXISTING_POOL == "yes" ]]; then
     _DSP_ZFS="(preserved)"
   fi
 
   _DSP_ARC=""
-  if [[ -n $ZFS_ARC_MODE ]]; then
-    case "$ZFS_ARC_MODE" in
-      vm-focused) _DSP_ARC="VM-focused (4GB)" ;;
-      balanced) _DSP_ARC="Balanced (25-40%)" ;;
-      storage-focused) _DSP_ARC="Storage-focused (50%)" ;;
-      *) _DSP_ARC="$ZFS_ARC_MODE" ;;
-    esac
-  fi
+  [[ -n $ZFS_ARC_MODE ]] && _DSP_ARC=$(_dsp_lookup "arc" "$ZFS_ARC_MODE")
 
   _DSP_BOOT="All in pool"
   if [[ -n $BOOT_DISK ]]; then
@@ -136,33 +161,13 @@ _dsp_services() {
   fi
 
   _DSP_SSL=""
-  if [[ -n $SSL_TYPE ]]; then
-    case "$SSL_TYPE" in
-      self-signed) _DSP_SSL="Self-signed" ;;
-      letsencrypt) _DSP_SSL="Let's Encrypt" ;;
-      *) _DSP_SSL="$SSL_TYPE" ;;
-    esac
-  fi
+  [[ -n $SSL_TYPE ]] && _DSP_SSL=$(_dsp_lookup "ssl" "$SSL_TYPE")
 
   _DSP_SHELL=""
-  if [[ -n $SHELL_TYPE ]]; then
-    case "$SHELL_TYPE" in
-      zsh) _DSP_SHELL="ZSH" ;;
-      bash) _DSP_SHELL="Bash" ;;
-      *) _DSP_SHELL="$SHELL_TYPE" ;;
-    esac
-  fi
+  [[ -n $SHELL_TYPE ]] && _DSP_SHELL=$(_dsp_lookup "shell" "$SHELL_TYPE")
 
   _DSP_POWER=""
-  if [[ -n $CPU_GOVERNOR ]]; then
-    case "$CPU_GOVERNOR" in
-      performance) _DSP_POWER="Performance" ;;
-      ondemand | powersave) _DSP_POWER="Balanced" ;;
-      schedutil) _DSP_POWER="Adaptive" ;;
-      conservative) _DSP_POWER="Conservative" ;;
-      *) _DSP_POWER="$CPU_GOVERNOR" ;;
-    esac
-  fi
+  [[ -n $CPU_GOVERNOR ]] && _DSP_POWER=$(_dsp_lookup "power" "$CPU_GOVERNOR")
 
   # Feature lists
   _DSP_SECURITY="none"

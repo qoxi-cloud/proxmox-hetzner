@@ -47,68 +47,11 @@ _edit_admin_username() {
 # Shows generated password for user to save.
 # Updates ADMIN_PASSWORD global.
 _edit_admin_password() {
-  while true; do
-    _wiz_start_edit
-
-    # 1 header + 2 options (Manual/Generate)
-    _show_input_footer "filter" 3
-
-    local choice
-    choice=$(
-      printf '%s\n' "$WIZ_PASSWORD_OPTIONS" | _wiz_choose \
-        --header="Admin Password:"
-    )
-
-    # If user cancelled (Esc)
-    if [[ -z $choice ]]; then
-      return
-    fi
-
-    case "$choice" in
-      "Generate password")
-        ADMIN_PASSWORD=$(generate_password "$DEFAULT_PASSWORD_LENGTH")
-
-        _wiz_start_edit
-        _wiz_hide_cursor
-        _wiz_warn "Please save this password - it will be required for sudo and Proxmox UI"
-        _wiz_blank_line
-        printf '%s\n' "${WIZ_NOTIFY_INDENT}${CLR_CYAN}Generated admin password:${CLR_RESET} ${CLR_ORANGE}${ADMIN_PASSWORD}${CLR_RESET}"
-        _wiz_blank_line
-        printf '%s\n' "${WIZ_NOTIFY_INDENT}${CLR_GRAY}Press any key to continue...${CLR_RESET}"
-        read -n 1 -s -r
-        break
-        ;;
-      "Manual entry")
-        _wiz_start_edit
-        _show_input_footer
-
-        local new_password
-        new_password=$(
-          _wiz_input \
-            --password \
-            --placeholder "Enter admin password" \
-            --prompt "Admin Password: "
-        )
-
-        # If empty or cancelled, return to menu
-        if [[ -z $new_password ]]; then
-          continue
-        fi
-
-        # Validate password
-        local password_error
-        password_error=$(get_password_error "$new_password")
-        if [[ -n $password_error ]]; then
-          show_validation_error "$password_error"
-          continue
-        fi
-
-        # Password is valid
-        ADMIN_PASSWORD="$new_password"
-        break
-        ;;
-    esac
-  done
+  _wiz_password_editor \
+    "ADMIN_PASSWORD" \
+    "Admin Password:" \
+    "it will be required for sudo and Proxmox UI" \
+    "Generated admin password:"
 }
 
 # =============================================================================

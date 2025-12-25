@@ -8,9 +8,8 @@
 # Configuration function for AppArmor
 # Configures GRUB for kernel parameters and enables service
 _config_apparmor() {
-  # Create directory and copy GRUB config (always - it's idempotent)
-  remote_exec 'mkdir -p /etc/default/grub.d'
-  remote_copy "templates/apparmor-grub.cfg" "/etc/default/grub.d/apparmor.cfg"
+  # Copy GRUB config (deploy_template creates parent dirs automatically)
+  deploy_template "templates/apparmor-grub.cfg" "/etc/default/grub.d/apparmor.cfg"
 
   # Update GRUB and enable AppArmor service (activates after reboot)
   remote_exec '

@@ -192,14 +192,8 @@ _edit_zfs_arc() {
   # 1 header + 3 options
   _show_input_footer "filter" 4
 
-  local selected
-  if ! selected=$(printf '%s\n' "$WIZ_ZFS_ARC_MODES" | _wiz_choose --header="ZFS ARC memory strategy:"); then
-    return
-  fi
-
-  case "$selected" in
-    "VM-focused (4GB fixed)") ZFS_ARC_MODE="vm-focused" ;;
-    "Balanced (25-40% of RAM)") ZFS_ARC_MODE="balanced" ;;
-    "Storage-focused (50% of RAM)") ZFS_ARC_MODE="storage-focused" ;;
-  esac
+  _wiz_choose_mapped "ZFS_ARC_MODE" "ZFS ARC memory strategy:" "WIZ_ZFS_ARC_MODES" \
+    "VM-focused (4GB fixed):vm-focused" \
+    "Balanced (25-40% of RAM):balanced" \
+    "Storage-focused (50% of RAM):storage-focused"
 }

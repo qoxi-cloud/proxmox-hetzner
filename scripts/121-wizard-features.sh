@@ -20,15 +20,9 @@ _edit_shell() {
   # 1 header + 2 items for gum choose
   _show_input_footer "filter" 3
 
-  local selected
-  if ! selected=$(printf '%s\n' "$WIZ_SHELL_OPTIONS" | _wiz_choose --header="Shell:"); then
-    return
-  fi
-
-  case "$selected" in
-    "ZSH") SHELL_TYPE="zsh" ;;
-    "Bash") SHELL_TYPE="bash" ;;
-  esac
+  _wiz_choose_mapped "SHELL_TYPE" "Shell:" "WIZ_SHELL_OPTIONS" \
+    "ZSH:zsh" \
+    "Bash:bash"
 }
 
 # Edits CPU frequency scaling governor.
@@ -135,27 +129,13 @@ _edit_features_security() {
     "  {{cyan:needrestart}}: Auto-restart services after updates" \
     ""
 
-  _show_input_footer "checkbox" 7
-
-  local gum_args=(--header="Security:")
-  [[ $INSTALL_APPARMOR == "yes" ]] && gum_args+=(--selected "apparmor")
-  [[ $INSTALL_AUDITD == "yes" ]] && gum_args+=(--selected "auditd")
-  [[ $INSTALL_AIDE == "yes" ]] && gum_args+=(--selected "aide")
-  [[ $INSTALL_CHKROOTKIT == "yes" ]] && gum_args+=(--selected "chkrootkit")
-  [[ $INSTALL_LYNIS == "yes" ]] && gum_args+=(--selected "lynis")
-  [[ $INSTALL_NEEDRESTART == "yes" ]] && gum_args+=(--selected "needrestart")
-
-  local selected
-  if ! selected=$(printf '%s\n' "$WIZ_FEATURES_SECURITY" | _wiz_choose_multi "${gum_args[@]}"); then
-    return
-  fi
-
-  INSTALL_APPARMOR=$([[ $selected == *apparmor* ]] && echo "yes" || echo "no")
-  INSTALL_AUDITD=$([[ $selected == *auditd* ]] && echo "yes" || echo "no")
-  INSTALL_AIDE=$([[ $selected == *aide* ]] && echo "yes" || echo "no")
-  INSTALL_CHKROOTKIT=$([[ $selected == *chkrootkit* ]] && echo "yes" || echo "no")
-  INSTALL_LYNIS=$([[ $selected == *lynis* ]] && echo "yes" || echo "no")
-  INSTALL_NEEDRESTART=$([[ $selected == *needrestart* ]] && echo "yes" || echo "no")
+  _wiz_feature_checkbox "Security:" 7 "WIZ_FEATURES_SECURITY" \
+    "apparmor:INSTALL_APPARMOR" \
+    "auditd:INSTALL_AUDITD" \
+    "aide:INSTALL_AIDE" \
+    "chkrootkit:INSTALL_CHKROOTKIT" \
+    "lynis:INSTALL_LYNIS" \
+    "needrestart:INSTALL_NEEDRESTART"
 }
 
 # =============================================================================
@@ -176,21 +156,10 @@ _edit_features_monitoring() {
     "  {{cyan:promtail}}: Log collector for Loki" \
     ""
 
-  _show_input_footer "checkbox" 4
-
-  local gum_args=(--header="Monitoring:")
-  [[ $INSTALL_VNSTAT == "yes" ]] && gum_args+=(--selected "vnstat")
-  [[ $INSTALL_NETDATA == "yes" ]] && gum_args+=(--selected "netdata")
-  [[ $INSTALL_PROMTAIL == "yes" ]] && gum_args+=(--selected "promtail")
-
-  local selected
-  if ! selected=$(printf '%s\n' "$WIZ_FEATURES_MONITORING" | _wiz_choose_multi "${gum_args[@]}"); then
-    return
-  fi
-
-  INSTALL_VNSTAT=$([[ $selected == *vnstat* ]] && echo "yes" || echo "no")
-  INSTALL_NETDATA=$([[ $selected == *netdata* ]] && echo "yes" || echo "no")
-  INSTALL_PROMTAIL=$([[ $selected == *promtail* ]] && echo "yes" || echo "no")
+  _wiz_feature_checkbox "Monitoring:" 4 "WIZ_FEATURES_MONITORING" \
+    "vnstat:INSTALL_VNSTAT" \
+    "netdata:INSTALL_NETDATA" \
+    "promtail:INSTALL_PROMTAIL"
 }
 
 # =============================================================================
@@ -211,19 +180,8 @@ _edit_features_tools() {
     "  {{cyan:ringbuffer}}: Network ring buffer tuning" \
     ""
 
-  _show_input_footer "checkbox" 4
-
-  local gum_args=(--header="Tools:")
-  [[ $INSTALL_YAZI == "yes" ]] && gum_args+=(--selected "yazi")
-  [[ $INSTALL_NVIM == "yes" ]] && gum_args+=(--selected "nvim")
-  [[ $INSTALL_RINGBUFFER == "yes" ]] && gum_args+=(--selected "ringbuffer")
-
-  local selected
-  if ! selected=$(printf '%s\n' "$WIZ_FEATURES_TOOLS" | _wiz_choose_multi "${gum_args[@]}"); then
-    return
-  fi
-
-  INSTALL_YAZI=$([[ $selected == *yazi* ]] && echo "yes" || echo "no")
-  INSTALL_NVIM=$([[ $selected == *nvim* ]] && echo "yes" || echo "no")
-  INSTALL_RINGBUFFER=$([[ $selected == *ringbuffer* ]] && echo "yes" || echo "no")
+  _wiz_feature_checkbox "Tools:" 4 "WIZ_FEATURES_TOOLS" \
+    "yazi:INSTALL_YAZI" \
+    "nvim:INSTALL_NVIM" \
+    "ringbuffer:INSTALL_RINGBUFFER"
 }
