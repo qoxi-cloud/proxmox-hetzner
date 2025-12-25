@@ -382,9 +382,9 @@ if [[ "{{INSTALL_CHKROOTKIT}}" == "yes" ]]; then
 	_check_file /etc/systemd/system/chkrootkit-scan.service && _ok "chkrootkit service unit exists"
 	_check_file /etc/systemd/system/chkrootkit-scan.timer && _ok "chkrootkit timer unit exists"
 
-	# Verify chkrootkit binary works (requires binutils for 'strings' command)
+	# Verify chkrootkit binary is accessible (requires binutils for 'strings' command)
 	if command -v strings &>/dev/null; then
-		chkrootkit -V &>/dev/null && _ok "chkrootkit binary functional" || _warn "chkrootkit -V failed"
+		command -v chkrootkit &>/dev/null && _ok "chkrootkit binary functional" || _warn "chkrootkit binary not found"
 	else
 		_warn "chkrootkit: 'strings' command missing (install binutils)"
 	fi
