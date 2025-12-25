@@ -16,7 +16,7 @@ readonly HEX_ORANGE="#ff8700"
 readonly HEX_GRAY="#585858"
 readonly HEX_WHITE="#ffffff"
 readonly HEX_NONE="7"
-readonly VERSION="2.0.573-pr.21"
+readonly VERSION="2.0.574-pr.21"
 readonly TERM_WIDTH=80
 readonly BANNER_WIDTH=51
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-installer}"
@@ -845,9 +845,9 @@ return $?
 readonly SSH_DEFAULT_TIMEOUT=300
 _sanitize_script_for_log(){
 local script="$1"
-script=$(printf '%s\n' "$script"|sed -E 's/(PASSWORD|password|PASSWD|passwd|SECRET|secret|TOKEN|token|KEY|key)=[^[:space:]"'\'']+/\1=[REDACTED]/g')
+script=$(printf '%s\n' "$script"|sed -E 's/(PASSWORD|password|PASSWD|passwd|SECRET|secret|TOKEN|token|KEY|key)=('"'"'[^'"'"']*'"'"'|"[^"]*"|[^[:space:]'"'"'";]+)/\1=[REDACTED]/g')
 script=$(printf '%s\n' "$script"|sed -E 's/(echo[[:space:]]+['\''"]?[^:]+:)[^|'\''"]*/\1[REDACTED]/g')
-script=$(printf '%s\n' "$script"|sed -E 's/(--authkey=)[^[:space:]'\'']*/\1[REDACTED]/g')
+script=$(printf '%s\n' "$script"|sed -E 's/(--authkey=)('"'"'[^'"'"']*'"'"'|"[^"]*"|[^[:space:]'"'"'";]+)/\1[REDACTED]/g')
 printf '%s\n' "$script"
 }
 remote_exec(){
