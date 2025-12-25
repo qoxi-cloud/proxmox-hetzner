@@ -1,6 +1,6 @@
-# Qoxi - Proxmox Automated Installer
-
 <div align="center">
+
+# Qoxi - Proxmox Automated Installer
   <img src="https://github.com/qoxi-cloud/proxmox-installer/raw/main/icons/proxmox.png" alt="Proxmox" height="64" />
   <h3>Automated Proxmox VE Installation for Dedicated Servers</h3>
 
