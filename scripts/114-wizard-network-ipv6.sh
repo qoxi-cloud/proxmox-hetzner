@@ -152,4 +152,3 @@ _edit_firewall() {
       ;;
   esac
 }
-

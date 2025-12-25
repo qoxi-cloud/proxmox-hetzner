@@ -193,4 +193,3 @@ iface vmbr1 inet6 static
 EOF
   fi
 }
-
