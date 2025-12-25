@@ -249,6 +249,24 @@ make_feature_wrapper "apparmor" "INSTALL_APPARMOR"
 # Creates: configure_apparmor() that guards _config_apparmor()
 ```
 
+### make_condition_wrapper
+
+Creates configure_* wrapper with value comparison (not just boolean).
+
+```bash
+make_condition_wrapper "ssl" "SSL_TYPE" "letsencrypt"
+# Creates: configure_ssl() that calls _config_ssl() only if SSL_TYPE="letsencrypt"
+```
+
+### deploy_timer_with_logdir
+
+Deploys systemd timer and creates log directory in one call.
+
+```bash
+deploy_timer_with_logdir "chkrootkit-scan" "/var/log/chkrootkit"
+# Deploys: chkrootkit-scan.service + chkrootkit-scan.timer + creates log dir
+```
+
 ---
 
 ## Parallel Execution (`033-parallel-helpers.sh`)

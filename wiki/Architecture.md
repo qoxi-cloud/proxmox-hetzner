@@ -286,6 +286,7 @@ graph LR
         AC[102-wizard-nav]
         AD[103-wizard-menu]
         AD2[104-wizard-display]
+        AD3[105-106-wizard-helpers]
         AE[110-121 editors]
     end
 
@@ -372,6 +373,8 @@ scripts/
 │   ├── 102-wizard-nav.sh     # Navigation logic (screen switching)
 │   ├── 103-wizard-menu.sh    # Menu building and field mapping
 │   ├── 104-wizard-display.sh # Display value formatters
+│   ├── 105-wizard-helpers.sh # Editor helpers (password, checkbox, toggle)
+│   ├── 106-wizard-input-helpers.sh # Input validation, filter select
 │   ├── 110-wizard-basic-locale.sh # Country to locale mapping
 │   ├── 111-wizard-basic.sh   # Hostname, email, password, timezone
 │   ├── 112-wizard-proxmox.sh # ISO version, repo type
@@ -638,7 +641,7 @@ spec/
 | 030-037   | Helpers (password, zfs, validation, parallel, deploy, network) |
 | 040-043   | Validation (basic, network, dns, security)   |
 | 050-056   | System detection (packages, preflight, network, drives, status, live-logs) |
-| 100-104   | Wizard core (main logic, UI, nav, menu, display) |
+| 100-106   | Wizard core (main logic, UI, nav, menu, display, helpers) |
 | 110-121   | Wizard editors (screens)                     |
 | 200-207   | Installation (packages, QEMU, templates, ISO, autoinstall) |
 | 300-303   | Base configuration                           |
