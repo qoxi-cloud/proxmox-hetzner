@@ -3,6 +3,23 @@
 # System package installation
 # =============================================================================
 
+# Installs ZFS tools if not available.
+# On Hetzner rescue, uses their install script (compiles from source).
+# On other systems, tries apt-get.
+# Side effects: May install ZFS packages
+_install_zfs_if_needed() {
+  command -v zpool &>/dev/null && return 0
+
+  # Check for Hetzner rescue install script
+  if [[ -x /root/.oldroot/nfs/install/zfs.sh ]]; then
+    # Hetzner rescue: auto-accept license and install
+    echo "y" | /root/.oldroot/nfs/install/zfs.sh >/dev/null 2>&1 || true
+  elif [[ -f /etc/debian_version ]]; then
+    # Debian/Ubuntu: try apt
+    apt-get install -qq -y zfsutils-linux >/dev/null 2>&1 || true
+  fi
+}
+
 # Installs required packages for the installer.
 # Adds Charm repo for gum if needed.
 # Side effects: May install packages, add apt repos
@@ -41,4 +58,7 @@ _install_required_packages() {
     # shellcheck disable=SC2086
     DEBIAN_FRONTEND=noninteractive apt-get install -qq -y $packages_to_install >/dev/null 2>&1
   fi
+
+  # Install ZFS for pool detection (needed for existing pool feature)
+  _install_zfs_if_needed
 }

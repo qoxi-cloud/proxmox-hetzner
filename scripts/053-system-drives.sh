@@ -95,17 +95,22 @@ detect_disk_roles() {
 # Existing ZFS pool detection
 # =============================================================================
 
-# Detects existing ZFS pools on the system.
+# Detects existing ZFS pools available for import.
 # Returns pool info via stdout (one pool per line: "name|status|disks")
 # Example: "tank|ONLINE|/dev/nvme0n1,/dev/nvme1n1"
 detect_existing_pools() {
+  # Check if zpool command exists
+  command -v zpool &>/dev/null || return 0
+
   local pools=()
 
-  # Try to import pools in read-only mode to detect them
-  # Use -d /dev to scan all devices
+  # Get importable pools (not currently imported)
+  # zpool import without args lists all pools available for import
   local import_output
-  if ! import_output=$(zpool import 2>/dev/null); then
-    # No importable pools found
+  import_output=$(zpool import 2>&1) || true
+
+  # Check if output contains pool info (not just "no pools available")
+  if [[ -z $import_output ]] || [[ $import_output == *"no pools available"* ]]; then
     return 0
   fi
 
@@ -114,7 +119,7 @@ detect_existing_pools() {
   #   pool: tankname
   #      id: 12345
   #   state: ONLINE
-  #  action: The pool can be imported using its name or numeric identifier.
+  #  action: The pool can be imported...
   #  config:
   #      tankname    ONLINE
   #        mirror-0  ONLINE
@@ -143,13 +148,16 @@ detect_existing_pools() {
     # Config section start
     elif [[ $line =~ ^[[:space:]]*config: ]]; then
       in_config=true
-    # Disk entries (in config section, after pool/vdev lines)
-    elif [[ $in_config == true && $line =~ ^[[:space:]]+(nvme[0-9]+n[0-9]+|sd[a-z]+|vd[a-z]+)[[:space:]] ]]; then
-      local disk="${BASH_REMATCH[1]}"
-      if [[ -n $current_disks ]]; then
-        current_disks="${current_disks},/dev/${disk}"
-      else
-        current_disks="/dev/${disk}"
+    # Disk entries - match common disk patterns
+    elif [[ $in_config == true ]]; then
+      # Match: nvme0n1, sda, vda, xvda, hda, etc (with partition suffix optional)
+      if [[ $line =~ ^[[:space:]]+(nvme[0-9]+n[0-9]+|[shxv]d[a-z]+)[p0-9]*[[:space:]] ]]; then
+        local disk="${BASH_REMATCH[1]}"
+        if [[ -n $current_disks ]]; then
+          current_disks="${current_disks},/dev/${disk}"
+        else
+          current_disks="/dev/${disk}"
+        fi
       fi
     fi
   done <<<"$import_output"
