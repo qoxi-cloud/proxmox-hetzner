@@ -191,8 +191,9 @@ root_ssh_keys = """{{SSH_KEY}}"""
 source = "from-iso"
 
 [disk-setup]
-filesystem = "{{ZFS_RAID_MODE}}"
-disk_list = [{{DRIVE_IDS}}]
+filesystem = "zfs"
+zfs.raid = "{{ZFS_RAID}}"
+disk-list = [{{DRIVE_IDS}}]
 # PBS has simpler disk setup, no ZFS tuning needed
 ```
 
