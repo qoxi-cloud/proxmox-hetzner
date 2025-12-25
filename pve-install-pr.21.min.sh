@@ -16,7 +16,7 @@ readonly HEX_ORANGE="#ff8700"
 readonly HEX_GRAY="#585858"
 readonly HEX_WHITE="#ffffff"
 readonly HEX_NONE="7"
-readonly VERSION="2.0.589-pr.21"
+readonly VERSION="2.0.590-pr.21"
 readonly TERM_WIDTH=80
 readonly BANNER_WIDTH=51
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-installer}"
@@ -77,9 +77,6 @@ pt-br
 se
 si
 tr"
-readonly WIZ_REPO_TYPES="No-subscription (free)
-Enterprise
-Test/Development"
 readonly WIZ_IPV6_MODES="Auto
 Manual
 Disabled"
@@ -89,8 +86,6 @@ readonly WIZ_PRIVATE_SUBNETS="10.0.0.0/24
 Custom"
 readonly WIZ_ZFS_MODES="Single disk
 RAID-1 (mirror)"
-readonly WIZ_SSL_TYPES="Self-signed
-Let's Encrypt"
 readonly WIZ_FIREWALL_MODES="Stealth (Tailscale only)
 Strict (SSH only)
 Standard (SSH + Web UI)
@@ -127,6 +122,13 @@ readonly WIZ_MAP_ZFS_ARC=(
 "VM-focused (4GB fixed):vm-focused"
 "Balanced (25-40% of RAM):balanced"
 "Storage-focused (50% of RAM):storage-focused")
+readonly WIZ_MAP_REPO_TYPE=(
+"No-subscription (free):no-subscription"
+"Enterprise:enterprise"
+"Test/Development:test")
+readonly WIZ_MAP_SSL_TYPE=(
+"Self-signed:self-signed"
+"Let's Encrypt:letsencrypt")
 BOOT_DISK=""
 ZFS_POOL_DISKS=()
 USE_EXISTING_POOL=""
@@ -3466,18 +3468,11 @@ _wiz_description \
 "  {{cyan:Test}}:            Latest builds, may be unstable" \
 ""
 _show_input_footer "filter" 4
-local selected
-if ! selected=$(printf '%s\n' "$WIZ_REPO_TYPES"|_wiz_choose --header="Repository:");then
+if ! _wiz_choose_mapped "PVE_REPO_TYPE" "Repository:" \
+"${WIZ_MAP_REPO_TYPE[@]}";then
 return
 fi
-local repo_type=""
-case "$selected" in
-"No-subscription (free)")repo_type="no-subscription";;
-"Enterprise")repo_type="enterprise";;
-"Test/Development")repo_type="test"
-esac
-PVE_REPO_TYPE="$repo_type"
-if [[ $repo_type == "enterprise" ]];then
+if [[ $PVE_REPO_TYPE == "enterprise" ]];then
 _wiz_input_screen "Enter Proxmox subscription key (optional)"
 local sub_key
 sub_key=$(_wiz_input \
@@ -3980,23 +3975,14 @@ _wiz_description \
 "  {{cyan:Let's Encrypt}}: Trusted cert, requires public DNS" \
 ""
 _show_input_footer "filter" 3
-local selected
-if ! selected=$(printf '%s\n' "$WIZ_SSL_TYPES"|_wiz_choose --header="SSL Certificate:");then
+if ! _wiz_choose_mapped "SSL_TYPE" "SSL Certificate:" \
+"${WIZ_MAP_SSL_TYPE[@]}";then
 return
 fi
-local ssl_type=""
-case "$selected" in
-"Self-signed")ssl_type="self-signed";;
-"Let's Encrypt")ssl_type="letsencrypt"
-esac
-if [[ $ssl_type == "letsencrypt" ]];then
-if _ssl_validate_letsencrypt;then
-SSL_TYPE="$ssl_type"
-else
+if [[ $SSL_TYPE == "letsencrypt" ]];then
+if ! _ssl_validate_letsencrypt;then
 SSL_TYPE="self-signed"
 fi
-else
-[[ -n $ssl_type ]]&&SSL_TYPE="$ssl_type"
 fi
 }
 _tailscale_get_auth_key(){
