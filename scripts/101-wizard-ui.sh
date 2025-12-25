@@ -72,12 +72,13 @@ _wiz_dim() {
 # Outputs all lines at once for flicker-free rendering.
 # Parameters:
 #   $@ - Lines to display, supports {{cyan:text}} syntax for highlights
-# Usage: _wiz_description "Line 1" "Line 2" "" "Line with {{cyan:highlight}}"
+# Usage: _wiz_description "Line 1" "Line 2" "" "Line with {{cyan:highlight}} or {{yellow:warning}}"
 _wiz_description() {
   local output=""
   for line in "$@"; do
-    # Replace {{cyan:text}} with actual color codes
+    # Replace {{color:text}} with actual color codes
     line="${line//\{\{cyan:/${CLR_CYAN}}"
+    line="${line//\{\{yellow:/${CLR_YELLOW}}"
     line="${line//\}\}/${CLR_GRAY}}"
     output+="${CLR_GRAY}${line}${CLR_RESET}\n"
   done
