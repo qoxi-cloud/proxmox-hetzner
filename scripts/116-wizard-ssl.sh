@@ -130,24 +130,15 @@ _edit_ssl() {
 
   _show_input_footer "filter" 3
 
-  local selected
-  if ! selected=$(printf '%s\n' "$WIZ_SSL_TYPES" | _wiz_choose --header="SSL Certificate:"); then
+  if ! _wiz_choose_mapped "SSL_TYPE" "SSL Certificate:" \
+    "${WIZ_MAP_SSL_TYPE[@]}"; then
     return
   fi
 
-  local ssl_type=""
-  case "$selected" in
-    "Self-signed") ssl_type="self-signed" ;;
-    "Let's Encrypt") ssl_type="letsencrypt" ;;
-  esac
-
-  if [[ $ssl_type == "letsencrypt" ]]; then
-    if _ssl_validate_letsencrypt; then
-      SSL_TYPE="$ssl_type"
-    else
+  # Validate Let's Encrypt requirements, fallback to self-signed if not met
+  if [[ $SSL_TYPE == "letsencrypt" ]]; then
+    if ! _ssl_validate_letsencrypt; then
       SSL_TYPE="self-signed"
     fi
-  else
-    [[ -n $ssl_type ]] && SSL_TYPE="$ssl_type"
   fi
 }

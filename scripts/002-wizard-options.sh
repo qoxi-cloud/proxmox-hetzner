@@ -3,12 +3,6 @@
 # Wizard menu option lists (WIZ_ prefix to avoid conflicts)
 # =============================================================================
 
-# Proxmox repository types
-# shellcheck disable=SC2034
-readonly WIZ_REPO_TYPES="No-subscription (free)
-Enterprise
-Test/Development"
-
 # IPv6 configuration modes
 # shellcheck disable=SC2034
 readonly WIZ_IPV6_MODES="Auto
@@ -26,11 +20,6 @@ Custom"
 # shellcheck disable=SC2034
 readonly WIZ_ZFS_MODES="Single disk
 RAID-1 (mirror)"
-
-# SSL certificate types
-# shellcheck disable=SC2034
-readonly WIZ_SSL_TYPES="Self-signed
-Let's Encrypt"
 
 # Firewall modes (nftables)
 # shellcheck disable=SC2034
@@ -108,4 +97,19 @@ readonly WIZ_MAP_ZFS_ARC=(
   "VM-focused (4GB fixed):vm-focused"
   "Balanced (25-40% of RAM):balanced"
   "Storage-focused (50% of RAM):storage-focused"
+)
+
+# Repository type mapping
+# shellcheck disable=SC2034
+readonly WIZ_MAP_REPO_TYPE=(
+  "No-subscription (free):no-subscription"
+  "Enterprise:enterprise"
+  "Test/Development:test"
+)
+
+# SSL type mapping
+# shellcheck disable=SC2034
+readonly WIZ_MAP_SSL_TYPE=(
+  "Self-signed:self-signed"
+  "Let's Encrypt:letsencrypt"
 )

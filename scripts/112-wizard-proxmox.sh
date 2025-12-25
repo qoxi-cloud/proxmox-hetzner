@@ -54,23 +54,13 @@ _edit_repository() {
   # 1 header + 3 items for gum choose
   _show_input_footer "filter" 4
 
-  local selected
-  if ! selected=$(printf '%s\n' "$WIZ_REPO_TYPES" | _wiz_choose --header="Repository:"); then
+  if ! _wiz_choose_mapped "PVE_REPO_TYPE" "Repository:" \
+    "${WIZ_MAP_REPO_TYPE[@]}"; then
     return
   fi
 
-  # Map display names to internal values
-  local repo_type=""
-  case "$selected" in
-    "No-subscription (free)") repo_type="no-subscription" ;;
-    "Enterprise") repo_type="enterprise" ;;
-    "Test/Development") repo_type="test" ;;
-  esac
-
-  PVE_REPO_TYPE="$repo_type"
-
   # If enterprise selected, optionally ask for subscription key
-  if [[ $repo_type == "enterprise" ]]; then
+  if [[ $PVE_REPO_TYPE == "enterprise" ]]; then
     _wiz_input_screen "Enter Proxmox subscription key (optional)"
 
     local sub_key
