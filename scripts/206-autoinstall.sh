@@ -206,8 +206,6 @@ make_autoinstall_iso() {
   log "Input: pve.iso exists: $(test -f pve.iso && echo 'yes' || echo 'no')"
   log "Input: answer.toml exists: $(test -f answer.toml && echo 'yes' || echo 'no')"
   log "Current directory: $(pwd)"
-  log "Files in current directory:"
-  ls -la >>"$LOG_FILE" 2>&1
 
   # Run ISO creation with full logging
   proxmox-auto-install-assistant prepare-iso pve.iso --fetch-from iso --answer-file answer.toml --output pve-autoinstall.iso >>"$LOG_FILE" 2>&1 &
@@ -220,8 +218,6 @@ make_autoinstall_iso() {
   # Verify ISO was created
   if [[ ! -f "./pve-autoinstall.iso" ]]; then
     log "ERROR: Autoinstall ISO not found after creation attempt"
-    log "Files in current directory after attempt:"
-    ls -la >>"$LOG_FILE" 2>&1
     exit 1
   fi
 
