@@ -158,6 +158,8 @@ _validate_config() {
   [[ -z $DOMAIN_SUFFIX ]] && missing_fields+=("Domain")
   [[ -z $EMAIL ]] && missing_fields+=("Email")
   [[ -z $NEW_ROOT_PASSWORD ]] && missing_fields+=("Password")
+  [[ -z $ADMIN_USERNAME ]] && missing_fields+=("Admin Username")
+  [[ -z $ADMIN_PASSWORD ]] && missing_fields+=("Admin Password")
   [[ -z $TIMEZONE ]] && missing_fields+=("Timezone")
   [[ -z $KEYBOARD ]] && missing_fields+=("Keyboard")
   [[ -z $COUNTRY ]] && missing_fields+=("Country")
