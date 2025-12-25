@@ -18,8 +18,8 @@ _install_yazi() {
     YAZI_VERSION=$(curl -s https://api.github.com/repos/sxyazi/yazi/releases/latest | grep "tag_name" | cut -d "\"" -f 4 | sed "s/^v//")
     curl -sL "https://github.com/sxyazi/yazi/releases/download/v${YAZI_VERSION}/yazi-x86_64-unknown-linux-gnu.zip" -o /tmp/yazi.zip
     unzip -q /tmp/yazi.zip -d /tmp/
-    chmod +x /tmp/yazi-x86_64-unknown-linux-gnu/yazi
-    mv /tmp/yazi-x86_64-unknown-linux-gnu/yazi /usr/local/bin/
+    chmod +x /tmp/yazi-x86_64-unknown-linux-gnu/yazi /tmp/yazi-x86_64-unknown-linux-gnu/ya
+    mv /tmp/yazi-x86_64-unknown-linux-gnu/yazi /tmp/yazi-x86_64-unknown-linux-gnu/ya /usr/local/bin/
     rm -rf /tmp/yazi.zip /tmp/yazi-x86_64-unknown-linux-gnu
   ' || {
     log "ERROR: Failed to install yazi"
@@ -32,14 +32,37 @@ _install_yazi() {
 _config_yazi() {
   _install_yazi || return 1
 
+  # Install flavor and plugins as admin user
+  # shellcheck disable=SC2016
+  remote_exec 'su - '"${ADMIN_USER}"' -c "
+    ya pack -a kalidyasin/yazi-flavors:tokyonight-night
+    ya pack -a yazi-rs/plugins:chmod
+    ya pack -a yazi-rs/plugins:smart-enter
+    ya pack -a yazi-rs/plugins:smart-filter
+    ya pack -a yazi-rs/plugins:full-border
+  "' || {
+    log "ERROR: Failed to install yazi plugins"
+    return 1
+  }
+
   deploy_user_config "templates/yazi-theme.toml" ".config/yazi/theme.toml" || {
     log "ERROR: Failed to deploy yazi theme"
+    return 1
+  }
+
+  deploy_user_config "templates/yazi-init.lua" ".config/yazi/init.lua" || {
+    log "ERROR: Failed to deploy yazi init.lua"
+    return 1
+  }
+
+  deploy_user_config "templates/yazi-keymap.toml" ".config/yazi/keymap.toml" || {
+    log "ERROR: Failed to deploy yazi keymap"
     return 1
   }
 }
 
 # =============================================================================
 # Public wrapper (generated via factory)
-# Installs yazi file manager with Catppuccin theme
+# Installs yazi file manager with Tokyo Night theme
 # =============================================================================
 make_feature_wrapper "yazi" "INSTALL_YAZI"
