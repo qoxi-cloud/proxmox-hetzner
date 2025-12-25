@@ -16,7 +16,7 @@ readonly HEX_ORANGE="#ff8700"
 readonly HEX_GRAY="#585858"
 readonly HEX_WHITE="#ffffff"
 readonly HEX_NONE="7"
-readonly VERSION="2.0.590-pr.21"
+readonly VERSION="2.0.591-pr.21"
 readonly TERM_WIDTH=80
 readonly BANNER_WIDTH=51
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-installer}"
@@ -89,8 +89,6 @@ RAID-1 (mirror)"
 readonly WIZ_FIREWALL_MODES="Stealth (Tailscale only)
 Strict (SSH only)
 Standard (SSH + Web UI)
-Disabled"
-readonly WIZ_TOGGLE_OPTIONS="Enabled
 Disabled"
 readonly WIZ_PASSWORD_OPTIONS="Manual entry
 Generate password"
@@ -3254,6 +3252,23 @@ declare -g "$var_name=$internal_value"
 fi
 return 0
 }
+_wiz_toggle(){
+local var_name="$1"
+local header="$2"
+local default_on_cancel="${3:-no}"
+local selected
+if ! selected=$(printf '%s\n' "Enabled" "Disabled"|_wiz_choose --header="$header");then
+declare -g "$var_name=$default_on_cancel"
+return 1
+fi
+if [[ $selected == "Enabled" ]];then
+declare -g "$var_name=yes"
+return 2
+else
+declare -g "$var_name=no"
+return 0
+fi
+}
 _wiz_feature_checkbox(){
 local header="$1"
 local footer_size="$2"
@@ -3707,12 +3722,12 @@ _wiz_description \
 "  Token has full Administrator permissions, no expiration." \
 ""
 _show_input_footer "filter" 3
-local selected
-if ! selected=$(printf '%s\n' "$WIZ_TOGGLE_OPTIONS"|_wiz_choose --header="API Token (privileged, no expiration):");then
-return
-fi
-case "$selected" in
-Enabled)_wiz_input_screen "Enter API token name (default: automation)"
+local result
+_wiz_toggle "INSTALL_API_TOKEN" "API Token (privileged, no expiration):"
+result=$?
+[[ $result -eq 1 ]]&&return
+[[ $result -ne 2 ]]&&return
+_wiz_input_screen "Enter API token name (default: automation)"
 local token_name
 token_name=$(_wiz_input \
 --placeholder "automation" \
@@ -3721,14 +3736,9 @@ token_name=$(_wiz_input \
 --value="${API_TOKEN_NAME:-automation}")
 if [[ -n $token_name && $token_name =~ ^[a-zA-Z0-9_-]+$ ]];then
 API_TOKEN_NAME="$token_name"
-INSTALL_API_TOKEN="yes"
 else
 API_TOKEN_NAME="automation"
-INSTALL_API_TOKEN="yes"
 fi
-;;
-Disabled)INSTALL_API_TOKEN="no"
-esac
 }
 _edit_existing_pool(){
 _wiz_start_edit
@@ -4012,15 +4022,7 @@ _wiz_description \
 "  Uses: tailscale serve --bg --https=443 https://127.0.0.1:8006" \
 ""
 _show_input_footer "filter" 3
-local webui_selected
-if webui_selected=$(printf '%s\n' "$WIZ_TOGGLE_OPTIONS"|_wiz_choose --header="Tailscale Web UI:");then
-case "$webui_selected" in
-Enabled)TAILSCALE_WEBUI="yes";;
-Disabled)TAILSCALE_WEBUI="no"
-esac
-else
-TAILSCALE_WEBUI="no"
-fi
+_wiz_toggle "TAILSCALE_WEBUI" "Tailscale Web UI:" "no"
 }
 _tailscale_enable(){
 local auth_key="$1"
@@ -4054,21 +4056,22 @@ _wiz_description \
 "  Stealth mode blocks ALL incoming traffic on public IP." \
 ""
 _show_input_footer "filter" 3
-local selected
-if ! selected=$(printf '%s\n' "$WIZ_TOGGLE_OPTIONS"|_wiz_choose --header="Tailscale:");then
+local result
+_wiz_toggle "INSTALL_TAILSCALE" "Tailscale:"
+result=$?
+if [[ $result -eq 1 ]];then
 return
-fi
-case "$selected" in
-Enabled)local auth_key
+elif [[ $result -eq 2 ]];then
+local auth_key
 auth_key=$(_tailscale_get_auth_key)
 if [[ -n $auth_key ]];then
 _tailscale_enable "$auth_key"
 else
 _tailscale_disable
 fi
-;;
-Disabled)_tailscale_disable
-esac
+else
+_tailscale_disable
+fi
 }
 _edit_admin_username(){
 while true;do
@@ -4115,12 +4118,12 @@ _wiz_description \
 "  Token has full Administrator permissions, no expiration." \
 ""
 _show_input_footer "filter" 3
-local selected
-if ! selected=$(printf '%s\n' "$WIZ_TOGGLE_OPTIONS"|_wiz_choose --header="API Token (privileged, no expiration):");then
-return
-fi
-case "$selected" in
-Enabled)_wiz_input_screen "Enter API token name (default: automation)"
+local result
+_wiz_toggle "INSTALL_API_TOKEN" "API Token (privileged, no expiration):"
+result=$?
+[[ $result -eq 1 ]]&&return
+[[ $result -ne 2 ]]&&return
+_wiz_input_screen "Enter API token name (default: automation)"
 local token_name
 token_name=$(_wiz_input \
 --placeholder "automation" \
@@ -4129,14 +4132,9 @@ token_name=$(_wiz_input \
 --value="${API_TOKEN_NAME:-automation}")
 if [[ -n $token_name && $token_name =~ ^[a-zA-Z0-9_-]+$ ]];then
 API_TOKEN_NAME="$token_name"
-INSTALL_API_TOKEN="yes"
 else
 API_TOKEN_NAME="automation"
-INSTALL_API_TOKEN="yes"
 fi
-;;
-Disabled)INSTALL_API_TOKEN="no"
-esac
 }
 _edit_ssh_key(){
 while true;do
