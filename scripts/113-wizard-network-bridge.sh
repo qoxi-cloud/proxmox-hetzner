@@ -44,9 +44,7 @@ _edit_bridge_mode() {
   _show_input_footer "filter" 4
 
   _wiz_choose_mapped "BRIDGE_MODE" "Bridge mode:" "WIZ_BRIDGE_MODES" \
-    "External bridge:external" \
-    "Internal NAT:internal" \
-    "Both:both"
+    "${WIZ_MAP_BRIDGE_MODE[@]}"
 }
 
 # Edits private subnet for NAT bridge.
@@ -122,6 +120,5 @@ _edit_bridge_mtu() {
   _show_input_footer "filter" 3
 
   _wiz_choose_mapped "BRIDGE_MTU" "Bridge MTU:" "WIZ_BRIDGE_MTU" \
-    "9000 (jumbo frames):9000" \
-    "1500 (standard):1500"
+    "${WIZ_MAP_BRIDGE_MTU[@]}"
 }

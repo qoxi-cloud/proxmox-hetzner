@@ -193,7 +193,5 @@ _edit_zfs_arc() {
   _show_input_footer "filter" 4
 
   _wiz_choose_mapped "ZFS_ARC_MODE" "ZFS ARC memory strategy:" "WIZ_ZFS_ARC_MODES" \
-    "VM-focused (4GB fixed):vm-focused" \
-    "Balanced (25-40% of RAM):balanced" \
-    "Storage-focused (50% of RAM):storage-focused"
+    "${WIZ_MAP_ZFS_ARC[@]}"
 }

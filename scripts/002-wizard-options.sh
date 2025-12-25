@@ -96,3 +96,38 @@ promtail"
 readonly WIZ_FEATURES_TOOLS="yazi
 nvim
 ringbuffer"
+
+# =============================================================================
+# Display → Internal value mappings for _wiz_choose_mapped
+# Format: "Display text:internal_value"
+# =============================================================================
+
+# Bridge mode mapping
+# shellcheck disable=SC2034
+readonly WIZ_MAP_BRIDGE_MODE=(
+  "External bridge:external"
+  "Internal NAT:internal"
+  "Both:both"
+)
+
+# Bridge MTU mapping
+# shellcheck disable=SC2034
+readonly WIZ_MAP_BRIDGE_MTU=(
+  "9000 (jumbo frames):9000"
+  "1500 (standard):1500"
+)
+
+# Shell type mapping
+# shellcheck disable=SC2034
+readonly WIZ_MAP_SHELL=(
+  "ZSH:zsh"
+  "Bash:bash"
+)
+
+# ZFS ARC mode mapping
+# shellcheck disable=SC2034
+readonly WIZ_MAP_ZFS_ARC=(
+  "VM-focused (4GB fixed):vm-focused"
+  "Balanced (25-40% of RAM):balanced"
+  "Storage-focused (50% of RAM):storage-focused"
+)

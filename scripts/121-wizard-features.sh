@@ -21,8 +21,7 @@ _edit_shell() {
   _show_input_footer "filter" 3
 
   _wiz_choose_mapped "SHELL_TYPE" "Shell:" "WIZ_SHELL_OPTIONS" \
-    "ZSH:zsh" \
-    "Bash:bash"
+    "${WIZ_MAP_SHELL[@]}"
 }
 
 # Edits CPU frequency scaling governor.
