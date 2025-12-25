@@ -16,7 +16,7 @@ readonly HEX_ORANGE="#ff8700"
 readonly HEX_GRAY="#585858"
 readonly HEX_WHITE="#ffffff"
 readonly HEX_NONE="7"
-readonly VERSION="2.0.576-pr.21"
+readonly VERSION="2.0.577-pr.21"
 readonly TERM_WIDTH=80
 readonly BANNER_WIDTH=51
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-installer}"
@@ -4416,7 +4416,7 @@ live_log_subtask "Configuring APT sources"
 fi
 log "Updating package lists"
 apt clean >>"$LOG_FILE" 2>&1
-apt update >>"$LOG_FILE" 2>&1&
+apt-get update >>"$LOG_FILE" 2>&1&
 show_progress $! "Updating package lists" "Package lists updated"
 wait $!
 exit_code=$?
@@ -4429,7 +4429,7 @@ if type live_log_subtask &>/dev/null 2>&1;then
 live_log_subtask "Downloading package lists"
 fi
 log "Installing required packages: proxmox-auto-install-assistant xorriso ovmf wget sshpass"
-apt install -yq proxmox-auto-install-assistant xorriso ovmf wget sshpass >>"$LOG_FILE" 2>&1&
+apt-get install -yq proxmox-auto-install-assistant xorriso ovmf wget sshpass >>"$LOG_FILE" 2>&1&
 show_progress $! "Installing required packages" "Required packages installed"
 wait $!
 exit_code=$?
