@@ -16,7 +16,7 @@ readonly HEX_ORANGE="#ff8700"
 readonly HEX_GRAY="#585858"
 readonly HEX_WHITE="#ffffff"
 readonly HEX_NONE="7"
-readonly VERSION="2.0.569-pr.21"
+readonly VERSION="2.0.570-pr.21"
 readonly TERM_WIDTH=80
 readonly BANNER_WIDTH=51
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-installer}"
@@ -1798,6 +1798,14 @@ return 0
 fi
 return 1
 }
+_install_zfs_if_needed(){
+command -v zpool &>/dev/null&&return 0
+if [[ -x /root/.oldroot/nfs/install/zfs.sh ]];then
+echo "y"|/root/.oldroot/nfs/install/zfs.sh >/dev/null 2>&1||true
+elif [[ -f /etc/debian_version ]];then
+apt-get install -qq -y zfsutils-linux >/dev/null 2>&1||true
+fi
+}
 _install_required_packages(){
 local -A required_commands=(
 [column]="bsdmainutils"
@@ -1827,6 +1835,7 @@ if [[ -n $packages_to_install ]];then
 apt-get update -qq >/dev/null 2>&1
 DEBIAN_FRONTEND=noninteractive apt-get install -qq -y $packages_to_install >/dev/null 2>&1
 fi
+_install_zfs_if_needed
 }
 _check_root_access(){
 if [[ $EUID -ne 0 ]];then
@@ -2114,9 +2123,11 @@ log "Boot disk: ${BOOT_DISK:-all in pool}"
 log "Pool disks: ${ZFS_POOL_DISKS[*]}"
 }
 detect_existing_pools(){
+command -v zpool &>/dev/null||return 0
 local pools=()
 local import_output
-if ! import_output=$(zpool import 2>/dev/null);then
+import_output=$(zpool import 2>&1)||true
+if [[ -z $import_output ]]||[[ $import_output == *"no pools available"* ]];then
 return 0
 fi
 local current_pool=""
@@ -2136,12 +2147,14 @@ elif [[ $line =~ ^[[:space:]]*state:[[:space:]]*(.+)$ ]];then
 current_state="${BASH_REMATCH[1]}"
 elif [[ $line =~ ^[[:space:]]*config: ]];then
 in_config=true
-elif [[ $in_config == true && $line =~ ^[[:space:]]+(nvme[0-9]+n[0-9]+|sd[a-z]+|vd[a-z]+)[[:space:]] ]];then
+elif [[ $in_config == true ]];then
+if [[ $line =~ ^[[:space:]]+(nvme[0-9]+n[0-9]+|[shxv]d[a-z]+)[p0-9]*[[:space:]] ]];then
 local disk="${BASH_REMATCH[1]}"
 if [[ -n $current_disks ]];then
 current_disks="$current_disks,/dev/$disk"
 else
 current_disks="/dev/$disk"
+fi
 fi
 fi
 done <<<"$import_output"
