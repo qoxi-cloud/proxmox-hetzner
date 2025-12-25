@@ -15,9 +15,8 @@ readonly HEX_YELLOW="#ffff00"
 readonly HEX_ORANGE="#ff8700"
 readonly HEX_GRAY="#585858"
 readonly HEX_WHITE="#ffffff"
-readonly HEX_GOLD="#d7af5f"
 readonly HEX_NONE="7"
-readonly VERSION="2.0.559-pr.21"
+readonly VERSION="2.0.561-pr.21"
 readonly TERM_WIDTH=80
 readonly BANNER_WIDTH=51
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-installer}"
@@ -40,7 +39,6 @@ readonly SSH_CONNECT_TIMEOUT=10
 readonly SSH_PORT_QEMU=5555
 readonly PORT_SSH=22
 readonly PORT_PROXMOX_UI=8006
-readonly PORT_NETDATA=19999
 readonly DEFAULT_PASSWORD_LENGTH=16
 readonly QEMU_MIN_RAM_RESERVE=2048
 readonly DNS_LOOKUP_TIMEOUT=5
@@ -501,9 +499,6 @@ fi
 print_info(){
 printf '%s\n' "$CLR_CYANℹ$CLR_RESET $1"
 }
-print_section(){
-printf '%s\n' "$CLR_CYAN$1$CLR_RESET"
-}
 show_progress(){
 local pid=$1
 local message="${2:-Processing}"
@@ -800,16 +795,29 @@ local wait_pid=$!
 show_progress $wait_pid "Waiting for SSH to be ready" "SSH connection established"
 return $?
 }
+readonly SSH_DEFAULT_TIMEOUT=300
+_sanitize_script_for_log(){
+local script="$1"
+script=$(printf '%s\n' "$script"|sed -E 's/(PASSWORD|password|PASSWD|passwd|SECRET|secret|TOKEN|token|KEY|key)=[^[:space:]"'\'']+/\1=[REDACTED]/g')
+script=$(printf '%s\n' "$script"|sed -E 's/(echo[[:space:]]+['\''"]?[^:]+:)[^|'\''"]*/\1[REDACTED]/g')
+script=$(printf '%s\n' "$script"|sed -E 's/(--authkey=)[^[:space:]'\'']*/\1[REDACTED]/g')
+printf '%s\n' "$script"
+}
 remote_exec(){
 local passfile
 passfile=$(_ssh_get_passfile)
+local cmd_timeout="${SSH_COMMAND_TIMEOUT:-$SSH_DEFAULT_TIMEOUT}"
 local max_attempts=3
 local attempt=0
-local exit_code=1
 while [[ $attempt -lt $max_attempts ]];do
 attempt=$((attempt+1))
-if sshpass -f "$passfile" ssh -p "$SSH_PORT" $SSH_OPTS root@localhost "$@";then
+if timeout "$cmd_timeout" sshpass -f "$passfile" ssh -p "$SSH_PORT" $SSH_OPTS root@localhost "$@";then
 return 0
+fi
+local exit_code=$?
+if [[ $exit_code -eq 124 ]];then
+log "ERROR: SSH command timed out after ${cmd_timeout}s: $*"
+return 124
 fi
 if [[ $attempt -lt $max_attempts ]];then
 log "SSH attempt $attempt failed, retrying in 2 seconds..."
@@ -824,14 +832,15 @@ local message="$1"
 local script="$2"
 local done_message="${3:-$message}"
 log "_remote_exec_with_progress: $message"
-log "--- Script start ---"
-printf '%s\n' "$script" >>"$LOG_FILE"
+log "--- Script start (sanitized) ---"
+_sanitize_script_for_log "$script" >>"$LOG_FILE"
 log "--- Script end ---"
 local passfile
 passfile=$(_ssh_get_passfile)
 local output_file
 output_file=$(mktemp)
-printf '%s\n' "$script"|sshpass -f "$passfile" ssh -p "$SSH_PORT" $SSH_OPTS root@localhost 'bash -s' >"$output_file" 2>&1&
+local cmd_timeout="${SSH_COMMAND_TIMEOUT:-$SSH_DEFAULT_TIMEOUT}"
+printf '%s\n' "$script"|timeout "$cmd_timeout" sshpass -f "$passfile" ssh -p "$SSH_PORT" $SSH_OPTS root@localhost 'bash -s' >"$output_file" 2>&1&
 local pid=$!
 show_progress $pid "$message" "$done_message"
 local exit_code=$?
@@ -1086,17 +1095,19 @@ log "No optional packages to install"
 return 0
 fi
 log "Batch installing packages: ${packages[*]}"
-local repo_setup=""
+local repo_setup='
+    DEBIAN_CODENAME=$(grep -oP "VERSION_CODENAME=\K\w+" /etc/os-release 2>/dev/null || echo "bookworm")
+  '
 if [[ $INSTALL_TAILSCALE == "yes" ]];then
 repo_setup+='
-      curl -fsSL https://pkgs.tailscale.com/stable/debian/bookworm.noarmor.gpg | tee /usr/share/keyrings/tailscale-archive-keyring.gpg >/dev/null
-      curl -fsSL https://pkgs.tailscale.com/stable/debian/bookworm.tailscale-keyring.list | tee /etc/apt/sources.list.d/tailscale.list
+      curl -fsSL "https://pkgs.tailscale.com/stable/debian/${DEBIAN_CODENAME}.noarmor.gpg" | tee /usr/share/keyrings/tailscale-archive-keyring.gpg >/dev/null
+      curl -fsSL "https://pkgs.tailscale.com/stable/debian/${DEBIAN_CODENAME}.tailscale-keyring.list" | tee /etc/apt/sources.list.d/tailscale.list
     '
 fi
 if [[ $INSTALL_NETDATA == "yes" ]];then
 repo_setup+='
       curl -fsSL https://repo.netdata.cloud/netdatabot.gpg.key | gpg --dearmor -o /usr/share/keyrings/netdata-archive-keyring.gpg
-      echo "deb [signed-by=/usr/share/keyrings/netdata-archive-keyring.gpg] https://repo.netdata.cloud/repos/stable/debian/ bookworm/" > /etc/apt/sources.list.d/netdata.list
+      echo "deb [signed-by=/usr/share/keyrings/netdata-archive-keyring.gpg] https://repo.netdata.cloud/repos/stable/debian/ ${DEBIAN_CODENAME}/" > /etc/apt/sources.list.d/netdata.list
     '
 fi
 if [[ $INSTALL_PROMTAIL == "yes" ]];then
@@ -1115,6 +1126,16 @@ remote_run "Installing packages (${#packages[@]})" '
 log_subtasks "${packages[@]}"
 return 0
 }
+_run_parallel_task(){
+local result_dir="$1"
+local idx="$2"
+local func="$3"
+trap "touch '$result_dir/fail_$idx' 2>/dev/null" EXIT
+if "$func" >/dev/null 2>&1;then
+trap - EXIT
+touch "$result_dir/success_$idx"
+fi
+}
 run_parallel_group(){
 local group_name="$1"
 local done_msg="$2"
@@ -1131,13 +1152,7 @@ export PARALLEL_RESULT_DIR="$result_dir"
 trap "rm -rf '$result_dir'" RETURN
 local i=0
 for func in "${funcs[@]}";do
-(idx=$i
-trap 'touch "$result_dir/fail_$idx" 2>/dev/null' EXIT
-if "$func" 2>&1;then
-trap - EXIT
-touch "$result_dir/success_$idx"
-fi) > \
-/dev/null&
+_run_parallel_task "$result_dir" "$i" "$func"&
 ((i++))
 done
 local count=$i
