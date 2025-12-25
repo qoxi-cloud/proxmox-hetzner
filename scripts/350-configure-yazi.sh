@@ -2,7 +2,8 @@
 # =============================================================================
 # Yazi file manager configuration
 # Modern terminal file manager with image preview support
-# Dependencies (curl, file, unzip) installed via batch_install_packages()
+# Dependencies (file, unzip) installed via batch_install_packages()
+# curl installed via SYSTEM_UTILITIES
 # Config is deployed to admin user's home directory (not root)
 # =============================================================================
 

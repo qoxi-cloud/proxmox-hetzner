@@ -6,7 +6,7 @@
 # Installs all base system packages in one batch.
 # Called at the start of configure_base_system().
 # Includes: SYSTEM_UTILITIES, locales, chrony, unattended-upgrades, linux-cpupower
-# And conditionally: zsh/git/curl (if SHELL_TYPE=zsh)
+# And conditionally: zsh/git (if SHELL_TYPE=zsh)
 # Side effects: Runs apt-get update and installs packages on remote system
 install_base_packages() {
   # shellcheck disable=SC2086
@@ -14,7 +14,7 @@ install_base_packages() {
 
   # Add ZSH packages if needed
   if [[ ${SHELL_TYPE:-bash} == "zsh" ]]; then
-    packages="$packages zsh git curl"
+    packages="$packages zsh git"
   fi
 
   log "Installing base packages: $packages"
@@ -64,7 +64,7 @@ batch_install_packages() {
   # Tools packages
   [[ $INSTALL_NVIM == "yes" ]] && packages+=(neovim)
   [[ $INSTALL_RINGBUFFER == "yes" ]] && packages+=(ethtool)
-  [[ $INSTALL_YAZI == "yes" ]] && packages+=(curl file unzip)
+  [[ $INSTALL_YAZI == "yes" ]] && packages+=(file unzip)
 
   # Tailscale (needs custom repo)
   [[ $INSTALL_TAILSCALE == "yes" ]] && packages+=(tailscale)

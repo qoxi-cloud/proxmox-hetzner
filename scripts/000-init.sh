@@ -235,7 +235,7 @@ BOOT_DISK=""
 ZFS_POOL_DISKS=()
 
 # System utilities to install on Proxmox
-SYSTEM_UTILITIES="btop iotop ncdu tmux pigz smartmontools jq bat fastfetch sysstat nethogs ethtool"
+SYSTEM_UTILITIES="btop iotop ncdu tmux pigz smartmontools jq bat fastfetch sysstat nethogs ethtool curl gnupg"
 OPTIONAL_PACKAGES="libguestfs-tools"
 
 # Log file

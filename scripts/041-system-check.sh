@@ -22,6 +22,7 @@ collect_system_info() {
     [jq]="jq"
     [aria2c]="aria2"
     [findmnt]="util-linux"
+    [gpg]="gnupg"
     [gum]="gum"
   )
 
