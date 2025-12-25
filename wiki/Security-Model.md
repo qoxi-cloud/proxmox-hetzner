@@ -5,6 +5,7 @@ Security practices and credential handling in the Proxmox Installer.
 ## Overview
 
 The installer handles sensitive data including:
+
 - Root password for Proxmox
 - Admin user password
 - SSH private/public keys
@@ -13,7 +14,7 @@ The installer handles sensitive data including:
 
 ## Credential Lifecycle
 
-```
+```text
 Generation → Storage → Usage → Cleanup
     ↓           ↓        ↓        ↓
   Random     Passfile   SSH    Secure
@@ -35,6 +36,7 @@ generate_password() {
 ```
 
 **Characteristics:**
+
 - 24 characters by default
 - Alphanumeric + special characters
 - Cryptographically random from `/dev/urandom`
@@ -79,6 +81,7 @@ sshpass -f "$passfile" ssh -p "$SSH_PORT" $SSH_OPTS root@localhost "$@"
 ```
 
 This prevents password exposure in:
+
 - Process listings (`ps aux`)
 - Shell history
 - System logs
@@ -100,6 +103,7 @@ _ssh_session_cleanup() {
 ```
 
 **shred options:**
+
 - `-u` - unlink (delete) after overwriting
 - `-z` - add final zero overwrite to hide shredding
 
@@ -187,6 +191,7 @@ value="${value//$'\n'/\\$'\n'}"  # Escape newlines
 ```
 
 This prevents:
+
 - Shell injection via template values
 - Sed command injection
 
@@ -211,6 +216,7 @@ SSH_OPTS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLeve
 ```
 
 **Why this is safe:**
+
 - Only used for local QEMU VM (localhost)
 - VM is ephemeral (destroyed after installation)
 - Not suitable for production remote servers
@@ -239,6 +245,7 @@ _show_completion_screen() {
 ```
 
 **Never logged:**
+
 ```bash
 # Logging function filters sensitive data
 log() {
@@ -300,4 +307,3 @@ When adding new features:
 - [ ] Prefer `/dev/shm` for temp credential files
 - [ ] Add to cleanup trap if creating temp files
 - [ ] Never use `eval` with user data
-
