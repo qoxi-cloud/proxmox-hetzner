@@ -8,18 +8,18 @@
 - [📦 Installation Guide](Installation-Guide)
 - [⚙️ Configuration Reference](Configuration-Reference)
 
-**Setup**
+**Configuration**
 - [🌐 Network Modes](Network-Modes)
-- [🔒 SSL Certificates](SSL-Certificates)
 - [🛡️ Security](Security)
-- [🔧 Post-Installation](Post-Installation)
+- [🔒 SSL Certificates](SSL-Certificates)
 - [🔐 Tailscale Setup](Tailscale-Setup)
 
-**Development**
-- [🛠️ Development Guide](Development)
+**Reference**
+- [🔧 Post-Installation](Post-Installation)
+- [🛠️ Development](Development)
 
 ---
 
 **Links**
-- [📋 GitHub Repo](https://github.com/qoxi-cloud/proxmox-installer)
-- [🐛 Report Issue](https://github.com/qoxi-cloud/proxmox-installer/issues)
+- [📋 GitHub](https://github.com/qoxi-cloud/proxmox-installer)
+- [🐛 Issues](https://github.com/qoxi-cloud/proxmox-installer/issues)

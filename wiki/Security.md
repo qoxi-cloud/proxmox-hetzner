@@ -1,365 +1,290 @@
 # Security
 
-This page describes security features automatically configured by the installer.
+This page describes security features configured by the installer.
 
-## Security Model
-
-The installer uses different security strategies based on your configuration:
+## Security Model Overview
 
 | Configuration | Primary Security | Additional Protection |
-|--------------|------------------|----------------------|
-| **With Tailscale** | VPN mesh network, stealth firewall | Tailscale SSH, encrypted access |
-| **Without Tailscale** | Fail2Ban, SSH hardening | Brute-force protection |
+|---------------|------------------|----------------------|
+| **With Tailscale** | VPN mesh, stealth firewall | Tailscale SSH, encrypted access |
+| **Without Tailscale** | nftables firewall, Fail2Ban | SSH hardening |
+
+## nftables Firewall
+
+The installer uses nftables (modern replacement for iptables) with unified IPv4/IPv6 rules.
+
+### Firewall Modes
+
+| Mode | Allowed Incoming Traffic |
+|------|-------------------------|
+| **Stealth** | Tailscale and VM bridges only (public ports blocked) |
+| **Strict** | SSH only (port 22) |
+| **Standard** | SSH + Proxmox Web UI (ports 22, 8006) |
+| **Disabled** | No firewall rules |
+
+### What's Always Allowed
+
+Regardless of mode, the firewall always allows:
+- Loopback interface (localhost)
+- Established/related connections (stateful)
+- ICMP/ICMPv6 essentials (ping, neighbor discovery)
+- VM bridge traffic (vmbr0, vmbr1)
+- Tailscale interface (if installed)
+- NAT masquerading for VM internet access
+
+### Viewing Firewall Rules
+
+```bash
+# View current ruleset
+nft list ruleset
+
+# View specific table
+nft list table inet filter
+```
+
+### Modifying Firewall
+
+```bash
+# Edit configuration
+nano /etc/nftables.conf
+
+# Apply changes
+nft -f /etc/nftables.conf
+
+# Verify syntax before applying
+nft -c -f /etc/nftables.conf
+```
+
+### Temporarily Disable
+
+```bash
+# Flush all rules (until reboot)
+nft flush ruleset
+
+# Permanently disable
+systemctl disable nftables
+```
+
+## SSH Hardening
+
+Both configurations include comprehensive SSH hardening:
+
+| Feature | Configuration |
+|---------|---------------|
+| Password authentication | **Disabled** |
+| Key-only login | Required |
+| Root login | **Disabled** (use admin user) |
+| Max auth attempts | 3 |
+| Login grace time | 30 seconds |
+
+### Modern Ciphers Only
+
+```
+Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com
+MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com
+KexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org
+```
+
+### Admin User Model
+
+Root SSH is completely disabled. All SSH access uses the admin user:
+
+```bash
+# Connect via admin user
+ssh ADMIN_USER@YOUR-IP
+
+# Use sudo for root commands
+sudo command
+
+# Or switch to root
+sudo -i
+```
 
 ## Fail2Ban (Without Tailscale)
 
-When Tailscale is **not** installed, the installer automatically configures [Fail2Ban](https://www.fail2ban.org/) to protect against brute-force attacks.
-
-### What Fail2Ban Does
-
-Fail2Ban monitors log files for repeated failed authentication attempts and temporarily bans the offending IP addresses using iptables.
+When Tailscale is **not** installed, Fail2Ban provides brute-force protection.
 
 ### Protected Services
 
-| Service | Port | Max Retries | Ban Duration |
-|---------|------|-------------|--------------|
-| SSH | 22 | 3 | 1 hour (incremental) |
-| Proxmox API/Web UI | 8006 | 3 | 2 hours (incremental) |
+| Service | Port | Max Retries | Initial Ban |
+|---------|------|-------------|-------------|
+| SSH | 22 | 3 | 1 hour |
+| Proxmox API/Web UI | 8006 | 3 | 2 hours |
 
-### Configuration Details
-
-Based on [Proxmox Wiki Fail2ban](https://pve.proxmox.com/wiki/Fail2ban) recommendations.
-
-**Default settings:**
-
-| Setting | Value | Description |
-|---------|-------|-------------|
-| `findtime` | 1 day | Time window for counting failures |
-| `bantime` | 1 hour | Initial ban duration for SSH |
-| `bantime` (Proxmox) | 2 hours | Initial ban duration for Proxmox API |
-| `maxretry` | 3 | Failed attempts before ban |
-| `ignoreip` | localhost, private networks | Never ban these IPs |
-| `backend` | systemd | Log source (Debian 12+) |
-
-**Incremental ban times:**
+### Incremental Bans
 
 Repeat offenders get progressively longer bans:
-
 - 1st ban: 1 hour
 - 2nd ban: 1 day
 - 3rd ban: 2 days
 - Maximum: 30 days
 
-**Ignored IP ranges:**
+### Ignored IP Ranges
 
 - `127.0.0.1/8` - Localhost
 - `10.0.0.0/8` - Private network (Class A)
 - `172.16.0.0/12` - Private network (Class B)
 - `192.168.0.0/16` - Private network (Class C)
 
-### Verifying Fail2Ban Status
+### Managing Fail2Ban
 
 ```bash
-# Check service status
-systemctl status fail2ban
-
-# View active jails
+# Check status
 fail2ban-client status
 
-# Check SSH jail
+# Check specific jail
 fail2ban-client status sshd
-
-# Check Proxmox jail
 fail2ban-client status proxmox
 
 # View banned IPs
 fail2ban-client banned
-```
 
-### Managing Bans
-
-```bash
-# Unban an IP from SSH jail
+# Unban an IP
 fail2ban-client set sshd unbanip 1.2.3.4
 
-# Unban an IP from Proxmox jail
-fail2ban-client set proxmox unbanip 1.2.3.4
-
-# Ban an IP manually
-fail2ban-client set sshd banip 1.2.3.4
-```
-
-### Viewing Logs
-
-```bash
-# Fail2Ban log
+# View logs
 tail -f /var/log/fail2ban.log
-
-# Check for recent bans
-grep "Ban" /var/log/fail2ban.log
-
-# Check Proxmox authentication log
-grep "authentication failure" /var/log/daemon.log
 ```
 
-### Configuration Files
+## Optional Security Features
 
-| File | Purpose |
-|------|---------|
-| `/etc/fail2ban/jail.local` | Main configuration |
-| `/etc/fail2ban/filter.d/proxmox.conf` | Proxmox filter rules |
+Enable these in the Services screen during installation.
 
-### Customizing Fail2Ban
+### AppArmor
 
-**Increase ban duration:**
+Mandatory Access Control (MAC) that confines programs to limited resources.
 
 ```bash
-# Edit jail configuration
-nano /etc/fail2ban/jail.local
+# Check status
+aa-status
 
-# Change bantime (in seconds)
-# bantime = 86400  # 24 hours
-
-# Restart Fail2Ban
-systemctl restart fail2ban
+# View profiles
+ls /etc/apparmor.d/
 ```
 
-**Add email notifications:**
+### auditd
+
+Comprehensive audit logging for security compliance.
+
+**Monitored Events:**
+- User/group changes
+- Privileged commands (sudo, su)
+- SSH configuration changes
+- Network configuration
+- Proxmox CLI commands (qm, pct, pvesh)
+- Proxmox config changes (/etc/pve/)
+- Kernel modules
+- Package management
+- Firewall changes
+- ZFS administration
 
 ```bash
-# Edit jail configuration
-nano /etc/fail2ban/jail.local
-
-# Uncomment and configure:
-# destemail = your@email.com
-# sender = fail2ban@hostname
-# mta = sendmail
-# action = %(action_mwl)s
-
-# Restart Fail2Ban
-systemctl restart fail2ban
-```
-
-## Audit Logging (auditd)
-
-The installer can optionally configure [auditd](https://linux.die.net/man/8/auditd) for comprehensive administrative action tracking.
-
-> **Note:** Audit logging is **disabled by default**. Enable it during installation if you need security compliance or forensic capabilities.
-
-### What auditd Does
-
-Auditd provides a detailed audit trail of system activities, essential for:
-
-- **Security compliance** (PCI-DSS, HIPAA, SOC2)
-- **Forensic analysis** after security incidents
-- **Change tracking** for administrative actions
-- **Anomaly detection** through log analysis
-
-### Monitored Events
-
-| Category | Examples |
-|----------|----------|
-| **User/Group changes** | `/etc/passwd`, `/etc/shadow`, user creation/deletion |
-| **Privileged commands** | `sudo`, `su`, `passwd`, user management tools |
-| **SSH configuration** | `sshd_config`, authorized_keys changes |
-| **Network configuration** | `/etc/network/interfaces`, `/etc/hosts`, `/etc/resolv.conf` |
-| **Proxmox CLI** | `qm`, `pct`, `pvesh`, `pveum`, `vzdump`, `pvesm`, etc. |
-| **Proxmox config** | `/etc/pve/`, cluster config, firewall rules |
-| **System services** | systemd units, cron jobs, init scripts |
-| **Kernel modules** | `insmod`, `rmmod`, `modprobe` |
-| **Package management** | `apt`, `apt-get`, `dpkg` |
-| **Firewall changes** | `iptables`, `ip6tables`, `nft`, `pve-firewall` |
-| **ZFS administration** | `zpool`, `zfs` commands |
-| **Fail2Ban** | Configuration and client commands |
-| **Time changes** | System clock modifications |
-| **Login events** | Login/logout, failed attempts |
-
-### Enabling auditd
-
-**Interactive mode:**
-
-During installation, select "Install auditd" in the Audit Logging menu.
-
-**Environment variable:**
-
-```bash
-INSTALL_AUDITD=yes bash pve-install.sh
-```
-
-**Configuration file:**
-
-```bash
-INSTALL_AUDITD=yes
-```
-
-### Viewing Audit Logs
-
-```bash
-# View recent audit events
+# View recent events
 ausearch -ts recent
 
-# Search by key (tag)
-ausearch -k proxmox_vm          # VM operations
-ausearch -k proxmox_config      # Config changes
-ausearch -k identity            # User/group changes
-ausearch -k privileged          # Privileged commands
-ausearch -k sshd_config         # SSH config changes
-ausearch -k firewall            # Firewall changes
-ausearch -k zfs_admin           # ZFS operations
+# Search by key
+ausearch -k proxmox_vm       # VM operations
+ausearch -k identity          # User changes
+ausearch -k privileged        # Sudo usage
 
-# Generate summary report
+# Generate reports
 aureport --summary
-
-# Generate authentication report
 aureport --auth
-
-# View events for specific user
-ausearch -ua root
-
-# View events for specific time range
-ausearch -ts today -te now
 ```
 
-### Audit Reports
+### AIDE
+
+File Integrity Monitoring - detects unauthorized file changes.
 
 ```bash
-# Summary of all events
-aureport
+# Check status
+systemctl status aide-check.timer
 
-# Failed authentication attempts
-aureport --failed
+# Run manual check
+aide --check
 
-# System configuration changes
-aureport --config
-
-# Executable file runs
-aureport --executable
-
-# Anomaly events
-aureport --anomaly
+# View reports
+cat /var/log/aide/aide.log
 ```
 
-### Auditd Configuration Files
+### chkrootkit
 
-| File | Purpose |
-|------|---------|
-| `/etc/audit/auditd.conf` | Main auditd configuration |
-| `/etc/audit/rules.d/proxmox.rules` | Audit rules for Proxmox |
-
-### Log Retention
-
-Default settings configured by the installer:
-
-| Setting | Value | Description |
-|---------|-------|-------------|
-| `max_log_file` | 50 MB | Maximum size per log file |
-| `num_logs` | 10 | Number of log files to retain |
-| `max_log_file_action` | ROTATE | Rotate logs when full |
-
-Logs are stored in `/var/log/audit/`.
-
-### Customizing Rules
-
-To add custom audit rules:
+Rootkit scanner running weekly.
 
 ```bash
-# Edit rules file
-nano /etc/audit/rules.d/custom.rules
+# Check timer status
+systemctl status chkrootkit-scan.timer
 
-# Example: Monitor specific file
--w /path/to/file -p wa -k custom_watch
+# Run manual scan
+chkrootkit
 
-# Reload rules
-augenrules --load
-
-# Verify rules loaded
-auditctl -l
+# View logs
+journalctl -u chkrootkit-scan.service
 ```
 
-### Performance Considerations
+### lynis
 
-Audit logging adds minimal overhead but consider:
-
-- **High-traffic systems:** May generate large log volumes
-- **Storage:** Monitor `/var/log/audit/` disk usage
-- **Rules optimization:** Remove unnecessary rules if needed
-
-To temporarily disable auditd:
+Security auditing tool running weekly.
 
 ```bash
-systemctl stop auditd
+# Check timer status
+systemctl status lynis-audit.timer
+
+# Run manual audit
+lynis audit system
+
+# View reports
+cat /var/log/lynis-report.dat
 ```
 
-## SSH Hardening
+### needrestart
 
-Both configurations (with or without Tailscale) include SSH hardening:
+Automatically prompts to restart services after updates.
 
-| Feature | Configuration |
-|---------|---------------|
-| Password authentication | Disabled |
-| Key-only login | Required |
-| Modern ciphers | ChaCha20, AES-GCM only |
-| Max auth attempts | 3 |
-| Login grace time | 30 seconds |
+```bash
+# Check configuration
+cat /etc/needrestart/needrestart.conf
 
-See [Post-Installation](Post-Installation) for details on SSH configuration.
+# Manual check
+needrestart
+```
 
-## Tailscale Security (With Tailscale)
+## Tailscale Security
 
-When Tailscale is installed with an auth key, additional security features are enabled:
+When Tailscale is enabled with an auth key, additional security is configured:
 
 | Feature | Description |
 |---------|-------------|
-| **Stealth Firewall** | Blocks all incoming traffic on public IP |
-| **OpenSSH Disabled** | Only Tailscale SSH accessible |
-| **Encrypted Mesh** | All traffic encrypted end-to-end |
+| **Stealth Firewall** | Blocks ALL incoming traffic on public IP |
+| **VPN Mesh** | All traffic encrypted end-to-end |
 | **Zero Trust** | Every connection authenticated |
 
 See [Tailscale Setup](Tailscale-Setup) for full details.
-
-## Why Fail2Ban Only Without Tailscale?
-
-When Tailscale is installed with proper configuration:
-
-1. **Public IP is blocked** - Stealth firewall drops all incoming traffic on public IP
-2. **OpenSSH is disabled** - No SSH service to attack
-3. **Tailscale handles auth** - Built-in authentication via Tailscale network
-4. **Access is encrypted** - All traffic goes through VPN tunnel
-
-Fail2Ban becomes redundant because there's nothing exposed to attack. The server is effectively invisible to the public internet.
-
-When Tailscale is **not** installed:
-
-- SSH port 22 is exposed to the internet
-- Proxmox Web UI port 8006 is exposed
-- Fail2Ban provides essential protection against brute-force attacks
 
 ## Security Comparison
 
 | Feature | With Tailscale | Without Tailscale |
 |---------|----------------|-------------------|
-| Public SSH access | Blocked | Protected by Fail2Ban |
-| Public Web UI access | Blocked | Protected by Fail2Ban |
-| SSH brute-force protection | N/A (blocked) | Fail2Ban (3 attempts = 1h ban) |
-| API brute-force protection | N/A (blocked) | Fail2Ban (3 attempts = 2h ban) |
+| Public SSH access | Blocked (stealth mode) | Protected by Fail2Ban |
+| Public Web UI access | Blocked (stealth mode) | Protected by Fail2Ban |
 | Attack surface | Minimal (VPN only) | SSH + Web UI exposed |
 | Encryption | VPN + HTTPS | HTTPS only |
 
 ## Best Practices
 
-### If Using Tailscale
+### With Tailscale
 
-1. **Always provide auth key** - Enables automatic security hardening
-2. **Use Tailscale SSH** - More secure than OpenSSH
-3. **Enable stealth mode** - Makes server invisible
+1. Always provide auth key for automatic security
+2. Use Tailscale SSH for best security
+3. Keep stealth firewall enabled
 
-### If Not Using Tailscale
+### Without Tailscale
 
-1. **Use strong SSH keys** - Ed25519 recommended
-2. **Monitor Fail2Ban logs** - Check for attack patterns
-3. **Consider rate limiting** - Additional iptables rules if needed
-4. **Keep systems updated** - Automatic security updates enabled by default
+1. Use Ed25519 SSH keys
+2. Monitor Fail2Ban logs for attack patterns
+3. Keep systems updated (automatic security updates enabled)
+4. Consider enabling auditd for compliance
 
 ---
 
-**See also:** [Tailscale Setup](Tailscale-Setup) | [Post-Installation](Post-Installation) | [Home](Home)
+**See also:** [Tailscale Setup](Tailscale-Setup) | [Post-Installation](Post-Installation)
