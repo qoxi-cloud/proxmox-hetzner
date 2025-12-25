@@ -16,7 +16,7 @@ readonly HEX_ORANGE="#ff8700"
 readonly HEX_GRAY="#585858"
 readonly HEX_WHITE="#ffffff"
 readonly HEX_NONE="7"
-readonly VERSION="2.0.601-pr.21"
+readonly VERSION="2.0.602-pr.21"
 readonly TERM_WIDTH=80
 readonly BANNER_WIDTH=51
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-installer}"
@@ -4704,6 +4704,8 @@ local -a template_list=(
 "./templates/promtail.yml:promtail.yml"
 "./templates/promtail.service:promtail.service"
 "./templates/yazi-theme.toml:yazi-theme.toml"
+"./templates/yazi-init.lua:yazi-init.lua"
+"./templates/yazi-keymap.toml:yazi-keymap.toml"
 "./templates/network-ringbuffer.service:network-ringbuffer.service"
 "./templates/validation.sh:validation.sh")
 if ! run_with_progress "Downloading template files" "Template files downloaded" \
@@ -5778,9 +5780,9 @@ log "ERROR: Failed to install yazi plugins"
 return 1
 }
 deploy_user_configs \
-"templates/yazi-theme.toml.tmpl:.config/yazi/theme.toml" \
-"templates/yazi-init.lua.tmpl:.config/yazi/init.lua" \
-"templates/yazi-keymap.toml.tmpl:.config/yazi/keymap.toml"||{
+"templates/yazi-theme.toml:.config/yazi/theme.toml" \
+"templates/yazi-init.lua:.config/yazi/init.lua" \
+"templates/yazi-keymap.toml:.config/yazi/keymap.toml"||{
 log "ERROR: Failed to deploy yazi configs"
 return 1
 }
