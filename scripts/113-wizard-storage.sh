@@ -12,14 +12,12 @@ _edit_existing_pool() {
 
   # Use pre-detected pools from DETECTED_POOLS (populated by _detect_pools)
   if [[ ${#DETECTED_POOLS[@]} -eq 0 ]]; then
-    _wiz_description \
-      "  {{yellow:No importable ZFS pools detected.}}" \
-      "" \
-      "  If you have an existing pool, ensure the disks are connected" \
-      "  and the pool was properly exported before reinstall." \
-      ""
-    _wiz_dim "Press any key to continue..."
-    read -r -n 1
+    _wiz_hide_cursor
+    _wiz_warn "No importable ZFS pools detected"
+    _wiz_blank_line
+    _wiz_dim "If you have an existing pool, ensure the disks are connected"
+    _wiz_dim "and the pool was properly exported before reinstall."
+    sleep "${WIZARD_MESSAGE_DELAY:-3}"
     return
   fi
 
@@ -64,9 +62,7 @@ _edit_existing_pool() {
       _wiz_blank_line
       _wiz_dim "Select a boot disk first, then enable existing pool."
       _wiz_dim "The boot disk will be formatted for Proxmox system files."
-      _wiz_blank_line
-      _wiz_dim "Press any key to continue..."
-      read -r -n 1
+      sleep "${WIZARD_MESSAGE_DELAY:-3}"
       return
     fi
 
