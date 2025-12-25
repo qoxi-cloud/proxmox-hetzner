@@ -16,7 +16,7 @@ readonly HEX_ORANGE="#ff8700"
 readonly HEX_GRAY="#585858"
 readonly HEX_WHITE="#ffffff"
 readonly HEX_NONE="7"
-readonly VERSION="2.0.599-pr.21"
+readonly VERSION="2.0.600-pr.21"
 readonly TERM_WIDTH=80
 readonly BANNER_WIDTH=51
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-installer}"
@@ -107,8 +107,8 @@ readonly WIZ_FEATURES_TOOLS="yazi
 nvim
 ringbuffer"
 readonly WIZ_MAP_BRIDGE_MODE=(
-"External bridge:external"
 "Internal NAT:internal"
+"External bridge:external"
 "Both:both")
 readonly WIZ_MAP_BRIDGE_MTU=(
 "9000 (jumbo frames):9000"
