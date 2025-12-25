@@ -52,13 +52,15 @@ make_answer_toml() {
   log "USE_EXISTING_POOL=$USE_EXISTING_POOL, EXISTING_POOL_NAME=$EXISTING_POOL_NAME"
   log "EXISTING_POOL_DISKS=(${EXISTING_POOL_DISKS[*]})"
 
-  # When using existing pool, don't pass pool disks to QEMU
-  # This prevents them from being formatted/touched during install
+  # Determine which disks to pass to QEMU
+  # - For existing pool: pass existing pool disks (needed for zpool import)
+  # - For new pool: pass ZFS_POOL_DISKS
+  # Note: These disks are passed to QEMU but NOT included in answer.toml disk-list,
+  #       so the installer won't format them - only the boot disk gets formatted
   local virtio_pool_disks=()
   if [[ $USE_EXISTING_POOL == "yes" ]]; then
-    log "Using existing pool mode - pool disks will NOT be passed to QEMU"
-    # No pool disks for QEMU - only boot disk (if set)
-    virtio_pool_disks=()
+    log "Using existing pool mode - existing pool disks will be passed to QEMU for import"
+    virtio_pool_disks=("${EXISTING_POOL_DISKS[@]}")
   else
     virtio_pool_disks=("${ZFS_POOL_DISKS[@]}")
   fi

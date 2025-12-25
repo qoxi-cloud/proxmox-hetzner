@@ -66,13 +66,41 @@ _edit_existing_pool() {
       return
     fi
 
-    USE_EXISTING_POOL="yes"
-    EXISTING_POOL_NAME="${BASH_REMATCH[1]}"
+    local pool_name="${BASH_REMATCH[1]}"
 
     # Get disks for this pool
     local disks_csv
-    disks_csv=$(get_pool_disks "$EXISTING_POOL_NAME")
-    IFS=',' read -ra EXISTING_POOL_DISKS <<<"$disks_csv"
+    disks_csv=$(get_pool_disks "$pool_name")
+    local pool_disks=()
+    IFS=',' read -ra pool_disks <<<"$disks_csv"
+
+    # Check if boot disk is part of this pool (would destroy the pool!)
+    local boot_in_pool=false
+    for disk in "${pool_disks[@]}"; do
+      if [[ $disk == "$BOOT_DISK" ]]; then
+        boot_in_pool=true
+        break
+      fi
+    done
+
+    if [[ $boot_in_pool == true ]]; then
+      _wiz_start_edit
+      _wiz_hide_cursor
+      _wiz_error "Boot disk conflict!"
+      _wiz_blank_line
+      _wiz_dim "Boot disk $BOOT_DISK is part of pool '$pool_name'."
+      _wiz_dim "Installing Proxmox on this disk will DESTROY the pool!"
+      _wiz_blank_line
+      _wiz_dim "Options:"
+      _wiz_dim "  1. Select a different boot disk (not in this pool)"
+      _wiz_dim "  2. Create a new pool instead of using existing"
+      sleep "${WIZARD_MESSAGE_DELAY:-5}"
+      return
+    fi
+
+    USE_EXISTING_POOL="yes"
+    EXISTING_POOL_NAME="$pool_name"
+    EXISTING_POOL_DISKS=("${pool_disks[@]}")
 
     # Clear pool disks since we won't be creating new pool
     ZFS_POOL_DISKS=()

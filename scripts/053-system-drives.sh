@@ -34,8 +34,35 @@ detect_drives() {
   done
 }
 
+# Collects all disks that belong to existing ZFS pools.
+# Uses DETECTED_POOLS array (populated during wizard data loading).
+# Returns: array of disk paths via stdout (one per line)
+_get_existing_pool_disks() {
+  local pool_disks=()
+  for pool_info in "${DETECTED_POOLS[@]}"; do
+    # Format: "name|status|/dev/disk1,/dev/disk2"
+    local disks_csv="${pool_info##*|}"
+    IFS=',' read -ra disks <<<"$disks_csv"
+    pool_disks+=("${disks[@]}")
+  done
+  printf '%s\n' "${pool_disks[@]}"
+}
+
+# Checks if a disk is part of any existing ZFS pool.
+# Parameters:
+#   $1 - Disk path (e.g., /dev/nvme0n1)
+# Returns: 0 if disk is in a pool, 1 otherwise
+_disk_in_existing_pool() {
+  local disk="$1"
+  local pool_disk
+  while IFS= read -r pool_disk; do
+    [[ $pool_disk == "$disk" ]] && return 0
+  done < <(_get_existing_pool_disks)
+  return 1
+}
+
 # Smart disk allocation based on size differences.
-# If mixed sizes: smallest → boot, rest → pool
+# If mixed sizes: smallest (not in existing pool) → boot, rest → pool
 # If identical: all → pool (legacy behavior)
 # Side effects: Sets BOOT_DISK, ZFS_POOL_DISKS
 detect_disk_roles() {
@@ -73,18 +100,43 @@ detect_disk_roles() {
     BOOT_DISK=""
     ZFS_POOL_DISKS=("${DRIVES[@]}")
   else
-    # Mixed sizes → smallest = boot, rest = pool
-    log "Mixed disk sizes, using smallest for boot"
-    local smallest_idx=0
+    # Mixed sizes → smallest (that's NOT in an existing pool) = boot, rest = pool
+    log "Mixed disk sizes, selecting boot disk"
+
+    # Find smallest disk that's not part of an existing pool
+    local smallest_idx=-1
+    local smallest_size=0
     for i in "${!size_bytes[@]}"; do
-      [[ ${size_bytes[$i]} -lt ${size_bytes[$smallest_idx]} ]] && smallest_idx=$i
+      local drive="${DRIVES[$i]}"
+      local drive_size="${size_bytes[$i]}"
+
+      # Skip disks that are part of existing pools
+      if _disk_in_existing_pool "$drive"; then
+        log "  $drive: ${DRIVE_SIZES[$i]} (skipped - part of existing pool)"
+        continue
+      fi
+
+      # Track smallest available disk
+      if [[ $smallest_idx -eq -1 ]] || [[ $drive_size -lt $smallest_size ]]; then
+        smallest_idx=$i
+        smallest_size=$drive_size
+      fi
     done
 
-    BOOT_DISK="${DRIVES[$smallest_idx]}"
-    ZFS_POOL_DISKS=()
-    for i in "${!DRIVES[@]}"; do
-      [[ $i -ne $smallest_idx ]] && ZFS_POOL_DISKS+=("${DRIVES[$i]}")
-    done
+    if [[ $smallest_idx -eq -1 ]]; then
+      # All disks are in existing pools - can't auto-select boot disk
+      log "WARNING: All disks belong to existing pools, no automatic boot disk selection"
+      BOOT_DISK=""
+      ZFS_POOL_DISKS=("${DRIVES[@]}")
+    else
+      BOOT_DISK="${DRIVES[$smallest_idx]}"
+      log "Boot disk: $BOOT_DISK (smallest available, ${DRIVE_SIZES[$smallest_idx]})"
+
+      ZFS_POOL_DISKS=()
+      for i in "${!DRIVES[@]}"; do
+        [[ $i -ne $smallest_idx ]] && ZFS_POOL_DISKS+=("${DRIVES[$i]}")
+      done
+    fi
   fi
 
   log "Boot disk: ${BOOT_DISK:-all in pool}"
