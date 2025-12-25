@@ -10,7 +10,7 @@ Complete reference for all configuration options available in the installer.
 | `-v, --version` | Show version |
 | `--qemu-ram MB` | Set QEMU RAM in MB (default: auto, min 4096) |
 | `--qemu-cores N` | Set QEMU CPU cores (default: auto, max 256) |
-| `--iso-version FILE` | Use specific Proxmox ISO (e.g., `proxmox-ve_8.3-1.iso`) |
+| `--iso-version FILE` | Use specific Proxmox ISO (e.g., `proxmox-ve_9.0-1.iso`) |
 
 ## Usage Examples
 
@@ -19,7 +19,7 @@ Complete reference for all configuration options available in the installer.
 bash pve-install.sh
 
 # Use specific Proxmox version
-bash pve-install.sh --iso-version proxmox-ve_8.2-1.iso
+bash pve-install.sh --iso-version proxmox-ve_9.0-1.iso
 
 # Custom QEMU resources
 bash pve-install.sh --qemu-ram 16384 --qemu-cores 8
@@ -45,7 +45,7 @@ All settings are configured through the interactive wizard. This reference docum
 
 | Setting | Description | Default |
 |---------|-------------|---------|
-| ISO Version | Proxmox VE version | Latest available |
+| ISO Version | Proxmox VE version (v9+) | Latest 5 available |
 | Repository | Package repository type | No-subscription |
 | Subscription Key | Enterprise license key | Optional (enterprise only) |
 

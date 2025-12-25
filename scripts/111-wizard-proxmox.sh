@@ -5,7 +5,7 @@
 # =============================================================================
 
 # Edits Proxmox ISO version via searchable list.
-# Fetches available ISOs (last 5) and updates PROXMOX_ISO_VERSION global.
+# Fetches available ISOs (last 5, starting from v9) and updates PROXMOX_ISO_VERSION global.
 _edit_iso_version() {
   _wiz_start_edit
 
@@ -15,7 +15,7 @@ _edit_iso_version() {
     "  Latest version recommended for new installations." \
     ""
 
-  # Get available ISO versions (last 5, uses cached data from prefetch)
+  # Get available ISO versions (last 5, v9+ only, uses cached data from prefetch)
   local iso_list
   iso_list=$(get_available_proxmox_isos 5)
 

@@ -48,7 +48,7 @@ bash <(curl -sSL https://qoxi-cloud.github.io/proxmox-installer/pve-install.min.
 
 ```bash
 # Use specific Proxmox version
-bash <(curl -sSL ...) --iso-version proxmox-ve_8.3-1.iso
+bash <(curl -sSL ...) --iso-version proxmox-ve_9.0-1.iso
 
 # Custom QEMU resources
 bash <(curl -sSL ...) --qemu-ram 16384 --qemu-cores 8
@@ -68,7 +68,7 @@ The wizard guides you through configuration in 6 screens:
 - **Country** - ISO country code
 
 ### Proxmox Settings
-- **ISO Version** - Proxmox VE version to install
+- **ISO Version** - Proxmox VE version to install (v9+, last 5 available)
 - **Repository** - No-subscription, Enterprise, or Test
 
 ### Network Settings

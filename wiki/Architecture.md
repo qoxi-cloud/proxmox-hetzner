@@ -507,7 +507,7 @@ field="${_WIZ_FIELD_MAP[$selection]}"
 ### ISO Download (203-iso-download.sh)
 
 ```
-1. Fetch available versions from Proxmox downloads
+1. Fetch available versions from Proxmox downloads (v9+ only, last 5)
 2. Parse version list (PVE_AVAILABLE_VERSIONS array)
 3. Select version via wizard or CLI
 4. Download ISO with retry logic
