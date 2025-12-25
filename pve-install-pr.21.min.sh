@@ -16,7 +16,7 @@ readonly HEX_ORANGE="#ff8700"
 readonly HEX_GRAY="#585858"
 readonly HEX_WHITE="#ffffff"
 readonly HEX_NONE="7"
-readonly VERSION="2.0.578-pr.21"
+readonly VERSION="2.0.579-pr.21"
 readonly TERM_WIDTH=80
 readonly BANNER_WIDTH=51
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-installer}"
@@ -373,7 +373,7 @@ printf '%s\n' \
 "$p$CLR_GRAY|_|     |_|    \\___/ $CLR_ORANGE/_/\\_\\$CLR_GRAY |_| |_| |_| \\___/ $CLR_ORANGE/_/\\_\\$CLR_RESET" \
 "" \
 "$p$spaces$tagline"
-}
+} >/dev/tty 2>/dev/null
 _show_banner_frame(){
 local h="${1:--1}"
 local M="$CLR_GRAY"
@@ -2354,7 +2354,7 @@ printf '\033[%d;0H' "$((LOGO_HEIGHT+1))"
 format_wizard_header "Installing Proxmox"
 _wiz_blank_line
 _wiz_blank_line
-}
+} >/dev/tty 2>/dev/null
 render_logs(){
 _render_install_header
 local start_line=0
@@ -2370,7 +2370,7 @@ local remaining=$((LOG_AREA_HEIGHT-lines_printed))
 for ((i=0; i<remaining; i++));do
 printf '\033[K\n'
 done
-}
+} >/dev/tty 2>/dev/null
 start_task(){
 local message="$1"
 add_log "$message..."
@@ -5314,18 +5314,29 @@ remote_run "Starting Tailscale" '
         true
     ' "Tailscale started"
 if [[ -n $TAILSCALE_AUTH_KEY ]];then
-local tmp_ip tmp_hostname
+local tmp_ip tmp_hostname tmp_result
 tmp_ip=$(mktemp)
 tmp_hostname=$(mktemp)
-trap "rm -f '$tmp_ip' '$tmp_hostname'" RETURN
-(remote_exec "tailscale up --authkey='$TAILSCALE_AUTH_KEY' --ssh"||exit 1
+tmp_result=$(mktemp)
+trap "rm -f '$tmp_ip' '$tmp_hostname' '$tmp_result'" RETURN
+(if
+remote_exec "tailscale up --authkey='$TAILSCALE_AUTH_KEY' --ssh"
+then
+echo "success" >"$tmp_result"
 remote_exec "tailscale status --json | jq -r '[(.Self.TailscaleIPs[0] // \"pending\"), (.Self.DNSName // \"\" | rtrimstr(\".\"))] | @tsv'" 2>/dev/null|{
 IFS=$'\t' read -r ip hostname
 echo "$ip" >"$tmp_ip"
 echo "$hostname" >"$tmp_hostname"
-}||true) > \
+}||true
+else
+echo "failed" >"$tmp_result"
+log "ERROR: tailscale up command failed"
+fi) > \
 /dev/null 2>&1&
 show_progress $! "Authenticating Tailscale"
+local auth_result
+auth_result=$(cat "$tmp_result" 2>/dev/null||echo "failed")
+if [[ $auth_result == "success" ]];then
 TAILSCALE_IP=$(cat "$tmp_ip" 2>/dev/null||echo "pending")
 TAILSCALE_HOSTNAME=$(cat "$tmp_hostname" 2>/dev/null||printf '\n')
 complete_task "$TASK_INDEX" "$CLR_ORANGE├─$CLR_RESET Tailscale authenticated. IP: $TAILSCALE_IP"
@@ -5345,6 +5356,16 @@ log "Enabled disable-openssh.service") \
 show_progress $! "Configuring OpenSSH disable on boot" "OpenSSH disable configured"
 else
 log "Skipping disable-openssh.service (FIREWALL_MODE=${FIREWALL_MODE:-standard})"
+fi
+else
+TAILSCALE_IP="auth failed"
+TAILSCALE_HOSTNAME=""
+complete_task "$TASK_INDEX" "$CLR_ORANGE├─$CLR_RESET $CLR_YELLOW⚠️$CLR_RESET Tailscale auth failed - check auth key" "error"
+log "WARNING: Tailscale authentication failed. Auth key may be invalid or expired."
+if [[ ${FIREWALL_MODE:-standard} == "stealth" ]];then
+add_log "$CLR_ORANGE│$CLR_RESET   ${CLR_YELLOW}SSH will remain enabled (Tailscale auth failed)$CLR_RESET"
+log "WARNING: Stealth mode requested but Tailscale auth failed - SSH will remain enabled to prevent lockout"
+fi
 fi
 else
 TAILSCALE_IP="not authenticated"
