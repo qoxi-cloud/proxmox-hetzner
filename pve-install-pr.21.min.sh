@@ -17,7 +17,7 @@ readonly HEX_GRAY="#585858"
 readonly HEX_WHITE="#ffffff"
 readonly HEX_GOLD="#d7af5f"
 readonly HEX_NONE="7"
-readonly VERSION="2.0.547-pr.21"
+readonly VERSION="2.0.550-pr.21"
 readonly TERM_WIDTH=80
 readonly BANNER_WIDTH=51
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-installer}"
@@ -121,7 +121,7 @@ nvim
 ringbuffer"
 BOOT_DISK=""
 ZFS_POOL_DISKS=()
-SYSTEM_UTILITIES="btop iotop ncdu tmux pigz smartmontools jq bat fastfetch sysstat nethogs ethtool"
+SYSTEM_UTILITIES="btop iotop ncdu tmux pigz smartmontools jq bat fastfetch sysstat nethogs ethtool curl gnupg"
 OPTIONAL_PACKAGES="libguestfs-tools"
 LOG_FILE="/root/pve-install-$(date +%Y%m%d-%H%M%S).log"
 INSTALL_COMPLETED=false
@@ -1040,7 +1040,7 @@ sleep 3
 install_base_packages(){
 local packages="$SYSTEM_UTILITIES $OPTIONAL_PACKAGES locales chrony unattended-upgrades apt-listchanges linux-cpupower"
 if [[ ${SHELL_TYPE:-bash} == "zsh" ]];then
-packages="$packages zsh git curl"
+packages="$packages zsh git"
 fi
 log "Installing base packages: $packages"
 remote_run "Installing system packages" "
@@ -1074,7 +1074,7 @@ fi
 [[ $INSTALL_NETDATA == "yes" ]]&&packages+=(netdata)
 [[ $INSTALL_NVIM == "yes" ]]&&packages+=(neovim)
 [[ $INSTALL_RINGBUFFER == "yes" ]]&&packages+=(ethtool)
-[[ $INSTALL_YAZI == "yes" ]]&&packages+=(curl file unzip)
+[[ $INSTALL_YAZI == "yes" ]]&&packages+=(file unzip)
 [[ $INSTALL_TAILSCALE == "yes" ]]&&packages+=(tailscale)
 [[ ${SSL_TYPE:-self-signed} == "letsencrypt" ]]&&packages+=(certbot)
 if [[ ${#packages[@]} -eq 0 ]];then
@@ -1718,6 +1718,7 @@ local -A required_commands=(
 [jq]="jq"
 [aria2c]="aria2"
 [findmnt]="util-linux"
+[gpg]="gnupg"
 [gum]="gum")
 local packages_to_install=""
 local need_charm_repo=false
@@ -2146,7 +2147,7 @@ tput smcup
 tput civis
 _wiz_clear
 show_banner
-trap 'tput cnorm; tput rmcup' EXIT RETURN
+trap "tput cnorm 2>/dev/null; tput rmcup 2>/dev/null; cleanup_and_error_handler" EXIT
 }
 finish_live_installation(){
 tput cnorm
@@ -2319,6 +2320,8 @@ local missing_fields=()
 [[ -z $DOMAIN_SUFFIX ]]&&missing_fields+=("Domain")
 [[ -z $EMAIL ]]&&missing_fields+=("Email")
 [[ -z $NEW_ROOT_PASSWORD ]]&&missing_fields+=("Password")
+[[ -z $ADMIN_USERNAME ]]&&missing_fields+=("Admin Username")
+[[ -z $ADMIN_PASSWORD ]]&&missing_fields+=("Admin Password")
 [[ -z $TIMEZONE ]]&&missing_fields+=("Timezone")
 [[ -z $KEYBOARD ]]&&missing_fields+=("Keyboard")
 [[ -z $COUNTRY ]]&&missing_fields+=("Country")
@@ -2357,7 +2360,7 @@ return 0
 show_gum_config_editor(){
 tput smcup
 _wiz_hide_cursor
-trap '_wiz_show_cursor; tput rmcup' EXIT
+trap "_wiz_show_cursor; tput rmcup 2>/dev/null; cleanup_and_error_handler" EXIT
 while true;do
 _wizard_main
 if _validate_config;then
