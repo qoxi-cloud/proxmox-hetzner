@@ -120,19 +120,25 @@ wait_for_ssh_ready() {
   # Clear any stale known_hosts entries
   ssh-keygen -f "/root/.ssh/known_hosts" -R "[localhost]:${SSH_PORT}" 2>/dev/null || true
 
-  # Quick port check first (faster than SSH attempts)
+  # Split timeout: 75% for port check (boot is slow), 25% for SSH verification
+  local port_timeout=$((timeout * 3 / 4))
+  local ssh_timeout=$((timeout - port_timeout))
+
+  # Port check - wait for VM to boot and open SSH port
   local port_check=0
-  for _ in {1..10}; do
+  local elapsed=0
+  while ((elapsed < port_timeout)); do
     if (echo >/dev/tcp/localhost/"$SSH_PORT") 2>/dev/null; then
       port_check=1
       break
     fi
-    sleep 1
+    sleep 2
+    ((elapsed += 2))
   done
 
   if [[ $port_check -eq 0 ]]; then
     print_error "Port $SSH_PORT is not accessible"
-    log "ERROR: Port $SSH_PORT not accessible after 10 attempts"
+    log "ERROR: Port $SSH_PORT not accessible after ${port_timeout}s"
     return 1
   fi
 
@@ -142,7 +148,7 @@ wait_for_ssh_ready() {
   # Wait for SSH to be ready with background process
   (
     local elapsed=0
-    while ((elapsed < timeout)); do
+    while ((elapsed < ssh_timeout)); do
       # shellcheck disable=SC2086
       if sshpass -f "$passfile" ssh -p "$SSH_PORT" $SSH_OPTS root@localhost 'echo ready' >/dev/null 2>&1; then
         exit 0
