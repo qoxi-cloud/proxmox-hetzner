@@ -20,7 +20,7 @@ _edit_shell() {
   # 1 header + 2 items for gum choose
   _show_input_footer "filter" 3
 
-  _wiz_choose_mapped "SHELL_TYPE" "Shell:" "WIZ_SHELL_OPTIONS" \
+  _wiz_choose_mapped "SHELL_TYPE" "Shell:" \
     "${WIZ_MAP_SHELL[@]}"
 }
 

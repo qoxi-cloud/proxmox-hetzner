@@ -192,6 +192,6 @@ _edit_zfs_arc() {
   # 1 header + 3 options
   _show_input_footer "filter" 4
 
-  _wiz_choose_mapped "ZFS_ARC_MODE" "ZFS ARC memory strategy:" "WIZ_ZFS_ARC_MODES" \
+  _wiz_choose_mapped "ZFS_ARC_MODE" "ZFS ARC memory strategy:" \
     "${WIZ_MAP_ZFS_ARC[@]}"
 }

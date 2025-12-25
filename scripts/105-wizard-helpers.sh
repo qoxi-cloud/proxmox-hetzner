@@ -99,35 +99,33 @@ _wiz_password_editor() {
 # =============================================================================
 
 # Single-select chooser that maps display values to internal values.
-# Handles the common pattern of choose + case mapping.
+# Generates options list from mapping array (no separate WIZ_*_MODES needed).
 # Parameters:
 #   $1 - Variable name to set (e.g., "BRIDGE_MODE")
 #   $2 - Header text (e.g., "Bridge mode:")
-#   $3 - Options variable name (e.g., "WIZ_BRIDGE_MODES")
 #   $@ - Pairs of "Display text:internal_value" (e.g., "External bridge:external")
 # Returns: 0 on selection, 1 on cancel
 # Side effects: Sets the named global variable
 # Example:
-#   _wiz_choose_mapped "BRIDGE_MODE" "Bridge mode:" "WIZ_BRIDGE_MODES" \
-#     "External bridge:external" \
-#     "Internal NAT:internal" \
-#     "Both:both"
+#   _wiz_choose_mapped "BRIDGE_MODE" "Bridge mode:" "${WIZ_MAP_BRIDGE_MODE[@]}"
 _wiz_choose_mapped() {
   local var_name="$1"
   local header="$2"
-  local options_var="$3"
-  shift 3
+  shift 2
 
-  # Build mapping from display to internal values
+  # Build mapping and options list from pairs
   local -A mapping=()
+  local options=""
   for pair in "$@"; do
     local display="${pair%%:*}"
     local internal="${pair#*:}"
     mapping["$display"]="$internal"
+    [[ -n $options ]] && options+=$'\n'
+    options+="$display"
   done
 
   local selected
-  if ! selected=$(printf '%s\n' "${!options_var}" | _wiz_choose --header="$header"); then
+  if ! selected=$(printf '%s\n' "$options" | _wiz_choose --header="$header"); then
     return 1
   fi
 

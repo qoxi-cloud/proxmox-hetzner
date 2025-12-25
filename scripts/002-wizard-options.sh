@@ -9,17 +9,6 @@ readonly WIZ_REPO_TYPES="No-subscription (free)
 Enterprise
 Test/Development"
 
-# Network bridge modes
-# shellcheck disable=SC2034
-readonly WIZ_BRIDGE_MODES="Internal NAT
-External bridge
-Both"
-
-# Bridge MTU options
-# shellcheck disable=SC2034
-readonly WIZ_BRIDGE_MTU="9000 (jumbo frames)
-1500 (standard)"
-
 # IPv6 configuration modes
 # shellcheck disable=SC2034
 readonly WIZ_IPV6_MODES="Auto
@@ -38,21 +27,10 @@ Custom"
 readonly WIZ_ZFS_MODES="Single disk
 RAID-1 (mirror)"
 
-# ZFS ARC memory allocation strategies
-# shellcheck disable=SC2034
-readonly WIZ_ZFS_ARC_MODES="VM-focused (4GB fixed)
-Balanced (25-40% of RAM)
-Storage-focused (50% of RAM)"
-
 # SSL certificate types
 # shellcheck disable=SC2034
 readonly WIZ_SSL_TYPES="Self-signed
 Let's Encrypt"
-
-# Shell options
-# shellcheck disable=SC2034
-readonly WIZ_SHELL_OPTIONS="ZSH
-Bash"
 
 # Firewall modes (nftables)
 # shellcheck disable=SC2034

@@ -43,7 +43,7 @@ _edit_bridge_mode() {
   # 1 header + 3 items for gum choose
   _show_input_footer "filter" 4
 
-  _wiz_choose_mapped "BRIDGE_MODE" "Bridge mode:" "WIZ_BRIDGE_MODES" \
+  _wiz_choose_mapped "BRIDGE_MODE" "Bridge mode:" \
     "${WIZ_MAP_BRIDGE_MODE[@]}"
 }
 
@@ -119,6 +119,6 @@ _edit_bridge_mtu() {
   # 1 header + 2 items for gum choose
   _show_input_footer "filter" 3
 
-  _wiz_choose_mapped "BRIDGE_MTU" "Bridge MTU:" "WIZ_BRIDGE_MTU" \
+  _wiz_choose_mapped "BRIDGE_MTU" "Bridge MTU:" \
     "${WIZ_MAP_BRIDGE_MTU[@]}"
 }
