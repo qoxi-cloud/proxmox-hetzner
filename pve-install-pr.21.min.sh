@@ -16,7 +16,7 @@ readonly HEX_ORANGE="#ff8700"
 readonly HEX_GRAY="#585858"
 readonly HEX_WHITE="#ffffff"
 readonly HEX_NONE="7"
-readonly VERSION="2.0.617-pr.21"
+readonly VERSION="2.0.619-pr.21"
 readonly TERM_WIDTH=80
 readonly BANNER_WIDTH=51
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-installer}"
@@ -5265,18 +5265,18 @@ remote_copy "templates/locale.sh" "/etc/profile.d/locale.sh"||return 1
 remote_exec "chmod +x /etc/profile.d/locale.sh"||return 1
 remote_copy "templates/default-locale" "/etc/default/locale"||return 1
 remote_copy "templates/environment" "/etc/environment"||return 1
+remote_exec "grep -q 'profile.d/locale.sh' /etc/bash.bashrc || echo '[ -f /etc/profile.d/locale.sh ] && . /etc/profile.d/locale.sh' >> /etc/bash.bashrc"||return 1
 }
 _configure_fastfetch(){
 remote_copy "templates/fastfetch.sh" "/etc/profile.d/fastfetch.sh"||return 1
 remote_exec "chmod +x /etc/profile.d/fastfetch.sh"||return 1
-remote_exec "grep -q 'profile.d/fastfetch.sh' /etc/bash.bashrc || echo '[ -f /etc/profile.d/fastfetch.sh ] && . /etc/profile.d/fastfetch.sh' >> /etc/bash.bashrc"||return 1
 }
 _configure_bat(){
 remote_exec "ln -sf /usr/bin/batcat /usr/local/bin/bat"||return 1
 deploy_user_config "templates/bat-config" ".config/bat/config"||return 1
 }
 _configure_zsh_files(){
-deploy_user_config "templates/zshrc" ".zshrc"||return 1
+deploy_user_config "templates/zshrc" ".zshrc" "LOCALE=$LOCALE"||return 1
 deploy_user_config "templates/p10k.zsh" ".p10k.zsh"||return 1
 remote_exec 'chsh -s /bin/zsh '"$ADMIN_USERNAME"''||return 1
 }
