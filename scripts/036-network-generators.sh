@@ -51,8 +51,8 @@ EOF
     up sysctl --system
 EOF
 
-  # Add IPv6 if enabled
-  if [[ -n ${MAIN_IPV6:-} && ${IPV6_MODE:-} != "disabled" ]]; then
+  # Add IPv6 if enabled (auto-detected or manual)
+  if [[ ${IPV6_MODE:-} != "disabled" ]] && [[ -n ${MAIN_IPV6:-} || -n ${IPV6_ADDRESS:-} ]]; then
     local ipv6_gw="${IPV6_GATEWAY:-fe80::1}"
     # Translate "auto" to link-local default (Hetzner standard)
     [[ $ipv6_gw == "auto" ]] && ipv6_gw="fe80::1"
@@ -105,8 +105,8 @@ EOF
     up sysctl --system
 EOF
 
-  # Add IPv6 if enabled
-  if [[ -n ${MAIN_IPV6:-} && ${IPV6_MODE:-} != "disabled" ]]; then
+  # Add IPv6 if enabled (auto-detected or manual)
+  if [[ ${IPV6_MODE:-} != "disabled" ]] && [[ -n ${MAIN_IPV6:-} || -n ${IPV6_ADDRESS:-} ]]; then
     local ipv6_gw="${IPV6_GATEWAY:-fe80::1}"
     # Translate "auto" to link-local default (Hetzner standard)
     [[ $ipv6_gw == "auto" ]] && ipv6_gw="fe80::1"
