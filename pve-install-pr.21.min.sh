@@ -16,7 +16,7 @@ readonly HEX_ORANGE="#ff8700"
 readonly HEX_GRAY="#585858"
 readonly HEX_WHITE="#ffffff"
 readonly HEX_NONE="7"
-readonly VERSION="2.0.623-pr.21"
+readonly VERSION="2.0.625-pr.21"
 readonly TERM_WIDTH=80
 readonly BANNER_WIDTH=51
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-installer}"
@@ -1240,7 +1240,6 @@ log "Running parallel group '$group_name' with functions: ${funcs[*]} (max $max_
 local result_dir
 result_dir=$(mktemp -d)
 export PARALLEL_RESULT_DIR="$result_dir"
-trap "rm -rf '$result_dir'" RETURN
 local i=0
 local running=0
 local pids=()
@@ -1278,6 +1277,7 @@ local failures=0
 for j in $(seq 0 $((count-1)));do
 [[ -f "$result_dir/fail_$j" ]]&&((failures++))
 done
+rm -rf "$result_dir"
 if [[ $failures -gt 0 ]];then
 log "ERROR: $failures/$count functions failed in group '$group_name'"
 return $failures
@@ -1549,6 +1549,7 @@ local ipv4_addr="${MAIN_IPV4_CIDR:-$MAIN_IPV4/32}"
 local ipv6_addr="${IPV6_ADDRESS:-${IPV6_CIDR:-$MAIN_IPV6/128}}"
 local ipv4_prefix="${ipv4_addr##*/}"
 local ipv6_prefix="${ipv6_addr##*/}"
+local mtu="${BRIDGE_MTU:-1500}"
 cat <<EOF
 # vmbr0: External bridge - VMs get IPs from router/DHCP
 # Host IP is on this bridge
@@ -1566,6 +1567,7 @@ cat <<EOF
     bridge-ports $INTERFACE_NAME
     bridge-stp off
     bridge-fd 0
+    mtu $mtu
     up sysctl --system
 EOF
 if [[ ${IPV6_MODE:-} != "disabled" ]]&&[[ -n ${MAIN_IPV6:-} || -n ${IPV6_ADDRESS:-} ]];then
@@ -1590,10 +1592,11 @@ fi
 _generate_vmbr0_nat(){
 local mtu="${BRIDGE_MTU:-9000}"
 local private_ip="${PRIVATE_IP_CIDR:-10.0.0.1/24}"
+local mtu_comment=""
+[[ $mtu -gt 1500 ]]&&mtu_comment=" (jumbo frames for improved VM-to-VM performance)"
 cat <<EOF
 # vmbr0: Private NAT network for VMs
-# All VMs connect here and access internet via NAT
-# MTU $mtu (jumbo frames) for improved VM-to-VM performance
+# All VMs connect here and access internet via NAT$mtu_comment
 auto vmbr0
 iface vmbr0 inet static
     address $private_ip
@@ -1601,10 +1604,6 @@ iface vmbr0 inet static
     bridge-stp off
     bridge-fd 0
     mtu $mtu
-    # NAT masquerade handled by nftables (/etc/nftables.conf)
-    # CT zone for Proxmox bridge tracking (required for VM networking)
-    post-up   iptables -t raw -I PREROUTING -i fwbr+ -j CT --zone 1
-    post-down iptables -t raw -D PREROUTING -i fwbr+ -j CT --zone 1 || true
 EOF
 if [[ -n ${FIRST_IPV6_CIDR:-} && ${IPV6_MODE:-} != "disabled" ]];then
 cat <<EOF
@@ -1617,10 +1616,11 @@ fi
 _generate_vmbr1_nat(){
 local mtu="${BRIDGE_MTU:-9000}"
 local private_ip="${PRIVATE_IP_CIDR:-10.0.0.1/24}"
+local mtu_comment=""
+[[ $mtu -gt 1500 ]]&&mtu_comment=" (jumbo frames for improved VM-to-VM performance)"
 cat <<EOF
 # vmbr1: Private NAT network for VMs
-# VMs connect here for isolated network with NAT to internet
-# MTU $mtu (jumbo frames) for improved VM-to-VM performance
+# VMs connect here for isolated network with NAT to internet$mtu_comment
 auto vmbr1
 iface vmbr1 inet static
     address $private_ip
@@ -1628,10 +1628,6 @@ iface vmbr1 inet static
     bridge-stp off
     bridge-fd 0
     mtu $mtu
-    # NAT masquerade handled by nftables (/etc/nftables.conf)
-    # CT zone for Proxmox bridge tracking (required for VM networking)
-    post-up   iptables -t raw -I PREROUTING -i fwbr+ -j CT --zone 1
-    post-down iptables -t raw -D PREROUTING -i fwbr+ -j CT --zone 1 || true
 EOF
 if [[ -n ${FIRST_IPV6_CIDR:-} && ${IPV6_MODE:-} != "disabled" ]];then
 cat <<EOF
