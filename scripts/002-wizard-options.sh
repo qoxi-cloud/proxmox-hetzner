@@ -14,11 +14,6 @@ readonly WIZ_PRIVATE_SUBNETS="10.0.0.0/24
 172.16.0.0/24
 Custom"
 
-# ZFS RAID levels (base options, raid5/raid10 added dynamically based on drive count)
-# shellcheck disable=SC2034
-readonly WIZ_ZFS_MODES="Single disk
-RAID-1 (mirror)"
-
 # Firewall modes (nftables)
 # shellcheck disable=SC2034
 readonly WIZ_FIREWALL_MODES="Stealth (Tailscale only)
