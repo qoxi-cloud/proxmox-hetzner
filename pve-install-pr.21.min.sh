@@ -16,7 +16,7 @@ readonly HEX_ORANGE="#ff8700"
 readonly HEX_GRAY="#585858"
 readonly HEX_WHITE="#ffffff"
 readonly HEX_NONE="7"
-readonly VERSION="2.0.620-pr.21"
+readonly VERSION="2.0.623-pr.21"
 readonly TERM_WIDTH=80
 readonly BANNER_WIDTH=51
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-installer}"
@@ -128,12 +128,16 @@ readonly WIZ_MAP_REPO_TYPE=(
 readonly WIZ_MAP_SSL_TYPE=(
 "Self-signed:self-signed"
 "Let's Encrypt:letsencrypt")
+readonly WIZ_MAP_WIPE_DISKS=(
+"Yes - Full wipe (recommended):yes"
+"No - Keep existing:no")
 INSTALL_DIR="${INSTALL_DIR:-${HOME:-/root}}"
 BOOT_DISK=""
 ZFS_POOL_DISKS=()
 USE_EXISTING_POOL=""
 EXISTING_POOL_NAME=""
 EXISTING_POOL_DISKS=()
+WIPE_DISKS="yes"
 SYSTEM_UTILITIES="btop iotop ncdu tmux pigz smartmontools jq bat fastfetch sysstat nethogs ethtool curl gnupg"
 OPTIONAL_PACKAGES="libguestfs-tools"
 LOG_FILE="$INSTALL_DIR/pve-install-$(date +%Y%m%d-%H%M%S).log"
@@ -3040,9 +3044,8 @@ fi
 _add_field "IPv6             " "$(_wiz_fmt "$_DSP_IPV6")" "ipv6"
 _add_field "Firewall         " "$(_wiz_fmt "$_DSP_FIREWALL")" "firewall"
 ;;
-3)if
-[[ $DRIVE_COUNT -gt 1 ]]
-then
+3)_add_field "Wipe disks       " "$(_wiz_fmt "$_DSP_WIPE")" "wipe_disks"
+if [[ $DRIVE_COUNT -gt 1 ]];then
 _add_field "Boot disk        " "$(_wiz_fmt "$_DSP_BOOT")" "boot_disk"
 _add_field "Pool mode        " "$(_wiz_fmt "$_DSP_EXISTING_POOL")" "existing_pool"
 if [[ $USE_EXISTING_POOL != "yes" ]];then
@@ -3202,6 +3205,12 @@ if [[ $USE_EXISTING_POOL == "yes" ]];then
 _DSP_POOL="(existing pool)"
 else
 _DSP_POOL="${#ZFS_POOL_DISKS[@]} disks"
+fi
+_DSP_WIPE=""
+if [[ $WIPE_DISKS == "yes" ]];then
+_DSP_WIPE="Yes (full wipe)"
+else
+_DSP_WIPE="No (keep existing)"
 fi
 }
 _dsp_services(){
@@ -3800,6 +3809,30 @@ API_TOKEN_NAME="$token_name"
 else
 API_TOKEN_NAME="automation"
 fi
+}
+_edit_wipe_disks(){
+_wiz_start_edit
+if [[ $USE_EXISTING_POOL == "yes" ]];then
+_wiz_hide_cursor
+_wiz_warn "Disk wipe is disabled when using existing pool"
+_wiz_blank_line
+_wiz_dim "Existing pool data must be preserved."
+sleep "${WIZARD_MESSAGE_DELAY:-3}"
+WIPE_DISKS="no"
+return
+fi
+_wiz_description \
+"  Clean disks before installation:" \
+"" \
+"  {{cyan:Yes}}: Wipe all selected disks (removes old partitions," \
+"       LVM, ZFS pools, mdadm arrays). Like fresh drives." \
+"  {{cyan:No}}:  Only release locks, keep existing structures." \
+"" \
+"  {{yellow:WARNING}}: Full wipe DESTROYS all data on selected disks!" \
+""
+_show_input_footer "filter" 3
+_wiz_choose_mapped "WIPE_DISKS" "Wipe disks before install:" \
+"${WIZ_MAP_WIPE_DISKS[@]}"
 }
 _edit_existing_pool(){
 _wiz_start_edit
@@ -4570,12 +4603,21 @@ print_error "No disks available for QEMU. Check disk detection."
 return 1
 fi
 DRIVE_ARGS=""
-local disk
+declare -A REVERSE_MAP
+local disk vdev
 for disk in "${!VIRTIO_MAP[@]}";do
+vdev="${VIRTIO_MAP[$disk]}"
+REVERSE_MAP["$vdev"]="$disk"
+done
+local sorted_vdevs
+sorted_vdevs=$(printf '%s\n' "${!REVERSE_MAP[@]}"|sort)
+for vdev in $sorted_vdevs;do
+disk="${REVERSE_MAP[$vdev]}"
 if [[ ! -b $disk ]];then
 log "ERROR: Disk $disk does not exist or is not a block device"
 return 1
 fi
+log "QEMU drive order: $vdev -> $disk"
 DRIVE_ARGS="$DRIVE_ARGS -drive file=$disk,format=raw,media=disk,if=virtio"
 done
 if [[ -z $DRIVE_ARGS ]];then
@@ -5243,6 +5285,156 @@ log "QEMU output log:"
 cat qemu_output.log >>"$LOG_FILE" 2>&1
 return 1
 }
+}
+_get_install_disks(){
+local disks=()
+[[ -n $BOOT_DISK ]]&&disks+=("$BOOT_DISK")
+for disk in "${ZFS_POOL_DISKS[@]}";do
+local found=false
+for d in "${disks[@]}";do
+[[ $d == "$disk" ]]&&found=true&&break
+done
+[[ $found == false ]]&&disks+=("$disk")
+done
+printf '%s\n' "${disks[@]}"
+}
+_wipe_zfs_on_disk(){
+local disk="$1"
+local disk_name
+disk_name=$(basename "$disk")
+command -v zpool &>/dev/null||return 0
+local pools_to_destroy=()
+while IFS= read -r pool;do
+[[ -z $pool ]]&&continue
+if zpool status "$pool" 2>/dev/null|grep -qE "(^|[[:space:]])$disk_name([p0-9]*)?([[:space:]]|$)";then
+pools_to_destroy+=("$pool")
+fi
+done < <(zpool list -H -o name 2>/dev/null)
+local import_output
+import_output=$(zpool import 2>&1)||true
+if [[ -n $import_output && $import_output != *"no pools available"* ]];then
+local current_pool=""
+local pool_has_disk=false
+while IFS= read -r line;do
+if [[ $line =~ ^[[:space:]]*pool:[[:space:]]*(.+)$ ]];then
+if [[ $pool_has_disk == true && -n $current_pool ]];then
+local already=false
+for p in "${pools_to_destroy[@]}";do
+[[ $p == "$current_pool" ]]&&already=true&&break
+done
+[[ $already == false ]]&&pools_to_destroy+=("$current_pool")
+fi
+current_pool="${BASH_REMATCH[1]}"
+pool_has_disk=false
+elif [[ $line =~ $disk_name ]];then
+pool_has_disk=true
+fi
+done <<<"$import_output"
+if [[ $pool_has_disk == true && -n $current_pool ]];then
+local already=false
+for p in "${pools_to_destroy[@]}";do
+[[ $p == "$current_pool" ]]&&already=true&&break
+done
+[[ $already == false ]]&&pools_to_destroy+=("$current_pool")
+fi
+fi
+for pool in "${pools_to_destroy[@]}";do
+log "Destroying ZFS pool: $pool (contains $disk)"
+zpool export -f "$pool" 2>/dev/null||true
+zpool destroy -f "$pool" 2>/dev/null||true
+done
+for part in "$disk"*;do
+[[ -b $part ]]&&zpool labelclear -f "$part" 2>/dev/null||true
+done
+}
+_wipe_lvm_on_disk(){
+local disk="$1"
+command -v pvs &>/dev/null||return 0
+local pvs_on_disk=()
+while IFS= read -r pv;do
+[[ -z $pv ]]&&continue
+[[ $pv == "$disk"* ]]&&pvs_on_disk+=("$pv")
+done < <(pvs --noheadings -o pv_name 2>/dev/null|tr -d ' ')
+for pv in "${pvs_on_disk[@]}";do
+local vg
+vg=$(pvs --noheadings -o vg_name "$pv" 2>/dev/null|tr -d ' ')
+if [[ -n $vg ]];then
+log "Removing LVM VG: $vg (on $pv)"
+vgchange -an "$vg" 2>/dev/null||true
+vgremove -f "$vg" 2>/dev/null||true
+fi
+log "Removing LVM PV: $pv"
+pvremove -f "$pv" 2>/dev/null||true
+done
+}
+_wipe_mdadm_on_disk(){
+local disk="$1"
+local disk_name
+disk_name=$(basename "$disk")
+command -v mdadm &>/dev/null||return 0
+while IFS= read -r md;do
+[[ -z $md ]]&&continue
+if mdadm --detail "$md" 2>/dev/null|grep -q "$disk_name";then
+log "Stopping mdadm array: $md (contains $disk)"
+mdadm --stop "$md" 2>/dev/null||true
+fi
+done < <(ls /dev/md* 2>/dev/null)
+for part in "$disk"*;do
+[[ -b $part ]]&&mdadm --zero-superblock "$part" 2>/dev/null||true
+done
+}
+_wipe_partition_table(){
+local disk="$1"
+log "Wiping partition table: $disk"
+if command -v wipefs &>/dev/null;then
+wipefs -a -f "$disk" 2>/dev/null||true
+fi
+if command -v sgdisk &>/dev/null;then
+sgdisk --zap-all "$disk" 2>/dev/null||true
+fi
+dd if=/dev/zero of="$disk" bs=1M count=1 conv=notrunc 2>/dev/null||true
+local disk_size
+disk_size=$(blockdev --getsize64 "$disk" 2>/dev/null||echo 0)
+if [[ $disk_size -gt 1048576 ]];then
+dd if=/dev/zero of="$disk" bs=1M count=1 seek=$((disk_size/1048576-1)) conv=notrunc 2>/dev/null||true
+fi
+partprobe "$disk" 2>/dev/null||true
+blockdev --rereadpt "$disk" 2>/dev/null||true
+}
+_wipe_disk(){
+local disk="$1"
+[[ ! -b $disk ]]&&{
+log "WARNING: Disk not found: $disk"
+return 0
+}
+log "Wiping disk: $disk"
+_wipe_zfs_on_disk "$disk"
+_wipe_lvm_on_disk "$disk"
+_wipe_mdadm_on_disk "$disk"
+_wipe_partition_table "$disk"
+}
+wipe_installation_disks(){
+[[ $WIPE_DISKS != "yes" ]]&&{
+log "Disk wipe disabled, skipping"
+return 0
+}
+[[ $USE_EXISTING_POOL == "yes" ]]&&{
+log "Using existing pool, skipping disk wipe"
+return 0
+}
+local disks
+mapfile -t disks < <(_get_install_disks)
+if [[ ${#disks[@]} -eq 0 ]];then
+log "WARNING: No disks to wipe"
+return 0
+fi
+log "Wiping ${#disks[@]} disk(s): ${disks[*]}"
+for disk in "${disks[@]}";do
+_wipe_disk "$disk"
+done
+sync
+sleep 1
+log "Disk wipe complete"
 }
 _copy_config_files(){
 run_parallel_copies \
@@ -6038,6 +6230,16 @@ return 0
 }
 _config_create_new_pool(){
 log "INFO: Creating separate ZFS pool 'tank' from pool disks"
+log "INFO: ZFS_POOL_DISKS=(${ZFS_POOL_DISKS[*]}), count=${#ZFS_POOL_DISKS[@]}"
+log "INFO: ZFS_RAID=$ZFS_RAID, BOOT_DISK=$BOOT_DISK"
+if [[ ${#ZFS_POOL_DISKS[@]} -eq 0 ]];then
+log "ERROR: ZFS_POOL_DISKS is empty - no disks to create pool from"
+return 1
+fi
+if [[ -z $ZFS_RAID ]];then
+log "ERROR: ZFS_RAID is empty - RAID level not specified"
+return 1
+fi
 if ! load_virtio_mapping;then
 log "ERROR: Failed to load virtio mapping"
 return 1
@@ -6058,9 +6260,14 @@ return 1
 fi
 log "INFO: ZFS pool command: $pool_cmd"
 if ! remote_run "Creating ZFS pool 'tank'" "
+    set -e
     $pool_cmd
-    zfs set compression=lz4 tank && zfs set atime=off tank && zfs set xattr=sa tank && zfs set dnodesize=auto tank
-    zfs create tank/vm-disks && pvesm add zfspool tank --pool tank/vm-disks --content images,rootdir
+    zfs set compression=lz4 tank
+    zfs set atime=off tank
+    zfs set xattr=sa tank
+    zfs set dnodesize=auto tank
+    zfs create tank/vm-disks
+    pvesm add zfspool tank --pool tank/vm-disks --content images,rootdir
     pvesm set local --content iso,vztmpl,backup,snippets
   " "ZFS pool 'tank' created";then
 log "ERROR: Failed to create ZFS pool 'tank'"
@@ -6069,9 +6276,31 @@ fi
 log "INFO: ZFS pool 'tank' created successfully"
 return 0
 }
+_config_ensure_rpool_storage(){
+log "INFO: Ensuring rpool storage is configured for Proxmox"
+if ! remote_run "Configuring rpool storage" '
+    if zpool list rpool &>/dev/null; then
+      if ! pvesm status local-zfs &>/dev/null; then
+        # Create data dataset if missing
+        zfs list rpool/data &>/dev/null || zfs create rpool/data
+        pvesm add zfspool local-zfs --pool rpool/data --content images,rootdir
+        pvesm set local --content iso,vztmpl,backup,snippets
+        echo "local-zfs storage created"
+      else
+        echo "local-zfs storage already exists"
+      fi
+    else
+      echo "WARNING: rpool not found - system may have installed on LVM/ext4"
+    fi
+  ' "rpool storage configured";then
+log "WARNING: rpool storage configuration had issues"
+fi
+return 0
+}
 _config_zfs_pool(){
 if [[ -z $BOOT_DISK ]];then
-log "INFO: BOOT_DISK not set, skipping separate ZFS pool (all-ZFS mode)"
+log "INFO: BOOT_DISK not set, all-ZFS mode - ensuring rpool storage"
+_config_ensure_rpool_storage
 return 0
 fi
 if [[ $USE_EXISTING_POOL == "yes" ]];then
@@ -6422,6 +6651,9 @@ make_answer_toml
 log "Step: make_autoinstall_iso"
 make_autoinstall_iso
 log_metric "autoinstall_prep"
+log "Step: wipe_installation_disks"
+run_with_progress "Wiping disks" "Disks wiped" wipe_installation_disks
+log_metric "disk_wipe"
 log "Step: install_proxmox"
 install_proxmox
 log_metric "proxmox_install"
@@ -6432,7 +6664,10 @@ exit 1
 }
 log_metric "qemu_boot"
 log "Step: configure_proxmox_via_ssh"
-configure_proxmox_via_ssh
+configure_proxmox_via_ssh||{
+log "ERROR: configure_proxmox_via_ssh failed"
+exit 1
+}
 log_metric "system_config"
 metrics_finish
 INSTALL_COMPLETED=true
