@@ -9,18 +9,18 @@ readonly SSH_DEFAULT_TIMEOUT=300
 _sanitize_script_for_log() {
   local script="$1"
 
+  # Use \x01 (ASCII SOH) as delimiter - won't appear in passwords or scripts
+  # Avoids conflict with # in passwords or / in paths
+  local d=$'\x01'
+
   # Mask common password patterns (variable assignments and chpasswd)
-  # Pattern: PASSWORD=something, PASSWORD="quoted", PASSWORD='quoted'
-  # Handle unquoted, single-quoted, and double-quoted values
-  # Use # as delimiter to avoid collision with file paths containing /
-  script=$(printf '%s\n' "$script" | sed -E 's#(PASSWORD|password|PASSWD|passwd|SECRET|secret|TOKEN|token|KEY|key)=('"'"'[^'"'"']*'"'"'|"[^"]*"|[^[:space:]'"'"'";]+)#\1=[REDACTED]#g')
+  script=$(printf '%s\n' "$script" | sed -E "s${d}(PASSWORD|password|PASSWD|passwd|SECRET|secret|TOKEN|token|KEY|key)=('[^']*'|\"[^\"]*\"|[^[:space:]'\";]+)${d}\\1=[REDACTED]${d}g")
 
   # Pattern: echo "user:password" | chpasswd
-  script=$(printf '%s\n' "$script" | sed -E 's#(echo[[:space:]]+['\''"]?[^:]+:)[^|'\''"]*#\1[REDACTED]#g')
+  script=$(printf '%s\n' "$script" | sed -E "s${d}(echo[[:space:]]+['\"]?[^:]+:)[^|'\"]*${d}\\1[REDACTED]${d}g")
 
   # Pattern: --authkey='...' or --authkey="..." or --authkey=...
-  # Handle unquoted, single-quoted, and double-quoted values
-  script=$(printf '%s\n' "$script" | sed -E 's#(--authkey=)('"'"'[^'"'"']*'"'"'|"[^"]*"|[^[:space:]'"'"'";]+)#\1[REDACTED]#g')
+  script=$(printf '%s\n' "$script" | sed -E "s${d}(--authkey=)('[^']*'|\"[^\"]*\"|[^[:space:]'\";]+)${d}\\1[REDACTED]${d}g")
 
   printf '%s\n' "$script"
 }
