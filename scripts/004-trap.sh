@@ -20,36 +20,33 @@ cleanup_temp_files() {
   # Use INSTALL_DIR with fallback for early cleanup calls
   local install_dir="${INSTALL_DIR:-${HOME:-/root}}"
 
+  # Current session PID for scoped cleanup (only delete our own files)
+  local pid="$$"
+
   # Secure delete files containing secrets (API token, root password)
   # secure_delete_file is defined in 012-utils.sh, check if available
   if type secure_delete_file &>/dev/null; then
     secure_delete_file /tmp/pve-install-api-token.env
     secure_delete_file "${install_dir}/answer.toml"
-    # Secure delete password files from /dev/shm and /tmp
-    # Patterns: pve-ssh-session.* (current), pve-passfile.* (legacy), *passfile* (catch-all)
-    while IFS= read -r -d '' pfile; do
-      secure_delete_file "$pfile"
-    done < <(find /dev/shm /tmp -name "pve-ssh-session.*" -type f -print0 2>/dev/null || true)
-    while IFS= read -r -d '' pfile; do
-      secure_delete_file "$pfile"
-    done < <(find /dev/shm /tmp -name "pve-passfile.*" -type f -print0 2>/dev/null || true)
-    while IFS= read -r -d '' pfile; do
-      secure_delete_file "$pfile"
-    done < <(find /dev/shm /tmp -name "*passfile*" -type f -print0 2>/dev/null || true)
+    # Secure delete password files - only current session (PID-scoped)
+    secure_delete_file "/dev/shm/pve-ssh-session.${pid}"
+    secure_delete_file "/tmp/pve-ssh-session.${pid}"
+    # Legacy passfile patterns (also PID-scoped)
+    secure_delete_file "/dev/shm/pve-passfile.${pid}"
+    secure_delete_file "/tmp/pve-passfile.${pid}"
   else
     # Fallback if secure_delete_file not yet loaded (early exit)
     rm -f /tmp/pve-install-api-token.env 2>/dev/null || true
     rm -f "${install_dir}/answer.toml" 2>/dev/null || true
-    find /dev/shm /tmp -name "pve-ssh-session.*" -type f -delete 2>/dev/null || true
-    find /dev/shm /tmp -name "pve-passfile.*" -type f -delete 2>/dev/null || true
-    find /dev/shm /tmp -name "*passfile*" -type f -delete 2>/dev/null || true
+    rm -f "/dev/shm/pve-ssh-session.${pid}" "/tmp/pve-ssh-session.${pid}" 2>/dev/null || true
+    rm -f "/dev/shm/pve-passfile.${pid}" "/tmp/pve-passfile.${pid}" 2>/dev/null || true
   fi
 
-  # Clean up standard temporary files (non-sensitive)
+  # Clean up standard temporary files (non-sensitive, PID-scoped where applicable)
   rm -f /tmp/tailscale_*.txt /tmp/iso_checksum.txt /tmp/*.tmp 2>/dev/null || true
 
-  # Clean up SSH control sockets
-  rm -f /tmp/ssh-pve-control.* 2>/dev/null || true
+  # Clean up SSH control socket (current session only)
+  rm -f "/tmp/ssh-pve-control.${pid}" 2>/dev/null || true
 
   # Clean up ISO and installation files (only if installation failed)
   if [[ $INSTALL_COMPLETED != "true" ]]; then
