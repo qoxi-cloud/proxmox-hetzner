@@ -25,7 +25,7 @@ apply_template_vars() {
         local skip_log=false
         case "$var" in
           MAIN_IPV6 | IPV6_ADDRESS | IPV6_GATEWAY | IPV6_PREFIX)
-            [[ ${IPV6_MODE:-} != "Auto" && ${IPV6_MODE:-} != "Manual" ]] && skip_log=true
+            [[ ${IPV6_MODE:-} != "auto" && ${IPV6_MODE:-} != "manual" ]] && skip_log=true
             ;;
         esac
         [[ $skip_log == false ]] && log "DEBUG: Template variable $var is empty, {{${var}}} will be replaced with empty string in $file"
