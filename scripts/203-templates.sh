@@ -1,7 +1,5 @@
 # shellcheck shell=bash
-# =============================================================================
 # Template preparation and download
-# =============================================================================
 
 # Applies variable substitution to all template files.
 # Handles hosts, resolv.conf, cpupower, locale templates.
@@ -17,11 +15,7 @@ _modify_template_files() {
   apply_common_template_vars "./templates/environment"
 }
 
-# Downloads all templates in parallel using aria2c.
-# Falls back to sequential wget if aria2c unavailable.
-# Parameters:
-#   $@ - List of "local_path:remote_name" pairs
-# Returns: 0 on success, 1 on failure
+# Download templates in parallel (aria2c→wget fallback). $@="path:name" pairs
 _download_templates_parallel() {
   local -a templates=("$@")
   local input_file
@@ -70,9 +64,7 @@ _download_templates_parallel() {
   return 0
 }
 
-# Downloads and prepares all template files for Proxmox configuration.
-# Selects appropriate templates based on bridge mode and repository type.
-# Side effects: Creates templates directory, downloads and modifies templates
+# Download and prepare all template files for Proxmox configuration
 make_templates() {
   log "Starting template preparation"
   mkdir -p ./templates

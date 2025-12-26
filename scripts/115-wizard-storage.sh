@@ -1,8 +1,6 @@
 # shellcheck shell=bash
-# =============================================================================
 # Configuration Wizard - Storage Settings Editors
 # zfs_mode, zfs_arc, existing_pool
-# =============================================================================
 
 # Edits existing pool setting (use existing vs create new).
 # Updates USE_EXISTING_POOL and EXISTING_POOL_NAME globals.

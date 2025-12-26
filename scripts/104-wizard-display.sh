@@ -1,12 +1,8 @@
 # shellcheck shell=bash
-# =============================================================================
 # Configuration Wizard - Display Value Formatters
-# =============================================================================
 # Formats configuration values for display in wizard menu
 
-# =============================================================================
 # Display mapping table (internal value → display text)
-# =============================================================================
 
 declare -gA _DSP_MAP=(
   # Repository types
@@ -59,19 +55,13 @@ declare -gA _DSP_MAP=(
   ["power:conservative"]="Conservative"
 )
 
-# Looks up display value from mapping table.
-# Parameters:
-#   $1 - Category (e.g., "repo", "bridge", "zfs")
-#   $2 - Internal value (e.g., "external", "raid1")
-# Returns: Display text via stdout, or original value if not found
+# Lookup display value. $1=category, $2=internal_value → display_text
 _dsp_lookup() {
   local key="$1:$2"
   echo "${_DSP_MAP[$key]:-$2}"
 }
 
-# =============================================================================
 # Display value formatters (grouped by screen)
-# =============================================================================
 
 # Formats Basic screen values: hostname, password
 _dsp_basic() {
@@ -215,9 +205,7 @@ _dsp_access() {
   fi
 }
 
-# Builds formatted display values from current configuration state.
-# Calls individual formatters for each screen category.
-# Side effects: Sets _DSP_* global variables for menu rendering
+# Build _DSP_* display values from current config state
 _wiz_build_display_values() {
   _dsp_basic
   _dsp_proxmox

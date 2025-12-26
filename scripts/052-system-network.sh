@@ -1,10 +1,7 @@
 # shellcheck shell=bash
-# =============================================================================
 # Network interface and IP detection
-# =============================================================================
 
-# Detects default network interface.
-# Side effects: Sets CURRENT_INTERFACE
+# Detect default network interface. Sets CURRENT_INTERFACE.
 _detect_default_interface() {
   if command -v ip &>/dev/null && command -v jq &>/dev/null; then
     CURRENT_INTERFACE=$(ip -j route 2>/dev/null | jq -r '.[] | select(.dst == "default") | .dev' | head -n1)
@@ -30,8 +27,7 @@ _detect_default_interface() {
   fi
 }
 
-# Gets predictable interface name from udev.
-# Side effects: Sets PREDICTABLE_NAME, DEFAULT_INTERFACE
+# Get predictable interface name from udev. Sets PREDICTABLE_NAME, DEFAULT_INTERFACE.
 _detect_predictable_name() {
   PREDICTABLE_NAME=""
 
@@ -57,8 +53,7 @@ _detect_predictable_name() {
   fi
 }
 
-# Gets all available network interfaces.
-# Side effects: Sets AVAILABLE_INTERFACES, AVAILABLE_ALTNAMES, INTERFACE_COUNT, INTERFACE_NAME
+# Get available interfaces. Sets AVAILABLE_INTERFACES, INTERFACE_NAME, etc.
 _detect_available_interfaces() {
   AVAILABLE_ALTNAMES=$(ip -d link show | grep -v "lo:" | grep -E '(^[0-9]+:|altname)' | awk '/^[0-9]+:/ {interface=$2; gsub(/:/, "", interface); printf "%s", interface} /altname/ {printf ", %s", $2} END {print ""}' | sed 's/, $//')
 
@@ -77,12 +72,9 @@ _detect_available_interfaces() {
   fi
 }
 
-# =============================================================================
 # IP address detection
-# =============================================================================
 
-# Detects IPv4 address and gateway with retries.
-# Side effects: Sets MAIN_IPV4, MAIN_IPV4_CIDR, MAIN_IPV4_GW
+# Detect IPv4 address and gateway. Sets MAIN_IPV4, MAIN_IPV4_CIDR, MAIN_IPV4_GW.
 _detect_ipv4() {
   local max_attempts="${SSH_RETRY_ATTEMPTS:-3}"
   local attempt=0
@@ -130,8 +122,7 @@ _detect_ipv4() {
   done
 }
 
-# Detects MAC address and IPv6 info.
-# Side effects: Sets MAC_ADDRESS, IPV6_CIDR, MAIN_IPV6, FIRST_IPV6_CIDR, IPV6_GATEWAY
+# Detect MAC and IPv6 info. Sets MAC_ADDRESS, IPV6_*, MAIN_IPV6.
 _detect_ipv6_and_mac() {
   if command -v ip &>/dev/null && command -v jq &>/dev/null; then
     MAC_ADDRESS=$(ip -j link show "$CURRENT_INTERFACE" 2>/dev/null | jq -r '.[0].address // empty')

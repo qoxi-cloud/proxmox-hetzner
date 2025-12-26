@@ -1,8 +1,6 @@
 # shellcheck shell=bash
-# =============================================================================
 # Configuration Wizard - Disk Selection
 # boot_disk, pool_disks
-# =============================================================================
 
 # Edits boot disk selection for ext4 system partition.
 # Options: none (all in rpool) or select specific disk.
@@ -141,8 +139,7 @@ _edit_pool_disks() {
 }
 
 # Rebuilds ZFS_POOL_DISKS array after boot disk change.
-# Includes all drives except the selected boot disk.
-# Side effects: Updates ZFS_POOL_DISKS, calls _update_zfs_mode_options
+# Rebuild pool disks (all except boot). Updates ZFS_POOL_DISKS.
 _rebuild_pool_disks() {
   ZFS_POOL_DISKS=()
   for drive in "${DRIVES[@]}"; do
@@ -152,8 +149,7 @@ _rebuild_pool_disks() {
 }
 
 # Resets ZFS_RAID if current mode is incompatible with pool disk count.
-# Called after pool disk changes to ensure valid RAID selection.
-# Side effects: May clear ZFS_RAID global if invalid
+# Update ZFS RAID options after pool disk changes
 _update_zfs_mode_options() {
   local pool_count=${#ZFS_POOL_DISKS[@]}
   # Reset ZFS_RAID if incompatible

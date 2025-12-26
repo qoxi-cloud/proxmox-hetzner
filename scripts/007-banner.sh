@@ -1,8 +1,6 @@
 # shellcheck shell=bash
-# =============================================================================
 # Banner display
 # Note: cursor cleanup is handled by cleanup_and_error_handler in 00-init.sh
-# =============================================================================
 
 # Banner letter count for animation (P=0, r=1, o=2, x=3, m=4, o=5, x=6)
 BANNER_LETTER_COUNT=7
@@ -15,7 +13,6 @@ _BANNER_PAD_SIZE=$(((TERM_WIDTH - BANNER_WIDTH) / 2))
 printf -v _BANNER_PAD '%*s' "$_BANNER_PAD_SIZE" ''
 
 # Display main ASCII banner
-# Usage: show_banner
 show_banner() {
   local p="$_BANNER_PAD"
   local tagline="${CLR_CYAN}Qoxi ${CLR_GRAY}Automated Installer ${CLR_GOLD}${VERSION}${CLR_RESET}"
@@ -35,10 +32,7 @@ show_banner() {
     "${p}${spaces}${tagline}"
 }
 
-# Displays animated banner with highlighted letter.
-# Parameters:
-#   $1 - Letter index to highlight (0-6 for P,r,o,x,m,o,x), -1 for none
-# Side effects: Outputs styled banner with one letter highlighted
+# Display banner frame with highlighted letter. $1=letter_idx (0-6, -1=none)
 _show_banner_frame() {
   local h="${1:--1}"
   local M="${CLR_GRAY}"
@@ -123,18 +117,12 @@ _show_banner_frame() {
   printf '%s' "$frame"
 }
 
-# =============================================================================
 # Background animation control
-# =============================================================================
 
 # PID of background animation process
 BANNER_ANIMATION_PID=""
 
-# Starts animated banner in background.
-# The animation runs until stopped with show_banner_animated_stop().
-# Parameters:
-#   $1 - Frame delay in seconds (default: 0.1)
-# Side effects: Sets BANNER_ANIMATION_PID, clears screen, starts background animation
+# Start animated banner in background. $1=frame_delay (default 0.1)
 show_banner_animated_start() {
   local frame_delay="${1:-0.1}"
 
@@ -188,9 +176,7 @@ show_banner_animated_start() {
   BANNER_ANIMATION_PID=$!
 }
 
-# Stops background animated banner.
-# Shows static banner after stopping animation.
-# Side effects: Kills background process, clears BANNER_ANIMATION_PID, shows static banner
+# Stop background animated banner, show static banner
 show_banner_animated_stop() {
   if [[ -n $BANNER_ANIMATION_PID ]]; then
     # Kill the background process
@@ -206,7 +192,3 @@ show_banner_animated_stop() {
   # Restore cursor
   _wiz_show_cursor
 }
-
-# =============================================================================
-# Note: Banner display is handled by 99-main.sh with animated intro
-# =============================================================================

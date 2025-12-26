@@ -1,8 +1,6 @@
 # shellcheck shell=bash
-# =============================================================================
 # nftables Firewall rule generators
 # Returns nftables rule text via stdout
-# =============================================================================
 
 # Generates port accept rules based on firewall mode
 _generate_port_rules() {

@@ -1,7 +1,5 @@
 # shellcheck shell=bash
-# =============================================================================
 # SSH hardening and finalization
-# =============================================================================
 
 # Deploys hardened SSH configuration to remote system WITHOUT restarting.
 # Uses sshd_config template with ADMIN_USERNAME substitution.
@@ -32,9 +30,7 @@ restart_ssh_service() {
   fi
 }
 
-# =============================================================================
 # Installation Validation
-# =============================================================================
 
 # Validates installation by checking packages, services, and configs.
 # Uses validation.sh.tmpl with variable substitution for enabled features.
@@ -151,9 +147,7 @@ finalize_vm() {
   fi
 }
 
-# =============================================================================
 # Main configuration function
-# =============================================================================
 
 # Main entry point for post-install Proxmox configuration via SSH.
 # Orchestrates all configuration steps with parallel execution where safe.

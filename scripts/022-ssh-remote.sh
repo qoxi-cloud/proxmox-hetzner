@@ -1,44 +1,11 @@
 # shellcheck shell=bash
-# =============================================================================
 # SSH helper functions - Remote execution
-# =============================================================================
-#
-# Function selection guide:
-#
-# remote_exec()      - Low-level SSH execution with retry. Use for:
-#                      - Single commands that may not need progress display
-#                      - Commands within subshells that already show progress
-#                      - Quick status checks or simple configurations
-#                      - Returns exit code (doesn't exit on failure)
-#
-# remote_run()       - Primary function for configuration scripts. Use for:
-#                      - All major installation/configuration steps
-#                      - Commands that should show progress to user
-#                      - Operations where failure should abort installation
-#                      - Automatically exits on failure (no manual error handling)
-#
-# remote_copy()      - SCP file transfer. Use for:
-#                      - Deploying config files and templates
-#                      - Returns exit code (check manually or use || return 1)
-#
-# deploy_template()  - High-level helper (in 038-deploy-helpers.sh). Use for:
-#                      - Templates with variable substitution + remote copy
-#
-# run_with_progress() - Background command with progress. Use for:
-#                      - Local or remote operations needing progress display
-#                      - Wraps any command (not just SSH)
-#
-# =============================================================================
 
 # Default timeout for remote commands (seconds)
 # Can be overridden per-call or via SSH_COMMAND_TIMEOUT environment variable
 readonly SSH_DEFAULT_TIMEOUT=300
 
-# Sanitizes script content for logging by masking sensitive values.
-# Replaces passwords and secrets with [REDACTED] to prevent leaks in log files.
-# Parameters:
-#   $1 - Script content to sanitize
-# Returns: Sanitized script via stdout
+# Mask passwords/secrets in script for logging. $1=script → stdout
 _sanitize_script_for_log() {
   local script="$1"
 
@@ -58,13 +25,7 @@ _sanitize_script_for_log() {
   printf '%s\n' "$script"
 }
 
-# Executes command on remote VM via SSH with retry logic and timeout.
-# Use when you need return code handling or within subshells with own progress.
-# Parameters:
-#   $* - Command to execute remotely
-# Environment:
-#   SSH_COMMAND_TIMEOUT - Override default timeout (seconds, default: 300)
-# Returns: Exit code from remote command (124 on timeout)
+# Execute command on remote VM with retry. $*=command. Returns exit code (124=timeout)
 remote_exec() {
   local passfile
   passfile=$(_ssh_get_passfile)
@@ -97,13 +58,7 @@ remote_exec() {
   return 1
 }
 
-# Internal: Executes remote script with progress indicator.
-# Don't use directly - use remote_run() instead which handles errors.
-# Parameters:
-#   $1 - Progress message
-#   $2 - Script content to execute
-#   $3 - Done message (optional, defaults to $1)
-# Returns: Exit code from remote script
+# Internal: remote script with progress. Use remote_run() instead.
 _remote_exec_with_progress() {
   local message="$1"
   local script="$2"
@@ -151,16 +106,8 @@ _remote_exec_with_progress() {
   return $exit_code
 }
 
-# Executes remote script with progress, exits on failure.
-# PRIMARY function for all configuration scripts - use this by default.
-# Shows progress spinner to user and logs output for debugging.
-# Parameters:
-#   $1 - Progress message (shown while running)
-#   $2 - Script content to execute (can be multi-line heredoc)
-#   $3 - Done message (optional, defaults to $1)
-# Side effects: Exits with code 1 on failure (no need to check return)
-# Example:
-#   remote_run "Installing packages" 'apt-get install -y foo' "Packages installed"
+# PRIMARY: Run remote script with progress, exit on failure.
+# $1=message, $2=script, $3=done_message (optional)
 remote_run() {
   local message="$1"
   local script="$2"
@@ -172,14 +119,7 @@ remote_run() {
   fi
 }
 
-# Copies file to remote VM via SCP.
-# Use for deploying config files. For templates with vars, use deploy_template().
-# Parameters:
-#   $1 - Source file path (local)
-#   $2 - Destination path (remote)
-# Returns: 0 on success, 1 on failure (check manually: || return 1)
-# Example:
-#   remote_copy "templates/foo.conf" "/etc/foo.conf" || return 1
+# Copy file to remote via SCP. $1=src, $2=dst
 remote_copy() {
   local src="$1"
   local dst="$2"

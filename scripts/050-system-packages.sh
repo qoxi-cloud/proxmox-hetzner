@@ -1,11 +1,7 @@
 # shellcheck shell=bash
-# =============================================================================
 # System package installation
-# =============================================================================
 
-# Installs ZFS tools if not available.
-# Checks for rescue system install scripts, falls back to apt.
-# Side effects: May install ZFS packages
+# Install ZFS if needed (rescue scripts or apt fallback)
 _install_zfs_if_needed() {
   command -v zpool &>/dev/null && return 0
 
@@ -29,9 +25,7 @@ _install_zfs_if_needed() {
   fi
 }
 
-# Installs required packages for the installer.
-# Adds Charm repo for gum if needed.
-# Side effects: May install packages, add apt repos
+# Install required packages (aria2c, jq, gum, etc.)
 _install_required_packages() {
   local -A required_commands=(
     [column]="bsdmainutils"

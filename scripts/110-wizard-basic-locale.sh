@@ -1,14 +1,8 @@
 # shellcheck shell=bash
-# =============================================================================
 # Configuration Wizard - Locale Helpers
 # Country to locale mapping
-# =============================================================================
 
-# Maps ISO country code to system locale string.
-# Uses most common language for each country (e.g., 'us' → 'en_US.UTF-8').
-# Parameters:
-#   $1 - Two-letter ISO country code (lowercase)
-# Returns: Locale string via stdout (e.g., 'en_US.UTF-8')
+# Map country code to locale. $1=country_code → locale
 _country_to_locale() {
   local country="${1:-us}"
   country="${country,,}" # lowercase
@@ -63,8 +57,7 @@ _country_to_locale() {
   esac
 }
 
-# Updates LOCALE global based on current COUNTRY selection.
-# Side effects: Sets LOCALE global, logs change
+# Update LOCALE based on COUNTRY selection
 _update_locale_from_country() {
   LOCALE=$(_country_to_locale "$COUNTRY")
   log "Set LOCALE=$LOCALE from COUNTRY=$COUNTRY"

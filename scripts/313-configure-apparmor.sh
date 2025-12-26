@@ -1,9 +1,7 @@
 # shellcheck shell=bash
-# =============================================================================
 # AppArmor configuration for Proxmox VE
 # Provides mandatory access control (MAC) for LXC containers and system services
 # Package installed via batch_install_packages() in 037-parallel-helpers.sh
-# =============================================================================
 
 # Configuration function for AppArmor
 # Configures GRUB for kernel parameters and enables service
@@ -23,7 +21,5 @@ _config_apparmor() {
   parallel_mark_configured "apparmor"
 }
 
-# =============================================================================
 # Public wrapper (generated via factory)
-# =============================================================================
 make_feature_wrapper "apparmor" "INSTALL_APPARMOR"

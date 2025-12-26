@@ -1,13 +1,7 @@
 # shellcheck shell=bash
-# =============================================================================
 # Drive release functions for QEMU
-# =============================================================================
 
-# Internal: sends signal to process if running.
-# Parameters:
-#   $1 - Process ID
-#   $2 - Signal name/number
-#   $3 - Log message
+# Send signal to process if running. $1=pid, $2=signal, $3=log_msg
 _signal_process() {
   local pid="$1"
   local signal="$2"
@@ -19,9 +13,7 @@ _signal_process() {
   fi
 }
 
-# Internal: kills processes by pattern with graceful then forced termination.
-# Parameters:
-#   $1 - Process pattern to match
+# Kill processes by pattern. $1=pattern
 _kill_processes_by_pattern() {
   local pattern="$1"
   local pids
@@ -134,30 +126,9 @@ _kill_drive_holders() {
   done
 }
 
-# =============================================================================
 # Main drive release function
-# =============================================================================
 
-# Releases drives from existing locks before QEMU starts.
-# Stops RAID arrays, deactivates LVM, unmounts filesystems, kills holders.
-#
-# Called by:
-#   - install_proxmox() - before starting QEMU installation
-#   - cleanup_and_error_handler() - on script exit if QEMU still running
-#
-# Cleanup sequence:
-#   1. Kill any existing QEMU processes
-#   2. Stop mdadm RAID arrays
-#   3. Deactivate LVM volume groups
-#   4. Unmount filesystems on target drives (uses DRIVES global)
-#   5. Kill processes holding drives open (lsof/fuser)
-#
-# Example:
-#   # Ensure drives are free before QEMU starts
-#   release_drives
-#   qemu-system-x86_64 -drive file=/dev/nvme0n1,format=raw ...
-#
-# Note: Uses DRIVES global array set by detect_hardware() in 041-system-check.sh
+# Release drives from locks (RAID, LVM, mounts, holders) before QEMU
 release_drives() {
   log "Releasing drives from locks..."
 

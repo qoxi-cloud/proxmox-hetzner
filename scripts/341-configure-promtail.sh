@@ -1,9 +1,7 @@
 # shellcheck shell=bash
-# =============================================================================
 # Promtail - Log collector for Grafana Loki
 # Collects system, auth, and Proxmox logs
 # Package installed via batch_install_packages() in 037-parallel-helpers.sh
-# =============================================================================
 
 # Configuration function for promtail
 _config_promtail() {
@@ -22,9 +20,7 @@ _config_promtail() {
   parallel_mark_configured "promtail"
 }
 
-# =============================================================================
 # Public wrapper (generated via factory)
 # Collects logs from: /var/log/syslog, auth.log, pve*.log, kernel, journal
 # Loki URL must be configured post-installation in /etc/promtail/promtail.yml
-# =============================================================================
 make_feature_wrapper "promtail" "INSTALL_PROMTAIL"

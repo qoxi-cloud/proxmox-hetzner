@@ -1,8 +1,6 @@
 # shellcheck shell=bash
-# =============================================================================
 # Configuration Wizard - Network Settings Editors (Bridge & Basic)
 # interface, bridge_mode, private_subnet, bridge_mtu
-# =============================================================================
 
 # Edits primary network interface via selection list.
 # Uses cached interface list from system detection.

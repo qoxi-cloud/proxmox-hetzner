@@ -1,7 +1,5 @@
 # shellcheck shell=bash
-# =============================================================================
 # Configuration constants
-# =============================================================================
 
 # GitHub repository for template downloads (can be overridden via environment)
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-installer}"

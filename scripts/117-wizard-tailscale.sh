@@ -1,7 +1,5 @@
 # shellcheck shell=bash
-# =============================================================================
 # Configuration Wizard - Tailscale Settings Editors
-# =============================================================================
 
 # Prompts for Tailscale auth key with validation.
 # Sets _TAILSCALE_TMP_KEY on success, clears on cancel.
@@ -13,8 +11,7 @@ _tailscale_get_auth_key() {
     --prompt "Auth Key: "
 }
 
-# Prompts for Tailscale Web UI (Serve) configuration.
-# Side effects: Sets TAILSCALE_WEBUI global
+# Prompt for Tailscale Web UI config. Sets TAILSCALE_WEBUI.
 _tailscale_configure_webui() {
   _wiz_start_edit
   _wiz_description \
@@ -31,9 +28,7 @@ _tailscale_configure_webui() {
   _wiz_toggle "TAILSCALE_WEBUI" "Tailscale Web UI:" "no"
 }
 
-# Enables Tailscale with auth key and configures related settings.
-# Parameters: $1 - auth key
-# Side effects: Sets INSTALL_TAILSCALE, TAILSCALE_AUTH_KEY, SSL_TYPE, FIREWALL_MODE
+# Enable Tailscale with auth key. $1=auth_key
 _tailscale_enable() {
   local auth_key="$1"
 
@@ -49,8 +44,7 @@ _tailscale_enable() {
   fi
 }
 
-# Disables Tailscale and clears related settings.
-# Side effects: Clears INSTALL_TAILSCALE, TAILSCALE_AUTH_KEY, TAILSCALE_WEBUI, SSL_TYPE
+# Disable Tailscale and clear related settings
 _tailscale_disable() {
   INSTALL_TAILSCALE="no"
   TAILSCALE_AUTH_KEY=""
@@ -62,9 +56,7 @@ _tailscale_disable() {
   fi
 }
 
-# Edits Tailscale VPN configuration.
-# Prompts for auth key if enabled, validates key format.
-# Updates INSTALL_TAILSCALE, TAILSCALE_AUTH_KEY, SSL_TYPE, FIREWALL_MODE globals.
+# Edit Tailscale VPN configuration
 _edit_tailscale() {
   _wiz_start_edit
 

@@ -1,25 +1,10 @@
 # shellcheck shell=bash
-# =============================================================================
 # Configuration Wizard - Input Helpers
-# =============================================================================
 # Reusable input patterns for validation and filtering
 
-# =============================================================================
 # Validated input helper
-# =============================================================================
 
-# Input field with validation loop.
-# Prompts user until valid input or cancel (empty input).
-# Parameters:
-#   $1 - Variable name to set (e.g., "PVE_HOSTNAME")
-#   $2 - Validation function name (e.g., "validate_hostname")
-#   $3 - Error message on validation failure
-#   $@ - All remaining args passed to _wiz_input (--prompt, --value, etc.)
-# Returns: 0 on valid input, 1 on cancel
-# Side effects: Sets the named global variable
-# Example:
-#   _wiz_input_validated "PVE_HOSTNAME" "validate_hostname" "Invalid hostname format" \
-#     --placeholder "e.g., pve" --value "$PVE_HOSTNAME" --prompt "Hostname: "
+# Input with validation loop. $1=var, $2=validate_func, $3=error_msg, $@=gum args
 _wiz_input_validated() {
   local var_name="$1"
   local validate_func="$2"
@@ -45,21 +30,9 @@ _wiz_input_validated() {
   done
 }
 
-# =============================================================================
 # Filter select helper
-# =============================================================================
 
-# Filter list with variable assignment.
-# Common pattern for timezone, keyboard, country selection.
-# Parameters:
-#   $1 - Variable name to set (e.g., "TIMEZONE")
-#   $2 - Prompt text (e.g., "Timezone: ")
-#   $3 - Data to filter (newline-separated list)
-#   $4 - Optional: footer height (default: 6)
-# Returns: 0 on selection, 1 on cancel
-# Side effects: Sets the named global variable
-# Example:
-#   _wiz_filter_select "TIMEZONE" "Timezone: " "$WIZ_TIMEZONES"
+# Filter list and set variable. $1=var, $2=prompt, $3=data, $4=height (optional)
 _wiz_filter_select() {
   local var_name="$1"
   local prompt="$2"

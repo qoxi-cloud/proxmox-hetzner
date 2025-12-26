@@ -1,8 +1,6 @@
 # shellcheck shell=bash
-# =============================================================================
 # Configuration phases for Proxmox post-install
 # Broken out for maintainability and testability
-# =============================================================================
 
 # PHASE 1: Base Configuration (sequential - dependencies)
 # Must run first - sets up admin user and base system
@@ -22,7 +20,6 @@ _phase_storage_configuration() {
 }
 
 # PHASE 3: Security Configuration (parallel after batch install)
-# Returns: 0 on success, 1 on failure
 _phase_security_configuration() {
   # Batch install security & optional packages first
   batch_install_packages

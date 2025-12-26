@@ -1,12 +1,7 @@
 # shellcheck shell=bash
-# =============================================================================
 # Basic validation functions (hostname, user, email, password)
-# =============================================================================
 
-# Validates hostname format (alphanumeric, hyphens, 1-63 chars).
-# Parameters:
-#   $1 - Hostname to validate
-# Returns: 0 if valid, 1 otherwise
+# Validate hostname format. $1=hostname
 validate_hostname() {
   local hostname="$1"
   # Reject reserved hostname "localhost"
@@ -15,12 +10,7 @@ validate_hostname() {
   [[ $hostname =~ ^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$ ]]
 }
 
-# Validates admin username format for Linux systems.
-# Must be lowercase, start with letter, 1-32 chars.
-# Blocks reserved system usernames.
-# Parameters:
-#   $1 - Username to validate
-# Returns: 0 if valid, 1 otherwise
+# Validate admin username (lowercase, starts with letter, 1-32 chars). $1=username
 validate_admin_username() {
   local username="$1"
 
@@ -44,38 +34,26 @@ validate_admin_username() {
   return 0
 }
 
-# Validates fully qualified domain name format.
-# Parameters:
-#   $1 - FQDN to validate
-# Returns: 0 if valid, 1 otherwise
+# Validate FQDN format. $1=fqdn
 validate_fqdn() {
   local fqdn="$1"
   # FQDN: valid hostname labels separated by dots
   [[ $fqdn =~ ^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$ ]]
 }
 
-# Validates email address format (basic check).
-# Parameters:
-#   $1 - Email address to validate
-# Returns: 0 if valid, 1 otherwise
+# Validate email format. $1=email
 validate_email() {
   local email="$1"
   # Basic email validation
   [[ $email =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]]
 }
 
-# Checks if string contains only ASCII printable characters.
-# Parameters:
-#   $1 - String to check
-# Returns: 0 if all ASCII printable, 1 otherwise
+# Check if string is ASCII printable. $1=string
 is_ascii_printable() {
   LC_ALL=C bash -c '[[ "$1" =~ ^[[:print:]]+$ ]]' _ "$1"
 }
 
-# Returns descriptive error message for invalid password.
-# Parameters:
-#   $1 - Password to check
-# Returns: Error message via stdout, empty if valid
+# Get password error message (empty if valid). $1=password → error_msg
 get_password_error() {
   local password="$1"
   if [[ -z $password ]]; then

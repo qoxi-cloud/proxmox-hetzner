@@ -1,11 +1,7 @@
 # shellcheck shell=bash
-# =============================================================================
 # Package preparation for Proxmox installation
-# =============================================================================
 
-# Prepares system packages for Proxmox installation.
-# Adds Proxmox repository, downloads GPG key, installs required packages.
-# Side effects: Modifies apt sources, installs packages
+# Prepare system packages (Proxmox repo, GPG key, packages)
 prepare_packages() {
   log "Starting package preparation"
 
@@ -32,7 +28,7 @@ prepare_packages() {
 
   # Update package lists
   log "Updating package lists"
-  apt clean >>"$LOG_FILE" 2>&1
+  apt-get clean >>"$LOG_FILE" 2>&1
   apt-get update >>"$LOG_FILE" 2>&1 &
   show_progress $! "Updating package lists" "Package lists updated"
   wait $!

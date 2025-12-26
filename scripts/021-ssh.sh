@@ -1,8 +1,6 @@
 # shellcheck shell=bash
-# =============================================================================
 # SSH helper functions - Session management and connection
 # ControlMaster multiplexes all connections over single TCP socket
-# =============================================================================
 
 # Control socket path (uses $$ so subshells share master connection)
 _SSH_CONTROL_PATH="/tmp/ssh-pve-control.$$"
@@ -15,9 +13,7 @@ SSH_PORT="${SSH_PORT_QEMU:-5555}"
 _SSH_SESSION_PASSFILE=""
 _SSH_SESSION_LOGGED=false
 
-# =============================================================================
 # Session management
-# =============================================================================
 
 # Gets passfile path based on top-level PID ($$ inherited by subshells)
 _ssh_passfile_path() {
@@ -95,9 +91,7 @@ _ssh_get_passfile() {
   printf '%s\n' "$_SSH_SESSION_PASSFILE"
 }
 
-# =============================================================================
 # SSH command construction
-# =============================================================================
 
 # Builds base SSH command with options and auth. $1=timeout (optional)
 _ssh_base_cmd() {
@@ -117,9 +111,7 @@ _scp_base_cmd() {
   printf 'sshpass -f "%s" scp -P "%s" %s' "$passfile" "$SSH_PORT" "$SSH_OPTS"
 }
 
-# =============================================================================
 # Port and connection checks
-# =============================================================================
 
 # Checks if port is available. Returns 0 if available, 1 if in use
 check_port_available() {
@@ -195,9 +187,7 @@ wait_for_ssh_ready() {
   return $?
 }
 
-# =============================================================================
 # SSH key utilities
-# =============================================================================
 
 # Parses SSH key into SSH_KEY_TYPE, SSH_KEY_DATA, SSH_KEY_COMMENT, SSH_KEY_SHORT
 parse_ssh_key() {

@@ -1,8 +1,6 @@
 # shellcheck shell=bash
-# =============================================================================
 # Network interfaces section generators
 # Returns config sections for /etc/network/interfaces
-# =============================================================================
 
 # Generates loopback interface section
 _generate_loopback() {

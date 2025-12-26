@@ -1,9 +1,7 @@
 # shellcheck shell=bash
-# =============================================================================
 # AIDE (Advanced Intrusion Detection Environment) configuration
 # File integrity monitoring for detecting unauthorized changes
 # Package installed via batch_install_packages() in 037-parallel-helpers.sh
-# =============================================================================
 
 # Configuration function for AIDE
 # Initializes database and sets up daily checks via systemd timer
@@ -23,7 +21,5 @@ _config_aide() {
   parallel_mark_configured "aide"
 }
 
-# =============================================================================
 # Public wrapper (generated via factory)
-# =============================================================================
 make_feature_wrapper "aide" "INSTALL_AIDE"

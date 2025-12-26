@@ -1,8 +1,6 @@
 # shellcheck shell=bash
-# =============================================================================
 # Network interfaces configuration generator
 # Generates /etc/network/interfaces based on BRIDGE_MODE and IPv6 settings
-# =============================================================================
 
 # Generates complete /etc/network/interfaces content
 # Uses: BRIDGE_MODE, INTERFACE_NAME, MAIN_IPV4, MAIN_IPV4_GW, MAIN_IPV6, etc.
@@ -52,9 +50,7 @@ EOF
   esac
 }
 
-# Generates interfaces config and saves to file
-# Parameters:
-#   $1 - Output file path (default: ./templates/interfaces)
+# Generate interfaces config to file. $1=output_path
 generate_interfaces_file() {
   local output="${1:-./templates/interfaces}"
   _generate_interfaces_conf >"$output"

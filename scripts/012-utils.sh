@@ -1,19 +1,12 @@
 # shellcheck shell=bash
-# =============================================================================
 # General utilities
-# =============================================================================
 # NOTE: Many functions have been moved to specialized modules:
 # - download_file → 011-downloads.sh
 # - apply_template_vars, download_template → 020-templates.sh
 # - generate_password → 034-password-utils.sh
 # - show_progress → 010-display.sh
-# =============================================================================
 
-# Securely deletes a file by overwriting before removal.
-# Uses shred if available, falls back to dd + rm.
-# Parameters:
-#   $1 - File path to delete
-# Returns: 0 on success, 1 if file doesn't exist
+# Securely delete file (shred or dd fallback). $1=file_path
 secure_delete_file() {
   local file="$1"
 

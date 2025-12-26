@@ -1,8 +1,6 @@
 # shellcheck shell=bash
-# =============================================================================
 # Configuration Wizard - Network Settings Editors (IPv6 & Firewall)
 # ipv6, firewall
-# =============================================================================
 
 # Edits IPv6 configuration mode and address/gateway.
 # Modes: auto (detected), manual (custom input), disabled.

@@ -1,10 +1,7 @@
 # shellcheck shell=bash
-# =============================================================================
 # Configuration Wizard - SSL Settings Editors
-# =============================================================================
 
-# Validates FQDN for Let's Encrypt.
-# Returns: 0 if valid, 1 if missing, 2 if invalid format
+# Validate FQDN for Let's Encrypt. Returns 0=valid, 1=missing, 2=invalid
 _ssl_validate_fqdn() {
   if [[ -z $FQDN ]]; then
     _wiz_start_edit
@@ -32,8 +29,7 @@ _ssl_validate_fqdn() {
   return 0
 }
 
-# Runs DNS validation with animated progress dots.
-# Returns: DNS validation result (0=success, 1=no resolution, 2=wrong IP)
+# Run DNS validation with progress. Returns 0=ok, 1=no resolve, 2=wrong IP
 _ssl_check_dns_animated() {
   _wiz_start_edit
   _wiz_hide_cursor
@@ -71,8 +67,7 @@ _ssl_check_dns_animated() {
   return "$dns_result"
 }
 
-# Displays DNS error and falls back to self-signed.
-# Parameters: $1 - error type (1=no resolution, 2=wrong IP)
+# Show DNS error and fallback to self-signed. $1=error_type (1=no resolve, 2=wrong IP)
 _ssl_show_dns_error() {
   local error_type="$1"
 
@@ -95,8 +90,7 @@ _ssl_show_dns_error() {
   sleep "$((WIZARD_MESSAGE_DELAY + 2))"
 }
 
-# Validates Let's Encrypt requirements: FQDN format and DNS resolution.
-# Returns: 0 if valid, 1 if should fallback to self-signed
+# Validate Let's Encrypt requirements. Returns 0=valid, 1=fallback to self-signed
 _ssl_validate_letsencrypt() {
   _ssl_validate_fqdn || return 1
 

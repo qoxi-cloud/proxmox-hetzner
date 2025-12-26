@@ -1,11 +1,7 @@
 # shellcheck shell=bash
-# =============================================================================
 # Finish and reboot
-# =============================================================================
 
-# Renders wizard-style completion screen with credentials and access info.
-# Shows hostname, admin user, SSH/Web UI access based on firewall mode.
-# Side effects: Clears screen, outputs to stdout
+# Render completion screen with credentials and access info
 _render_completion_screen() {
   local output=""
   local banner_output
@@ -101,9 +97,7 @@ _render_completion_screen() {
   printf '%b' "$output"
 }
 
-# Handles user input on completion screen.
-# Enter = reboot, Q = exit without reboot.
-# Side effects: May reboot system or exit script
+# Handle completion screen input (Enter=reboot, Q=exit)
 _completion_screen_input() {
   while true; do
     _render_completion_screen
@@ -144,9 +138,7 @@ reboot_to_main_os() {
   _completion_screen_input
 }
 
-# =============================================================================
 # Main execution flow
-# =============================================================================
 
 log "=========================================="
 log "Qoxi Automated Installer v${VERSION}"

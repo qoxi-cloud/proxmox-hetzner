@@ -1,8 +1,6 @@
 # shellcheck shell=bash
-# =============================================================================
 # Configuration Wizard - Basic Settings Editors
 # hostname, email, password, timezone, keyboard, country
-# =============================================================================
 
 # Edits hostname and domain settings via input dialogs.
 # Validates hostname format and updates PVE_HOSTNAME, DOMAIN_SUFFIX, FQDN.

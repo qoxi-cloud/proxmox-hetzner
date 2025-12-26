@@ -1,12 +1,7 @@
 # shellcheck shell=bash
-# =============================================================================
 # Display utilities
-# =============================================================================
 
-# Prints success message with checkmark.
-# Parameters:
-#   $1 - Label or full message
-#   $2 - Optional value (highlighted in cyan)
+# Print success with checkmark. $1=label, $2=value (optional)
 print_success() {
   if [[ $# -eq 2 ]]; then
     printf '%s\n' "${CLR_CYAN}✓${CLR_RESET} $1 ${CLR_CYAN}$2${CLR_RESET}"
@@ -15,17 +10,12 @@ print_success() {
   fi
 }
 
-# Prints error message with red cross icon.
-# Parameters:
-#   $1 - Error message to display
+# Print error with red cross. $1=message
 print_error() {
   printf '%s\n' "${CLR_RED}✗${CLR_RESET} $1"
 }
 
-# Prints warning message with yellow warning icon.
-# Parameters:
-#   $1 - Warning message or label
-#   $2 - Optional: "true" for nested indent, or value to highlight in cyan
+# Print warning with yellow icon. $1=message, $2="true" or value (optional)
 print_warning() {
   local message="$1"
   local second="${2:-false}"
@@ -42,24 +32,14 @@ print_warning() {
   fi
 }
 
-# Prints informational message with cyan info symbol.
-# Parameters:
-#   $1 - Informational message to display
+# Print info with cyan icon. $1=message
 print_info() {
   printf '%s\n' "${CLR_CYAN}ℹ${CLR_RESET} $1"
 }
 
-# =============================================================================
 # Progress indicators
-# =============================================================================
 
-# Shows progress indicator with gum spinner while process runs.
-# Parameters:
-#   $1 - PID of process to wait for
-#   $2 - Progress message
-#   $3 - Optional done message or "--silent" to clear line on success
-#   $4 - Optional "--silent" flag
-# Returns: Exit code of the waited process
+# Show gum spinner while process runs. $1=pid, $2=message, $3=done_msg/--silent
 show_progress() {
   local pid=$1
   local message="${2:-Processing}"
@@ -91,10 +71,7 @@ show_progress() {
   return $exit_code
 }
 
-# Formats wizard-style step header with line, centered dot, and label above.
-# Looks like a continuation of wizard navigation: line-dot-line with label above.
-# Usage: format_wizard_header "Title"
-# Returns: Multiline header aligned with banner
+# Format wizard header with line-dot-line. $1=title
 format_wizard_header() {
   local title="$1"
 

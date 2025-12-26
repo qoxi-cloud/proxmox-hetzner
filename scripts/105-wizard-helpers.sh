@@ -1,23 +1,10 @@
 # shellcheck shell=bash
-# =============================================================================
 # Configuration Wizard - Editor Helpers
-# =============================================================================
 # Reusable helpers for common wizard editor patterns
 
-# =============================================================================
 # Password editor helper
-# =============================================================================
 
-# Universal password editor with Generate/Manual options.
-# Handles validation, generation, and display of saved password warning.
-# Parameters:
-#   $1 - Variable name to set (e.g., "NEW_ROOT_PASSWORD", "ADMIN_PASSWORD")
-#   $2 - Header text for choose menu (e.g., "Password:", "Admin Password:")
-#   $3 - Success message after generation (e.g., "it will be required for login")
-#   $4 - Label for display (e.g., "Generated password:", "Generated admin password:")
-#   $5 - Optional: also set PASSWORD_GENERATED="yes" if "yes"
-# Returns: 0 on success, 1 on cancel
-# Side effects: Sets the named global variable
+# Password editor (Generate/Manual). $1=var, $2=header, $3=success_msg, $4=label, $5=set_generated
 _wiz_password_editor() {
   local var_name="$1"
   local header="$2"
@@ -94,20 +81,9 @@ _wiz_password_editor() {
   done
 }
 
-# =============================================================================
 # Choose with mapping helper
-# =============================================================================
 
-# Single-select chooser that maps display values to internal values.
-# Generates options list from mapping array (no separate WIZ_*_MODES needed).
-# Parameters:
-#   $1 - Variable name to set (e.g., "BRIDGE_MODE")
-#   $2 - Header text (e.g., "Bridge mode:")
-#   $@ - Pairs of "Display text:internal_value" (e.g., "External bridge:external")
-# Returns: 0 on selection, 1 on cancel
-# Side effects: Sets the named global variable
-# Example:
-#   _wiz_choose_mapped "BRIDGE_MODE" "Bridge mode:" "${WIZ_MAP_BRIDGE_MODE[@]}"
+# Chooser with display→internal mapping. $1=var, $2=header, $@="Display:internal" pairs
 _wiz_choose_mapped() {
   local var_name="$1"
   local header="$2"
@@ -138,19 +114,9 @@ _wiz_choose_mapped() {
   return 0
 }
 
-# =============================================================================
 # Toggle (Enabled/Disabled) helper
-# =============================================================================
 
-# Toggle chooser that maps Enabled→yes, Disabled→no.
-# Returns 2 if "Enabled" selected (for chaining with &&).
-# Parameters:
-#   $1 - Variable name to set (e.g., "TAILSCALE_WEBUI")
-#   $2 - Header text (e.g., "Tailscale Web UI:")
-#   $3 - Default value on cancel ("yes" or "no", default: "no")
-# Returns: 0 on Disabled, 1 on cancel, 2 on Enabled
-# Example:
-#   _wiz_toggle "INSTALL_FEATURE" "Enable feature:" && do_something_on_enabled
+# Toggle Enabled/Disabled. $1=var, $2=header, $3=default. Returns: 0=disabled, 1=cancel, 2=enabled
 _wiz_toggle() {
   local var_name="$1"
   local header="$2"
@@ -171,19 +137,9 @@ _wiz_toggle() {
   fi
 }
 
-# =============================================================================
 # Feature checkbox editor helper
-# =============================================================================
 
-# Universal feature checkbox editor with multi-select.
-# Handles building gum args for pre-selected items and setting globals.
-# Parameters:
-#   $1 - Header text (e.g., "Security:", "Monitoring:")
-#   $2 - Footer size (number of items + 1 for header)
-#   $3 - Options variable name (e.g., "WIZ_FEATURES_SECURITY")
-#   $@ - Pairs of "feature_name:INSTALL_VAR_NAME" (e.g., "apparmor:INSTALL_APPARMOR")
-# Returns: 0 on success, 1 on cancel
-# Side effects: Sets the named INSTALL_* globals to "yes" or "no"
+# Feature multi-select. $1=header, $2=footer_size, $3=options_var, $@="feature:VAR" pairs
 _wiz_feature_checkbox() {
   local header="$1"
   local footer_size="$2"

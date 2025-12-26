@@ -1,9 +1,7 @@
 # shellcheck shell=bash
-# =============================================================================
 # vnstat - Network traffic monitoring
 # Lightweight daemon for monitoring network bandwidth usage
 # Package installed via batch_install_packages() in 037-parallel-helpers.sh
-# =============================================================================
 
 # Configuration function for vnstat
 # Deploys config and initializes database for network interfaces
@@ -28,8 +26,6 @@ _config_vnstat() {
   parallel_mark_configured "vnstat"
 }
 
-# =============================================================================
 # Public wrapper (generated via factory)
 # Called via run_parallel_group() in parallel execution
-# =============================================================================
 make_feature_wrapper "vnstat" "INSTALL_VNSTAT"

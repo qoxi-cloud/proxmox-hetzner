@@ -1,14 +1,7 @@
 # shellcheck shell=bash
-# =============================================================================
 # DNS validation functions
-# =============================================================================
 
-# Validates that FQDN resolves to expected IP using public DNS servers.
-# Parameters:
-#   $1 - FQDN to resolve
-#   $2 - Expected IP address
-# Returns: 0 if matches, 1 if no resolution, 2 if wrong IP
-# Side effects: Sets DNS_RESOLVED_IP global
+# Validate FQDN resolves to IP. $1=fqdn, $2=expected_ip. Sets DNS_RESOLVED_IP.
 validate_dns_resolution() {
   local fqdn="$1"
   local expected_ip="$2"

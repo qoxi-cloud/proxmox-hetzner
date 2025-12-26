@@ -1,7 +1,5 @@
 # shellcheck shell=bash
-# =============================================================================
 # Wizard menu option lists (WIZ_ prefix to avoid conflicts)
-# =============================================================================
 
 # IPv6 configuration modes
 # shellcheck disable=SC2034
@@ -59,10 +57,8 @@ readonly WIZ_FEATURES_TOOLS="yazi
 nvim
 ringbuffer"
 
-# =============================================================================
 # Display → Internal value mappings for _wiz_choose_mapped
 # Format: "Display text:internal_value"
-# =============================================================================
 
 # Bridge mode mapping
 # shellcheck disable=SC2034

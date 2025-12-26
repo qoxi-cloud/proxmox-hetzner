@@ -1,14 +1,8 @@
 # shellcheck shell=bash
-# =============================================================================
 # Proxmox ISO download methods
 # Fallback chain: aria2c → curl → wget
-# =============================================================================
 
-# Internal: downloads ISO using curl with retry support.
-# Parameters:
-#   $1 - URL to download
-#   $2 - Output filename
-# Returns: Exit code from curl
+# Download ISO via curl. $1=url, $2=output
 _download_iso_curl() {
   local url="$1"
   local output="$2"
@@ -25,11 +19,7 @@ _download_iso_curl() {
     "$url" >>"$LOG_FILE" 2>&1
 }
 
-# Internal: downloads ISO using wget with retry support.
-# Parameters:
-#   $1 - URL to download
-#   $2 - Output filename
-# Returns: Exit code from wget
+# Download ISO via wget. $1=url, $2=output
 _download_iso_wget() {
   local url="$1"
   local output="$2"
@@ -45,12 +35,7 @@ _download_iso_wget() {
     "$url" >>"$LOG_FILE" 2>&1
 }
 
-# Internal: downloads ISO using aria2c with conservative settings.
-# Parameters:
-#   $1 - URL to download
-#   $2 - Output filename
-#   $3 - Optional SHA256 checksum for verification
-# Returns: Exit code from aria2c
+# Download ISO via aria2c. $1=url, $2=output, $3=checksum (optional)
 _download_iso_aria2c() {
   local url="$1"
   local output="$2"
@@ -83,14 +68,7 @@ _download_iso_aria2c() {
   aria2c "${aria2_args[@]}" "$url" >>"$LOG_FILE" 2>&1
 }
 
-# Internal: downloads ISO with fallback chain (aria2c → curl → wget).
-# Tries aria2c first (fastest with parallel connections), then falls back to others.
-# Parameters:
-#   $1 - URL to download
-#   $2 - Output filename
-#   $3 - Optional SHA256 checksum
-#   $4 - Optional file to write download method (for background job communication)
-# Returns: 0 on success, 1 on all failures
+# Download ISO with fallback (aria2c→curl→wget). $1=url, $2=output, $3=checksum, $4=method_file
 _download_iso_with_fallback() {
   local url="$1"
   local output="$2"

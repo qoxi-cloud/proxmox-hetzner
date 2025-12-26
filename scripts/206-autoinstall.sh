@@ -1,12 +1,7 @@
 # shellcheck shell=bash
-# =============================================================================
 # Autoinstall ISO creation for Proxmox
-# =============================================================================
 
-# Validates answer.toml has all required fields and correct format.
-# Parameters:
-#   $1 - Path to answer.toml file
-# Returns: 0 if valid, 1 if validation fails
+# Validate answer.toml format. $1=file_path
 validate_answer_toml() {
   local file="$1"
 
@@ -42,9 +37,7 @@ validate_answer_toml() {
   return 0
 }
 
-# Creates answer.toml for Proxmox autoinstall.
-# Downloads template and applies configuration variables.
-# Side effects: Creates answer.toml file, exits on failure
+# Create answer.toml for Proxmox autoinstall
 make_answer_toml() {
   log "Creating answer.toml for autoinstall"
   log "ZFS_RAID=$ZFS_RAID, BOOT_DISK=$BOOT_DISK"
@@ -199,8 +192,7 @@ EOF
   fi
 }
 
-# Creates autoinstall ISO from Proxmox ISO and answer.toml.
-# Side effects: Creates pve-autoinstall.iso, removes pve.iso
+# Create autoinstall ISO from Proxmox ISO and answer.toml
 make_autoinstall_iso() {
   log "Creating autoinstall ISO"
   log "Input: pve.iso exists: $(test -f pve.iso && echo 'yes' || echo 'no')"

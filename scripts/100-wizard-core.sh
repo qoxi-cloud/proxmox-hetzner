@@ -1,15 +1,9 @@
 # shellcheck shell=bash
-# =============================================================================
 # Configuration Wizard - Main Logic
-# =============================================================================
 
-# =============================================================================
 # Main wizard loop
-# =============================================================================
 
-# Main wizard navigation and input loop.
-# Handles arrow key navigation, screen switching, field editing.
-# Returns: 0 when user presses 'S' to start installation
+# Main wizard loop. Returns 0 when 'S' pressed to start installation.
 _wizard_main() {
   local selection=0
 
@@ -104,15 +98,9 @@ _wizard_main() {
   done
 }
 
-# =============================================================================
 # Edit screen helpers
-# =============================================================================
 
-# Displays footer with key hints below current cursor position.
-# Reserves space for component and shows appropriate navigation hints.
-# Parameters:
-#   $1 - type: "input" (default), "filter", or "checkbox"
-#   $2 - lines for component (default: 1 for input, used for filter/checkbox height)
+# Show footer with key hints. $1=type (input/filter/checkbox), $2=lines
 _show_input_footer() {
   local type="${1:-input}"
   local component_lines="${2:-1}"
@@ -143,12 +131,9 @@ _show_input_footer() {
   tput cuu $((component_lines + 2))
 }
 
-# =============================================================================
 # Configuration validation
-# =============================================================================
 
-# Validates configuration and shows UI with missing fields
-# Returns: 0 if valid, 1 if missing required fields
+# Validate config, show missing fields. Returns 0=valid, 1=missing
 _validate_config() {
   # Quick check first
   _wiz_config_complete && return 0
@@ -200,9 +185,7 @@ _validate_config() {
   return 0
 }
 
-# =============================================================================
 # Main wizard entry point
-# =============================================================================
 
 # Main entry point for the configuration wizard.
 # Runs in alternate screen buffer with hidden cursor.

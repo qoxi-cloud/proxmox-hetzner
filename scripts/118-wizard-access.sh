@@ -1,7 +1,5 @@
 # shellcheck shell=bash
-# =============================================================================
 # Configuration Wizard - Admin User & API Token Editors
-# =============================================================================
 
 # Edits non-root admin username for SSH and Proxmox access.
 # Validates username format (lowercase, no reserved names).
@@ -54,9 +52,7 @@ _edit_admin_password() {
     "Generated admin password:"
 }
 
-# =============================================================================
 # API Token Editor
-# =============================================================================
 
 # Edits Proxmox API token creation settings.
 # Prompts for token name if enabled (default: automation).

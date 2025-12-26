@@ -1,7 +1,5 @@
 # shellcheck shell=bash
-# =============================================================================
 # Configuration Wizard - SSH Key Editor
-# =============================================================================
 
 # Edits SSH public key for admin user access.
 # Auto-detects key from Rescue System if available.

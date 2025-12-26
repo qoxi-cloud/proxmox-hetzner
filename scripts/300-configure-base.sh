@@ -1,15 +1,9 @@
 # shellcheck shell=bash
-# =============================================================================
 # Base system configuration via SSH
-# =============================================================================
 
-# =============================================================================
 # Helper functions for run_with_progress
-# =============================================================================
 
-# Copies essential configuration files to remote system in parallel.
-# Files: hosts, interfaces, sysctl, debian.sources, proxmox.sources, resolv.conf
-# Returns: 0 on success, 1 if any copy fails
+# Copy config files to remote (hosts, interfaces, sysctl, sources, resolv)
 _copy_config_files() {
   run_parallel_copies \
     "templates/hosts:/etc/hosts" \
@@ -20,9 +14,7 @@ _copy_config_files() {
     "templates/resolv.conf:/etc/resolv.conf"
 }
 
-# Applies basic system settings: backs up sources.list, sets hostname.
-# Disables rpcbind service (not needed for Proxmox).
-# Returns: 0 on success, 1 on critical failure
+# Apply basic system settings (backup sources, set hostname, disable rpcbind)
 _apply_basic_settings() {
   remote_exec "[ -f /etc/apt/sources.list ] && mv /etc/apt/sources.list /etc/apt/sources.list.bak" || return 1
   remote_exec "echo '$PVE_HOSTNAME' > /etc/hostname" || return 1
@@ -31,9 +23,7 @@ _apply_basic_settings() {
   }
 }
 
-# Copies locale template files to remote system.
-# Files: locale.sh (profile.d), default-locale, environment
-# Returns: 0 on success, 1 on failure
+# Copy locale files (locale.sh, default-locale, environment)
 _install_locale_files() {
   remote_copy "templates/locale.sh" "/etc/profile.d/locale.sh" || return 1
   remote_exec "chmod +x /etc/profile.d/locale.sh" || return 1
@@ -41,9 +31,7 @@ _install_locale_files() {
   remote_copy "templates/environment" "/etc/environment" || return 1
 }
 
-# Configures fastfetch shell integration for login shells.
-# Installs to profile.d and adds to bash.bashrc for interactive shells.
-# Returns: 0 on success, 1 on failure
+# Configure fastfetch shell integration
 _configure_fastfetch() {
   remote_copy "templates/fastfetch.sh" "/etc/profile.d/fastfetch.sh" || return 1
   remote_exec "chmod +x /etc/profile.d/fastfetch.sh" || return 1
@@ -51,17 +39,13 @@ _configure_fastfetch() {
   remote_exec "grep -q 'profile.d/fastfetch.sh' /etc/bash.bashrc || echo '[ -f /etc/profile.d/fastfetch.sh ] && . /etc/profile.d/fastfetch.sh' >> /etc/bash.bashrc" || return 1
 }
 
-# Configures bat (batcat) with Visual Studio Dark+ theme.
-# Creates symlink from batcat to bat, deploys config to admin user.
-# Returns: 0 on success, 1 on failure
+# Configure bat with theme and symlink
 _configure_bat() {
   remote_exec "ln -sf /usr/bin/batcat /usr/local/bin/bat" || return 1
   deploy_user_config "templates/bat-config" ".config/bat/config" || return 1
 }
 
-# Configures ZSH as default shell for admin user.
-# Deploys .zshrc and .p10k.zsh (Powerlevel10k config).
-# Returns: 0 on success, 1 on failure
+# Configure ZSH with .zshrc and p10k
 _configure_zsh_files() {
   deploy_user_config "templates/zshrc" ".zshrc" || return 1
   deploy_user_config "templates/p10k.zsh" ".p10k.zsh" || return 1
@@ -69,13 +53,9 @@ _configure_zsh_files() {
   remote_exec 'chsh -s /bin/zsh '"$ADMIN_USERNAME"'' || return 1
 }
 
-# =============================================================================
 # Private implementation functions
-# =============================================================================
 
-# Main implementation for base system configuration.
-# Copies templates, configures repos, installs packages, sets up locales.
-# Side effects: Modifies remote system, installs packages
+# Main base system configuration implementation
 _config_base_system() {
   # Copy template files to VM (parallel for better performance)
   run_with_progress "Copying configuration files" "Configuration files copied" _copy_config_files
@@ -153,9 +133,7 @@ _config_base_system() {
   run_with_progress "Configuring bat" "Bat configured" _configure_bat
 }
 
-# Configures default shell for admin user.
-# Installs Oh-My-Zsh with Powerlevel10k theme if ZSH selected.
-# Side effects: Clones git repos, modifies admin user shell
+# Configure admin shell (installs Oh-My-Zsh + p10k if ZSH)
 _config_shell() {
   # Configure default shell for admin user (root login is disabled)
   if [[ $SHELL_TYPE == "zsh" ]]; then
@@ -189,20 +167,14 @@ _config_shell() {
   fi
 }
 
-# =============================================================================
 # Public wrappers
-# =============================================================================
 
-# Configures base system via SSH into QEMU VM.
-# Copies templates, configures repositories, installs packages.
-# Side effects: Modifies remote system configuration
+# Configure base system via SSH into QEMU VM
 configure_base_system() {
   _config_base_system
 }
 
-# Configures default shell for admin user.
-# Optionally installs ZSH with Oh-My-Zsh and Powerlevel10k theme.
-# Note: zsh, git, curl packages already installed via install_base_packages()
+# Configure default shell (ZSH with Oh-My-Zsh + p10k if selected)
 configure_shell() {
   _config_shell
 }

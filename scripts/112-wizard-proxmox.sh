@@ -1,8 +1,6 @@
 # shellcheck shell=bash
-# =============================================================================
 # Configuration Wizard - Proxmox Settings Editors
 # iso_version, repository
-# =============================================================================
 
 # Edits Proxmox ISO version via searchable list.
 # Fetches available ISOs (last 5, starting from v9) and updates PROXMOX_ISO_VERSION global.

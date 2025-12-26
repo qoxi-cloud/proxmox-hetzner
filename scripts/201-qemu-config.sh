@@ -1,17 +1,12 @@
 # shellcheck shell=bash
-# =============================================================================
 # QEMU configuration
-# =============================================================================
 
-# Checks if system is booted in UEFI mode.
-# Returns: 0 if UEFI, 1 if legacy BIOS
+# Check if UEFI mode. Returns 0=UEFI, 1=BIOS
 is_uefi_mode() {
   [[ -d /sys/firmware/efi ]]
 }
 
-# Configures QEMU settings (shared between install and boot).
-# Detects UEFI/BIOS mode, KVM availability, CPU cores, and RAM.
-# Side effects: Sets UEFI_OPTS, KVM_OPTS, CPU_OPTS, QEMU_CORES, QEMU_RAM, DRIVE_ARGS
+# Configure QEMU settings. Sets UEFI_OPTS, KVM_OPTS, QEMU_CORES/RAM, DRIVE_ARGS.
 setup_qemu_config() {
   log "Setting up QEMU configuration"
 

@@ -1,9 +1,7 @@
 # shellcheck shell=bash
-# =============================================================================
 # Auditd configuration for administrative action logging
 # Provides audit trail for security compliance and forensics
 # Package installed via batch_install_packages() in 037-parallel-helpers.sh
-# =============================================================================
 
 # Configuration function for auditd
 # Deploys audit rules and configures log retention
@@ -29,7 +27,5 @@ _config_auditd() {
   parallel_mark_configured "auditd"
 }
 
-# =============================================================================
 # Public wrapper (generated via factory)
-# =============================================================================
 make_feature_wrapper "auditd" "INSTALL_AUDITD"

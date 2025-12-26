@@ -1,9 +1,7 @@
 # shellcheck shell=bash
-# =============================================================================
 # Neovim configuration
 # Modern extensible text editor
 # Package installed via batch_install_packages() in 037-parallel-helpers.sh
-# =============================================================================
 
 # Configuration function for neovim
 # Creates vi/vim aliases via update-alternatives
@@ -24,7 +22,5 @@ _config_nvim() {
   parallel_mark_configured "nvim"
 }
 
-# =============================================================================
 # Public wrapper (generated via factory)
-# =============================================================================
 make_feature_wrapper "nvim" "INSTALL_NVIM"

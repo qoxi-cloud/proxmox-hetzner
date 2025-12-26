@@ -1,9 +1,7 @@
 # shellcheck shell=bash
-# =============================================================================
 # Fail2Ban configuration for brute-force protection
 # Protects SSH and Proxmox API from brute-force attacks
 # Package installed via batch_install_packages() in 037-parallel-helpers.sh
-# =============================================================================
 
 # Configuration function for Fail2Ban
 # Deploys jail config and Proxmox filter, enables service
@@ -20,9 +18,7 @@ _config_fail2ban() {
   parallel_mark_configured "fail2ban"
 }
 
-# =============================================================================
 # Public wrapper
-# =============================================================================
 
 # Public wrapper for Fail2Ban configuration
 configure_fail2ban() {

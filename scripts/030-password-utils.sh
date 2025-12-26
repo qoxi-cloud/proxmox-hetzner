@@ -1,12 +1,7 @@
 # shellcheck shell=bash
-# =============================================================================
 # Password utilities
-# =============================================================================
 
-# Generates a secure random password.
-# Parameters:
-#   $1 - Password length (default: 16)
-# Returns: Random password via stdout
+# Generate secure random password. $1=length (default 16) → password
 generate_password() {
   local length="${1:-16}"
   # Use /dev/urandom with base64, filter to alphanumeric + some special chars

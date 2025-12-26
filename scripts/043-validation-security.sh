@@ -1,14 +1,7 @@
 # shellcheck shell=bash
-# =============================================================================
 # Security validation functions (SSH key, Tailscale, disk space)
-# =============================================================================
 
-# Validates SSH public key format and security requirements.
-# Ensures key is proper OpenSSH format and meets security standards.
-# Uses ssh-keygen for validation and checks key strength.
-# Parameters:
-#   $1 - SSH public key to validate
-# Returns: 0 if valid, 1 otherwise
+# Validate SSH public key format and security. $1=key
 validate_ssh_key_secure() {
   local key="$1"
 
@@ -56,16 +49,9 @@ validate_ssh_key_secure() {
   esac
 }
 
-# =============================================================================
 # Disk space validation
-# =============================================================================
 
-# Validates available disk space meets minimum requirements.
-# Parameters:
-#   $1 - Path to check (default: /root)
-#   $2 - Minimum required space in MB (default: MIN_DISK_SPACE_MB)
-# Returns: 0 if sufficient, 1 otherwise
-# Side effects: Sets DISK_SPACE_MB global with available space
+# Validate disk space. $1=path, $2=min_mb. Sets DISK_SPACE_MB global.
 validate_disk_space() {
   local path="${1:-/root}"
   local min_required_mb="${2:-${MIN_DISK_SPACE_MB}}"
@@ -90,12 +76,7 @@ validate_disk_space() {
   return 0
 }
 
-# Validates Tailscale authentication key format.
-# Format: tskey-auth-<id>-<secret> or tskey-client-<id>-<secret>
-# Example: tskey-auth-kpaPEJ2wwN11CNTRL-UsWiT9N81EjmVTyBKVj5Ej23Pwkp2KUN
-# Parameters:
-#   $1 - Tailscale auth key to validate
-# Returns: 0 if valid, 1 otherwise
+# Validate Tailscale auth key format. $1=key
 validate_tailscale_key() {
   local key="$1"
 

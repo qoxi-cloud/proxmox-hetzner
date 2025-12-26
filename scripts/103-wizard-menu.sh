@@ -1,24 +1,17 @@
 # shellcheck shell=bash
-# =============================================================================
 # Configuration Wizard - Menu Rendering
-# =============================================================================
 # Field tracking and menu rendering
 
-# =============================================================================
 # Field tracking
-# =============================================================================
 
 # Menu item indices (for mapping selection to edit functions)
 # These track which items are selectable fields vs section headers
 _WIZ_FIELD_COUNT=0
 _WIZ_FIELD_MAP=()
 
-# =============================================================================
 # Configuration validation
-# =============================================================================
 
-# Check if all required configuration fields are set
-# Returns: 0 if complete, 1 if missing fields
+# Check if all required config fields set. Returns 0=complete, 1=missing
 _wiz_config_complete() {
   [[ -z $PVE_HOSTNAME ]] && return 1
   [[ -z $DOMAIN_SUFFIX ]] && return 1
@@ -53,15 +46,9 @@ _wiz_config_complete() {
   return 0
 }
 
-# =============================================================================
 # Screen content renderers
-# =============================================================================
 
-# Render fields for a specific screen
-# Parameters:
-#   $1 - screen index (0-5)
-#   $2 - current selection within screen
-# Uses: _add_field helper, field_idx counter
+# Render fields for a screen. $1=screen_idx, $2=selection
 _wiz_render_screen_content() {
   local screen="$1"
   local selection="$2"
@@ -126,9 +113,7 @@ _wiz_render_screen_content() {
   esac
 }
 
-# Render the main menu with current selection highlighted
-# Parameters:
-#   $1 - Current selection index (0-based, only counts selectable fields)
+# Render main menu with selection. $1=selection_idx
 _wiz_render_menu() {
   local selection="$1"
   local output=""

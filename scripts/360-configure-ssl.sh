@@ -1,7 +1,5 @@
 # shellcheck shell=bash
-# =============================================================================
 # SSL certificate configuration via SSH
-# =============================================================================
 
 # Private implementation - configures SSL certificates
 # Called by configure_ssl() public wrapper
@@ -37,12 +35,10 @@ _config_ssl() {
   LETSENCRYPT_FIRSTBOOT=true
 }
 
-# =============================================================================
 # Public wrapper (generated via factory)
 # Configures SSL certificates for Proxmox Web UI.
 # For Let's Encrypt, sets up first-boot certificate acquisition.
 # Certbot package installed via batch_install_packages() in 037-parallel-helpers.sh
-# =============================================================================
 make_condition_wrapper "ssl" "SSL_TYPE" "letsencrypt"
 
 # Alias for backwards compatibility (called as configure_ssl_certificate in 381-configure-phases.sh)

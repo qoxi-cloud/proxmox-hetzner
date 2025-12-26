@@ -1,11 +1,7 @@
 # shellcheck shell=bash
-# =============================================================================
 # Initialization - disk config, log file, runtime variables
-# =============================================================================
 
-# =============================================================================
 # Disk configuration
-# =============================================================================
 
 # Boot disk selection (empty = all disks in pool)
 BOOT_DISK=""
@@ -30,9 +26,7 @@ LOG_FILE="/root/pve-install-$(date +%Y%m%d-%H%M%S).log"
 # Track if installation completed successfully
 INSTALL_COMPLETED=false
 
-# =============================================================================
 # Installation state variables
-# =============================================================================
 # These variables track the installation process and timing.
 # Set during early initialization, used throughout the installation.
 
@@ -40,9 +34,7 @@ INSTALL_COMPLETED=false
 # Set: here on script load, used: metrics_finish() in 005-logging.sh
 INSTALL_START_TIME=$(date +%s)
 
-# =============================================================================
 # Runtime configuration variables
-# =============================================================================
 # These variables are populated by:
 #   1. CLI arguments (004-cli.sh) - parsed at startup
 #   2. System detection (050-059 scripts) - hardware detection

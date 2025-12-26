@@ -1,11 +1,7 @@
 # shellcheck shell=bash
-# =============================================================================
 # System preflight checks (root, internet, disk, RAM, CPU, KVM)
-# =============================================================================
 
-# Checks root access.
-# Side effects: Sets PREFLIGHT_ROOT, PREFLIGHT_ROOT_STATUS
-# Returns: 0 if root, 1 otherwise
+# Check root access. Sets PREFLIGHT_ROOT*.
 _check_root_access() {
   if [[ $EUID -ne 0 ]]; then
     PREFLIGHT_ROOT="✗ Not root"
@@ -18,9 +14,7 @@ _check_root_access() {
   fi
 }
 
-# Checks internet connectivity.
-# Side effects: Sets PREFLIGHT_NET, PREFLIGHT_NET_STATUS
-# Returns: 0 if connected, 1 otherwise
+# Check internet connectivity. Sets PREFLIGHT_NET*.
 _check_internet() {
   if ping -c 1 -W 3 "$DNS_PRIMARY" >/dev/null 2>&1; then
     PREFLIGHT_NET="Available"
@@ -33,9 +27,7 @@ _check_internet() {
   fi
 }
 
-# Checks available disk space.
-# Side effects: Sets PREFLIGHT_DISK, PREFLIGHT_DISK_STATUS
-# Returns: 0 if sufficient, 1 otherwise
+# Check disk space. Sets PREFLIGHT_DISK*.
 _check_disk_space() {
   if validate_disk_space "/root" "$MIN_DISK_SPACE_MB"; then
     PREFLIGHT_DISK="${DISK_SPACE_MB} MB"
@@ -48,9 +40,7 @@ _check_disk_space() {
   fi
 }
 
-# Checks available RAM.
-# Side effects: Sets PREFLIGHT_RAM, PREFLIGHT_RAM_STATUS
-# Returns: 0 if sufficient, 1 otherwise
+# Check RAM. Sets PREFLIGHT_RAM*.
 _check_ram() {
   local total_ram_mb
   total_ram_mb=$(free -m | awk '/^Mem:/{print $2}')
@@ -65,8 +55,7 @@ _check_ram() {
   fi
 }
 
-# Checks CPU cores.
-# Side effects: Sets PREFLIGHT_CPU, PREFLIGHT_CPU_STATUS
+# Check CPU cores. Sets PREFLIGHT_CPU*.
 _check_cpu() {
   local cpu_cores
   cpu_cores=$(nproc)
@@ -79,9 +68,7 @@ _check_cpu() {
   fi
 }
 
-# Checks KVM availability, loads modules if needed.
-# Side effects: Sets PREFLIGHT_KVM, PREFLIGHT_KVM_STATUS, may load kernel modules
-# Returns: 0 if KVM available, 1 otherwise
+# Check KVM, load modules if needed. Sets PREFLIGHT_KVM*.
 _check_kvm() {
   if [[ ! -e /dev/kvm ]]; then
     modprobe kvm 2>/dev/null || true
@@ -107,8 +94,7 @@ _check_kvm() {
   fi
 }
 
-# Runs all preflight checks.
-# Side effects: Sets all PREFLIGHT_* variables
+# Run all preflight checks. Sets PREFLIGHT_* variables.
 _run_preflight_checks() {
   local errors=0
 
@@ -122,15 +108,9 @@ _run_preflight_checks() {
   PREFLIGHT_ERRORS=$errors
 }
 
-# =============================================================================
 # Main collection function
-# =============================================================================
 
-# Collects and validates system information silently.
-# Checks: root access, internet connectivity, disk space, RAM, CPU, KVM.
-# Installs required packages if missing.
-# Note: Progress is shown via animated banner in 900-main.sh
-# Side effects: Sets PREFLIGHT_* global variables, may install packages
+# Collect system info and run preflight checks
 collect_system_info() {
   # Install required tools
   _install_required_packages

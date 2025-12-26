@@ -1,13 +1,7 @@
 # shellcheck shell=bash
-# =============================================================================
 # Parallel execution helpers for faster installation
-# =============================================================================
 
-# Installs all base system packages in one batch.
-# Called at the start of configure_base_system().
-# Includes: SYSTEM_UTILITIES, locales, chrony, unattended-upgrades, linux-cpupower
-# And conditionally: zsh/git (if SHELL_TYPE=zsh)
-# Side effects: Runs apt-get update and installs packages on remote system
+# Install all base system packages in one batch
 install_base_packages() {
   # shellcheck disable=SC2086
   local packages="${SYSTEM_UTILITIES} ${OPTIONAL_PACKAGES} locales chrony unattended-upgrades apt-listchanges linux-cpupower"
@@ -37,10 +31,7 @@ install_base_packages() {
   log_subtasks $packages
 }
 
-# Collects packages needed by enabled features and installs them in one batch.
-# This eliminates redundant apt-get update calls across configure scripts.
-# Must be called BEFORE running parallel config groups.
-# Side effects: Installs packages on remote system
+# Collect and install all feature packages in one batch
 batch_install_packages() {
   local packages=()
 
@@ -126,12 +117,7 @@ batch_install_packages() {
   return 0
 }
 
-# Internal: runs a single task in parallel group with proper error handling.
-# Receives index as argument to avoid race conditions with loop variable.
-# Parameters:
-#   $1 - Result directory path
-#   $2 - Task index (for result file naming)
-#   $3 - Function name to execute
+# Internal: run single task in parallel group. $1=result_dir, $2=idx, $3=func
 _run_parallel_task() {
   local result_dir="$1"
   local idx="$2"
@@ -157,10 +143,7 @@ _run_parallel_task() {
   fi
 }
 
-# Runs multiple config functions in parallel with single progress indicator.
-# Parameters: $1=group name, $2=done message, $@=function names
-# Returns: Number of failed functions (0 = success)
-# Example: run_parallel_group "Configuring" "Done" configure_foo configure_bar
+# Run config functions in parallel. $1=name, $2=done_msg, $@=functions
 run_parallel_group() {
   local group_name="$1"
   local done_msg="$2"
@@ -231,10 +214,7 @@ run_parallel_group() {
   return 0
 }
 
-# Marks a feature as configured in parallel group.
-# Call from _config_* functions when work is actually done.
-# Uses $BASHPID (subshell PID) not $$ (parent PID) to ensure unique files.
-# Usage: parallel_mark_configured "apparmor"
+# Mark feature as configured in parallel group. $1=feature name
 parallel_mark_configured() {
   local feature="$1"
   [[ -n ${PARALLEL_RESULT_DIR:-} ]] && printf '%s' "$feature" >"$PARALLEL_RESULT_DIR/ran_$BASHPID"

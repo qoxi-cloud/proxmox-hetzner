@@ -1,10 +1,7 @@
 # shellcheck shell=bash
-# =============================================================================
 # Live installation logs with logo and auto-scroll
-# =============================================================================
 
-# Gets current terminal dimensions for log area calculations.
-# Side effects: Sets _LOG_TERM_HEIGHT and _LOG_TERM_WIDTH globals
+# Get terminal dimensions. Sets _LOG_TERM_HEIGHT, _LOG_TERM_WIDTH.
 get_terminal_dimensions() {
   _LOG_TERM_HEIGHT=$(tput lines)
   _LOG_TERM_WIDTH=$(tput cols)
@@ -17,9 +14,7 @@ LOGO_HEIGHT=${BANNER_HEIGHT:-9}
 # Fixed header height (title label + line with dot + 2 blank lines)
 HEADER_HEIGHT=4
 
-# Calculates available vertical space for log display.
-# Subtracts banner height and header from terminal height.
-# Side effects: Sets LOG_AREA_HEIGHT global
+# Calculate log area height. Sets LOG_AREA_HEIGHT.
 calculate_log_area() {
   get_terminal_dimensions
   LOG_AREA_HEIGHT=$((_LOG_TERM_HEIGHT - LOGO_HEIGHT - HEADER_HEIGHT - 1))
@@ -29,10 +24,7 @@ calculate_log_area() {
 declare -a LOG_LINES=()
 LOG_COUNT=0
 
-# Adds a log entry to the live display and triggers re-render.
-# Parameters:
-#   $1 - Message to display
-# Side effects: Appends to LOG_LINES array, increments LOG_COUNT
+# Add log entry to live display. $1=message
 add_log() {
   local message="$1"
   LOG_LINES+=("$message")
@@ -75,22 +67,14 @@ render_logs() {
   done
 } >/dev/tty 2>/dev/null
 
-# Starts a task with "..." suffix indicating work in progress.
-# Parameters:
-#   $1 - Task description message
-# Side effects: Adds log entry, sets TASK_INDEX to current position
+# Start task with "..." suffix. $1=message. Sets TASK_INDEX.
 start_task() {
   local message="$1"
   add_log "$message..."
   TASK_INDEX=$((LOG_COUNT - 1))
 }
 
-# Completes a task by updating its log line with status indicator.
-# Parameters:
-#   $1 - Task index in LOG_LINES array
-#   $2 - Final message to display
-#   $3 - Status: "success" (default, ✓), "error" (✗), "warning" (⚠)
-# Side effects: Updates LOG_LINES[task_index], re-renders logs
+# Complete task with status. $1=idx, $2=message, $3=status (success/error/warning)
 complete_task() {
   local task_index="$1"
   local message="$2"
@@ -105,19 +89,14 @@ complete_task() {
   render_logs
 }
 
-# Adds an indented sub-task log entry with tree structure prefix.
-# Parameters:
-#   $1 - Subtask message to display
-#   $2 - Optional color (default: CLR_GRAY)
+# Add indented subtask with tree prefix. $1=message, $2=color (optional)
 add_subtask_log() {
   local message="$1"
   local color="${2:-$CLR_GRAY}"
   add_log "${CLR_ORANGE}│${CLR_RESET}   ${color}${message}${CLR_RESET}"
 }
 
-# Starts live installation display in alternate screen buffer.
-# Overrides show_progress with live version, hides cursor.
-# Side effects: Enters alternate screen, sets up EXIT trap
+# Start live installation display in alternate screen buffer
 start_live_installation() {
   # Override show_progress with live version
   # shellcheck disable=SC2317,SC2329
@@ -143,14 +122,7 @@ finish_live_installation() {
   tput rmcup # Exit alternate screen buffer
 }
 
-# Live version of show_progress that updates the live log display.
-# Shows animated dots while waiting for process, updates status on completion.
-# Parameters:
-#   $1 - PID of process to wait for
-#   $2 - Progress message (shown while running)
-#   $3 - Done message (optional, defaults to $2)
-#   $4 - Optional "--silent" flag to suppress output on success
-# Returns: Exit code from the waited process
+# Show progress with animated dots. $1=pid, $2=message, $3=done_msg, $4=--silent
 live_show_progress() {
   local pid=$1
   local message="${2:-Processing}"
@@ -196,21 +168,13 @@ live_show_progress() {
   return $exit_code
 }
 
-# Adds a live log entry for subtask info with tree structure.
-# Parameters:
-#   $1 - Subtask message
+# Add subtask to live log. $1=message
 live_log_subtask() {
   local message="$1"
   add_subtask_log "$message"
 }
 
-# Logs multiple items as comma-separated list wrapped across lines.
-# Automatically wraps long lines at max_width characters.
-# Parameters:
-#   $@ - Items to display (array or space-separated string)
-# Usage: log_subtasks "${array[@]}" or log_subtasks $string
-# Output: │   item1, item2, item3,
-#         │   item4, item5
+# Log items as comma-separated wrapped list. $@=items
 log_subtasks() {
   local max_width=55
   local current_line=""

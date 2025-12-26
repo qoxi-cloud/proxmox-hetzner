@@ -1,12 +1,8 @@
 # shellcheck shell=bash
-# =============================================================================
 # Configuration Wizard - Navigation Header and Key Input
-# =============================================================================
 # Screen navigation, header rendering, and keyboard handling
 
-# =============================================================================
 # Screen definitions
-# =============================================================================
 
 # Screen names for navigation
 WIZ_SCREENS=("Basic" "Proxmox" "Network" "Storage" "Services" "Access")
@@ -15,15 +11,9 @@ WIZ_CURRENT_SCREEN=0
 # Navigation column width
 _NAV_COL_WIDTH=10
 
-# =============================================================================
 # Navigation header helpers
-# =============================================================================
 
-# Centers text by adding leading spaces based on terminal width.
-# Strips ANSI codes to calculate visible text length.
-# Parameters:
-#   $1 - Text to center (may contain ANSI color codes)
-# Returns: Centered text via stdout
+# Center text (strips ANSI for width calc). $1=text → centered text
 _wiz_center() {
   local text="$1"
   local term_width
@@ -42,10 +32,7 @@ _wiz_center() {
   printf '%*s%s' "$padding" "" "$text"
 }
 
-# Repeats a character N times for building navigation lines.
-# Parameters:
-#   $1 - Character to repeat
-#   $2 - Number of repetitions
+# Repeat character N times. $1=char, $2=count
 _nav_repeat() {
   local char="$1" count="$2" i
   for ((i = 0; i < count; i++)); do
@@ -53,11 +40,7 @@ _nav_repeat() {
   done
 }
 
-# Gets color code for screen state in navigation header.
-# Parameters:
-#   $1 - Screen index to check
-#   $2 - Current active screen index
-# Returns: CLR_ORANGE (current), CLR_CYAN (completed), CLR_GRAY (pending)
+# Get nav color for screen state. $1=screen_idx, $2=current_idx → color
 _nav_color() {
   local idx="$1" current="$2"
   if [[ $idx -eq $current ]]; then
@@ -69,11 +52,7 @@ _nav_color() {
   fi
 }
 
-# Gets dot symbol for screen state in navigation header.
-# Parameters:
-#   $1 - Screen index to check
-#   $2 - Current active screen index
-# Returns: ◉ (current), ● (completed), ○ (pending)
+# Get nav dot for screen state. $1=screen_idx, $2=current_idx → ◉/●/○
 _nav_dot() {
   local idx="$1" current="$2"
   if [[ $idx -eq $current ]]; then
@@ -85,12 +64,7 @@ _nav_dot() {
   fi
 }
 
-# Gets connecting line style for navigation header.
-# Parameters:
-#   $1 - Screen index
-#   $2 - Current active screen index
-#   $3 - Line length in characters
-# Returns: ━━━ (completed screens) or ─── (pending screens)
+# Get nav line style. $1=screen_idx, $2=current_idx, $3=length → ━━━/───
 _nav_line() {
   local idx="$1" current="$2" len="$3"
   if [[ $idx -lt $current ]]; then
@@ -165,13 +139,9 @@ _wiz_render_nav() {
   printf '%s\n%s\n' "$labels" "$dots"
 }
 
-# =============================================================================
 # Key reading
-# =============================================================================
 
-# Reads a single key press with arrow key support.
-# Handles ANSI escape sequences for arrow keys.
-# Side effects: Sets WIZ_KEY to: up, down, left, right, enter, quit, esc, or key char
+# Read single key press (arrow keys → WIZ_KEY: up/down/left/right/enter/quit/esc)
 _wiz_read_key() {
   local key
   IFS= read -rsn1 key

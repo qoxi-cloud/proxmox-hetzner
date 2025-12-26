@@ -1,13 +1,7 @@
 # shellcheck shell=bash
-# =============================================================================
 # Download utilities
-# =============================================================================
 
-# Downloads file with retry logic and integrity verification.
-# Parameters:
-#   $1 - Output file path
-#   $2 - URL to download from
-# Returns: 0 on success, 1 on failure
+# Download file with retry. $1=output_path, $2=url
 download_file() {
   local output_file="$1"
   local url="$2"

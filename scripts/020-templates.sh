@@ -1,13 +1,7 @@
 # shellcheck shell=bash
-# =============================================================================
 # Template processing utilities
-# =============================================================================
 
-# Applies template variable substitutions to a file.
-# Parameters:
-#   $1 - File path to modify
-#   $@ - VAR=VALUE pairs for substitution (replaces {{VAR}} with VALUE)
-# Returns: 0 on success, 1 if file not found or unsubstituted placeholders remain
+# Apply {{VAR}} substitutions. $1=file, $@=VAR=value pairs
 apply_template_vars() {
   local file="$1"
   shift
@@ -67,11 +61,7 @@ apply_template_vars() {
   return 0
 }
 
-# Applies common template variables to a file using global variables.
-# Substitutes placeholders for IP, hostname, DNS, network settings.
-# Parameters:
-#   $1 - File path to modify
-# Returns: 0 on success, 1 if file not found or unsubstituted placeholders remain
+# Apply common template vars (IP, hostname, DNS, etc). $1=file
 apply_common_template_vars() {
   local file="$1"
 
@@ -107,12 +97,7 @@ apply_common_template_vars() {
     "PORT_PROXMOX_UI=${PORT_PROXMOX_UI:-8006}"
 }
 
-# Downloads template from GitHub repository with validation.
-# Parameters:
-#   $1 - Local path to save template
-#   $2 - Optional remote filename (defaults to basename of $1)
-# Returns: 0 on success, 1 on failure
-# Note: Templates have .tmpl extension on GitHub but saved locally without it
+# Download template from GitHub with validation. $1=local_path, $2=remote_name (optional)
 download_template() {
   local local_path="$1"
   local remote_file="${2:-$(basename "$local_path")}"

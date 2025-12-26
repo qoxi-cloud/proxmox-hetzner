@@ -1,7 +1,5 @@
 # shellcheck shell=bash
-# =============================================================================
 # Configure ZFS ARC memory allocation
-# =============================================================================
 
 # Private implementation - configures ZFS ARC memory
 _config_zfs_arc() {
@@ -55,9 +53,7 @@ _config_zfs_arc() {
   log "INFO: ZFS ARC memory limit configured: ${arc_max_mb}MB"
 }
 
-# =============================================================================
 # Configure ZFS scrub scheduling
-# =============================================================================
 
 # Private implementation - configures ZFS scrub timers
 _config_zfs_scrub() {
@@ -92,9 +88,7 @@ _config_zfs_scrub() {
   log "INFO: ZFS scrub schedule configured (monthly, 1st Sunday at 2:00 AM)"
 }
 
-# =============================================================================
 # Public wrappers
-# =============================================================================
 
 # Public wrapper for ZFS ARC configuration
 configure_zfs_arc() {

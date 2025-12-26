@@ -1,11 +1,9 @@
 # shellcheck shell=bash
-# =============================================================================
 # Yazi file manager configuration
 # Modern terminal file manager with image preview support
 # Dependencies (file, unzip) installed via batch_install_packages()
 # curl installed via SYSTEM_UTILITIES
 # Config is deployed to admin user's home directory (not root)
-# =============================================================================
 
 # Installation helper for yazi - downloads binary from GitHub
 # Uses remote_exec (not remote_run) because this runs in background subshell
@@ -54,8 +52,6 @@ _config_yazi() {
   }
 }
 
-# =============================================================================
 # Public wrapper (generated via factory)
 # Installs yazi file manager with Tokyo Night theme
-# =============================================================================
 make_feature_wrapper "yazi" "INSTALL_YAZI"

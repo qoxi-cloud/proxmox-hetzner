@@ -1,7 +1,5 @@
 # shellcheck shell=bash
-# =============================================================================
 # Tailscale VPN configuration
-# =============================================================================
 
 # Private implementation - configures Tailscale VPN
 # Called by configure_tailscale() public wrapper
@@ -104,14 +102,10 @@ _config_tailscale() {
   fi
 }
 
-# =============================================================================
 # Public wrapper
-# =============================================================================
 
 # Configures Tailscale VPN with SSH and Web UI access.
-# Optionally authenticates with auth key and enables stealth mode.
-# Package installed via batch_install_packages() in 037-parallel-helpers.sh
-# Side effects: Configures Tailscale on remote system
+# Configure Tailscale with optional auth key and stealth mode
 configure_tailscale() {
   [[ $INSTALL_TAILSCALE != "yes" ]] && return 0
   _config_tailscale

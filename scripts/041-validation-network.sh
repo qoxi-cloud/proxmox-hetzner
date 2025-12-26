@@ -1,12 +1,7 @@
 # shellcheck shell=bash
-# =============================================================================
 # Network validation functions (subnet, IPv6)
-# =============================================================================
 
-# Validates subnet in CIDR notation (e.g., 10.0.0.0/24).
-# Parameters:
-#   $1 - Subnet to validate
-# Returns: 0 if valid, 1 otherwise
+# Validate subnet CIDR. $1=subnet
 validate_subnet() {
   local subnet="$1"
   # Validate CIDR notation (e.g., 10.0.0.0/24)
@@ -28,14 +23,9 @@ validate_subnet() {
   [[ 10#$octet1 -le 255 && 10#$octet2 -le 255 && 10#$octet3 -le 255 && 10#$octet4 -le 255 ]]
 }
 
-# =============================================================================
 # IPv6 validation functions
-# =============================================================================
 
-# Validates IPv6 address (full, compressed, or mixed format).
-# Parameters:
-#   $1 - IPv6 address to validate (without prefix)
-# Returns: 0 if valid, 1 otherwise
+# Validate IPv6 address. $1=ipv6
 validate_ipv6() {
   local ipv6="$1"
 
@@ -89,10 +79,7 @@ validate_ipv6() {
   return 0
 }
 
-# Validates IPv6 address with CIDR prefix (e.g., 2001:db8::1/64).
-# Parameters:
-#   $1 - IPv6 with CIDR notation
-# Returns: 0 if valid, 1 otherwise
+# Validate IPv6/CIDR. $1=ipv6_cidr
 validate_ipv6_cidr() {
   local ipv6_cidr="$1"
 
@@ -110,10 +97,7 @@ validate_ipv6_cidr() {
   validate_ipv6 "$ipv6"
 }
 
-# Validates IPv6 gateway address (accepts empty, "auto", or valid IPv6).
-# Parameters:
-#   $1 - Gateway address to validate
-# Returns: 0 if valid, 1 otherwise
+# Validate IPv6 gateway (empty, "auto", or IPv6). $1=gateway
 validate_ipv6_gateway() {
   local gateway="$1"
 

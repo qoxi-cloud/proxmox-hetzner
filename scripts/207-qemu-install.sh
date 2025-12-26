@@ -1,11 +1,7 @@
 # shellcheck shell=bash
-# =============================================================================
 # QEMU installation and boot functions
-# =============================================================================
 
-# Installs Proxmox via QEMU with autoinstall ISO.
-# Runs QEMU in background with direct drive access.
-# Side effects: Writes to drives, exits on failure
+# Install Proxmox via QEMU with autoinstall ISO
 install_proxmox() {
   # Run preparation in background to show progress immediately
   local qemu_config_file
@@ -95,9 +91,7 @@ EOF
   fi
 }
 
-# Boots installed Proxmox with SSH port forwarding.
-# Exposes SSH on SSH_PORT_QEMU for post-install configuration.
-# Side effects: Starts QEMU, sets QEMU_PID global
+# Boot Proxmox with SSH port forwarding. Sets QEMU_PID.
 boot_proxmox_with_port_forwarding() {
   # Deactivate any LVM auto-activated by udev after install
   _deactivate_lvm

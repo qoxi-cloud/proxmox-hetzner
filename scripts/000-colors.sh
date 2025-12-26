@@ -8,9 +8,7 @@ cd /root || exit 1
 export LANG=en_US.UTF-8
 export LC_ALL=en_US.UTF-8
 
-# =============================================================================
 # Colors for terminal output
-# =============================================================================
 readonly CLR_RED=$'\033[1;31m'
 readonly CLR_CYAN=$'\033[38;2;0;177;255m'
 readonly CLR_YELLOW=$'\033[1;33m'

@@ -1,14 +1,8 @@
 # shellcheck shell=bash
-# =============================================================================
 # ZFS Helper Functions
-# =============================================================================
 # Reusable ZFS utilities for RAID validation, disk mapping, and pool creation
 
-# Generates virtio device name for a given index.
-# Uses Linux kernel naming: vda-vdz, then vdaa-vdaz, vdba-vdbz, etc.
-# Parameters:
-#   $1 - Index (0-based)
-# Returns: Device name (e.g., "vda", "vdz", "vdaa", "vdba") via stdout
+# Generate virtio device name. $1=idx → "vda", "vdz", "vdaa", etc
 _virtio_name_for_index() {
   local idx="$1"
   local letters="abcdefghijklmnopqrstuvwxyz"
@@ -23,15 +17,7 @@ _virtio_name_for_index() {
   fi
 }
 
-# Creates virtio disk mapping file.
-# Maps boot disk (if set) to vda, then pool disks to vdb, vdc, etc.
-# Parameters:
-#   $1 - Boot disk (optional, pass "" if none)
-#   $2+ - Pool disks (space-separated)
-# Side effects: Creates /tmp/virtio_map.env
-# Example:
-#   create_virtio_mapping "/dev/nvme2n1" "/dev/nvme0n1" "/dev/nvme1n1"
-#   create_virtio_mapping "" "/dev/sda" "/dev/sdb"  # No separate boot disk
+# Create virtio disk mapping. $1=boot_disk, $2+=pool_disks → /tmp/virtio_map.env
 create_virtio_mapping() {
   local boot_disk="$1"
   shift
@@ -67,9 +53,7 @@ create_virtio_mapping() {
   log "Virtio mapping saved to /tmp/virtio_map.env"
 }
 
-# Loads virtio mapping from /tmp/virtio_map.env.
-# Sets global VIRTIO_MAP associative array.
-# Returns: 0 on success, 1 on failure
+# Load virtio mapping from /tmp/virtio_map.env into VIRTIO_MAP array
 load_virtio_mapping() {
   if [[ -f /tmp/virtio_map.env ]]; then
     # shellcheck disable=SC1091
@@ -81,19 +65,7 @@ load_virtio_mapping() {
   fi
 }
 
-# Maps physical disks to virtio devices.
-# Requires: VIRTIO_MAP must be loaded first (via load_virtio_mapping)
-# Parameters:
-#   $1 - Output format: "toml_array" or "bash_array" or "space_separated"
-#   $2+ - Physical disk names (e.g., nvme0n1, sda)
-# Returns: Formatted string via stdout
-# Example:
-#   map_disks_to_virtio "toml_array" nvme0n1 nvme1n1
-#   → ["vda", "vdb"] (short names for answer.toml)
-#   map_disks_to_virtio "bash_array" nvme0n1 nvme1n1
-#   → (/dev/vda /dev/vdb)
-#   map_disks_to_virtio "space_separated" nvme0n1 nvme1n1
-#   → /dev/vda /dev/vdb
+# Map disks to virtio. $1=format (toml_array/bash_array/space_separated), $2+=disks
 map_disks_to_virtio() {
   local format="$1"
   shift
@@ -142,15 +114,7 @@ map_disks_to_virtio() {
   esac
 }
 
-# Builds zpool create command for given RAID type.
-# Parameters:
-#   $1 - Pool name
-#   $2 - RAID type (single, raid0, raid1, raidz1, raidz2, raidz3, raid10)
-#   $3+ - Vdev paths (e.g., /dev/vda /dev/vdb)
-# Returns: Command string via stdout
-# Example:
-#   build_zpool_command "tank" "raid1" /dev/vda /dev/vdb
-#   → zpool create -f tank mirror /dev/vda /dev/vdb
+# Build zpool create command. $1=pool, $2=raid_type, $3+=vdevs
 build_zpool_command() {
   local pool_name="$1"
   local raid_type="$2"
@@ -213,13 +177,7 @@ build_zpool_command() {
   printf '%s\n' "$cmd"
 }
 
-# Maps ZFS_RAID to answer.toml format (kebab-case).
-# Parameters:
-#   $1 - RAID type (single, raid0, raid1, raidz1, raidz2, raidz3, raid10, raid5)
-# Returns: TOML-formatted RAID string via stdout
-# Example:
-#   map_raid_to_toml "raidz1" → "raidz-1"
-#   map_raid_to_toml "single" → "raid0"
+# Map RAID type to TOML format. $1=raid_type → "raidz-1" etc
 map_raid_to_toml() {
   local raid="$1"
 

@@ -1,7 +1,5 @@
 # shellcheck shell=bash
-# =============================================================================
 # Proxmox ISO download and version management
-# =============================================================================
 
 # Cache for ISO list (populated by prefetch_proxmox_iso_info)
 _ISO_LIST_CACHE=""
@@ -9,46 +7,32 @@ _ISO_LIST_CACHE=""
 # Cache for SHA256SUMS content
 _CHECKSUM_CACHE=""
 
-# Prefetches ISO list and checksums.
-# Call this early to cache data for later use.
-# Side effects: Populates _ISO_LIST_CACHE and _CHECKSUM_CACHE
+# Prefetch ISO list and checksums to cache
 prefetch_proxmox_iso_info() {
   _ISO_LIST_CACHE=$(curl -s "$PROXMOX_ISO_BASE_URL" 2>/dev/null | grep -oE 'proxmox-ve_[0-9]+\.[0-9]+-[0-9]+\.iso' | sort -uV) || true
   _CHECKSUM_CACHE=$(curl -s "$PROXMOX_CHECKSUM_URL" 2>/dev/null) || true
 }
 
-# Returns available Proxmox VE ISO versions (last N versions, v9+ only).
-# Parameters:
-#   $1 - Number of versions to return (default: 5)
-# Returns: ISO filenames via stdout, newest first
+# Get available Proxmox ISOs (v9+). $1=count (default 5) → stdout
 get_available_proxmox_isos() {
   local count="${1:-5}"
   # Filter to versions 9+ (matches 9, 10, 11, etc.)
   printf '%s\n' "$_ISO_LIST_CACHE" | grep -E '^proxmox-ve_(9|[1-9][0-9]+)\.' | tail -n "$count" | tac
 }
 
-# Constructs full ISO URL from filename.
-# Parameters:
-#   $1 - ISO filename
-# Returns: Full URL via stdout
+# Get full ISO URL. $1=filename → stdout
 get_proxmox_iso_url() {
   local iso_filename="$1"
   printf '%s\n' "${PROXMOX_ISO_BASE_URL}${iso_filename}"
 }
 
-# Extracts version from ISO filename.
-# Parameters:
-#   $1 - ISO filename (e.g., "proxmox-ve_8.3-1.iso")
-# Returns: Version string (e.g., "8.3-1") via stdout
+# Extract version from ISO filename. $1=filename → stdout
 get_iso_version() {
   local iso_filename="$1"
   printf '%s\n' "$iso_filename" | sed -E 's/proxmox-ve_([0-9]+\.[0-9]+-[0-9]+)\.iso/\1/'
 }
 
-# Downloads Proxmox ISO with fallback chain and checksum verification.
-# Requires PROXMOX_ISO_VERSION to be set (user selects version in wizard).
-# Tries aria2c first (parallel connections), then curl, then wget as fallback.
-# Side effects: Creates pve.iso file, exits on failure
+# Download Proxmox ISO with fallback (aria2c→curl→wget) and verify checksum
 download_proxmox_iso() {
   log "Starting Proxmox ISO download"
 

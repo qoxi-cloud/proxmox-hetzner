@@ -1,7 +1,5 @@
 # shellcheck shell=bash
-# =============================================================================
 # System status display
-# =============================================================================
 
 # Displays system status summary in formatted table.
 # Only shows table if there are errors, then exits.

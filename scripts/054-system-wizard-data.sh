@@ -1,11 +1,7 @@
 # shellcheck shell=bash
-# =============================================================================
 # Wizard data loading (timezones, countries, mappings)
-# =============================================================================
 
-# Loads available timezones from system for wizard selection.
-# Uses timedatectl if available, falls back to parsing zoneinfo directory.
-# Side effects: Sets WIZ_TIMEZONES global variable
+# Load timezones list. Sets WIZ_TIMEZONES.
 _load_timezones() {
   if command -v timedatectl &>/dev/null; then
     WIZ_TIMEZONES=$(timedatectl list-timezones 2>/dev/null)
@@ -21,8 +17,7 @@ _load_timezones() {
 }
 
 # Loads ISO 3166-1 alpha-2 country codes for wizard selection.
-# Uses iso-codes package if available, falls back to locale data.
-# Side effects: Sets WIZ_COUNTRIES global variable
+# Load countries list. Sets WIZ_COUNTRIES.
 _load_countries() {
   local iso_file="/usr/share/iso-codes/json/iso_3166-1.json"
   if [[ -f $iso_file ]]; then
@@ -34,9 +29,7 @@ _load_countries() {
   fi
 }
 
-# Builds timezone to country mapping from zone.tab file.
-# Used for auto-selecting country based on timezone selection.
-# Side effects: Sets TZ_TO_COUNTRY associative array
+# Build timezone→country mapping. Sets TZ_TO_COUNTRY.
 _build_tz_to_country() {
   declare -gA TZ_TO_COUNTRY
   local zone_tab="/usr/share/zoneinfo/zone.tab"
@@ -49,8 +42,7 @@ _build_tz_to_country() {
   done <"$zone_tab"
 }
 
-# Detects existing ZFS pools for wizard display.
-# Side effects: Populates DETECTED_POOLS array
+# Detect existing ZFS pools. Sets DETECTED_POOLS.
 _detect_pools() {
   DETECTED_POOLS=()
   while IFS= read -r line; do

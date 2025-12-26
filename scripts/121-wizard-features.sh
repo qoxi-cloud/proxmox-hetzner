@@ -1,8 +1,6 @@
 # shellcheck shell=bash
-# =============================================================================
 # Configuration Wizard - Shell, Power, and Features Editors
 # shell, power_profile, features (security, monitoring, tools)
-# =============================================================================
 
 # Edits default shell for root user.
 # Options: zsh (with Powerlevel10k) or bash.
@@ -107,9 +105,7 @@ _edit_power_profile() {
   esac
 }
 
-# =============================================================================
 # Features - Security
-# =============================================================================
 
 # Edits security feature toggles via multi-select checkbox.
 # Options: apparmor, auditd, aide, chkrootkit, lynis, needrestart.
@@ -137,9 +133,7 @@ _edit_features_security() {
     "needrestart:INSTALL_NEEDRESTART"
 }
 
-# =============================================================================
 # Features - Monitoring
-# =============================================================================
 
 # Edits monitoring feature toggles via multi-select checkbox.
 # Options: vnstat, netdata, promtail.
@@ -161,9 +155,7 @@ _edit_features_monitoring() {
     "promtail:INSTALL_PROMTAIL"
 }
 
-# =============================================================================
 # Features - Tools
-# =============================================================================
 
 # Edits tools feature toggles via multi-select checkbox.
 # Options: yazi (file manager), nvim (editor), ringbuffer (network tuning).

@@ -1,12 +1,9 @@
 # shellcheck shell=bash
-# =============================================================================
 # Configure separate ZFS pool for VMs
-# =============================================================================
 
 # Imports existing ZFS pool and configures Proxmox storage.
 # Uses EXISTING_POOL_NAME global variable.
-# Looks for existing vm-disks dataset or creates one.
-# Returns: 0 on success, 1 on failure
+# Import existing ZFS pool, find/create vm-disks dataset
 _config_import_existing_pool() {
   local pool_name="$EXISTING_POOL_NAME"
   log "INFO: Importing existing ZFS pool '$pool_name'"
@@ -39,8 +36,7 @@ _config_import_existing_pool() {
 
 # Creates new ZFS pool 'tank' from ZFS_POOL_DISKS.
 # Uses ZFS_RAID global for RAID configuration.
-# Sets optimal ZFS properties and configures Proxmox storage.
-# Returns: 0 on success, 1 on failure
+# Create new ZFS pool with optimal settings
 _config_create_new_pool() {
   log "INFO: Creating separate ZFS pool 'tank' from pool disks"
 
@@ -100,9 +96,7 @@ _config_zfs_pool() {
   fi
 }
 
-# =============================================================================
 # Public wrapper
-# =============================================================================
 
 # Creates or imports ZFS pool when BOOT_DISK is set.
 # Modes: USE_EXISTING_POOL=yes imports existing pool, otherwise creates new 'tank'.

@@ -1,26 +1,16 @@
 # shellcheck shell=bash
-# =============================================================================
 # Cleanup and error handling
-# =============================================================================
 
-# =============================================================================
 # Temp file registry for cleanup on exit
-# =============================================================================
 # Array to track temp files for cleanup on script exit
 _TEMP_FILES=()
 
-# Register a temp file for automatic cleanup on script exit.
-# Use this for any mktemp files that may not get cleaned up on early exit/SIGTERM.
-# Parameters:
-#   $1 - Path to temp file
+# Register temp file for cleanup on exit. $1=path
 register_temp_file() {
   _TEMP_FILES+=("$1")
 }
 
-# Cleans up temporary files created during installation.
-# Removes ISO files, password files, logs, and other temporary artifacts.
-# Behavior depends on INSTALL_COMPLETED flag - preserves files if installation succeeded.
-# Uses secure deletion for files containing secrets.
+# Clean up temp files, secure delete secrets
 cleanup_temp_files() {
   # Clean up registered temp files (from register_temp_file)
   for f in "${_TEMP_FILES[@]}"; do
@@ -65,10 +55,7 @@ cleanup_temp_files() {
   fi
 }
 
-# Cleanup handler invoked on script exit via trap.
-# Performs graceful shutdown of background processes, drive cleanup, cursor restoration.
-# Displays error message if installation failed (INSTALL_COMPLETED != true).
-# Returns: Exit code from the script
+# EXIT trap: cleanup processes, drives, cursor, show error if failed
 cleanup_and_error_handler() {
   local exit_code=$?
 

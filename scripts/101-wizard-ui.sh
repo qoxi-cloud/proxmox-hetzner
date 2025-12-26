@@ -1,15 +1,11 @@
 # shellcheck shell=bash
-# =============================================================================
 # Configuration Wizard - Core UI Primitives
-# =============================================================================
 # Gum wrappers, cursor control, and basic styling functions
 
 # Indent for notification content (SSH key info, generated passwords, etc.)
 WIZ_NOTIFY_INDENT="   "
 
-# =============================================================================
 # Cursor control
-# =============================================================================
 
 # Hides terminal cursor.
 _wiz_hide_cursor() { printf '\033[?25l'; }
@@ -17,9 +13,7 @@ _wiz_hide_cursor() { printf '\033[?25l'; }
 # Shows terminal cursor.
 _wiz_show_cursor() { printf '\033[?25h'; }
 
-# =============================================================================
 # Basic styling helpers
-# =============================================================================
 
 # Outputs a blank line.
 _wiz_blank_line() { printf '\n'; }
@@ -68,11 +62,7 @@ _wiz_dim() {
   gum style --foreground "$HEX_GRAY" "${flags[@]}" "${WIZ_NOTIFY_INDENT}$*"
 }
 
-# Displays a description block for menu screens with inline color support.
-# Outputs all lines at once for flicker-free rendering.
-# Parameters:
-#   $@ - Lines to display, supports {{cyan:text}} syntax for highlights
-# Usage: _wiz_description "Line 1" "Line 2" "" "Line with {{cyan:highlight}} or {{yellow:warning}}"
+# Display description block with {{cyan:text}} highlight syntax. $@=lines
 _wiz_description() {
   local output=""
   for line in "$@"; do
@@ -85,12 +75,9 @@ _wiz_description() {
   printf '%b' "$output"
 }
 
-# =============================================================================
 # Gum wrappers
-# =============================================================================
 
-# Gum confirm wrapper with consistent project styling, centered horizontally.
-# Parameters: Same as gum confirm
+# Gum confirm with project styling, centered
 _wiz_confirm() {
   local prompt="$1"
   shift
@@ -120,8 +107,7 @@ _wiz_confirm() {
     --selected.background "$HEX_ORANGE"
 }
 
-# Gum choose wrapper for single-select menus with project styling.
-# Parameters: Same as gum choose
+# Gum choose with project styling
 _wiz_choose() {
   gum choose \
     --padding "0 0 0 1" \
@@ -134,9 +120,7 @@ _wiz_choose() {
     "$@"
 }
 
-# Gum choose wrapper for multi-select checkboxes (feature toggles).
-# Uses no-limit mode with checkmark indicators.
-# Parameters: Same as gum choose
+# Gum multi-select with checkmarks
 _wiz_choose_multi() {
   gum choose \
     --no-limit \
@@ -152,8 +136,7 @@ _wiz_choose_multi() {
     "$@"
 }
 
-# Gum input wrapper for text entry with project styling.
-# Parameters: Same as gum input
+# Gum input with project styling
 _wiz_input() {
   gum input \
     --padding "0 0 0 1" \
@@ -163,8 +146,7 @@ _wiz_input() {
     "$@"
 }
 
-# Gum filter wrapper for searchable lists with project styling.
-# Parameters: Same as gum filter
+# Gum filter with project styling
 _wiz_filter() {
   gum filter \
     --padding "0 0 0 1" \
@@ -178,9 +160,7 @@ _wiz_filter() {
     "$@"
 }
 
-# =============================================================================
 # Screen helpers
-# =============================================================================
 
 # Clears screen using ANSI escape (faster than clear command).
 _wiz_clear() {
@@ -195,10 +175,7 @@ _wiz_start_edit() {
   _wiz_blank_line
 }
 
-# Prepares screen for input with optional description lines.
-# Clears screen, shows banner, displays description, and adds footer.
-# Parameters:
-#   $@ - Optional description lines to display above input
+# Prepare input screen with optional description. $@=lines
 _wiz_input_screen() {
   _wiz_start_edit
   # Show description lines if provided
@@ -209,14 +186,9 @@ _wiz_input_screen() {
   _show_input_footer
 }
 
-# =============================================================================
 # Value formatting
-# =============================================================================
 
-# Format value for display - shows placeholder if empty
-# Parameters:
-#   $1 - value to display
-#   $2 - placeholder text (default: "→ set value")
+# Format value or show placeholder. $1=value, $2=placeholder
 _wiz_fmt() {
   local value="$1"
   local placeholder="${2:-→ set value}"

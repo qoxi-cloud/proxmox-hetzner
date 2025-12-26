@@ -1,9 +1,7 @@
 # shellcheck shell=bash
-# =============================================================================
 # Network Ring Buffer Tuning
 # Increases ring buffer size for better throughput and reduced packet drops
 # Package (ethtool) installed via batch_install_packages() in 037-parallel-helpers.sh
-# =============================================================================
 
 # Configuration function for ring buffer tuning
 # Deploys systemd service to maximize RX/TX ring buffer size
@@ -14,7 +12,5 @@ _config_ringbuffer() {
   parallel_mark_configured "ringbuffer"
 }
 
-# =============================================================================
 # Public wrapper (generated via factory)
-# =============================================================================
 make_feature_wrapper "ringbuffer" "INSTALL_RINGBUFFER"

@@ -1,7 +1,5 @@
 # shellcheck shell=bash
-# =============================================================================
 # Command line argument parsing
-# =============================================================================
 
 # Displays command-line help message with usage, options, and examples.
 # Prints to stdout and returns 0.
@@ -26,11 +24,7 @@ Examples:
 EOF
 }
 
-# Parses command-line arguments and sets global variables.
-# Uses return codes instead of exit for testability.
-# Parameters: $@ - command line arguments
-# Returns: 0 on success, 1 on error, 2 for help/version (early exit)
-# Sets: QEMU_RAM_OVERRIDE, QEMU_CORES_OVERRIDE, PROXMOX_ISO_VERSION
+# Parse CLI args. $@=args. Returns: 0=ok, 1=error, 2=help/version
 parse_cli_args() {
   # Reset variables for clean parsing
   QEMU_RAM_OVERRIDE=""

@@ -1,16 +1,8 @@
 # shellcheck shell=bash
-# =============================================================================
 # Template deployment helpers
-# =============================================================================
 
-# Deploys a config file to admin user's home directory.
-# Creates parent directories and sets correct ownership.
-# Uses global ADMIN_USERNAME.
-# Parameters:
-#   $1 - Template source path (e.g., "templates/bat-config")
-#   $2 - Relative path from home (e.g., ".config/bat/config")
-# Returns: 0 on success, 1 on failure
-# Example: deploy_user_config "templates/bat-config" ".config/bat/config"
+# Deploy config to admin home. Creates dirs, sets ownership.
+# $1=template, $2=relative_path (e.g. ".config/bat/config")
 deploy_user_config() {
   local template="$1"
   local relative_path="$2"
@@ -52,13 +44,7 @@ deploy_user_config() {
   }
 }
 
-# Runs a command in background with progress indicator.
-# Simplifies the common pattern of (cmd) >/dev/null 2>&1 & show_progress
-# Parameters:
-#   $1 - Progress message
-#   $2 - Done message (or command if only 2 args after shift)
-#   $@ - Command and arguments to run
-# Returns: Exit code from the command
+# Run command with progress spinner. $1=message, $2=done_message, $@=command
 run_with_progress() {
   local message="$1"
   local done_message="$2"
@@ -70,13 +56,7 @@ run_with_progress() {
   show_progress $! "$message" "$done_message"
 }
 
-# Deploys a systemd timer (both .service and .timer files).
-# Handles remote_copy for both files and enables the timer.
-# Parameters:
-#   $1 - Timer name (e.g., "aide-check" for aide-check.service/timer)
-#   $2 - Optional: directory prefix in templates (default: "")
-# Returns: 0 on success, 1 on failure
-# Side effects: Copies files to remote, enables timer
+# Deploy .service + .timer and enable. $1=timer_name, $2=template_dir (optional)
 deploy_systemd_timer() {
   local timer_name="$1"
   local template_dir="${2:+$2/}"
@@ -99,12 +79,7 @@ deploy_systemd_timer() {
   }
 }
 
-# Deploys a systemd service file (with optional template vars) and enables it.
-# Stages template to temp location before substitution to preserve originals.
-# Parameters:
-#   $1 - Service name (e.g., "network-ringbuffer" for network-ringbuffer.service)
-#   $@ - Optional: template variable assignments (VAR=value format)
-# Returns: 0 on success, 1 on failure
+# Deploy .service with optional template vars and enable. $1=service_name, $@=VAR=value
 deploy_systemd_service() {
   local service_name="$1"
   shift
@@ -146,11 +121,7 @@ deploy_systemd_service() {
   }
 }
 
-# Enables multiple systemd services in a single remote call.
-# Use when services are already installed via packages (not custom .service files).
-# Parameters:
-#   $@ - Service names to enable
-# Returns: 0 on success, 1 on failure
+# Enable multiple systemd services. $@=service names
 remote_enable_services() {
   local services=("$@")
 
@@ -164,15 +135,7 @@ remote_enable_services() {
   }
 }
 
-# Deploys a template with variable substitution and copies to remote.
-# Stages template to temp location before substitution to preserve originals.
-# Automatically creates parent directories on remote if needed.
-# Combines apply_template_vars + remote_copy pattern.
-# Parameters:
-#   $1 - Template source path
-#   $2 - Remote destination path
-#   $@ - Variable assignments (VAR=value format)
-# Returns: 0 on success, 1 on failure
+# Deploy template with variable substitution. $1=template, $2=dest, $@=VAR=value
 deploy_template() {
   local template="$1"
   local dest="$2"
@@ -217,15 +180,7 @@ deploy_template() {
   rm -f "$staged"
 }
 
-# Deploys multiple config files to admin user's home directory.
-# Batch variant of deploy_user_config for efficiency.
-# Parameters:
-#   $@ - Pairs of "template_path:relative_dest" (e.g., "templates/bat-config:.config/bat/config")
-# Returns: 0 on success, 1 on first failure
-# Example:
-#   deploy_user_configs \
-#     "templates/yazi-theme.toml:.config/yazi/theme.toml" \
-#     "templates/yazi-init.lua:.config/yazi/init.lua"
+# Batch deploy configs to admin home. $@="template:relative_dest" pairs
 deploy_user_configs() {
   for pair in "$@"; do
     local template="${pair%%:*}"

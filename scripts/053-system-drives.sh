@@ -1,11 +1,7 @@
 # shellcheck shell=bash
-# =============================================================================
 # Drive detection and role assignment
-# =============================================================================
 
-# Detects available drives (NVMe preferred, fallback to any disk).
-# Excludes loop devices and partitions.
-# Side effects: Sets DRIVES, DRIVE_COUNT, DRIVE_NAMES, DRIVE_SIZES, DRIVE_MODELS globals
+# Detect available drives. Sets DRIVES, DRIVE_COUNT, DRIVE_NAMES/SIZES/MODELS.
 detect_drives() {
   # Find all NVMe drives (excluding partitions)
   mapfile -t DRIVES < <(lsblk -d -n -o NAME,TYPE | grep nvme | grep disk | awk '{print "/dev/"$1}' | sort)
@@ -34,9 +30,7 @@ detect_drives() {
   done
 }
 
-# Collects all disks that belong to existing ZFS pools.
-# Uses DETECTED_POOLS array (populated during wizard data loading).
-# Returns: array of disk paths via stdout (one per line)
+# Get disks in existing ZFS pools → stdout (one per line)
 _get_existing_pool_disks() {
   local pool_disks=()
   for pool_info in "${DETECTED_POOLS[@]}"; do
@@ -48,10 +42,7 @@ _get_existing_pool_disks() {
   printf '%s\n' "${pool_disks[@]}"
 }
 
-# Checks if a disk is part of any existing ZFS pool.
-# Parameters:
-#   $1 - Disk path (e.g., /dev/nvme0n1)
-# Returns: 0 if disk is in a pool, 1 otherwise
+# Check if disk is in ZFS pool. $1=disk_path. Returns: 0=in pool, 1=not
 _disk_in_existing_pool() {
   local disk="$1"
   local pool_disk
@@ -62,9 +53,7 @@ _disk_in_existing_pool() {
 }
 
 # Smart disk allocation based on size differences.
-# If mixed sizes: smallest (not in existing pool) → boot, rest → pool
-# If identical: all → pool (legacy behavior)
-# Side effects: Sets BOOT_DISK, ZFS_POOL_DISKS
+# Auto-detect boot/pool disk roles. Sets BOOT_DISK, ZFS_POOL_DISKS.
 detect_disk_roles() {
   [[ $DRIVE_COUNT -eq 0 ]] && return 1
 
@@ -143,13 +132,9 @@ detect_disk_roles() {
   log "Pool disks: ${ZFS_POOL_DISKS[*]}"
 }
 
-# =============================================================================
 # Existing ZFS pool detection
-# =============================================================================
 
-# Detects existing ZFS pools available for import.
-# Returns pool info via stdout (one pool per line: "name|status|disks")
-# Example: "tank|ONLINE|/dev/nvme0n1,/dev/nvme1n1"
+# Detect existing ZFS pools → stdout "name|status|disks" per line
 detect_existing_pools() {
   # Check if zpool command exists
   command -v zpool &>/dev/null || return 0
@@ -225,11 +210,7 @@ detect_existing_pools() {
   done
 }
 
-# Gets list of disks belonging to a specific pool.
-# Uses DETECTED_POOLS array (populated by _detect_pools during init).
-# Parameters:
-#   $1 - Pool name
-# Returns: Comma-separated disk paths via stdout
+# Get disks in pool. $1=pool_name → comma-separated disk paths
 get_pool_disks() {
   local pool_name="$1"
 
