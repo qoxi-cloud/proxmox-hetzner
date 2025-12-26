@@ -24,14 +24,12 @@ deploy_user_config() {
     return 1
   }
 
-  # Apply template vars if any provided
-  if [[ $# -gt 0 ]]; then
-    apply_template_vars "$staged" "$@" || {
-      log "ERROR: Template substitution failed for $template"
-      rm -f "$staged"
-      return 1
-    }
-  fi
+  # Apply template vars (also validates no unsubstituted placeholders remain)
+  apply_template_vars "$staged" "$@" || {
+    log "ERROR: Template substitution failed for $template"
+    rm -f "$staged"
+    return 1
+  }
 
   # Create parent directory if needed (skip if deploying to home root)
   if [[ "$dest_dir" != "$home_dir" ]]; then
@@ -125,14 +123,12 @@ deploy_systemd_service() {
     return 1
   }
 
-  # Apply template vars if provided
-  if [[ $# -gt 0 ]]; then
-    apply_template_vars "$staged" "$@" || {
-      log "ERROR: Template substitution failed for ${service_name} service"
-      rm -f "$staged"
-      return 1
-    }
-  fi
+  # Apply template vars (also validates no unsubstituted placeholders remain)
+  apply_template_vars "$staged" "$@" || {
+    log "ERROR: Template substitution failed for ${service_name} service"
+    rm -f "$staged"
+    return 1
+  }
 
   remote_copy "$staged" "$dest" || {
     log "ERROR: Failed to deploy ${service_name} service"
@@ -180,14 +176,12 @@ deploy_template() {
     return 1
   }
 
-  # Apply template vars if any provided
-  if [[ $# -gt 0 ]]; then
-    apply_template_vars "$staged" "$@" || {
-      log "ERROR: Template substitution failed for $template"
-      rm -f "$staged"
-      return 1
-    }
-  fi
+  # Apply template vars (also validates no unsubstituted placeholders remain)
+  apply_template_vars "$staged" "$@" || {
+    log "ERROR: Template substitution failed for $template"
+    rm -f "$staged"
+    return 1
+  }
 
   # Create parent directory on remote if needed
   local dest_dir
