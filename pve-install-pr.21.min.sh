@@ -16,7 +16,7 @@ readonly HEX_ORANGE="#ff8700"
 readonly HEX_GRAY="#585858"
 readonly HEX_WHITE="#ffffff"
 readonly HEX_NONE="7"
-readonly VERSION="2.0.608-pr.21"
+readonly VERSION="2.0.610-pr.21"
 readonly TERM_WIDTH=80
 readonly BANNER_WIDTH=51
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-installer}"
@@ -52,6 +52,7 @@ readonly PROGRESS_POLL_INTERVAL=0.2
 readonly PROCESS_KILL_WAIT=1
 readonly VM_SHUTDOWN_TIMEOUT=120
 readonly WIZARD_MESSAGE_DELAY=3
+readonly PARALLEL_MAX_JOBS=8
 readonly WIZ_KEYBOARD_LAYOUTS="de
 de-ch
 dk
@@ -127,6 +128,7 @@ readonly WIZ_MAP_REPO_TYPE=(
 readonly WIZ_MAP_SSL_TYPE=(
 "Self-signed:self-signed"
 "Let's Encrypt:letsencrypt")
+INSTALL_DIR="${INSTALL_DIR:-${HOME:-/root}}"
 BOOT_DISK=""
 ZFS_POOL_DISKS=()
 USE_EXISTING_POOL=""
@@ -134,7 +136,7 @@ EXISTING_POOL_NAME=""
 EXISTING_POOL_DISKS=()
 SYSTEM_UTILITIES="btop iotop ncdu tmux pigz smartmontools jq bat fastfetch sysstat nethogs ethtool curl gnupg"
 OPTIONAL_PACKAGES="libguestfs-tools"
-LOG_FILE="/root/pve-install-$(date +%Y%m%d-%H%M%S).log"
+LOG_FILE="$INSTALL_DIR/pve-install-$(date +%Y%m%d-%H%M%S).log"
 INSTALL_COMPLETED=false
 INSTALL_START_TIME=$(date +%s)
 QEMU_RAM_OVERRIDE=""
@@ -184,9 +186,10 @@ cleanup_temp_files(){
 for f in "${_TEMP_FILES[@]}";do
 [[ -f $f ]]&&rm -f "$f"
 done
+local install_dir="${INSTALL_DIR:-${HOME:-/root}}"
 if type secure_delete_file &>/dev/null;then
 secure_delete_file /tmp/pve-install-api-token.env
-secure_delete_file /root/answer.toml
+secure_delete_file "$install_dir/answer.toml"
 while IFS= read -r -d '' pfile;do
 secure_delete_file "$pfile"
 done < <(find /dev/shm /tmp -name "pve-ssh-session.*" -type f -print0 2>/dev/null||true)
@@ -198,7 +201,7 @@ secure_delete_file "$pfile"
 done < <(find /dev/shm /tmp -name "*passfile*" -type f -print0 2>/dev/null||true)
 else
 rm -f /tmp/pve-install-api-token.env 2>/dev/null||true
-rm -f /root/answer.toml 2>/dev/null||true
+rm -f "$install_dir/answer.toml" 2>/dev/null||true
 find /dev/shm /tmp -name "pve-ssh-session.*" -type f -delete 2>/dev/null||true
 find /dev/shm /tmp -name "pve-passfile.*" -type f -delete 2>/dev/null||true
 find /dev/shm /tmp -name "*passfile*" -type f -delete 2>/dev/null||true
@@ -206,8 +209,8 @@ fi
 rm -f /tmp/tailscale_*.txt /tmp/iso_checksum.txt /tmp/*.tmp 2>/dev/null||true
 rm -f /tmp/ssh-pve-control.* 2>/dev/null||true
 if [[ $INSTALL_COMPLETED != "true" ]];then
-rm -f /root/pve.iso /root/pve-autoinstall.iso /root/SHA256SUMS 2>/dev/null||true
-rm -f /root/qemu_*.log 2>/dev/null||true
+rm -f "$install_dir/pve.iso" "$install_dir/pve-autoinstall.iso" "$install_dir/SHA256SUMS" 2>/dev/null||true
+rm -f "$install_dir"/qemu_*.log 2>/dev/null||true
 fi
 }
 cleanup_and_error_handler(){
@@ -586,6 +589,10 @@ done
 log "ERROR: Failed to download $url after $max_retries attempts"
 return 1
 }
+_get_file_size(){
+local file="$1"
+stat -c%s "$file" 2>/dev/null||stat -f%z "$file" 2>/dev/null||echo 1024
+}
 secure_delete_file(){
 local file="$1"
 [[ -z $file ]]&&return 0
@@ -594,7 +601,7 @@ if command -v shred &>/dev/null;then
 shred -u -z "$file" 2>/dev/null||rm -f "$file"
 else
 local file_size
-file_size=$(stat -c%s "$file" 2>/dev/null||echo 1024)
+file_size=$(_get_file_size "$file")
 dd if=/dev/zero of="$file" bs=1 count="$file_size" conv=notrunc 2>/dev/null||true
 rm -f "$file"
 fi
@@ -743,7 +750,7 @@ log "Template $remote_file downloaded and validated successfully"
 return 0
 }
 _SSH_CONTROL_PATH="/tmp/ssh-pve-control.$$"
-SSH_OPTS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -o ConnectTimeout=${SSH_CONNECT_TIMEOUT:-10} -o ControlMaster=auto -o ControlPath=$_SSH_CONTROL_PATH -o ControlPersist=300"
+SSH_OPTS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -o ConnectTimeout=${SSH_CONNECT_TIMEOUT:-10} -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -o ControlMaster=auto -o ControlPath=$_SSH_CONTROL_PATH -o ControlPersist=300"
 SSH_PORT="${SSH_PORT_QEMU:-5555}"
 _SSH_SESSION_PASSFILE=""
 _SSH_SESSION_LOGGED=false
@@ -788,7 +795,7 @@ elif command -v shred &>/dev/null;then
 shred -u -z "$passfile_path" 2>/dev/null||rm -f "$passfile_path"
 else
 local file_size
-file_size=$(stat -c%s "$passfile_path" 2>/dev/null||echo 1024)
+file_size=$(stat -c%s "$passfile_path" 2>/dev/null||stat -f%z "$passfile_path" 2>/dev/null||echo 1024)
 dd if=/dev/zero of="$passfile_path" bs=1 count="$file_size" conv=notrunc 2>/dev/null||true
 rm -f "$passfile_path"
 fi
@@ -828,7 +835,8 @@ wait_for_ssh_ready(){
 local timeout="${1:-120}"
 local start_time
 start_time=$(date +%s)
-ssh-keygen -f "/root/.ssh/known_hosts" -R "[localhost]:$SSH_PORT" 2>/dev/null||true
+local ssh_known_hosts="${INSTALL_DIR:-${HOME:-/root}}/.ssh/known_hosts"
+ssh-keygen -f "$ssh_known_hosts" -R "[localhost]:$SSH_PORT" 2>/dev/null||true
 local port_timeout=$((timeout*3/4))
 local port_check=0
 local elapsed=0
@@ -885,16 +893,18 @@ fi
 return 0
 }
 get_rescue_ssh_key(){
-if [[ -f /root/.ssh/authorized_keys ]];then
-grep -E "^(ssh-(rsa|ed25519|dss)|ecdsa-sha2-nistp(256|384|521)|sk-(ssh-ed25519|ecdsa-sha2-nistp256)@openssh.com)" /root/.ssh/authorized_keys 2>/dev/null|head -1
+local auth_keys="${INSTALL_DIR:-${HOME:-/root}}/.ssh/authorized_keys"
+if [[ -f $auth_keys ]];then
+grep -E "^(ssh-(rsa|ed25519|dss)|ecdsa-sha2-nistp(256|384|521)|sk-(ssh-ed25519|ecdsa-sha2-nistp256)@openssh.com)" "$auth_keys" 2>/dev/null|head -1
 fi
 }
 readonly SSH_DEFAULT_TIMEOUT=300
 _sanitize_script_for_log(){
 local script="$1"
-script=$(printf '%s\n' "$script"|sed -E 's#(PASSWORD|password|PASSWD|passwd|SECRET|secret|TOKEN|token|KEY|key)=('"'"'[^'"'"']*'"'"'|"[^"]*"|[^[:space:]'"'"'";]+)#\1=[REDACTED]#g')
-script=$(printf '%s\n' "$script"|sed -E 's#(echo[[:space:]]+['\''"]?[^:]+:)[^|'\''"]*#\1[REDACTED]#g')
-script=$(printf '%s\n' "$script"|sed -E 's#(--authkey=)('"'"'[^'"'"']*'"'"'|"[^"]*"|[^[:space:]'"'"'";]+)#\1[REDACTED]#g')
+local d=$'\x01'
+script=$(printf '%s\n' "$script"|sed -E "s$d(PASSWORD|password|PASSWD|passwd|SECRET|secret|TOKEN|token|KEY|key)=('[^']*'|\"[^\"]*\"|[^[:space:]'\";]+)$d\\1=[REDACTED]${d}g")
+script=$(printf '%s\n' "$script"|sed -E "s$d(echo[[:space:]]+['\"]?[^:]+:)[^|'\"]*$d\\1[REDACTED]${d}g")
+script=$(printf '%s\n' "$script"|sed -E "s$d(--authkey=)('[^']*'|\"[^\"]*\"|[^[:space:]'\";]+)$d\\1[REDACTED]${d}g")
 printf '%s\n' "$script"
 }
 remote_exec(){
@@ -902,6 +912,7 @@ local passfile
 passfile=$(_ssh_get_passfile)
 local cmd_timeout="${SSH_COMMAND_TIMEOUT:-$SSH_DEFAULT_TIMEOUT}"
 local max_attempts="${SSH_RETRY_ATTEMPTS:-3}"
+local base_delay="${RETRY_DELAY_SECONDS:-2}"
 local attempt=0
 while [[ $attempt -lt $max_attempts ]];do
 attempt=$((attempt+1))
@@ -914,8 +925,10 @@ log "ERROR: SSH command timed out after ${cmd_timeout}s: $*"
 return 124
 fi
 if [[ $attempt -lt $max_attempts ]];then
-log "SSH attempt $attempt failed, retrying in ${RETRY_DELAY_SECONDS:-2} seconds..."
-sleep "${RETRY_DELAY_SECONDS:-2}"
+local delay=$((base_delay*(1<<(attempt-1))))
+((delay>30))&&delay=30
+log "SSH attempt $attempt failed, retrying in $delay seconds..."
+sleep "$delay"
 fi
 done
 log "ERROR: SSH command failed after $max_attempts attempts: $*"
@@ -1209,8 +1222,9 @@ return $?
 }
 trap "touch '$result_dir/fail_$idx' 2>/dev/null" EXIT
 if "$func" >/dev/null 2>&1;then
+if touch "$result_dir/success_$idx" 2>/dev/null;then
 trap - EXIT
-touch "$result_dir/success_$idx"
+fi
 fi
 }
 run_parallel_group(){
@@ -1222,15 +1236,24 @@ if [[ ${#funcs[@]} -eq 0 ]];then
 log "No functions to run in parallel group: $group_name"
 return 0
 fi
-log "Running parallel group '$group_name' with functions: ${funcs[*]}"
+local max_jobs="${PARALLEL_MAX_JOBS:-8}"
+log "Running parallel group '$group_name' with functions: ${funcs[*]} (max $max_jobs concurrent)"
 local result_dir
 result_dir=$(mktemp -d)
 export PARALLEL_RESULT_DIR="$result_dir"
 trap "rm -rf '$result_dir'" RETURN
 local i=0
+local running=0
+local pids=()
 for func in "${funcs[@]}";do
 _run_parallel_task "$result_dir" "$i" "$func"&
+pids+=($!)
 ((i++))
+((running++))
+if ((running>=max_jobs));then
+wait -n 2>/dev/null||true
+((running--))
+fi
 done
 local count=$i
 (while
@@ -1868,9 +1891,10 @@ return 1
 }
 _install_zfs_if_needed(){
 command -v zpool &>/dev/null&&return 0
+local install_dir="${INSTALL_DIR:-${HOME:-/root}}"
 local zfs_scripts=(
-"/root/.oldroot/nfs/install/zfs.sh"
-"/root/zfs-install.sh"
+"$install_dir/.oldroot/nfs/install/zfs.sh"
+"$install_dir/zfs-install.sh"
 "/usr/local/bin/install-zfs")
 for script in "${zfs_scripts[@]}";do
 if [[ -x $script ]];then
@@ -4525,12 +4549,28 @@ QEMU_RAM=$((available_ram_mb-QEMU_MIN_RAM_RESERVE))
 [[ $QEMU_RAM -lt $MIN_QEMU_RAM ]]&&QEMU_RAM=$MIN_QEMU_RAM
 fi
 log "QEMU config: $QEMU_CORES vCPUs, ${QEMU_RAM}MB RAM"
-load_virtio_mapping
+if ! load_virtio_mapping;then
+log "ERROR: Failed to load virtio mapping"
+return 1
+fi
+if [[ ${#VIRTIO_MAP[@]} -eq 0 ]];then
+log "ERROR: VIRTIO_MAP is empty - no disks mapped for QEMU"
+print_error "No disks available for QEMU. Check disk detection."
+return 1
+fi
 DRIVE_ARGS=""
 local disk
 for disk in "${!VIRTIO_MAP[@]}";do
+if [[ ! -b $disk ]];then
+log "ERROR: Disk $disk does not exist or is not a block device"
+return 1
+fi
 DRIVE_ARGS="$DRIVE_ARGS -drive file=$disk,format=raw,media=disk,if=virtio"
 done
+if [[ -z $DRIVE_ARGS ]];then
+log "ERROR: No drive arguments built - QEMU would start without disks"
+return 1
+fi
 log "Drive args: $DRIVE_ARGS"
 }
 _signal_process(){
@@ -5010,8 +5050,12 @@ exit 1
 fi
 log "FILESYSTEM=$FILESYSTEM, DISK_LIST=$DISK_LIST"
 log "Generating answer.toml for autoinstall"
-local escaped_password="${NEW_ROOT_PASSWORD//\\/\\\\}"
+local escaped_password="$NEW_ROOT_PASSWORD"
+escaped_password="${escaped_password//\\/\\\\}"
 escaped_password="${escaped_password//\"/\\\"}"
+escaped_password="${escaped_password//$'\t'/\\t}"
+escaped_password="${escaped_password//$'\n'/\\n}"
+escaped_password="${escaped_password//$'\r'/\\r}"
 cat >./answer.toml <<EOF
 [global]
     keyboard = "$KEYBOARD"
@@ -5082,7 +5126,12 @@ install_proxmox(){
 local qemu_config_file
 qemu_config_file=$(mktemp)
 register_temp_file "$qemu_config_file"
-(setup_qemu_config
+(if
+! setup_qemu_config
+then
+log "ERROR: QEMU configuration failed"
+exit 1
+fi
 cat >"$qemu_config_file" <<EOF
 QEMU_CORES=$QEMU_CORES
 QEMU_RAM=$QEMU_RAM
@@ -5139,7 +5188,10 @@ fi
 }
 boot_proxmox_with_port_forwarding(){
 _deactivate_lvm
-setup_qemu_config
+if ! setup_qemu_config;then
+log "ERROR: QEMU configuration failed in boot_proxmox_with_port_forwarding"
+return 1
+fi
 if ! check_port_available "$SSH_PORT";then
 print_error "Port $SSH_PORT is already in use"
 log "ERROR: Port $SSH_PORT is already in use"
@@ -6106,14 +6158,15 @@ kill -TERM "$QEMU_PID" 2>/dev/null||true
 fi) \
 &
 show_progress $! "Powering off the VM"
-(local timeout=120
+(local timeout="${VM_SHUTDOWN_TIMEOUT:-120}"
+local wait_interval="${PROCESS_KILL_WAIT:-1}"
 local elapsed=0
 while ((elapsed<timeout));do
 if ! kill -0 "$QEMU_PID" 2>/dev/null;then
 exit 0
 fi
-sleep "${PROCESS_KILL_WAIT:-1}"
-((elapsed+=PROCESS_KILL_WAIT))
+sleep "$wait_interval"
+((elapsed+=wait_interval))
 done
 exit 1) \
 &
@@ -6127,24 +6180,52 @@ fi
 }
 configure_proxmox_via_ssh(){
 log "Starting Proxmox configuration via SSH"
-_phase_base_configuration
-_phase_storage_configuration
-_phase_security_configuration||return 1
-_phase_monitoring_tools
-_phase_ssl_api
-_phase_finalization
+_phase_base_configuration||{
+log "ERROR: Base configuration failed"
+return 1
+}
+_phase_storage_configuration||{
+log "ERROR: Storage configuration failed"
+return 1
+}
+_phase_security_configuration||{
+log "ERROR: Security configuration failed"
+return 1
+}
+_phase_monitoring_tools||{
+log "WARNING: Monitoring tools configuration had issues"
+}
+_phase_ssl_api||{
+log "WARNING: SSL/API configuration had issues"
+}
+_phase_finalization||{
+log "ERROR: Finalization failed"
+return 1
+}
 }
 _phase_base_configuration(){
-make_templates
-configure_admin_user
-configure_base_system
-configure_shell
-configure_system_services
+make_templates||{
+log "ERROR: make_templates failed"
+return 1
+}
+configure_admin_user||{
+log "ERROR: configure_admin_user failed"
+return 1
+}
+configure_base_system||{
+log "ERROR: configure_base_system failed"
+return 1
+}
+configure_shell||{ log "WARNING: configure_shell failed";}
+configure_system_services||{ log "WARNING: configure_system_services failed";}
 }
 _phase_storage_configuration(){
-configure_zfs_arc
-configure_zfs_pool
-configure_zfs_scrub
+configure_zfs_arc||{ log "WARNING: configure_zfs_arc failed";}
+configure_zfs_pool||{
+log "ERROR: configure_zfs_pool failed"
+return 1
+}
+configure_zfs_scrub||{ log "WARNING: configure_zfs_scrub failed";}
 }
 _phase_security_configuration(){
 batch_install_packages
@@ -6190,10 +6271,13 @@ run_with_progress "Creating API token" "API token created" create_api_token
 fi
 }
 _phase_finalization(){
-deploy_ssh_hardening_config
-validate_installation
-restart_ssh_service
-finalize_vm
+deploy_ssh_hardening_config||{
+log "ERROR: deploy_ssh_hardening_config failed"
+return 1
+}
+validate_installation||{ log "WARNING: validate_installation reported issues";}
+restart_ssh_service||{ log "WARNING: restart_ssh_service failed";}
+finalize_vm||{ log "WARNING: finalize_vm did not complete cleanly";}
 }
 _render_completion_screen(){
 local output=""
@@ -6301,7 +6385,7 @@ register_temp_file "$SYSTEM_INFO_CACHE"
 collect_system_info
 log "Step: prefetch_proxmox_iso_info"
 prefetch_proxmox_iso_info
-declare -p|grep -E "^declare -[^ ]* (PREFLIGHT_|DRIVE_|INTERFACE_|CURRENT_INTERFACE|PREDICTABLE_NAME|DEFAULT_INTERFACE|AVAILABLE_|MAC_ADDRESS|MAIN_IPV|IPV6_|FIRST_IPV6_|_ISO_|_CHECKSUM_|WIZ_TIMEZONES|WIZ_COUNTRIES|TZ_TO_COUNTRY|DETECTED_POOLS)" >"$SYSTEM_INFO_CACHE"
+declare -p|grep -E "^declare -[^ ]* (PREFLIGHT_|DRIVE_|INTERFACE_|CURRENT_INTERFACE|PREDICTABLE_NAME|DEFAULT_INTERFACE|AVAILABLE_|MAC_ADDRESS|MAIN_IPV|IPV6_|FIRST_IPV6_|_ISO_|_CHECKSUM_|WIZ_TIMEZONES|WIZ_COUNTRIES|TZ_TO_COUNTRY|DETECTED_POOLS)" >"$SYSTEM_INFO_CACHE.tmp"&&mv "$SYSTEM_INFO_CACHE.tmp" "$SYSTEM_INFO_CACHE"
 } >/dev/null 2>&1&
 wait $!
 show_banner_animated_stop
