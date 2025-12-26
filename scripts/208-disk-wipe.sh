@@ -79,6 +79,7 @@ _wipe_zfs_on_disk() {
 
   # Clear ZFS labels from disk and partitions
   for part in "${disk}"*; do
+    # shellcheck disable=SC2015 # || true is fallback, not else branch
     [[ -b $part ]] && zpool labelclear -f "$part" 2>/dev/null || true
   done
 }
@@ -134,6 +135,7 @@ _wipe_mdadm_on_disk() {
 
   # Zero superblocks on disk and partitions
   for part in "${disk}"*; do
+    # shellcheck disable=SC2015 # || true is fallback, not else branch
     [[ -b $part ]] && mdadm --zero-superblock "$part" 2>/dev/null || true
   done
 }
