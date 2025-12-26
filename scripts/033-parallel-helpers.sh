@@ -166,8 +166,6 @@ run_parallel_group() {
   local result_dir
   result_dir=$(mktemp -d)
   export PARALLEL_RESULT_DIR="$result_dir"
-  # shellcheck disable=SC2064
-  trap "rm -rf '$result_dir'" RETURN
 
   # Start functions in background with concurrency limit
   # Use trap to ensure marker created even if function calls exit 1 (like remote_run)
@@ -219,6 +217,9 @@ run_parallel_group() {
   for j in $(seq 0 $((count - 1))); do
     [[ -f "$result_dir/fail_$j" ]] && ((failures++))
   done
+
+  # Cleanup before return (not using RETURN trap - it overwrites exit status)
+  rm -rf "$result_dir"
 
   if [[ $failures -gt 0 ]]; then
     log "ERROR: $failures/$count functions failed in group '$group_name'"
