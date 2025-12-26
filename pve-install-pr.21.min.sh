@@ -16,7 +16,7 @@ readonly HEX_ORANGE="#ff8700"
 readonly HEX_GRAY="#585858"
 readonly HEX_WHITE="#ffffff"
 readonly HEX_NONE="7"
-readonly VERSION="2.0.625-pr.21"
+readonly VERSION="2.0.628-pr.21"
 readonly TERM_WIDTH=80
 readonly BANNER_WIDTH=51
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-installer}"
@@ -85,8 +85,6 @@ readonly WIZ_PRIVATE_SUBNETS="10.0.0.0/24
 192.168.1.0/24
 172.16.0.0/24
 Custom"
-readonly WIZ_ZFS_MODES="Single disk
-RAID-1 (mirror)"
 readonly WIZ_FIREWALL_MODES="Stealth (Tailscale only)
 Strict (SSH only)
 Standard (SSH + Web UI)
@@ -621,7 +619,7 @@ local value="${pair#*=}"
 if [[ -z $value ]]&&grep -qF "{{$var}}" "$file" 2>/dev/null;then
 local skip_log=false
 case "$var" in
-MAIN_IPV6|IPV6_ADDRESS|IPV6_GATEWAY|IPV6_PREFIX)[[ ${IPV6_MODE:-} != "Auto" && ${IPV6_MODE:-} != "Manual" ]]&&skip_log=true
+MAIN_IPV6|IPV6_ADDRESS|IPV6_GATEWAY|IPV6_PREFIX)[[ ${IPV6_MODE:-} != "auto" && ${IPV6_MODE:-} != "manual" ]]&&skip_log=true
 esac
 [[ $skip_log == false ]]&&log "DEBUG: Template variable $var is empty, {{$var}} will be replaced with empty string in $file"
 fi
@@ -837,6 +835,7 @@ start_time=$(date +%s)
 local ssh_known_hosts="${INSTALL_DIR:-${HOME:-/root}}/.ssh/known_hosts"
 ssh-keygen -f "$ssh_known_hosts" -R "[localhost]:$SSH_PORT" 2>/dev/null||true
 local port_timeout=$((timeout*3/4))
+local retry_delay="${RETRY_DELAY_SECONDS:-2}"
 local port_check=0
 local elapsed=0
 while ((elapsed<port_timeout));do
@@ -844,8 +843,8 @@ if (echo >/dev/tcp/localhost/"$SSH_PORT") 2>/dev/null;then
 port_check=1
 break
 fi
-sleep "${RETRY_DELAY_SECONDS:-2}"
-((elapsed+=RETRY_DELAY_SECONDS))
+sleep "$retry_delay"
+((elapsed+=retry_delay))
 done
 if [[ $port_check -eq 0 ]];then
 print_error "Port $SSH_PORT is not accessible"
