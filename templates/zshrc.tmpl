@@ -73,7 +73,12 @@ ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=8'
 # Load Powerlevel10k config
 [[ -f ~/.p10k.zsh ]] && source ~/.p10k.zsh
 
-# Run fastfetch on interactive shell login
+# Run fastfetch on first prompt (deferred to avoid p10k instant prompt conflict)
 if [[ -o interactive ]] && command -v fastfetch &>/dev/null; then
-    fastfetch
+    function _run_fastfetch_once() {
+        fastfetch
+        add-zsh-hook -d precmd _run_fastfetch_once
+    }
+    autoload -Uz add-zsh-hook
+    add-zsh-hook precmd _run_fastfetch_once
 fi
