@@ -16,7 +16,7 @@ readonly HEX_ORANGE="#ff8700"
 readonly HEX_GRAY="#585858"
 readonly HEX_WHITE="#ffffff"
 readonly HEX_NONE="7"
-readonly VERSION="2.0.605-pr.21"
+readonly VERSION="2.0.607-pr.21"
 readonly TERM_WIDTH=80
 readonly BANNER_WIDTH=51
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-installer}"
@@ -204,6 +204,7 @@ find /dev/shm /tmp -name "pve-passfile.*" -type f -delete 2>/dev/null||true
 find /dev/shm /tmp -name "*passfile*" -type f -delete 2>/dev/null||true
 fi
 rm -f /tmp/tailscale_*.txt /tmp/iso_checksum.txt /tmp/*.tmp 2>/dev/null||true
+rm -f /tmp/ssh-pve-control.* 2>/dev/null||true
 if [[ $INSTALL_COMPLETED != "true" ]];then
 rm -f /root/pve.iso /root/pve-autoinstall.iso /root/SHA256SUMS 2>/dev/null||true
 rm -f /root/qemu_*.log 2>/dev/null||true
@@ -741,7 +742,8 @@ esac
 log "Template $remote_file downloaded and validated successfully"
 return 0
 }
-SSH_OPTS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -o ConnectTimeout=${SSH_CONNECT_TIMEOUT:-10}"
+_SSH_CONTROL_PATH="/tmp/ssh-pve-control.$$"
+SSH_OPTS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -o ConnectTimeout=${SSH_CONNECT_TIMEOUT:-10} -o ControlMaster=auto -o ControlPath=$_SSH_CONTROL_PATH -o ControlPersist=300"
 SSH_PORT="${SSH_PORT_QEMU:-5555}"
 _SSH_SESSION_PASSFILE=""
 _SSH_SESSION_LOGGED=false
@@ -767,7 +769,16 @@ log "SSH session initialized: $passfile_path"
 _SSH_SESSION_LOGGED=true
 fi
 }
+_ssh_control_cleanup(){
+local control_path="/tmp/ssh-pve-control.$$"
+if [[ -S $control_path ]];then
+ssh -o ControlPath="$control_path" -O exit root@localhost 2>/dev/null||true
+rm -f "$control_path" 2>/dev/null||true
+log "SSH control socket cleaned up: $control_path"
+fi
+}
 _ssh_session_cleanup(){
+_ssh_control_cleanup
 local passfile_path
 passfile_path=$(_ssh_passfile_path)
 [[ ! -f $passfile_path ]]&&return 0
@@ -1299,16 +1310,23 @@ eval "configure_$feature() { [[ \${$var_name:-} != \"$expected_value\" ]] && ret
 deploy_user_config(){
 local template="$1"
 local relative_path="$2"
-local dest="/home/$ADMIN_USERNAME/$relative_path"
+local home_dir="/home/$ADMIN_USERNAME"
+local dest="$home_dir/$relative_path"
 local dest_dir
 dest_dir="$(dirname "$dest")"
-if [[ $dest_dir != "/home/$ADMIN_USERNAME" ]];then
+if [[ $dest_dir != "$home_dir" ]];then
 remote_exec "mkdir -p '$dest_dir'"||{
 log "ERROR: Failed to create directory $dest_dir"
 return 1
 }
-remote_exec "chown -R $ADMIN_USERNAME:$ADMIN_USERNAME '$dest_dir'"||{
-log "ERROR: Failed to set ownership on $dest_dir"
+local dirs_to_chown=""
+local dir="$dest_dir"
+while [[ $dir != "$home_dir" && $dir != "/" ]];do
+dirs_to_chown+="'$dir' "
+dir="$(dirname "$dir")"
+done
+remote_exec "chown $ADMIN_USERNAME:$ADMIN_USERNAME $dirs_to_chown"||{
+log "ERROR: Failed to set ownership on $dirs_to_chown"
 return 1
 }
 fi
