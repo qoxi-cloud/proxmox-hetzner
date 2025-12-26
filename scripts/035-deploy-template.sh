@@ -14,19 +14,27 @@
 deploy_user_config() {
   local template="$1"
   local relative_path="$2"
-  local dest="/home/${ADMIN_USERNAME}/${relative_path}"
+  local home_dir="/home/${ADMIN_USERNAME}"
+  local dest="${home_dir}/${relative_path}"
   local dest_dir
   dest_dir="$(dirname "$dest")"
 
   # Create parent directory if needed (skip if deploying to home root)
-  if [[ "$dest_dir" != "/home/${ADMIN_USERNAME}" ]]; then
+  if [[ "$dest_dir" != "$home_dir" ]]; then
     remote_exec "mkdir -p '$dest_dir'" || {
       log "ERROR: Failed to create directory $dest_dir"
       return 1
     }
-    # Fix ownership of created directories (mkdir runs as root)
-    remote_exec "chown -R ${ADMIN_USERNAME}:${ADMIN_USERNAME} '$dest_dir'" || {
-      log "ERROR: Failed to set ownership on $dest_dir"
+    # Fix ownership of ALL directories created by mkdir -p (they're created as root)
+    # Walk up from dest_dir to home, collecting all intermediate directories
+    local dirs_to_chown=""
+    local dir="$dest_dir"
+    while [[ "$dir" != "$home_dir" && "$dir" != "/" ]]; do
+      dirs_to_chown+="'$dir' "
+      dir="$(dirname "$dir")"
+    done
+    remote_exec "chown ${ADMIN_USERNAME}:${ADMIN_USERNAME} $dirs_to_chown" || {
+      log "ERROR: Failed to set ownership on $dirs_to_chown"
       return 1
     }
   fi
