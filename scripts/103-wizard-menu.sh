@@ -79,6 +79,7 @@ _wiz_render_screen_content() {
       _add_field "Firewall         " "$(_wiz_fmt "$_DSP_FIREWALL")" "firewall"
       ;;
     3) # Storage
+      _add_field "Wipe disks       " "$(_wiz_fmt "$_DSP_WIPE")" "wipe_disks"
       if [[ $DRIVE_COUNT -gt 1 ]]; then
         _add_field "Boot disk        " "$(_wiz_fmt "$_DSP_BOOT")" "boot_disk"
         _add_field "Pool mode        " "$(_wiz_fmt "$_DSP_EXISTING_POOL")" "existing_pool"

@@ -1,6 +1,38 @@
 # shellcheck shell=bash
 # Configuration Wizard - Storage Settings Editors
-# zfs_mode, zfs_arc, existing_pool
+# wipe_disks, zfs_mode, zfs_arc, existing_pool
+
+# Edits disk wipe setting (full wipe vs keep existing).
+# Updates WIPE_DISKS global. Auto-disabled when using existing pool.
+_edit_wipe_disks() {
+  _wiz_start_edit
+
+  # Auto-disable if using existing pool
+  if [[ $USE_EXISTING_POOL == "yes" ]]; then
+    _wiz_hide_cursor
+    _wiz_warn "Disk wipe is disabled when using existing pool"
+    _wiz_blank_line
+    _wiz_dim "Existing pool data must be preserved."
+    sleep "${WIZARD_MESSAGE_DELAY:-3}"
+    WIPE_DISKS="no"
+    return
+  fi
+
+  _wiz_description \
+    "  Clean disks before installation:" \
+    "" \
+    "  {{cyan:Yes}}: Wipe all selected disks (removes old partitions," \
+    "       LVM, ZFS pools, mdadm arrays). Like fresh drives." \
+    "  {{cyan:No}}:  Only release locks, keep existing structures." \
+    "" \
+    "  {{yellow:WARNING}}: Full wipe DESTROYS all data on selected disks!" \
+    ""
+
+  _show_input_footer "filter" 3
+
+  _wiz_choose_mapped "WIPE_DISKS" "Wipe disks before install:" \
+    "${WIZ_MAP_WIPE_DISKS[@]}"
+}
 
 # Edits existing pool setting (use existing vs create new).
 # Updates USE_EXISTING_POOL and EXISTING_POOL_NAME globals.

@@ -19,6 +19,11 @@ USE_EXISTING_POOL=""
 EXISTING_POOL_NAME=""  # Pool name to import (e.g., "tank", "rpool", "data")
 EXISTING_POOL_DISKS=() # Disks containing the existing pool (detected or manual)
 
+# Wipe disks before installation (removes old partitions, LVM, ZFS, mdadm)
+# When "yes": fully wipe selected disks like fresh from factory
+# When "no": only release locks (existing behavior)
+WIPE_DISKS="yes"
+
 # System utilities to install on Proxmox
 SYSTEM_UTILITIES="btop iotop ncdu tmux pigz smartmontools jq bat fastfetch sysstat nethogs ethtool curl gnupg"
 OPTIONAL_PACKAGES="libguestfs-tools"

@@ -22,8 +22,8 @@ This project is a bash automation framework that installs Proxmox VE on dedicate
 1. **Initialization** (000-007) - Load colors, constants, parse CLI args, setup logging
 2. **System Check** (050-056) - Verify requirements (root, RAM, disk, KVM), detect hardware
 3. **Wizard** (100-121) - Interactive configuration via TUI
-4. **QEMU Setup** (200-207) - Download ISO, launch VM, wait for SSH
-5. **Installation** (200-207) - Proxmox auto-install via templates
+4. **QEMU Setup** (200-208) - Download ISO, launch VM, wait for SSH
+5. **Installation** (200-208) - Proxmox auto-install via templates
 6. **Configuration** (300-381) - Deploy configs, install packages, harden
 7. **Finalization** (380-381) - Validate, show credentials, shutdown VM
 
@@ -87,7 +87,7 @@ flowchart TD
         Y -->|Yes| AA[Exit wizard loop]
     end
 
-    subgraph INSTALL["📦 Installation (200-207)"]
+    subgraph INSTALL["📦 Installation (200-208)"]
         AA --> AB[Download ISO<br/>205-iso-download.sh]
         AB --> AC[Launch QEMU VM<br/>201-qemu-config.sh]
         AC --> AD[Wait for SSH ready<br/>021-ssh.sh]
@@ -290,7 +290,7 @@ graph LR
         AE[110-121 editors]
     end
 
-    subgraph "200-207 Installation"
+    subgraph "200-208 Installation"
         AF[200-packages]
         AG[201-qemu-config]
         AG2[202-qemu-release]
@@ -299,6 +299,7 @@ graph LR
         AI2[205-iso-download]
         AJ[206-autoinstall]
         AJ2[207-qemu-install]
+        AJ3[208-disk-wipe]
     end
 
     subgraph "300-381 Configuration"
@@ -388,7 +389,7 @@ scripts/
 │   ├── 120-wizard-disks.sh   # Disk detection
 │   └── 121-wizard-features.sh# Optional features selection
 │
-├── 200-207: Installation Layer
+├── 200-208: Installation Layer
 │   ├── 200-packages.sh    # Repo setup, package installation
 │   ├── 201-qemu-config.sh # QEMU configuration
 │   ├── 202-qemu-release.sh# Drive release functions
@@ -396,7 +397,8 @@ scripts/
 │   ├── 204-iso-download-methods.sh # Download methods (aria2c, curl, wget)
 │   ├── 205-iso-download.sh# ISO version detection, download
 │   ├── 206-autoinstall.sh # Proxmox auto-install answer file
-│   └── 207-qemu-install.sh# QEMU installation launcher
+│   ├── 207-qemu-install.sh# QEMU installation launcher
+│   └── 208-disk-wipe.sh   # Disk wipe before install
 │
 ├── 300-381: Configuration Layer
 │   ├── 300-configure-base.sh      # Base system config
@@ -643,7 +645,7 @@ spec/
 | 050-056   | System detection (packages, preflight, network, drives, status, live-logs) |
 | 100-106   | Wizard core (main logic, UI, nav, menu, display, helpers) |
 | 110-121   | Wizard editors (screens)                     |
-| 200-207   | Installation (packages, QEMU, templates, ISO, autoinstall) |
+| 200-208   | Installation (packages, QEMU, templates, ISO, autoinstall, disk wipe) |
 | 300-303   | Base configuration                           |
 | 310-313   | Security - Firewall & access control         |
 | 320-324   | Security - Auditing & integrity              |

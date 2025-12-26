@@ -141,6 +141,14 @@ _dsp_storage() {
   else
     _DSP_POOL="${#ZFS_POOL_DISKS[@]} disks"
   fi
+
+  # Wipe disks option
+  _DSP_WIPE=""
+  if [[ $WIPE_DISKS == "yes" ]]; then
+    _DSP_WIPE="Yes (full wipe)"
+  else
+    _DSP_WIPE="No (keep existing)"
+  fi
 }
 
 # Formats Services screen values: Tailscale, SSL, shell, power, features

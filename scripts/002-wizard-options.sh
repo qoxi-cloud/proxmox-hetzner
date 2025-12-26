@@ -104,3 +104,10 @@ readonly WIZ_MAP_SSL_TYPE=(
   "Self-signed:self-signed"
   "Let's Encrypt:letsencrypt"
 )
+
+# Disk wipe mapping
+# shellcheck disable=SC2034
+readonly WIZ_MAP_WIPE_DISKS=(
+  "Yes - Full wipe (recommended):yes"
+  "No - Keep existing:no"
+)

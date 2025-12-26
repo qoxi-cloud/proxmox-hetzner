@@ -217,6 +217,10 @@ log "Step: make_autoinstall_iso"
 make_autoinstall_iso
 log_metric "autoinstall_prep"
 
+log "Step: wipe_installation_disks"
+run_with_progress "Wiping disks" "Disks wiped" wipe_installation_disks
+log_metric "disk_wipe"
+
 log "Step: install_proxmox"
 install_proxmox
 log_metric "proxmox_install"
