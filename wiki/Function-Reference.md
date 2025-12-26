@@ -217,10 +217,11 @@ deploy_systemd_service "network-ringbuffer" "INTERFACE=${INTERFACE_NAME}"
 
 ### deploy_user_config
 
-Deploys config to admin user's home directory.
+Deploys config to admin user's home directory with optional template vars.
 
 ```bash
 deploy_user_config "templates/bat-config" ".config/bat/config"
+deploy_user_config "templates/zshrc" ".zshrc" "HOSTNAME=${HOSTNAME}"
 # Creates: /home/$ADMIN_USERNAME/.config/bat/config
 ```
 

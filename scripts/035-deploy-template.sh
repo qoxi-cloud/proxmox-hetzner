@@ -1,20 +1,43 @@
 # shellcheck shell=bash
 # Template deployment helpers
 
-# Deploy config to admin home. Creates dirs, sets ownership.
-# $1=template, $2=relative_path (e.g. ".config/bat/config")
+# Deploy config to admin home. Creates dirs, sets ownership, applies template vars.
+# $1=template, $2=relative_path (e.g. ".config/bat/config"), $@=VAR=value (optional)
 deploy_user_config() {
   local template="$1"
   local relative_path="$2"
+  shift 2
   local home_dir="/home/${ADMIN_USERNAME}"
   local dest="${home_dir}/${relative_path}"
-  local dest_dir
+  local dest_dir staged
   dest_dir="$(dirname "$dest")"
+
+  # Stage template to temp location to preserve original
+  staged=$(mktemp) || {
+    log "ERROR: Failed to create temp file for $template"
+    return 1
+  }
+  register_temp_file "$staged"
+  cp "$template" "$staged" || {
+    log "ERROR: Failed to stage template $template"
+    rm -f "$staged"
+    return 1
+  }
+
+  # Apply template vars if any provided
+  if [[ $# -gt 0 ]]; then
+    apply_template_vars "$staged" "$@" || {
+      log "ERROR: Template substitution failed for $template"
+      rm -f "$staged"
+      return 1
+    }
+  fi
 
   # Create parent directory if needed (skip if deploying to home root)
   if [[ "$dest_dir" != "$home_dir" ]]; then
     remote_exec "mkdir -p '$dest_dir'" || {
       log "ERROR: Failed to create directory $dest_dir"
+      rm -f "$staged"
       return 1
     }
     # Fix ownership of ALL directories created by mkdir -p (they're created as root)
@@ -27,15 +50,18 @@ deploy_user_config() {
     done
     remote_exec "chown ${ADMIN_USERNAME}:${ADMIN_USERNAME} $dirs_to_chown" || {
       log "ERROR: Failed to set ownership on $dirs_to_chown"
+      rm -f "$staged"
       return 1
     }
   fi
 
   # Copy file
-  remote_copy "$template" "$dest" || {
+  remote_copy "$staged" "$dest" || {
     log "ERROR: Failed to copy $template to $dest"
+    rm -f "$staged"
     return 1
   }
+  rm -f "$staged"
 
   # Set ownership
   remote_exec "chown ${ADMIN_USERNAME}:${ADMIN_USERNAME} '$dest'" || {
