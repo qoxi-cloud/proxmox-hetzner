@@ -233,7 +233,10 @@ boot_proxmox_with_port_forwarding || {
 log_metric "qemu_boot"
 
 log "Step: configure_proxmox_via_ssh"
-configure_proxmox_via_ssh
+configure_proxmox_via_ssh || {
+  log "ERROR: configure_proxmox_via_ssh failed"
+  exit 1
+}
 log_metric "system_config"
 
 # Log final metrics

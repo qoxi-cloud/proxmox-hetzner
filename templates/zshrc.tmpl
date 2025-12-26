@@ -10,6 +10,9 @@ export LANG={{LOCALE}}
 export LC_ALL={{LOCALE}}
 export LANGUAGE={{LOCALE}}
 
+# Ensure sbin dirs in PATH (Debian doesn't include by default)
+export PATH="/usr/local/sbin:/usr/sbin:/sbin:$PATH"
+
 # Path to oh-my-zsh installation
 export ZSH="$HOME/.oh-my-zsh"
 

@@ -39,6 +39,18 @@ _config_import_existing_pool() {
 # Create new ZFS pool with optimal settings
 _config_create_new_pool() {
   log "INFO: Creating separate ZFS pool 'tank' from pool disks"
+  log "INFO: ZFS_POOL_DISKS=(${ZFS_POOL_DISKS[*]}), count=${#ZFS_POOL_DISKS[@]}"
+  log "INFO: ZFS_RAID=$ZFS_RAID, BOOT_DISK=$BOOT_DISK"
+
+  # Validate required variables
+  if [[ ${#ZFS_POOL_DISKS[@]} -eq 0 ]]; then
+    log "ERROR: ZFS_POOL_DISKS is empty - no disks to create pool from"
+    return 1
+  fi
+  if [[ -z $ZFS_RAID ]]; then
+    log "ERROR: ZFS_RAID is empty - RAID level not specified"
+    return 1
+  fi
 
   # Load virtio mapping from QEMU setup
   if ! load_virtio_mapping; then
@@ -66,10 +78,16 @@ _config_create_new_pool() {
   log "INFO: ZFS pool command: $pool_cmd"
 
   # Create pool, set properties, configure Proxmox storage
+  # Use set -e to fail on ANY error (prevents silent failures)
   if ! remote_run "Creating ZFS pool 'tank'" "
+    set -e
     $pool_cmd
-    zfs set compression=lz4 tank && zfs set atime=off tank && zfs set xattr=sa tank && zfs set dnodesize=auto tank
-    zfs create tank/vm-disks && pvesm add zfspool tank --pool tank/vm-disks --content images,rootdir
+    zfs set compression=lz4 tank
+    zfs set atime=off tank
+    zfs set xattr=sa tank
+    zfs set dnodesize=auto tank
+    zfs create tank/vm-disks
+    pvesm add zfspool tank --pool tank/vm-disks --content images,rootdir
     pvesm set local --content iso,vztmpl,backup,snippets
   " "ZFS pool 'tank' created"; then
     log "ERROR: Failed to create ZFS pool 'tank'"
@@ -80,12 +98,40 @@ _config_create_new_pool() {
   return 0
 }
 
+# Ensures local-zfs storage exists for rpool (Proxmox auto-install may not create it)
+_config_ensure_rpool_storage() {
+  log "INFO: Ensuring rpool storage is configured for Proxmox"
+
+  # Check if rpool exists and configure storage if not already present
+  # shellcheck disable=SC2016
+  if ! remote_run "Configuring rpool storage" '
+    if zpool list rpool &>/dev/null; then
+      if ! pvesm status local-zfs &>/dev/null; then
+        # Create data dataset if missing
+        zfs list rpool/data &>/dev/null || zfs create rpool/data
+        pvesm add zfspool local-zfs --pool rpool/data --content images,rootdir
+        pvesm set local --content iso,vztmpl,backup,snippets
+        echo "local-zfs storage created"
+      else
+        echo "local-zfs storage already exists"
+      fi
+    else
+      echo "WARNING: rpool not found - system may have installed on LVM/ext4"
+    fi
+  ' "rpool storage configured"; then
+    log "WARNING: rpool storage configuration had issues"
+    # Don't fail - rpool might be intentionally absent if user chose different config
+  fi
+  return 0
+}
+
 # Main entry point - creates or imports ZFS pool based on configuration.
 # Only runs when BOOT_DISK is set (ext4 install mode).
-# When BOOT_DISK is empty, all disks are in ZFS rpool (existing behavior).
+# When BOOT_DISK is empty, all disks are in ZFS rpool - ensures storage is configured.
 _config_zfs_pool() {
   if [[ -z $BOOT_DISK ]]; then
-    log "INFO: BOOT_DISK not set, skipping separate ZFS pool (all-ZFS mode)"
+    log "INFO: BOOT_DISK not set, all-ZFS mode - ensuring rpool storage"
+    _config_ensure_rpool_storage
     return 0
   fi
 

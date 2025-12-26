@@ -68,18 +68,31 @@ setup_qemu_config() {
     return 1
   fi
 
-  # Build DRIVE_ARGS from virtio mapping (iterate over all mapped disks)
-  # This avoids relying on ZFS_POOL_DISKS array which isn't available in backgrounded subshells
+  # Build DRIVE_ARGS from virtio mapping in correct order (vda, vdb, vdc, ...)
+  # CRITICAL: QEMU assigns virtio devices in order of -drive arguments!
+  # We must iterate by virtio name (sorted) to match the mapping.
   DRIVE_ARGS=""
 
-  # Get all disks from VIRTIO_MAP keys (sorted by virtio device for consistent ordering)
-  local disk
+  # Build reverse map: virtio_device -> physical_disk
+  declare -A REVERSE_MAP
+  local disk vdev
   for disk in "${!VIRTIO_MAP[@]}"; do
+    vdev="${VIRTIO_MAP[$disk]}"
+    REVERSE_MAP["$vdev"]="$disk"
+  done
+
+  # Iterate virtio devices in sorted order (vda, vdb, vdc, ...)
+  local sorted_vdevs
+  sorted_vdevs=$(printf '%s\n' "${!REVERSE_MAP[@]}" | sort)
+
+  for vdev in $sorted_vdevs; do
+    disk="${REVERSE_MAP[$vdev]}"
     # Validate disk exists before adding to QEMU args
     if [[ ! -b $disk ]]; then
       log "ERROR: Disk $disk does not exist or is not a block device"
       return 1
     fi
+    log "QEMU drive order: $vdev -> $disk"
     DRIVE_ARGS="$DRIVE_ARGS -drive file=$disk,format=raw,media=disk,if=virtio"
   done
 
