@@ -81,6 +81,7 @@ _generate_vmbr0_external() {
   local ipv6_addr="${IPV6_ADDRESS:-${IPV6_CIDR:-${MAIN_IPV6}/128}}"
   local ipv4_prefix="${ipv4_addr##*/}"
   local ipv6_prefix="${ipv6_addr##*/}"
+  local mtu="${BRIDGE_MTU:-1500}"
 
   cat <<EOF
 # vmbr0: External bridge - VMs get IPs from router/DHCP
@@ -102,6 +103,7 @@ EOF
     bridge-ports ${INTERFACE_NAME}
     bridge-stp off
     bridge-fd 0
+    mtu ${mtu}
     up sysctl --system
 EOF
 
@@ -133,10 +135,12 @@ _generate_vmbr0_nat() {
   local mtu="${BRIDGE_MTU:-9000}"
   local private_ip="${PRIVATE_IP_CIDR:-10.0.0.1/24}"
 
+  local mtu_comment=""
+  [[ $mtu -gt 1500 ]] && mtu_comment=" (jumbo frames for improved VM-to-VM performance)"
+
   cat <<EOF
 # vmbr0: Private NAT network for VMs
-# All VMs connect here and access internet via NAT
-# MTU ${mtu} (jumbo frames) for improved VM-to-VM performance
+# All VMs connect here and access internet via NAT${mtu_comment}
 auto vmbr0
 iface vmbr0 inet static
     address ${private_ip}
@@ -144,10 +148,6 @@ iface vmbr0 inet static
     bridge-stp off
     bridge-fd 0
     mtu ${mtu}
-    # NAT masquerade handled by nftables (/etc/nftables.conf)
-    # CT zone for Proxmox bridge tracking (required for VM networking)
-    post-up   iptables -t raw -I PREROUTING -i fwbr+ -j CT --zone 1
-    post-down iptables -t raw -D PREROUTING -i fwbr+ -j CT --zone 1 || true
 EOF
 
   # Add IPv6 if enabled
@@ -165,10 +165,12 @@ _generate_vmbr1_nat() {
   local mtu="${BRIDGE_MTU:-9000}"
   local private_ip="${PRIVATE_IP_CIDR:-10.0.0.1/24}"
 
+  local mtu_comment=""
+  [[ $mtu -gt 1500 ]] && mtu_comment=" (jumbo frames for improved VM-to-VM performance)"
+
   cat <<EOF
 # vmbr1: Private NAT network for VMs
-# VMs connect here for isolated network with NAT to internet
-# MTU ${mtu} (jumbo frames) for improved VM-to-VM performance
+# VMs connect here for isolated network with NAT to internet${mtu_comment}
 auto vmbr1
 iface vmbr1 inet static
     address ${private_ip}
@@ -176,10 +178,6 @@ iface vmbr1 inet static
     bridge-stp off
     bridge-fd 0
     mtu ${mtu}
-    # NAT masquerade handled by nftables (/etc/nftables.conf)
-    # CT zone for Proxmox bridge tracking (required for VM networking)
-    post-up   iptables -t raw -I PREROUTING -i fwbr+ -j CT --zone 1
-    post-down iptables -t raw -D PREROUTING -i fwbr+ -j CT --zone 1 || true
 EOF
 
   # Add IPv6 if enabled
