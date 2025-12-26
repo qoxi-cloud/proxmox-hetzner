@@ -23,7 +23,7 @@ create_virtio_mapping() {
   shift
   local pool_disks=("$@")
 
-  declare -A VIRTIO_MAP
+  declare -gA VIRTIO_MAP
   local virtio_idx=0
 
   # Add boot disk first (if separate)
