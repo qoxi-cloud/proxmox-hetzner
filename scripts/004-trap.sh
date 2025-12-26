@@ -17,11 +17,14 @@ cleanup_temp_files() {
     [[ -f "$f" ]] && rm -f "$f"
   done
 
+  # Use INSTALL_DIR with fallback for early cleanup calls
+  local install_dir="${INSTALL_DIR:-${HOME:-/root}}"
+
   # Secure delete files containing secrets (API token, root password)
   # secure_delete_file is defined in 012-utils.sh, check if available
   if type secure_delete_file &>/dev/null; then
     secure_delete_file /tmp/pve-install-api-token.env
-    secure_delete_file /root/answer.toml
+    secure_delete_file "${install_dir}/answer.toml"
     # Secure delete password files from /dev/shm and /tmp
     # Patterns: pve-ssh-session.* (current), pve-passfile.* (legacy), *passfile* (catch-all)
     while IFS= read -r -d '' pfile; do
@@ -36,7 +39,7 @@ cleanup_temp_files() {
   else
     # Fallback if secure_delete_file not yet loaded (early exit)
     rm -f /tmp/pve-install-api-token.env 2>/dev/null || true
-    rm -f /root/answer.toml 2>/dev/null || true
+    rm -f "${install_dir}/answer.toml" 2>/dev/null || true
     find /dev/shm /tmp -name "pve-ssh-session.*" -type f -delete 2>/dev/null || true
     find /dev/shm /tmp -name "pve-passfile.*" -type f -delete 2>/dev/null || true
     find /dev/shm /tmp -name "*passfile*" -type f -delete 2>/dev/null || true
@@ -50,8 +53,8 @@ cleanup_temp_files() {
 
   # Clean up ISO and installation files (only if installation failed)
   if [[ $INSTALL_COMPLETED != "true" ]]; then
-    rm -f /root/pve.iso /root/pve-autoinstall.iso /root/SHA256SUMS 2>/dev/null || true
-    rm -f /root/qemu_*.log 2>/dev/null || true
+    rm -f "${install_dir}/pve.iso" "${install_dir}/pve-autoinstall.iso" "${install_dir}/SHA256SUMS" 2>/dev/null || true
+    rm -f "${install_dir}"/qemu_*.log 2>/dev/null || true
   fi
 }
 

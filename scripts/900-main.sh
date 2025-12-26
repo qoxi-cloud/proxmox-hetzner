@@ -168,12 +168,14 @@ register_temp_file "$SYSTEM_INFO_CACHE"
   log "Step: prefetch_proxmox_iso_info"
   prefetch_proxmox_iso_info
 
-  # Export all important variables to temp file
+  # Export all important variables to temp file using atomic write pattern
   # Include: PREFLIGHT_*, DRIVE_*, INTERFACE_*, CURRENT_INTERFACE, PREDICTABLE_NAME,
   # DEFAULT_INTERFACE, AVAILABLE_*, MAC_ADDRESS, MAIN_IPV*, IPV6_*, FIRST_IPV6_*, _ISO_*, _CHECKSUM_*
   # Also: WIZ_TIMEZONES, WIZ_COUNTRIES, TZ_TO_COUNTRY (loaded dynamically from system)
   # Also: DETECTED_POOLS (for existing ZFS pool import feature)
-  declare -p | grep -E "^declare -[^ ]* (PREFLIGHT_|DRIVE_|INTERFACE_|CURRENT_INTERFACE|PREDICTABLE_NAME|DEFAULT_INTERFACE|AVAILABLE_|MAC_ADDRESS|MAIN_IPV|IPV6_|FIRST_IPV6_|_ISO_|_CHECKSUM_|WIZ_TIMEZONES|WIZ_COUNTRIES|TZ_TO_COUNTRY|DETECTED_POOLS)" >"$SYSTEM_INFO_CACHE"
+  # Write to temp file first, then atomic mv to prevent truncated/partial data on interruption
+  declare -p | grep -E "^declare -[^ ]* (PREFLIGHT_|DRIVE_|INTERFACE_|CURRENT_INTERFACE|PREDICTABLE_NAME|DEFAULT_INTERFACE|AVAILABLE_|MAC_ADDRESS|MAIN_IPV|IPV6_|FIRST_IPV6_|_ISO_|_CHECKSUM_|WIZ_TIMEZONES|WIZ_COUNTRIES|TZ_TO_COUNTRY|DETECTED_POOLS)" >"${SYSTEM_INFO_CACHE}.tmp" \
+    && mv "${SYSTEM_INFO_CACHE}.tmp" "$SYSTEM_INFO_CACHE"
 } >/dev/null 2>&1 &
 
 # Wait for background tasks to complete

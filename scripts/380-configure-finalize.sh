@@ -125,14 +125,15 @@ finalize_vm() {
 
   # Wait for QEMU to exit
   (
-    local timeout=120
+    local timeout="${VM_SHUTDOWN_TIMEOUT:-120}"
+    local wait_interval="${PROCESS_KILL_WAIT:-1}"
     local elapsed=0
     while ((elapsed < timeout)); do
       if ! kill -0 "$QEMU_PID" 2>/dev/null; then
         exit 0
       fi
-      sleep "${PROCESS_KILL_WAIT:-1}"
-      ((elapsed += PROCESS_KILL_WAIT))
+      sleep "$wait_interval"
+      ((elapsed += wait_interval))
     done
     exit 1
   ) &
@@ -155,10 +156,28 @@ finalize_vm() {
 configure_proxmox_via_ssh() {
   log "Starting Proxmox configuration via SSH"
 
-  _phase_base_configuration
-  _phase_storage_configuration
-  _phase_security_configuration || return 1
-  _phase_monitoring_tools
-  _phase_ssl_api
-  _phase_finalization
+  _phase_base_configuration || {
+    log "ERROR: Base configuration failed"
+    return 1
+  }
+  _phase_storage_configuration || {
+    log "ERROR: Storage configuration failed"
+    return 1
+  }
+  _phase_security_configuration || {
+    log "ERROR: Security configuration failed"
+    return 1
+  }
+  _phase_monitoring_tools || {
+    log "WARNING: Monitoring tools configuration had issues"
+    # Non-fatal: continue with installation
+  }
+  _phase_ssl_api || {
+    log "WARNING: SSL/API configuration had issues"
+    # Non-fatal: continue with installation
+  }
+  _phase_finalization || {
+    log "ERROR: Finalization failed"
+    return 1
+  }
 }

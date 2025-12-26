@@ -6,6 +6,13 @@
 # - generate_password → 034-password-utils.sh
 # - show_progress → 010-display.sh
 
+# Get file size in bytes (cross-platform: GNU and BSD stat). $1=file → size
+_get_file_size() {
+  local file="$1"
+  # Try GNU stat first (-c%s), then BSD stat (-f%z)
+  stat -c%s "$file" 2>/dev/null || stat -f%z "$file" 2>/dev/null || echo 1024
+}
+
 # Securely delete file (shred or dd fallback). $1=file_path
 secure_delete_file() {
   local file="$1"
@@ -18,7 +25,7 @@ secure_delete_file() {
   else
     # Fallback: overwrite with zeros before deletion
     local file_size
-    file_size=$(stat -c%s "$file" 2>/dev/null || echo 1024)
+    file_size=$(_get_file_size "$file")
     dd if=/dev/zero of="$file" bs=1 count="$file_size" conv=notrunc 2>/dev/null || true
     rm -f "$file"
   fi

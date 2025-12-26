@@ -9,8 +9,11 @@ install_proxmox() {
   register_temp_file "$qemu_config_file"
 
   (
-    # Setup QEMU configuration
-    setup_qemu_config
+    # Setup QEMU configuration - exit on failure
+    if ! setup_qemu_config; then
+      log "ERROR: QEMU configuration failed"
+      exit 1
+    fi
 
     # Save config for parent shell (including all QEMU variables)
     cat >"$qemu_config_file" <<EOF
@@ -96,7 +99,10 @@ boot_proxmox_with_port_forwarding() {
   # Deactivate any LVM auto-activated by udev after install
   _deactivate_lvm
 
-  setup_qemu_config
+  if ! setup_qemu_config; then
+    log "ERROR: QEMU configuration failed in boot_proxmox_with_port_forwarding"
+    return 1
+  fi
 
   # Check if port is already in use
   if ! check_port_available "$SSH_PORT"; then

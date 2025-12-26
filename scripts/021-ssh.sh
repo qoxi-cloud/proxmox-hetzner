@@ -6,7 +6,8 @@
 _SSH_CONTROL_PATH="/tmp/ssh-pve-control.$$"
 
 # SSH options for QEMU VM - host key checking disabled (local/ephemeral)
-SSH_OPTS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -o ConnectTimeout=${SSH_CONNECT_TIMEOUT:-10} -o ControlMaster=auto -o ControlPath=${_SSH_CONTROL_PATH} -o ControlPersist=300"
+# Includes keepalive settings: ServerAliveInterval=30s, ServerAliveCountMax=3 (90s before disconnect)
+SSH_OPTS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -o ConnectTimeout=${SSH_CONNECT_TIMEOUT:-10} -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -o ControlMaster=auto -o ControlPath=${_SSH_CONTROL_PATH} -o ControlPersist=300"
 SSH_PORT="${SSH_PORT_QEMU:-5555}"
 
 # Session passfile (created once, path uses $$ for subshell sharing)
@@ -74,9 +75,9 @@ _ssh_session_cleanup() {
   elif command -v shred &>/dev/null; then
     shred -u -z "$passfile_path" 2>/dev/null || rm -f "$passfile_path"
   else
-    # Fallback: overwrite with zeros
+    # Fallback: overwrite with zeros (cross-platform stat: GNU -c%s, BSD -f%z)
     local file_size
-    file_size=$(stat -c%s "$passfile_path" 2>/dev/null || echo 1024)
+    file_size=$(stat -c%s "$passfile_path" 2>/dev/null || stat -f%z "$passfile_path" 2>/dev/null || echo 1024)
     dd if=/dev/zero of="$passfile_path" bs=1 count="$file_size" conv=notrunc 2>/dev/null || true
     rm -f "$passfile_path"
   fi
@@ -135,7 +136,8 @@ wait_for_ssh_ready() {
   start_time=$(date +%s)
 
   # Clear any stale known_hosts entries
-  ssh-keygen -f "/root/.ssh/known_hosts" -R "[localhost]:${SSH_PORT}" 2>/dev/null || true
+  local ssh_known_hosts="${INSTALL_DIR:-${HOME:-/root}}/.ssh/known_hosts"
+  ssh-keygen -f "$ssh_known_hosts" -R "[localhost]:${SSH_PORT}" 2>/dev/null || true
 
   # Port check - wait for VM to boot and open SSH port
   # Allow up to 75% of timeout for port check, but track actual elapsed time
@@ -215,7 +217,8 @@ parse_ssh_key() {
 
 # Gets SSH public key from rescue system's authorized_keys (first valid key)
 get_rescue_ssh_key() {
-  if [[ -f /root/.ssh/authorized_keys ]]; then
-    grep -E "^(ssh-(rsa|ed25519|dss)|ecdsa-sha2-nistp(256|384|521)|sk-(ssh-ed25519|ecdsa-sha2-nistp256)@openssh.com)" /root/.ssh/authorized_keys 2>/dev/null | head -1
+  local auth_keys="${INSTALL_DIR:-${HOME:-/root}}/.ssh/authorized_keys"
+  if [[ -f "$auth_keys" ]]; then
+    grep -E "^(ssh-(rsa|ed25519|dss)|ecdsa-sha2-nistp(256|384|521)|sk-(ssh-ed25519|ecdsa-sha2-nistp256)@openssh.com)" "$auth_keys" 2>/dev/null | head -1
   fi
 }

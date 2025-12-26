@@ -25,13 +25,14 @@ _sanitize_script_for_log() {
   printf '%s\n' "$script"
 }
 
-# Execute command on remote VM with retry. $*=command. Returns exit code (124=timeout)
+# Execute command on remote VM with exponential backoff retry. $*=command. Returns exit code (124=timeout)
 remote_exec() {
   local passfile
   passfile=$(_ssh_get_passfile)
 
   local cmd_timeout="${SSH_COMMAND_TIMEOUT:-$SSH_DEFAULT_TIMEOUT}"
   local max_attempts="${SSH_RETRY_ATTEMPTS:-3}"
+  local base_delay="${RETRY_DELAY_SECONDS:-2}"
   local attempt=0
 
   while [[ $attempt -lt $max_attempts ]]; do
@@ -49,8 +50,11 @@ remote_exec() {
     fi
 
     if [[ $attempt -lt $max_attempts ]]; then
-      log "SSH attempt $attempt failed, retrying in ${RETRY_DELAY_SECONDS:-2} seconds..."
-      sleep "${RETRY_DELAY_SECONDS:-2}"
+      # Exponential backoff: delay = base_delay * 2^(attempt-1), capped at 30s
+      local delay=$((base_delay * (1 << (attempt - 1))))
+      ((delay > 30)) && delay=30
+      log "SSH attempt $attempt failed, retrying in ${delay} seconds..."
+      sleep "$delay"
     fi
   done
 

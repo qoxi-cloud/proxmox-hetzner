@@ -5,18 +5,30 @@
 # PHASE 1: Base Configuration (sequential - dependencies)
 # Must run first - sets up admin user and base system
 _phase_base_configuration() {
-  make_templates
-  configure_admin_user # Must be first - other configs need admin user's home dir
-  configure_base_system
-  configure_shell
-  configure_system_services
+  make_templates || {
+    log "ERROR: make_templates failed"
+    return 1
+  }
+  configure_admin_user || {
+    log "ERROR: configure_admin_user failed"
+    return 1
+  }
+  configure_base_system || {
+    log "ERROR: configure_base_system failed"
+    return 1
+  }
+  configure_shell || { log "WARNING: configure_shell failed"; }
+  configure_system_services || { log "WARNING: configure_system_services failed"; }
 }
 
 # PHASE 2: Storage Configuration (sequential - ZFS dependencies)
 _phase_storage_configuration() {
-  configure_zfs_arc
-  configure_zfs_pool
-  configure_zfs_scrub
+  configure_zfs_arc || { log "WARNING: configure_zfs_arc failed"; }
+  configure_zfs_pool || {
+    log "ERROR: configure_zfs_pool failed"
+    return 1
+  }
+  configure_zfs_scrub || { log "WARNING: configure_zfs_scrub failed"; }
 }
 
 # PHASE 3: Security Configuration (parallel after batch install)
@@ -84,14 +96,18 @@ _phase_ssl_api() {
 # PHASE 6: Validation & Finalization
 _phase_finalization() {
   # Deploy SSH hardening config BEFORE validation (so validation can verify it)
-  deploy_ssh_hardening_config
+  deploy_ssh_hardening_config || {
+    log "ERROR: deploy_ssh_hardening_config failed"
+    return 1
+  }
 
   # Validate installation (SSH config file now has hardened settings)
-  validate_installation
+  # Non-fatal: continue even if validation has warnings
+  validate_installation || { log "WARNING: validate_installation reported issues"; }
 
   # Restart SSH as the LAST operation - after this, password auth is disabled
-  restart_ssh_service
+  restart_ssh_service || { log "WARNING: restart_ssh_service failed"; }
 
   # Power off VM - SSH no longer available, use QEMU ACPI shutdown
-  finalize_vm
+  finalize_vm || { log "WARNING: finalize_vm did not complete cleanly"; }
 }

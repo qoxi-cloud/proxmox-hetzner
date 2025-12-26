@@ -56,7 +56,17 @@ setup_qemu_config() {
   log "QEMU config: $QEMU_CORES vCPUs, ${QEMU_RAM}MB RAM"
 
   # Load virtio mapping (created by make_answer_toml)
-  load_virtio_mapping
+  if ! load_virtio_mapping; then
+    log "ERROR: Failed to load virtio mapping"
+    return 1
+  fi
+
+  # Validate VIRTIO_MAP is not empty before proceeding
+  if [[ ${#VIRTIO_MAP[@]} -eq 0 ]]; then
+    log "ERROR: VIRTIO_MAP is empty - no disks mapped for QEMU"
+    print_error "No disks available for QEMU. Check disk detection."
+    return 1
+  fi
 
   # Build DRIVE_ARGS from virtio mapping (iterate over all mapped disks)
   # This avoids relying on ZFS_POOL_DISKS array which isn't available in backgrounded subshells
@@ -65,8 +75,18 @@ setup_qemu_config() {
   # Get all disks from VIRTIO_MAP keys (sorted by virtio device for consistent ordering)
   local disk
   for disk in "${!VIRTIO_MAP[@]}"; do
+    # Validate disk exists before adding to QEMU args
+    if [[ ! -b $disk ]]; then
+      log "ERROR: Disk $disk does not exist or is not a block device"
+      return 1
+    fi
     DRIVE_ARGS="$DRIVE_ARGS -drive file=$disk,format=raw,media=disk,if=virtio"
   done
+
+  if [[ -z $DRIVE_ARGS ]]; then
+    log "ERROR: No drive arguments built - QEMU would start without disks"
+    return 1
+  fi
 
   log "Drive args: $DRIVE_ARGS"
 }

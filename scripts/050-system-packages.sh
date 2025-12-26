@@ -6,10 +6,11 @@ _install_zfs_if_needed() {
   command -v zpool &>/dev/null && return 0
 
   # Common rescue system ZFS install scripts (auto-accept prompts)
+  local install_dir="${INSTALL_DIR:-${HOME:-/root}}"
   local zfs_scripts=(
-    "/root/.oldroot/nfs/install/zfs.sh" # Hetzner
-    "/root/zfs-install.sh"              # Generic
-    "/usr/local/bin/install-zfs"        # Some providers
+    "${install_dir}/.oldroot/nfs/install/zfs.sh" # Hetzner
+    "${install_dir}/zfs-install.sh"              # Generic
+    "/usr/local/bin/install-zfs"                 # Some providers
   )
 
   for script in "${zfs_scripts[@]}"; do

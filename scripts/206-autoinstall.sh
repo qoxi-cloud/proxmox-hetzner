@@ -127,9 +127,16 @@ make_answer_toml() {
   # SSH key is deployed directly to the admin user in 302-configure-admin.sh
   # Root login is disabled for both SSH and Proxmox UI.
 
-  # Escape password for TOML (critical for user-entered passwords)
-  local escaped_password="${NEW_ROOT_PASSWORD//\\/\\\\}" # Escape backslashes first
-  escaped_password="${escaped_password//\"/\\\"}"        # Then escape quotes
+  # Escape password for TOML basic string (double-quoted) per TOML spec
+  # Must escape: backslash, double quote, and control characters
+  local escaped_password="$NEW_ROOT_PASSWORD"
+  escaped_password="${escaped_password//\\/\\\\}"   # Escape backslashes first (must be first!)
+  escaped_password="${escaped_password//\"/\\\"}"   # Escape double quotes
+  escaped_password="${escaped_password//$'\t'/\\t}" # Escape tabs
+  escaped_password="${escaped_password//$'\n'/\\n}" # Escape newlines
+  escaped_password="${escaped_password//$'\r'/\\r}" # Escape carriage returns
+  # Note: Other control chars (0x00-0x1F except \t\n\r) are rare in passwords
+  # and would require \uXXXX escaping - validation should reject them earlier
 
   # Generate [global] section
   # IMPORTANT: Use kebab-case for all keys (root-password, reboot-on-error)

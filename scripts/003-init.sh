@@ -1,6 +1,9 @@
 # shellcheck shell=bash
 # Initialization - disk config, log file, runtime variables
 
+# Installation directory (rescue system home, can be overridden)
+INSTALL_DIR="${INSTALL_DIR:-${HOME:-/root}}"
+
 # Disk configuration
 
 # Boot disk selection (empty = all disks in pool)
@@ -21,7 +24,7 @@ SYSTEM_UTILITIES="btop iotop ncdu tmux pigz smartmontools jq bat fastfetch sysst
 OPTIONAL_PACKAGES="libguestfs-tools"
 
 # Log file
-LOG_FILE="/root/pve-install-$(date +%Y%m%d-%H%M%S).log"
+LOG_FILE="${INSTALL_DIR}/pve-install-$(date +%Y%m%d-%H%M%S).log"
 
 # Track if installation completed successfully
 INSTALL_COMPLETED=false

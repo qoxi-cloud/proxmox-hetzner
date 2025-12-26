@@ -138,12 +138,15 @@ _run_parallel_task() {
   trap "touch '$result_dir/fail_$idx' 2>/dev/null" EXIT
 
   if "$func" >/dev/null 2>&1; then
-    trap - EXIT # Clear trap on success
-    touch "$result_dir/success_$idx"
+    # Write success marker BEFORE clearing trap to avoid race condition
+    # If touch fails, trap still fires and marks as failed
+    if touch "$result_dir/success_$idx" 2>/dev/null; then
+      trap - EXIT # Only clear trap after success marker is confirmed written
+    fi
   fi
 }
 
-# Run config functions in parallel. $1=name, $2=done_msg, $@=functions
+# Run config functions in parallel with concurrency limit. $1=name, $2=done_msg, $@=functions
 run_parallel_group() {
   local group_name="$1"
   local done_msg="$2"
@@ -155,7 +158,9 @@ run_parallel_group() {
     return 0
   fi
 
-  log "Running parallel group '$group_name' with functions: ${funcs[*]}"
+  # Max concurrent jobs (prevents fork bombs, default 8)
+  local max_jobs="${PARALLEL_MAX_JOBS:-8}"
+  log "Running parallel group '$group_name' with functions: ${funcs[*]} (max $max_jobs concurrent)"
 
   # Track results via temp files (avoid subshell variable issues)
   local result_dir
@@ -164,14 +169,23 @@ run_parallel_group() {
   # shellcheck disable=SC2064
   trap "rm -rf '$result_dir'" RETURN
 
-  # Start all functions in background, each writes result to file
+  # Start functions in background with concurrency limit
   # Use trap to ensure marker created even if function calls exit 1 (like remote_run)
   # NOTE: Each subshell gets its own copy of variables at fork time.
-  # We pass idx as function argument to guarantee correct value capture.
   local i=0
+  local running=0
+  local pids=()
   for func in "${funcs[@]}"; do
     _run_parallel_task "$result_dir" "$i" "$func" &
+    pids+=($!)
     ((i++))
+    ((running++))
+
+    # If we've hit the limit, wait for any job to complete before starting more
+    if ((running >= max_jobs)); then
+      wait -n 2>/dev/null || true
+      ((running--))
+    fi
   done
 
   local count=$i

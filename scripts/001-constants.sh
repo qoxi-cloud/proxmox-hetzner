@@ -63,6 +63,7 @@ readonly PROGRESS_POLL_INTERVAL=0.2 # Polling interval for progress indicators
 readonly PROCESS_KILL_WAIT=1        # Wait time after sending SIGTERM before SIGKILL
 readonly VM_SHUTDOWN_TIMEOUT=120    # Max wait for VM to shutdown gracefully
 readonly WIZARD_MESSAGE_DELAY=3     # Display duration for wizard notifications
+readonly PARALLEL_MAX_JOBS=8        # Max concurrent background jobs in parallel groups
 
 # Keyboard layouts supported by Proxmox installer (from official documentation)
 # shellcheck disable=SC2034
