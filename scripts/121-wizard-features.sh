@@ -166,7 +166,7 @@ _edit_features_tools() {
   _wiz_description \
     "  Tools (use Space to toggle):" \
     "" \
-    "  {{cyan:yazi}}:       Terminal file manager (Catppuccin theme)" \
+    "  {{cyan:yazi}}:       Terminal file manager (Tokyo Night theme)" \
     "  {{cyan:nvim}}:       Neovim as default editor" \
     "  {{cyan:ringbuffer}}: Network ring buffer tuning" \
     ""

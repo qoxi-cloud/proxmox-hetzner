@@ -479,8 +479,8 @@ if [[ "{{INSTALL_YAZI}}" == "yes" ]]; then
 	_check_cmd yazi && _ok "yazi command available"
 	_check_file /home/{{ADMIN_USERNAME}}/.config/yazi/theme.toml && _ok "Yazi theme configured"
 
-	# Verify theme is Catppuccin
-	_check_config /home/{{ADMIN_USERNAME}}/.config/yazi/theme.toml "catppuccin\|Catppuccin" "Catppuccin theme not set" && _ok "Catppuccin theme active" || true
+	# Verify theme is Tokyo Night
+	_check_config /home/{{ADMIN_USERNAME}}/.config/yazi/theme.toml "tokyonight" "Tokyo Night theme not set" && _ok "Tokyo Night theme active" || true
 fi
 
 # =============================================================================
