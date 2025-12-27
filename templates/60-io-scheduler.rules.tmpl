@@ -1,0 +1,19 @@
+# I/O Scheduler udev rules for optimal performance
+# NVMe: none (hardware controller handles scheduling)
+# SSD: mq-deadline (low latency)
+# HDD: bfq (fair queuing for rotational)
+#
+# SUBSYSTEM=="block" ensures we only match block devices (not partitions)
+# DEVTYPE=="disk" excludes partitions which don't have their own scheduler
+
+# NVMe devices - use none (noop equivalent for blk-mq)
+ACTION=="add|change", SUBSYSTEM=="block", DEVTYPE=="disk", KERNEL=="nvme[0-9]*n[0-9]*", ATTR{queue/scheduler}="none"
+
+# SSD devices (non-rotational) - use mq-deadline for low latency
+ACTION=="add|change", SUBSYSTEM=="block", DEVTYPE=="disk", KERNEL=="sd[a-z]", ATTR{queue/rotational}=="0", ATTR{queue/scheduler}="mq-deadline"
+
+# HDD devices (rotational) - use bfq for fair queuing
+ACTION=="add|change", SUBSYSTEM=="block", DEVTYPE=="disk", KERNEL=="sd[a-z]", ATTR{queue/rotational}=="1", ATTR{queue/scheduler}="bfq"
+
+# Virtual devices (virtio) - use none
+ACTION=="add|change", SUBSYSTEM=="block", DEVTYPE=="disk", KERNEL=="vd[a-z]", ATTR{queue/scheduler}="none"

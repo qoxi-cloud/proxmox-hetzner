@@ -8,18 +8,28 @@
 - [📦 Installation Guide](Installation-Guide)
 - [⚙️ Configuration Reference](Configuration-Reference)
 
-**Setup**
+**Configuration**
 - [🌐 Network Modes](Network-Modes)
-- [🔒 SSL Certificates](SSL-Certificates)
 - [🛡️ Security](Security)
-- [🔧 Post-Installation](Post-Installation)
+- [🔒 SSL Certificates](SSL-Certificates)
 - [🔐 Tailscale Setup](Tailscale-Setup)
 
-**Development**
-- [🛠️ Development Guide](Development)
+**Reference**
+- [🔧 Post-Installation](Post-Installation)
+- [❓ Troubleshooting](Troubleshooting)
+
+---
+
+**Developer Guide**
+- [🏗️ Architecture](Architecture)
+- [📚 Function Reference](Function-Reference)
+- [📝 Templates Guide](Templates-Guide)
+- [🧙 Wizard Development](Wizard-Development)
+- [🔐 Security Model](Security-Model)
+- [🛠️ Development](Development)
 
 ---
 
 **Links**
-- [📋 GitHub Repo](https://github.com/qoxi-cloud/proxmox-hetzner)
-- [🐛 Report Issue](https://github.com/qoxi-cloud/proxmox-hetzner/issues)
+- [📋 GitHub](https://github.com/qoxi-cloud/proxmox-installer)
+- [🐛 Issues](https://github.com/qoxi-cloud/proxmox-installer/issues)

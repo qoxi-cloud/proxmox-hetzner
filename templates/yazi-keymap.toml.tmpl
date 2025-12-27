@@ -1,0 +1,36 @@
+# Yazi keymap - plugin keybindings
+
+[[manager.prepend_keymap]]
+on = [ "<Enter>" ]
+run = "plugin smart-enter"
+desc = "Enter directory or open file"
+
+[[manager.prepend_keymap]]
+on = [ "f" ]
+run = "plugin smart-filter"
+desc = "Smart filter"
+
+[[manager.prepend_keymap]]
+on = [ "c", "m" ]
+run = "plugin chmod"
+desc = "Chmod on selected files"
+
+[[manager.prepend_keymap]]
+on = [ "." ]
+run = "hidden toggle"
+desc = "Toggle hidden files"
+
+[[manager.prepend_keymap]]
+on = [ "T" ]
+run = "shell 'for f in \"$@\"; do touch \"$f\"; done' --confirm"
+desc = "Touch file (update mtime)"
+
+[[manager.prepend_keymap]]
+on = [ "g", "c" ]
+run = "cd /etc"
+desc = "Go to /etc"
+
+[[manager.prepend_keymap]]
+on = [ "g", "l" ]
+run = "cd /var/log"
+desc = "Go to /var/log"

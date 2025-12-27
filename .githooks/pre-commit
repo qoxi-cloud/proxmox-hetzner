@@ -1,0 +1,105 @@
+#!/usr/bin/env bash
+# Pre-commit hook: runs shellcheck and shfmt on staged .sh files
+set -euo pipefail
+
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+NC='\033[0m' # No Color
+
+# Get staged .sh files as arrays (handles spaces in filenames)
+STAGED_FILES=()
+while IFS= read -r file; do
+  [[ -n "$file" ]] && STAGED_FILES+=("$file")
+done < <(git diff --cached --name-only --diff-filter=ACM | grep '\.sh$' || true)
+
+if [[ ${#STAGED_FILES[@]} -eq 0 ]]; then
+  exit 0
+fi
+
+# Filter out spec files
+STAGED_FILES_NO_SPEC=()
+for file in "${STAGED_FILES[@]}"; do
+  [[ "$file" != spec/* ]] && STAGED_FILES_NO_SPEC+=("$file")
+done
+
+ERRORS=0
+
+# Check if shellcheck is installed
+if ! command -v shellcheck &>/dev/null; then
+  echo -e "${YELLOW}⚠ shellcheck not found, skipping lint check${NC}"
+else
+  echo -e "${NC}Running shellcheck...${NC}"
+  for file in "${STAGED_FILES[@]}"; do
+    if [[ -f "$file" ]]; then
+      if ! shellcheck "$file" 2>&1; then
+        echo -e "${RED}✗ shellcheck failed: $file${NC}"
+        ERRORS=1
+      fi
+    fi
+  done
+  if [[ $ERRORS -eq 0 ]]; then
+    echo -e "${GREEN}✓ shellcheck passed${NC}"
+  fi
+fi
+
+# Check if shfmt is installed
+if ! command -v shfmt &>/dev/null; then
+  echo -e "${YELLOW}⚠ shfmt not found, skipping format check${NC}"
+else
+  echo -e "${NC}Running shfmt...${NC}"
+  UNFORMATTED=()
+  # Use STAGED_FILES_NO_SPEC - spec files use ShellSpec DSL incompatible with shfmt
+  if [[ ${#STAGED_FILES_NO_SPEC[@]} -gt 0 ]]; then
+    for file in "${STAGED_FILES_NO_SPEC[@]}"; do
+      if [[ -f "$file" ]]; then
+        if ! shfmt -d "$file" &>/dev/null; then
+          UNFORMATTED+=("$file")
+        fi
+      fi
+    done
+  fi
+
+  if [[ ${#UNFORMATTED[@]} -gt 0 ]]; then
+    echo -e "${RED}✗ shfmt: files need formatting:${NC}"
+    for file in "${UNFORMATTED[@]}"; do
+      echo "  $file"
+    done
+    echo -e "${YELLOW}Run: shfmt -w ${UNFORMATTED[*]}${NC}"
+    ERRORS=1
+  else
+    echo -e "${GREEN}✓ shfmt passed${NC}"
+  fi
+fi
+
+# Check file line count (max 250 lines)
+MAX_LINES=250
+echo -e "${NC}Checking file sizes...${NC}"
+OVERSIZED=()
+for file in "${STAGED_FILES[@]}"; do
+  if [[ -f "$file" ]]; then
+    LINES=$(wc -l <"$file")
+    if [[ $LINES -gt $MAX_LINES ]]; then
+      OVERSIZED+=("$file ($LINES lines)")
+    fi
+  fi
+done
+
+if [[ ${#OVERSIZED[@]} -gt 0 ]]; then
+  echo -e "${RED}✗ Files exceed $MAX_LINES lines:${NC}"
+  for info in "${OVERSIZED[@]}"; do
+    echo "  $info"
+  done
+  echo -e "${YELLOW}Split large files into smaller modules${NC}"
+  ERRORS=1
+else
+  echo -e "${GREEN}✓ File sizes OK${NC}"
+fi
+
+if [[ $ERRORS -ne 0 ]]; then
+  echo -e "\n${RED}Pre-commit checks failed. Fix errors before committing.${NC}"
+  exit 1
+fi
+
+exit 0

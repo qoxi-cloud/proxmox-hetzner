@@ -4,8 +4,21 @@
 for dir in /etc/letsencrypt/live/*/; do
     DOMAIN=$(basename "$dir")
     if [[ "$DOMAIN" != "README" ]]; then
-        cp "/etc/letsencrypt/live/$DOMAIN/fullchain.pem" /etc/pve/local/pveproxy-ssl.pem
-        cp "/etc/letsencrypt/live/$DOMAIN/privkey.pem" /etc/pve/local/pveproxy-ssl.key
+        FULLCHAIN="/etc/letsencrypt/live/$DOMAIN/fullchain.pem"
+        PRIVKEY="/etc/letsencrypt/live/$DOMAIN/privkey.pem"
+
+        # Verify certificate files exist before copying
+        if [[ ! -f "$FULLCHAIN" ]]; then
+            echo "ERROR: Certificate file not found: $FULLCHAIN"
+            exit 1
+        fi
+        if [[ ! -f "$PRIVKEY" ]]; then
+            echo "ERROR: Private key file not found: $PRIVKEY"
+            exit 1
+        fi
+
+        cp "$FULLCHAIN" /etc/pve/local/pveproxy-ssl.pem
+        cp "$PRIVKEY" /etc/pve/local/pveproxy-ssl.key
         chmod 640 /etc/pve/local/pveproxy-ssl.pem
         chmod 600 /etc/pve/local/pveproxy-ssl.key
         systemctl restart pveproxy

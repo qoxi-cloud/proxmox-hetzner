@@ -1,0 +1,24 @@
+root = true
+
+[*]
+end_of_line = lf
+insert_final_newline = true
+charset = utf-8
+trim_trailing_whitespace = true
+
+[*.sh]
+indent_style = space
+indent_size = 2
+# shfmt options:
+# -i 2    = indent with 2 spaces
+# -ci     = switch cases indented
+# -s      = simplify code
+shell_variant = bash
+binary_next_line = true
+switch_case_indent = true
+
+[*.md]
+trim_trailing_whitespace = false
+
+[Makefile]
+indent_style = tab

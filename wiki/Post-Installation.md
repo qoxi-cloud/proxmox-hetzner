@@ -1,66 +1,73 @@
 # Post-Installation
 
-Details about packages, security hardening, and system optimizations applied automatically during installation.
+Details about packages, system optimizations, and configurations applied during installation.
 
 ## Installed Packages
 
-The installer automatically installs these useful packages:
+### System Utilities (Always Installed)
 
 | Package | Purpose |
 |---------|---------|
-| `zsh` | Modern shell with plugins (if selected as default shell) |
 | `btop` | Modern system monitor (CPU, RAM, disk, network) |
 | `iotop` | Disk I/O monitoring |
 | `ncdu` | Interactive disk usage analyzer |
 | `tmux` | Terminal multiplexer (persistent sessions) |
 | `pigz` | Parallel gzip (faster backup compression) |
 | `smartmontools` | Disk health monitoring (SMART) |
-| `jq` | JSON parser (useful for API/scripts) |
+| `jq` | JSON parser for scripts/API |
 | `bat` | Modern `cat` with syntax highlighting |
-| `libguestfs-tools` | VM image manipulation tools |
+| `fastfetch` | System information display |
+| `sysstat` | System performance tools (sar, iostat) |
+| `nethogs` | Per-process network bandwidth |
+| `ethtool` | Network interface configuration |
+| `curl` | HTTP client |
+| `gnupg` | Encryption and signing |
+| `libguestfs-tools` | VM image manipulation |
 | `chrony` | NTP time synchronization |
-| `unattended-upgrades` | Automatic security updates |
 
-## Security Hardening
+### Optional Packages
 
-### Fail2Ban (Without Tailscale)
+Installed based on wizard selections:
 
-When Tailscale is **not** installed, the installer automatically configures Fail2Ban to protect against brute-force attacks:
-
-| Service | Protection |
-|---------|------------|
-| SSH (port 22) | 3 failed attempts = 1 hour ban |
-| Proxmox API (port 8006) | 3 failed attempts = 2 hour ban |
-
-For full details, see [Security](Security).
-
-### SSH Configuration
-
-| Feature | Configuration |
+| Package | When Installed |
 |---------|---------------|
-| Authentication | Key-only (password disabled) |
-| Ciphers | Modern only (ChaCha20, AES-GCM) |
-| Max auth attempts | 3 |
-| Login grace time | 30 seconds |
-| Root login | Allowed with key only (`prohibit-password`) |
+| `zsh` + Oh-My-Zsh + Powerlevel10k | Shell = ZSH |
+| `nftables` | Firewall enabled |
+| `fail2ban` | Tailscale disabled |
+| `certbot` | SSL = Let's Encrypt |
+| `tailscale` | Tailscale enabled |
+| `apparmor` | Security feature selected |
+| `auditd` | Security feature selected |
+| `aide` | Security feature selected |
+| `chkrootkit` | Security feature selected |
+| `lynis` | Security feature selected |
+| `needrestart` | Security feature selected |
+| `vnstat` | Monitoring feature selected |
+| `promtail` | Monitoring feature selected |
+| `yazi` | Tool selected |
+| `neovim` | Tool selected |
 
-**Applied SSH ciphers:**
-```
-Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com
-MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com
-KexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org
-```
+## Shell Configuration
 
-### Automatic Security Updates
+### ZSH (When Selected)
 
-| Feature | Configuration |
-|---------|---------------|
-| Security updates | Automatic via `unattended-upgrades` |
-| Kernel updates | Excluded (requires manual reboot) |
-| Update frequency | Daily |
+| Feature | Details |
+|---------|---------|
+| Framework | Oh-My-Zsh |
+| Theme | Powerlevel10k (pre-configured) |
+| Plugins | autosuggestions, syntax-highlighting, git, sudo, history |
 
-**Why kernel updates are excluded:**
-Kernel updates require a reboot to take effect. Automatic reboots could disrupt running VMs. You should manually update the kernel and schedule reboots during maintenance windows.
+**Features:**
+
+- Git status in prompt
+- Command execution time
+- Auto-suggestions from history (gray text)
+- Syntax highlighting for commands
+- Proxmox-specific aliases
+
+### Bash (When Selected)
+
+Minimal changes - standard Debian bash configuration.
 
 ## System Optimizations
 
@@ -68,112 +75,137 @@ Kernel updates require a reboot to take effect. Automatic reboots could disrupt 
 
 | Setting | Value | Purpose |
 |---------|-------|---------|
-| ARC size | Dynamically calculated | Optimal memory usage based on RAM |
-| Compression | `lz4` | Fast compression for all data |
+| ARC size | Based on strategy | Optimal memory usage |
+| Compression | `lz4` | Fast compression |
+| Scrub schedule | Weekly | Data integrity checks |
 
-**ARC size calculation:**
-- Systems with ≤16GB RAM: 50% for ARC
-- Systems with >16GB RAM: Larger ARC allocation
+### Using Existing ZFS Pool (Upgrade Mode)
+
+When "Use existing pool" is selected during installation:
+
+1. **Pool is imported** with `zpool import -f` after Proxmox installation
+2. **Existing datasets** are preserved (VMs, containers, data)
+3. **Proxmox storage** is automatically configured to use the imported pool
+4. **VMs/containers** should appear in Proxmox after boot
+
+**After installation with existing pool:**
+
+```bash
+# Verify pool status
+zpool status
+
+# List imported datasets
+zfs list
+
+# Check Proxmox storage
+pvesm status
+
+# If VMs don't appear, rescan storage
+pvesm set <poolname> --content images,rootdir
+qm rescan
+
+# For containers
+pct rescan
+```
+
+**Troubleshooting:**
+
+```bash
+# If pool wasn't imported automatically
+zpool import -f <poolname>
+
+# If VMs are not visible, check configuration database
+# VMs are stored in /etc/pve/nodes/<node>/qemu-server/
+# Containers in /etc/pve/nodes/<node>/lxc/
+
+# Re-register existing VM disk
+qm set <vmid> -virtio0 <pool>:vm-<vmid>-disk-0
+```
+
+**ARC Memory Strategies:**
+
+| Strategy | Allocation |
+|----------|------------|
+| VM-focused | Fixed 4GB |
+| Balanced | 25-40% of RAM |
+| Storage-focused | 50% of RAM |
 
 ### Network Optimizations
 
 | Setting | Value | Purpose |
 |---------|-------|---------|
 | `nf_conntrack_max` | 1048576 | Support 1M+ connections |
-| `nf_conntrack_tcp_timeout_established` | 28800 | 8h timeout for established connections |
+| `nf_conntrack_tcp_timeout_established` | 28800 | 8h timeout |
 
-### Performance Settings
+### Ring Buffer Tuning (When Enabled)
 
-| Setting | Configuration |
+Maximizes NIC ring buffers for high-throughput networks:
+
+- Automatically detects maximum supported values
+- Sets RX/TX ring buffers to maximum
+- Runs on boot via systemd service
+
+### CPU Governor
+
+Available profiles configured during installation:
+
+| Profile | Governor | Use Case |
+|---------|----------|----------|
+| Performance | performance | Maximum speed (default) |
+| Balanced | ondemand/powersave | Power/performance balance |
+| Adaptive | schedutil | Kernel-managed |
+| Conservative | conservative | Gradual scaling |
+
+### NTP Configuration
+
+Chrony configured with reliable NTP servers:
+
+- `0.pool.ntp.org`
+- `1.pool.ntp.org`
+- `2.pool.ntp.org`
+
+Provider-specific NTP servers used when detected.
+
+## Automatic Security Updates
+
+Unattended-upgrades configured for automatic security updates:
+
+| Feature | Configuration |
 |---------|---------------|
-| CPU governor | Selectable during installation (default: `performance`) |
-| NTP sync | Chrony with Hetzner NTP servers |
+| Security updates | Automatic daily |
+| Kernel updates | Excluded (requires reboot) |
+| Cleanup | Automatic removal of unused packages |
 
-**Available CPU governors (power profiles):**
+**Why kernel updates are excluded:**
+Kernel updates require a reboot. Automatic reboots could disrupt running VMs. Update kernels manually during maintenance windows.
 
-| Governor | Description | Use Case |
-|----------|-------------|----------|
-| `performance` | Maximum CPU speed, highest power consumption | Servers requiring consistent performance (default) |
-| `ondemand` | Scales frequency based on load | Balanced power/performance |
-| `powersave` | Minimum CPU speed, lowest power consumption | Power-saving priority |
-| `schedutil` | Kernel scheduler-driven scaling | Modern alternative to ondemand |
-| `conservative` | Gradual frequency scaling | Slower response than ondemand |
+## Repository Configuration
 
-**Hetzner NTP servers used:**
-```
-ntp1.hetzner.de
-ntp2.hetzner.com
-ntp3.hetzner.net
-```
+| Repository | Subscription Nag | Updates Source |
+|------------|------------------|----------------|
+| No-subscription | Removed | Community repo |
+| Enterprise | Kept (unless key provided) | Enterprise repo |
+| Test | Removed | Test repo |
 
-### Locale Configuration
+When using Enterprise with a subscription key, it's automatically registered via `pvesubscription set`.
 
-- UTF-8 locales properly configured
-- Prevents encoding issues in applications
+## Admin User Configuration
 
-### Shell Environment
+| Feature | Configuration |
+|---------|---------------|
+| Username | Custom (set in wizard) |
+| Groups | sudo, users |
+| SSH key | Installed in `~/.ssh/authorized_keys` |
+| Proxmox access | Full Administrator role |
+| Root SSH | Disabled |
 
-| Feature | Details |
-|---------|---------|
-| Default shell | ZSH or Bash (user selectable during installation) |
-| ZSH framework | Oh-My-Zsh (if ZSH selected) |
-| ZSH theme | Powerlevel10k with pre-configured prompt |
-| ZSH plugins | autosuggestions, syntax-highlighting, git, sudo, history |
+The admin user has full sudo access and can log into Proxmox Web UI.
 
-> **Note:** ZSH with Oh-My-Zsh and Powerlevel10k is installed only when selected as the default shell. Selecting Bash results in a lighter installation.
-
-**ZSH features when selected:**
-
-- Powerlevel10k theme with git status, command execution time
-- Auto-suggestions from history (gray text)
-- Syntax highlighting for commands
-- Proxmox-specific aliases (`qml`, `pctl`, `zpl`, `zst`)
-
-## Proxmox-Specific Changes
-
-### Repository Configuration
-
-The installer supports three repository types:
-
-| Repository | Description | Subscription Notice |
-|------------|-------------|---------------------|
-| `no-subscription` | Free community repository (default) | Removed |
-| `enterprise` | Production-ready, requires subscription key | Kept (unless key provided) |
-| `test` | Latest packages, may be unstable | Removed |
-
-**When using Enterprise repository:**
-- If you provide a subscription key, it will be registered automatically via `pvesubscription set`
-- The subscription notice in the web UI is **not** removed (you have a valid subscription)
-- Updates come from the stable enterprise repository
-
-**When using No-Subscription or Test:**
-- Enterprise repository is disabled
-- Subscription notice is removed from web UI
-- Updates come from the community repository
-
-### SSL Certificates
-
-| Option | Description |
-|--------|-------------|
-| `self-signed` | Default Proxmox certificate (no external dependencies) |
-| `letsencrypt` | Free auto-renewing certificate via certbot |
-
-**Let's Encrypt requirements:**
-- Domain (FQDN) must resolve to the server's public IP
-- Port 80 must be accessible during certificate issuance
-- Auto-renewal is configured via systemd timer
-
-> **Note:** SSL certificate option is only shown if Tailscale is not enabled. Tailscale provides its own HTTPS via `tailscale serve`.
-
-For more details, see [SSL Certificates](SSL-Certificates).
-
-## Verifying Optimizations
-
-After installation, you can verify the applied settings:
+## Verifying Configuration
 
 ```bash
 # Check SSH config
-grep -E "^(PasswordAuthentication|Ciphers|MACs)" /etc/ssh/sshd_config
+grep -E "^(PasswordAuthentication|PermitRootLogin)" /etc/ssh/sshd_config
 
 # Check ZFS ARC
 cat /sys/module/zfs/parameters/zfs_arc_max
@@ -187,13 +219,68 @@ sysctl net.netfilter.nf_conntrack_max
 # Check NTP sync
 chronyc tracking
 
-# Check SSL certificate
-openssl x509 -in /etc/pve/local/pveproxy-ssl.pem -noout -issuer -dates
-
 # Check repository
 cat /etc/apt/sources.list.d/proxmox.sources
+
+# Check firewall
+nft list ruleset
+
+# Check Fail2Ban (if installed)
+fail2ban-client status
+
+# Check installed packages
+dpkg -l | grep -E "(btop|tmux|zsh|fail2ban)"
+```
+
+## Monitoring Tools
+
+### vnstat (When Enabled)
+
+Network traffic monitoring:
+
+```bash
+# Current stats
+vnstat
+
+# Live monitoring
+vnstat -l
+
+# Daily/monthly reports
+vnstat -d
+vnstat -m
+```
+
+### Netdata (When Enabled)
+
+Real-time monitoring dashboard at `http://YOUR-IP:19999`:
+
+- CPU, RAM, disk, network metrics
+- Per-process monitoring
+- Alerts and notifications
+
+```bash
+# Check status
+systemctl status netdata
+
+# Restart
+systemctl restart netdata
+```
+
+### Promtail (When Enabled)
+
+Log collector for Grafana Loki:
+
+- Collects system logs
+- Ships to configured Loki endpoint
+
+```bash
+# Check status
+systemctl status promtail
+
+# View logs
+journalctl -u promtail -f
 ```
 
 ---
 
-**Next:** [Security](Security) | [SSL Certificates](SSL-Certificates) | [Tailscale Setup](Tailscale-Setup) | [Home](Home)
+**Next:** [Security](Security) | [SSL Certificates](SSL-Certificates)

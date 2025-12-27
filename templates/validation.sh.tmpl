@@ -1,0 +1,633 @@
+#!/bin/bash
+# shellcheck disable=SC2050,SC2015,SC2016,SC2194,SC2329
+# =============================================================================
+# Installation Validation Script
+# Comprehensive validation: packages, services, configs, and actual values
+# Disabled: SC2050,SC2194 (template placeholders), SC2015 (A&&B||C is intentional),
+#           SC2016 (literal regex patterns), SC2329 (_check_port reserved)
+# =============================================================================
+set -euo pipefail
+
+ERRORS=0
+WARNINGS=0
+
+# =============================================================================
+# Validation Helpers
+# =============================================================================
+
+_ok() { echo "OK: $1"; }
+_fail() {
+	echo "FAIL: $1"
+	((ERRORS++))
+	return 1
+}
+_warn() {
+	echo "WARN: $1"
+	((WARNINGS++))
+}
+
+_check_pkg() {
+	dpkg -l "$1" 2>/dev/null | grep -q "^ii" || {
+		_fail "Package '$1' not installed"
+		return 1
+	}
+}
+
+_check_svc_enabled() {
+	systemctl is-enabled --quiet "$1" 2>/dev/null || {
+		_fail "Service '$1' not enabled"
+		return 1
+	}
+}
+
+_check_svc_active() {
+	systemctl is-active --quiet "$1" 2>/dev/null || {
+		_fail "Service '$1' not active"
+		return 1
+	}
+}
+
+_check_file() {
+	[[ -s "$1" ]] || {
+		_fail "File '$1' missing or empty"
+		return 1
+	}
+}
+
+_check_cmd() {
+	command -v "$1" &>/dev/null || {
+		_fail "Command '$1' not found"
+		return 1
+	}
+}
+
+_check_timer() {
+	systemctl is-enabled --quiet "$1" 2>/dev/null || {
+		_fail "Timer '$1' not enabled"
+		return 1
+	}
+}
+
+# Check if config file contains expected value
+# Usage: _check_config /path/to/file "pattern" "description"
+_check_config() {
+	local file="$1" pattern="$2" desc="$3"
+	[[ -f "$file" ]] || {
+		_fail "Config file '$file' missing"
+		return 1
+	}
+	grep -qE "$pattern" "$file" || {
+		_fail "$desc"
+		return 1
+	}
+}
+
+# Check port is listening
+# Usage: _check_port 22 "SSH"
+_check_port() {
+	local port="$1" name="$2"
+	ss -tlnp 2>/dev/null | grep -qE ":${port}\s" || {
+		_fail "$name not listening on port $port"
+		return 1
+	}
+}
+
+# Validate sysctl parameter is set correctly
+# Usage: _check_sysctl "net.ipv4.ip_forward" "1"
+_check_sysctl() {
+	local param="$1" expected="$2"
+	local actual
+	actual=$(sysctl -n "$param" 2>/dev/null || echo "NOT_SET")
+	[[ "$actual" == "$expected" ]] || {
+		_fail "sysctl $param = $actual (expected: $expected)"
+		return 1
+	}
+}
+
+# =============================================================================
+# Base System (always checked)
+# =============================================================================
+echo "=== Base System ==="
+
+# Core Proxmox packages
+_check_pkg proxmox-ve && _ok "proxmox-ve installed"
+
+# Core services must be active
+_check_svc_active pveproxy && _ok "pveproxy running"
+_check_svc_active pvedaemon && _ok "pvedaemon running"
+_check_svc_active pve-cluster && _ok "pve-cluster running"
+
+# Network interfaces file must exist and have proper structure
+_check_file /etc/network/interfaces && {
+	# Must have at least one iface definition
+	grep -qE "^iface (lo|e|vmbr)" /etc/network/interfaces && _ok "Network interfaces configured" ||
+		_fail "Network interfaces missing iface definitions"
+}
+
+# Check sysctl settings applied
+_check_file /etc/sysctl.d/99-proxmox.conf && {
+	# Key networking params must be in config
+	_check_config /etc/sysctl.d/99-proxmox.conf "net.ipv4.ip_forward.*=.*1" "ip_forward not enabled in sysctl" && _ok "IP forwarding configured"
+	_check_config /etc/sysctl.d/99-proxmox.conf "net.ipv4.conf.all.rp_filter" "rp_filter not configured" && _ok "Reverse path filter configured"
+}
+
+# Verify key sysctls are active in running kernel
+_check_sysctl "net.ipv4.ip_forward" "1" && _ok "IP forwarding active"
+_check_sysctl "net.ipv4.tcp_congestion_control" "bbr" && _ok "TCP BBR congestion control active" ||
+	_warn "TCP BBR not active (using default congestion control)"
+
+# Hosts file must contain hostname mapping
+_check_file /etc/hosts && {
+	hostname=$(hostname -f 2>/dev/null || hostname)
+	grep -qE "^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+.*${hostname%%.*}" /etc/hosts && _ok "Hostname in /etc/hosts" ||
+		_warn "Hostname may not be properly configured in /etc/hosts"
+}
+
+# Chrony (NTP)
+_check_svc_enabled chrony && _ok "Chrony enabled"
+_check_pkg chrony && {
+	_check_config /etc/chrony/chrony.conf "^server|^pool" "Chrony has no time sources" && _ok "Chrony time sources configured"
+}
+
+# Unattended upgrades
+_check_svc_enabled unattended-upgrades && _ok "Unattended upgrades enabled"
+_check_file /etc/apt/apt.conf.d/50unattended-upgrades && {
+	_check_config /etc/apt/apt.conf.d/50unattended-upgrades "Unattended-Upgrade::Origins-Pattern" "Origins not configured" && _ok "Upgrade origins configured"
+}
+
+# I/O scheduler rules
+_check_file /etc/udev/rules.d/60-io-scheduler.rules && {
+	_check_config /etc/udev/rules.d/60-io-scheduler.rules "ATTR{queue/scheduler}" "I/O scheduler rules invalid" && _ok "I/O scheduler rules configured"
+}
+
+# SSH basic existence (detailed check later for hardening)
+_check_file /etc/ssh/sshd_config && _ok "SSH config exists"
+
+# ZFS or ext4 root
+echo ""
+echo "=== Storage ==="
+if zpool list 2>/dev/null | grep -qE "^(rpool|tank) "; then
+	_ok "ZFS pool(s) available"
+	# Check ZFS ARC limit is set
+	if [[ -f /etc/modprobe.d/zfs.conf ]]; then
+		_check_config /etc/modprobe.d/zfs.conf "options zfs zfs_arc_max=" "ZFS ARC limit not configured" && _ok "ZFS ARC limit configured"
+	fi
+else
+	mount | grep -q "on / type ext4" && _ok "ext4 root filesystem" || _fail "No ZFS pool or ext4 root"
+fi
+
+# =============================================================================
+# SSH Hardening (always checked - critical security)
+# =============================================================================
+echo ""
+echo "=== SSH Hardening ==="
+
+if [[ -f /etc/ssh/sshd_config ]]; then
+	# Critical: password auth must be disabled
+	_check_config /etc/ssh/sshd_config "^PasswordAuthentication[[:space:]]+no" "Password auth not disabled" && _ok "Password auth disabled"
+
+	# Root login should be completely disabled
+	_check_config /etc/ssh/sshd_config "^PermitRootLogin[[:space:]]+no" "Root login not disabled" && _ok "Root login disabled"
+
+	# AllowUsers should restrict to admin user
+	_check_config /etc/ssh/sshd_config "^AllowUsers[[:space:]]+" "AllowUsers not configured" && _ok "AllowUsers configured"
+
+	# Public key auth must be enabled
+	_check_config /etc/ssh/sshd_config "^PubkeyAuthentication[[:space:]]+yes" "Pubkey auth not enabled" && _ok "Pubkey auth enabled"
+
+	# Protocol 2 (might be default/implicit)
+	grep -qE "^Protocol[[:space:]]+1" /etc/ssh/sshd_config && _fail "SSH Protocol 1 enabled (insecure)" || _ok "SSH Protocol 2 (or default)"
+
+	# Max auth tries should be limited
+	if grep -qE "^MaxAuthTries[[:space:]]+[0-9]+" /etc/ssh/sshd_config; then
+		tries=$(grep -E "^MaxAuthTries" /etc/ssh/sshd_config | awk '{print $2}' | tr -cd '0-9')
+		if [[ -n "$tries" && $tries =~ ^[0-9]+$ ]]; then
+			[[ $tries -le 5 ]] && _ok "MaxAuthTries limited ($tries)" || _warn "MaxAuthTries high ($tries)"
+		fi
+	fi
+
+	# Verify admin user SSH key exists
+	[[ -f /home/{{ADMIN_USERNAME}}/.ssh/authorized_keys && -s /home/{{ADMIN_USERNAME}}/.ssh/authorized_keys ]] && _ok "Admin SSH authorized_keys configured" ||
+		_fail "No SSH keys for admin user"
+
+	# Admin SSH permissions
+	[[ $(stat -c %a /home/{{ADMIN_USERNAME}}/.ssh 2>/dev/null) == "700" ]] && _ok "Admin .ssh permissions correct (700)" ||
+		_warn "Admin .ssh permissions may be incorrect"
+	[[ $(stat -c %a /home/{{ADMIN_USERNAME}}/.ssh/authorized_keys 2>/dev/null) == "600" ]] && _ok "Admin authorized_keys permissions correct (600)" ||
+		_warn "Admin authorized_keys permissions may be incorrect"
+fi
+
+# =============================================================================
+# Admin User
+# =============================================================================
+echo ""
+echo "=== Admin User ==="
+
+# Check admin user exists
+if id "{{ADMIN_USERNAME}}" &>/dev/null; then
+	_ok "Admin user '{{ADMIN_USERNAME}}' exists"
+
+	# Check admin is in sudo group
+	groups "{{ADMIN_USERNAME}}" | grep -qw "sudo" && _ok "Admin user in sudo group" ||
+		_fail "Admin user not in sudo group"
+
+	# Check home directory exists
+	[[ -d /home/{{ADMIN_USERNAME}} ]] && _ok "Admin home directory exists" ||
+		_fail "Admin home directory missing"
+else
+	_fail "Admin user '{{ADMIN_USERNAME}}' does not exist"
+fi
+
+# =============================================================================
+# Tailscale
+# =============================================================================
+if [[ "{{INSTALL_TAILSCALE}}" == "yes" ]]; then
+	echo ""
+	echo "=== Tailscale ==="
+	_check_pkg tailscale && _ok "Tailscale package installed"
+	_check_svc_enabled tailscaled && _ok "Tailscaled enabled"
+
+	# Check if tailscale is connected (might not be on first boot)
+	if tailscale status &>/dev/null; then
+		_ok "Tailscale connected"
+		# Verify tailscale IP assigned
+		tailscale ip -4 &>/dev/null && _ok "Tailscale IPv4 assigned" || _warn "No Tailscale IPv4 yet"
+	else
+		_warn "Tailscale not yet connected (may need auth)"
+	fi
+fi
+
+# =============================================================================
+# Firewall (nftables)
+# =============================================================================
+if [[ "{{INSTALL_FIREWALL}}" == "yes" ]]; then
+	echo ""
+	echo "=== Firewall (nftables) ==="
+	_check_pkg nftables && _ok "nftables package installed"
+	_check_svc_enabled nftables && _ok "nftables enabled"
+	_check_file /etc/nftables.conf && _ok "nftables config exists"
+
+	# Validate nftables syntax
+	if nft -c -f /etc/nftables.conf 2>/dev/null; then
+		_ok "nftables config syntax valid"
+	else
+		_fail "nftables config has syntax errors"
+	fi
+
+	# Check key chains exist in config
+	_check_config /etc/nftables.conf "chain input" "Input chain missing" && _ok "Input chain defined"
+	_check_config /etc/nftables.conf "chain forward" "Forward chain missing" && _ok "Forward chain defined"
+
+	# Firewall mode specific checks
+	case "{{FIREWALL_MODE}}" in
+	stealth)
+		# Stealth mode: verify no SSH accept rule in nftables (policy drop = blocked)
+		if ! grep -qE "dport 22.*accept|dport ssh.*accept" /etc/nftables.conf 2>/dev/null; then
+			_ok "Stealth mode: SSH blocked (no accept rule)"
+		else
+			_fail "Stealth mode: found SSH accept rule in nftables"
+		fi
+		;;
+	strict | standard)
+		# Should have SSH allowed
+		_check_config /etc/nftables.conf "dport.*(22|ssh).*accept" "SSH not allowed in firewall" && _ok "SSH port allowed"
+		;;
+	esac
+
+	# Bridge rules for VM networking
+	if grep -qE 'iifname "vmbr[0-9]"' /etc/nftables.conf; then
+		_ok "Bridge interface rules configured"
+	else
+		_warn "No bridge interface rules found"
+	fi
+fi
+
+# =============================================================================
+# Fail2Ban (only with firewall, not stealth mode)
+# =============================================================================
+if [[ "{{INSTALL_FIREWALL}}" == "yes" && "{{FIREWALL_MODE}}" != "stealth" ]]; then
+	echo ""
+	echo "=== Fail2Ban ==="
+	_check_pkg fail2ban && _ok "fail2ban package installed"
+	_check_svc_enabled fail2ban && _ok "fail2ban enabled"
+	_check_file /etc/fail2ban/jail.local && _ok "jail.local exists"
+	_check_file /etc/fail2ban/filter.d/proxmox.conf && _ok "proxmox filter exists"
+
+	# Verify jails are configured
+	_check_config /etc/fail2ban/jail.local "^\[sshd\]" "sshd jail not configured" && _ok "sshd jail configured"
+	_check_config /etc/fail2ban/jail.local "^\[proxmox\]" "proxmox jail not configured" && _ok "proxmox jail configured"
+
+	# Verify banaction uses nftables
+	_check_config /etc/fail2ban/jail.local "banaction.*=.*nftables" "banaction not using nftables" && _ok "Using nftables backend"
+fi
+
+# =============================================================================
+# AppArmor
+# =============================================================================
+if [[ "{{INSTALL_APPARMOR}}" == "yes" ]]; then
+	echo ""
+	echo "=== AppArmor ==="
+	_check_pkg apparmor && _ok "apparmor package installed"
+	_check_svc_enabled apparmor && _ok "apparmor enabled"
+	_check_file /etc/default/grub.d/apparmor.cfg && _ok "GRUB config exists"
+
+	# Verify GRUB has apparmor params
+	_check_config /etc/default/grub.d/apparmor.cfg "apparmor=1" "apparmor=1 not in GRUB" && _ok "apparmor=1 in GRUB"
+	_check_config /etc/default/grub.d/apparmor.cfg "security=apparmor" "security=apparmor not in GRUB" && _ok "security=apparmor in GRUB"
+fi
+
+# =============================================================================
+# Auditd
+# =============================================================================
+if [[ "{{INSTALL_AUDITD}}" == "yes" ]]; then
+	echo ""
+	echo "=== Auditd ==="
+	_check_pkg auditd && _ok "auditd package installed"
+	_check_svc_enabled auditd && _ok "auditd enabled"
+	_check_file /etc/audit/rules.d/proxmox.rules && _ok "Audit rules exist"
+
+	# Verify key audit rules are present
+	_check_config /etc/audit/rules.d/proxmox.rules "sudo" "sudo auditing not configured" && _ok "sudo auditing configured"
+	_check_config /etc/audit/rules.d/proxmox.rules "/etc/passwd" "passwd file auditing not configured" && _ok "passwd auditing configured"
+
+	# Check auditd.conf settings
+	if [[ -f /etc/audit/auditd.conf ]]; then
+		_check_config /etc/audit/auditd.conf "max_log_file_action.*=.*ROTATE" "Log rotation not configured" && _ok "Log rotation configured"
+	fi
+fi
+
+# =============================================================================
+# AIDE
+# =============================================================================
+if [[ "{{INSTALL_AIDE}}" == "yes" ]]; then
+	echo ""
+	echo "=== AIDE ==="
+	_check_pkg aide && _ok "aide package installed"
+	_check_timer aide-check.timer && _ok "AIDE timer enabled"
+	_check_file /etc/systemd/system/aide-check.service && _ok "AIDE service unit exists"
+	_check_file /etc/systemd/system/aide-check.timer && _ok "AIDE timer unit exists"
+
+	# Check timer schedule
+	_check_config /etc/systemd/system/aide-check.timer "OnCalendar" "AIDE timer has no schedule" && _ok "AIDE schedule configured"
+fi
+
+# =============================================================================
+# Chkrootkit
+# =============================================================================
+if [[ "{{INSTALL_CHKROOTKIT}}" == "yes" ]]; then
+	echo ""
+	echo "=== Chkrootkit ==="
+	_check_pkg chkrootkit && _ok "chkrootkit package installed"
+	_check_timer chkrootkit-scan.timer && _ok "chkrootkit timer enabled"
+	_check_file /etc/systemd/system/chkrootkit-scan.service && _ok "chkrootkit service unit exists"
+	_check_file /etc/systemd/system/chkrootkit-scan.timer && _ok "chkrootkit timer unit exists"
+
+	# Verify chkrootkit binary is accessible (requires binutils for 'strings' command)
+	if command -v strings &>/dev/null; then
+		command -v chkrootkit &>/dev/null && _ok "chkrootkit binary functional" || _warn "chkrootkit binary not found"
+	else
+		_warn "chkrootkit: 'strings' command missing (install binutils)"
+	fi
+fi
+
+# =============================================================================
+# Lynis
+# =============================================================================
+if [[ "{{INSTALL_LYNIS}}" == "yes" ]]; then
+	echo ""
+	echo "=== Lynis ==="
+	_check_pkg lynis && _ok "lynis package installed"
+	_check_timer lynis-audit.timer && _ok "lynis timer enabled"
+	_check_file /etc/systemd/system/lynis-audit.service && _ok "lynis service unit exists"
+	_check_file /etc/systemd/system/lynis-audit.timer && _ok "lynis timer unit exists"
+
+	# Verify lynis works
+	lynis show version &>/dev/null && _ok "lynis binary functional" || _warn "lynis may have issues"
+fi
+
+# =============================================================================
+# Needrestart
+# =============================================================================
+if [[ "{{INSTALL_NEEDRESTART}}" == "yes" ]]; then
+	echo ""
+	echo "=== Needrestart ==="
+	_check_pkg needrestart && _ok "needrestart package installed"
+	_check_file /etc/needrestart/conf.d/50-autorestart.conf && _ok "needrestart config exists"
+
+	# Verify auto-restart is configured (check drop-in config)
+	_check_config /etc/needrestart/conf.d/50-autorestart.conf '\$nrconf\{restart\}.*=.*'"'"'a'"'" "Auto-restart not configured" && _ok "Auto-restart configured"
+fi
+
+# =============================================================================
+# VnStat
+# =============================================================================
+if [[ "{{INSTALL_VNSTAT}}" == "yes" ]]; then
+	echo ""
+	echo "=== VnStat ==="
+	_check_pkg vnstat && _ok "vnstat package installed"
+	_check_svc_enabled vnstat && _ok "vnstat enabled"
+	_check_file /etc/vnstat.conf && _ok "vnstat config exists"
+
+	# Verify default interface is configured in vnstat.conf
+	configured_iface=$(grep -oP 'Interface\s+"\K[^"]+' /etc/vnstat.conf 2>/dev/null)
+	[[ -n "$configured_iface" ]] && _ok "Default interface configured: $configured_iface" ||
+		_fail "No interface configured in vnstat.conf"
+
+	# Check vnstat database has at least one interface (vmbr0/vmbr1 added during config)
+	db_ifaces=$(vnstat --dbiflist 2>/dev/null | tr '\n' ' ')
+	if [[ -n "$db_ifaces" ]]; then
+		_ok "vnstat monitoring: $db_ifaces"
+	else
+		_fail "vnstat database not initialized"
+	fi
+fi
+
+# =============================================================================
+# Promtail
+# =============================================================================
+if [[ "{{INSTALL_PROMTAIL}}" == "yes" ]]; then
+	echo ""
+	echo "=== Promtail Log Collector ==="
+	_check_pkg promtail && _ok "promtail installed"
+	_check_svc_enabled promtail && _ok "promtail enabled"
+	_check_file /etc/promtail/promtail.yml && _ok "Promtail config exists"
+
+	# Check positions directory
+	[[ -d /var/lib/promtail ]] && _ok "Positions directory exists" ||
+		_warn "Positions directory missing"
+fi
+
+# =============================================================================
+# Netdata
+# =============================================================================
+if [[ "{{INSTALL_NETDATA}}" == "yes" ]]; then
+	echo ""
+	echo "=== Netdata ==="
+	_check_cmd netdata && _ok "netdata command available"
+	_check_svc_enabled netdata && _ok "netdata enabled"
+
+	# Check config directory
+	[[ -d /etc/netdata ]] && _ok "netdata config directory exists" || _warn "netdata config directory missing"
+fi
+
+# =============================================================================
+# Yazi
+# =============================================================================
+if [[ "{{INSTALL_YAZI}}" == "yes" ]]; then
+	echo ""
+	echo "=== Yazi ==="
+	_check_cmd yazi && _ok "yazi command available"
+	_check_file /home/{{ADMIN_USERNAME}}/.config/yazi/theme.toml && _ok "Yazi theme configured"
+
+	# Verify theme is Tokyo Night
+	_check_config /home/{{ADMIN_USERNAME}}/.config/yazi/theme.toml "tokyonight" "Tokyo Night theme not set" && _ok "Tokyo Night theme active" || true
+fi
+
+# =============================================================================
+# Neovim
+# =============================================================================
+if [[ "{{INSTALL_NVIM}}" == "yes" ]]; then
+	echo ""
+	echo "=== Neovim ==="
+	_check_cmd nvim && _ok "nvim command available"
+
+	# Check if set as default editor
+	if update-alternatives --query editor 2>/dev/null | grep -q "nvim"; then
+		_ok "nvim is default editor"
+	else
+		_warn "nvim may not be default editor"
+	fi
+fi
+
+# =============================================================================
+# Ring Buffer
+# =============================================================================
+if [[ "{{INSTALL_RINGBUFFER}}" == "yes" ]]; then
+	echo ""
+	echo "=== Ring Buffer ==="
+	_check_svc_enabled network-ringbuffer && _ok "network-ringbuffer enabled"
+	_check_file /etc/systemd/system/network-ringbuffer.service && _ok "Ringbuffer service unit exists"
+
+	# Verify ethtool is available
+	_check_cmd ethtool && _ok "ethtool available" || _warn "ethtool not found"
+fi
+
+# =============================================================================
+# ZSH Shell (for admin user)
+# =============================================================================
+if [[ "{{SHELL_TYPE}}" == "zsh" ]]; then
+	echo ""
+	echo "=== ZSH ==="
+	_check_pkg zsh && _ok "zsh package installed"
+	_check_file /home/{{ADMIN_USERNAME}}/.zshrc && _ok "zshrc exists"
+	_check_file /home/{{ADMIN_USERNAME}}/.p10k.zsh && _ok "p10k config exists"
+
+	# Check admin user shell is zsh
+	if getent passwd {{ADMIN_USERNAME}} | grep -q "/bin/zsh\|/usr/bin/zsh"; then
+		_ok "Admin user shell is zsh"
+	else
+		_warn "Admin user shell may not be zsh"
+	fi
+
+	# Check Oh-My-Zsh installed
+	[[ -d /home/{{ADMIN_USERNAME}}/.oh-my-zsh ]] && _ok "Oh-My-Zsh installed" || _warn "Oh-My-Zsh directory missing"
+
+	# Check Powerlevel10k theme
+	[[ -d /home/{{ADMIN_USERNAME}}/.oh-my-zsh/custom/themes/powerlevel10k ]] && _ok "Powerlevel10k theme installed" ||
+		_warn "Powerlevel10k theme missing"
+
+	# Check plugins
+	[[ -d /home/{{ADMIN_USERNAME}}/.oh-my-zsh/custom/plugins/zsh-autosuggestions ]] && _ok "zsh-autosuggestions plugin installed" || _warn "zsh-autosuggestions missing"
+	[[ -d /home/{{ADMIN_USERNAME}}/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting ]] && _ok "zsh-syntax-highlighting plugin installed" || _warn "zsh-syntax-highlighting missing"
+fi
+
+# =============================================================================
+# Let's Encrypt SSL
+# =============================================================================
+if [[ "{{SSL_TYPE}}" == "letsencrypt" ]]; then
+	echo ""
+	echo "=== Let's Encrypt ==="
+	_check_pkg certbot && _ok "certbot package installed"
+	_check_svc_enabled letsencrypt-firstboot && _ok "Let's Encrypt firstboot enabled"
+
+	# Check deploy hook exists
+	_check_file /etc/letsencrypt/renewal-hooks/deploy/proxmox.sh && _ok "Deploy hook exists" || _warn "Deploy hook missing"
+fi
+
+# =============================================================================
+# SSL Certificate (both types)
+# =============================================================================
+echo ""
+echo "=== SSL Certificate ==="
+_check_file /etc/pve/local/pve-ssl.pem && _ok "SSL certificate exists"
+_check_file /etc/pve/local/pve-ssl.key && _ok "SSL private key exists"
+
+# Validate certificate
+if [[ -f /etc/pve/local/pve-ssl.pem ]]; then
+	# Check cert is valid (not expired)
+	if openssl x509 -checkend 0 -noout -in /etc/pve/local/pve-ssl.pem 2>/dev/null; then
+		_ok "SSL certificate is valid (not expired)"
+
+		# Check expiry date
+		expiry=$(openssl x509 -enddate -noout -in /etc/pve/local/pve-ssl.pem 2>/dev/null | cut -d= -f2)
+		_ok "Certificate expires: $expiry"
+	else
+		_fail "SSL certificate is expired or invalid"
+	fi
+
+	# Verify key matches certificate
+	cert_mod=$(openssl x509 -noout -modulus -in /etc/pve/local/pve-ssl.pem 2>/dev/null | md5sum | awk '{print $1}')
+	key_mod=$(openssl rsa -noout -modulus -in /etc/pve/local/pve-ssl.key 2>/dev/null | md5sum | awk '{print $1}')
+	if [[ "$cert_mod" == "$key_mod" ]]; then
+		_ok "SSL key matches certificate"
+	else
+		_fail "SSL key does NOT match certificate"
+	fi
+fi
+
+# =============================================================================
+# ZFS Scrub Timers
+# =============================================================================
+echo ""
+echo "=== ZFS Scrub ==="
+if zpool list rpool &>/dev/null; then
+	_check_timer zfs-scrub@rpool.timer && _ok "rpool scrub timer enabled"
+fi
+if zpool list tank &>/dev/null; then
+	_check_timer zfs-scrub@tank.timer && _ok "tank scrub timer enabled"
+fi
+
+# Verify timer files exist
+_check_file /etc/systemd/system/zfs-scrub@.service && _ok "ZFS scrub service template exists"
+_check_file /etc/systemd/system/zfs-scrub@.timer && _ok "ZFS scrub timer template exists"
+
+# =============================================================================
+# Locale Configuration
+# =============================================================================
+echo ""
+echo "=== Locale ==="
+_check_file /etc/default/locale && _ok "Default locale file exists"
+_check_file /etc/environment && _ok "Environment file exists"
+
+# Verify UTF-8 locale is set
+if locale 2>/dev/null | grep -q "UTF-8"; then
+	_ok "UTF-8 locale active"
+else
+	_warn "UTF-8 locale may not be active"
+fi
+
+# =============================================================================
+# Summary
+# =============================================================================
+echo ""
+echo "============================================="
+if [[ $ERRORS -eq 0 && $WARNINGS -eq 0 ]]; then
+	echo "ALL CHECKS PASSED"
+	exit 0
+elif [[ $ERRORS -eq 0 ]]; then
+	echo "PASSED with $WARNINGS warning(s)"
+	exit 0
+else
+	echo "$ERRORS ERROR(S), $WARNINGS warning(s)"
+	exit 1
+fi

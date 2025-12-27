@@ -1,0 +1,12 @@
+# needrestart configuration for automatic service restarts
+# Placed in /etc/needrestart/conf.d/50-autorestart.conf
+
+# Restart mode: 'a' = automatic (restart without asking)
+# Other options: 'i' = interactive, 'l' = list only
+$nrconf{restart} = 'a';
+
+# Automatically restart services for kernel updates
+$nrconf{kernelhints} = -1;
+
+# Don't prompt for kernel upgrades (handled by unattended-upgrades)
+$nrconf{ucodehints} = 0;

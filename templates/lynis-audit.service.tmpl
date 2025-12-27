@@ -1,0 +1,14 @@
+[Unit]
+Description=Lynis security audit
+Documentation=man:lynis(8)
+After=local-fs.target
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash -c '/usr/bin/lynis audit system --cronjob > /var/log/lynis/audit-$(date +%%Y%%m%%d).log 2>&1'
+
+# Security hardening
+ProtectSystem=strict
+ReadWritePaths=/var/log/lynis
+PrivateTmp=true
+NoNewPrivileges=true

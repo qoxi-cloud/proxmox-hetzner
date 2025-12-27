@@ -1,6 +1,6 @@
 # ============================================
 # Proxmox VE Optimized Kernel Parameters
-# For Hetzner dedicated servers with NVMe
+# For dedicated servers with NVMe
 # ============================================
 
 # ------------------------------------------
@@ -13,19 +13,54 @@ net.ipv6.conf.all.forwarding=1
 # Network: Connection Tracking & Performance
 # ------------------------------------------
 net.netfilter.nf_conntrack_max=1048576
+net.netfilter.nf_conntrack_tcp_timeout_established=28800
 net.core.somaxconn=65535
 net.core.netdev_max_backlog=65535
 net.ipv4.tcp_max_syn_backlog=65535
 
 # ------------------------------------------
+# Network: TCP Congestion Control (BBR)
+# ------------------------------------------
+# BBR: Modern congestion control from Google
+# Improves throughput and reduces latency vs cubic
+net.core.default_qdisc=fq
+net.ipv4.tcp_congestion_control=bbr
+
+# ------------------------------------------
 # Network: TCP Performance Tuning
 # ------------------------------------------
+# TCP socket buffer sizes (optimized for 10Gbit+ links)
+net.core.rmem_max=134217728
+net.core.wmem_max=134217728
+net.ipv4.tcp_rmem=4096 87380 67108864
+net.ipv4.tcp_wmem=4096 65536 67108864
+
+# TCP performance features
+net.ipv4.tcp_window_scaling=1
+net.ipv4.tcp_timestamps=1
+
+# VPN/Tunnel optimizations (Tailscale, WireGuard)
+net.ipv4.tcp_mtu_probing=1
+net.ipv4.tcp_fastopen=3
 net.ipv4.tcp_fin_timeout=15
 net.ipv4.tcp_tw_reuse=1
 net.ipv4.tcp_keepalive_time=600
 net.ipv4.tcp_keepalive_probes=5
 net.ipv4.tcp_keepalive_intvl=15
 net.ipv4.tcp_slow_start_after_idle=0
+
+# ------------------------------------------
+# Network: Security & Anti-Spoofing
+# ------------------------------------------
+# SYN flood protection
+net.ipv4.tcp_syncookies=1
+
+# Log packets with impossible source addresses
+net.ipv4.conf.all.log_martians=1
+
+# Reverse path filtering (anti-spoofing)
+net.ipv4.conf.all.rp_filter=1
+net.ipv4.conf.default.rp_filter=1
 
 # ------------------------------------------
 # Memory: Virtual Memory Tuning
@@ -66,11 +101,20 @@ kernel.panic_on_oops=1
 # ------------------------------------------
 # Security: Kernel hardening
 # ------------------------------------------
-# Restrict kernel pointer exposure
+# Restrict kernel pointer exposure (KASLR protection)
 kernel.kptr_restrict=2
 
-# Restrict dmesg access to root
+# Restrict dmesg access to root (prevent kernel address leaks)
 kernel.dmesg_restrict=1
+
+# Prevent unprivileged user namespace creation (container escape mitigation)
+kernel.unprivileged_userns_clone=0
+
+# Disable unprivileged eBPF (prevent kernel exploits via BPF verifier bugs)
+kernel.unprivileged_bpf_disabled=1
+
+# Prevent NULL pointer dereference exploits
+vm.mmap_min_addr=65536
 
 # Disable magic SysRq key (security)
 kernel.sysrq=0

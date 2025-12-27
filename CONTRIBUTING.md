@@ -1,6 +1,16 @@
-# Contributing to Proxmox Hetzner Installer
+# Contributing to Proxmox Installer
 
 Thank you for your interest in contributing! This guide will help you get started.
+
+## Documentation
+
+Before contributing, familiarize yourself with the project:
+
+- [Architecture](wiki/Architecture.md) - Project structure and execution flow
+- [Function Reference](wiki/Function-Reference.md) - All public functions
+- [Templates Guide](wiki/Templates-Guide.md) - Template syntax and variables
+- [Wizard Development](wiki/Wizard-Development.md) - Extending the wizard
+- [Security Model](wiki/Security-Model.md) - Credential handling
 
 ## Development Setup
 
@@ -8,36 +18,55 @@ Thank you for your interest in contributing! This guide will help you get starte
 
 - Bash 4.0+
 - [ShellCheck](https://www.shellcheck.net/) for linting
+- [shfmt](https://github.com/mvdan/sh) for formatting
+- [gum](https://github.com/charmbracelet/gum) for wizard testing
 - Git
 
 ### Clone and Setup
 
 ```bash
-git clone https://github.com/qoxi-cloud/proxmox-hetzner.git
-cd proxmox-hetzner
+git clone https://github.com/qoxi-cloud/proxmox-installer.git
+cd proxmox-installer
 
 # Enable commit message validation (recommended)
 git config core.hooksPath .githooks
 ```
 
-The git hooks will automatically validate your commit messages before each commit.
-
 ### Project Structure
 
 ```
-proxmox-hetzner/
-├── scripts/           # Source scripts (numbered for concatenation order)
-│   ├── 00-init.sh     # Initialization, colors, version, constants
-│   ├── 00a-cli.sh     # CLI argument parsing
-│   ├── 00b-config.sh  # Configuration file handling
+proxmox-installer/
+├── scripts/           # Source scripts (numbered for execution order)
+│   ├── 000-colors.sh  # Terminal colors, version
+│   ├── 001-constants.sh # DNS, timeouts, ports, resource limits
+│   ├── 002-wizard-options.sh # WIZ_* menu option lists
+│   ├── 003-init.sh    # Globals, cleanup trap, runtime variables
+│   ├── 004-cli.sh     # CLI argument parsing
+│   ├── 005-logging.sh # Logging and metrics
 │   ├── ...
-│   └── 99-main.sh     # Main execution flow
+│   └── 900-main.sh    # Main orchestrator
 ├── templates/         # Configuration templates (.tmpl extension)
-├── tests/             # Unit tests
-│   ├── test-*.sh      # Individual test files
-│   └── run-all-tests.sh
-└── .github/workflows/ # CI/CD pipelines
+├── docs/              # Developer documentation
+├── wiki/              # User documentation (GitHub Wiki)
+├── spec/              # ShellSpec unit tests
+└── .cursor/rules/     # AI assistant context
 ```
+
+### Script Number Ranges
+
+| Range   | Purpose                                           |
+|---------|---------------------------------------------------|
+| 000-006 | Core init (colors, constants, wizard opts, init, cli, logging, banner) |
+| 010-012 | Display & utilities                               |
+| 020-021 | Templates & SSH                                   |
+| 030-035 | Helpers (password, zfs, validation, parallel, deploy, network) |
+| 040-043 | Validation (basic, network, dns, security)        |
+| 050-056 | System detection (packages, preflight, network, drives, status, live-logs) |
+| 100-103 | Wizard core (main loop, UI, navigation, menu)     |
+| 110-116 | Wizard editors (screens)                          |
+| 200-204 | Installation (packages, QEMU, templates, ISO, autoinstall) |
+| 300-380 | Configuration (base, security, monitoring, etc.)  |
+| 900     | Main orchestrator                                 |
 
 ## Making Changes
 
@@ -51,35 +80,35 @@ git checkout -b fix/bug-description
 
 ### 2. Edit Scripts
 
-Scripts are in `scripts/` directory, numbered for execution order:
-- `00-0x` - Initialization and configuration
-- `01-05` - UI and utilities
-- `06-07` - System detection
-- `08-10` - Input collection
-- `11-12` - Installation
-- `13-18` - Post-install configuration
-- `99` - Main flow
+Follow existing patterns in the codebase. Key references:
 
-### 3. Edit Templates
+- **Remote execution:** Use `remote_run` for config steps, `remote_exec` for status checks
+- **Templates:** Use `deploy_template` helper, see [Templates Guide](docs/templates-guide.md)
+- **Validation:** Add to `040-043-validation-*.sh`, follow existing function patterns
+- **Wizard fields:** See [Wizard Development](docs/wizard-development.md)
 
-Templates are in `templates/` with `.tmpl` extension. Use placeholders like:
-- `{{HOSTNAME}}`, `{{FQDN}}`
-- `{{MAIN_IPV4}}`, `{{MAIN_IPV6}}`
-- `{{DNS_PRIMARY}}`, `{{DNS_SECONDARY}}`
-
-See [CLAUDE.md](CLAUDE.md) for full list of placeholders.
-
-### 4. Run Tests Locally
+### 3. Lint and Format
 
 ```bash
-# Run all tests
-./tests/run-all-tests.sh
+# Lint all scripts
+shellcheck scripts/*.sh
 
-# Run specific test
-./tests/test-validation.sh
+# Format all scripts
+shfmt -w scripts/*.sh
+```
 
-# Lint scripts
-shellcheck -e SC1091,SC2034,SC2086 scripts/*.sh
+Configuration files: `.shellcheckrc`, `.editorconfig`
+
+### 4. Run Tests
+
+Tests must run in Docker (macOS bash 3.2 has compatibility issues):
+
+```bash
+docker run --rm -v "$(pwd):/app" -w /app ubuntu:22.04 bash -c '
+  apt-get update -qq && apt-get install -y -qq curl git >/dev/null 2>&1
+  curl -fsSL https://git.io/shellspec 2>/dev/null | sh -s -- --yes >/dev/null 2>&1
+  ~/.local/lib/shellspec/shellspec --format documentation
+'
 ```
 
 ### 5. Build Locally
@@ -104,37 +133,21 @@ Create a PR against the `main` branch.
 
 ### 3. Automated Checks
 
-When you create a PR, GitHub Actions will automatically:
+GitHub Actions will automatically:
 
-1. **Build** - Concatenate scripts and inject version
-2. **Lint** - Run ShellCheck
-3. **Test** - Run unit tests (176 tests)
-4. **Deploy** - Deploy test build to GitHub Pages
+1. **Lint** - Run ShellCheck
+2. **Format** - Verify shfmt formatting
+3. **Test** - Run ShellSpec tests
+4. **Build** - Concatenate scripts and inject version
+5. **Deploy** - Deploy test build to GitHub Pages
 
 ### 4. Test Your Changes
 
-After the build completes, a bot will comment on your PR with:
+After the build completes, a bot will comment on your PR with a test command:
 
+```bash
+bash <(curl -sSL https://qoxi-cloud.github.io/proxmox-installer/pve-install-pr.42.sh)
 ```
-## Test Build Available
-
-| Property | Value |
-|----------|-------|
-| **Version** | `1.2.5-pr.42` |
-| **Branch** | `feature/my-feature` |
-
-### Quick Install (for testing)
-
-bash <(curl -sSL https://qoxi-cloud.github.io/proxmox-hetzner/pve-install-pr.42.sh)
-```
-
-You can test your changes on a Hetzner server using this command.
-
-### 5. Fork PRs
-
-PRs from forks are fully supported:
-- Templates will be loaded from your fork
-- The test build will use your fork's branch
 
 ## Commit Message Format
 
@@ -143,14 +156,11 @@ Use emoji conventional commit format:
 ```text
 <emoji> <type>: <short description>
 
-<detailed explanation of changes>
+<detailed explanation>
 
 Changes:
-- Bullet point list of specific changes
-- Each change on its own line
-- Focus on "what" and "why"
-
-<additional context if needed>
+- Specific change 1
+- Specific change 2
 ```
 
 **Example:**
@@ -158,15 +168,13 @@ Changes:
 ```text
 ✨ feat: add IPv6 dual-stack support for network bridges
 
-Added full IPv6 support with automatic detection, manual configuration, and disable options. The installer now properly configures both IPv4 and IPv6 addresses on network bridges.
+Added full IPv6 support with automatic detection, manual configuration,
+and disable options.
 
 Changes:
 - Added validate_ipv6() and validate_ipv6_cidr() functions
 - Added IPV6_MODE config option (auto/manual/disabled)
 - Updated network templates with IPv6 placeholders
-- Added IPv6 gateway detection from Hetzner metadata
-
-Tested on AX41-NVMe with /64 subnet allocation.
 ```
 
 **Emoji Reference:**
@@ -180,83 +188,63 @@ Tested on AX41-NVMe with /64 subnet allocation.
 | 📝 | `docs` | Documentation |
 | 🔧 | `chore` | Configuration, tooling |
 | ⚡️ | `perf` | Performance improvements |
-| 🩹 | `fix` | Simple non-critical fixes |
-| 🚑️ | `hotfix` | Critical hotfixes |
 | ✅ | `test` | Adding or updating tests |
-| 🏗️ | `build` | Build system changes |
-| 👷 | `ci` | CI/CD changes |
 
 ## Code Style
 
 ### Shell Script Guidelines
 
-- Use `set -euo pipefail` at script start
+- **No `set -e`** - All error handling is explicit (interferes with traps)
 - Quote variables: `"$variable"` not `$variable`
 - Use `[[ ]]` for conditionals, not `[ ]`
 - Use `$(command)` not backticks
-- Prefix internal helper functions with `_`
+- Prefix internal functions with `_`
 
 ### Naming Conventions
 
-- Variables: `UPPER_SNAKE_CASE` for globals, `lower_snake_case` for locals
-- Functions: `lower_snake_case`
-- Files: `NN-name.sh` where NN is execution order
+| Type | Convention | Example |
+|------|------------|---------|
+| Global variables | `UPPER_SNAKE_CASE` | `MAIN_IPV4` |
+| Local variables | `lower_snake_case` | `local result` |
+| Public functions | `lower_snake_case` | `remote_run` |
+| Private functions | `_prefix_name` | `_wiz_render_menu` |
+| Files | `NNN-name.sh` | `300-configure-base.sh` |
+
+### Function Prefixes
+
+| Prefix | Location | Purpose |
+|--------|----------|---------|
+| `_wiz_` | 101-wizard-ui.sh | Wizard UI helpers |
+| `_edit_` | 110-116 wizard | Field editors |
+| `print_` | 010-display.sh | User messages |
+| `validate_` | 040-043-validation-*.sh | Input validation |
+| `remote_` | 021-ssh.sh | Remote execution |
+| `deploy_` | 034-deploy-helpers.sh | Deployment helpers |
+| `configure_` | 300-380 | Post-install config |
+| `_config_` | configure scripts | Private config functions |
+| `add_` / `start_` / `complete_` | 056-live-logs.sh | Live log operations |
+| `log_` | 005-logging.sh, 056-live-logs.sh | Logging functions |
 
 ### Comments
 
 - Add comments for complex logic
-- Document function parameters
-- Keep comments in English
+- Document function parameters in header comment
+- Use `# shellcheck disable=SCXXXX` with explanation
 
-## Testing
+## Templates
 
-### Writing Tests
+Templates use `{{VARIABLE}}` syntax. See [Templates Guide](docs/templates-guide.md) for:
 
-Tests use a simple assertion framework:
-
-```bash
-# Test that passes when command succeeds
-assert_true "description" validate_hostname "pve01"
-
-# Test that passes when command fails
-assert_false "description" validate_hostname "-invalid"
-
-# Test exact value match
-assert_equals "description" "expected" "$actual"
-```
-
-### Test File Structure
-
-```bash
-#!/usr/bin/env bash
-set -euo pipefail
-
-# Extract function to test
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-eval "$(sed -n '/^function_name()/,/^}/p' "$SCRIPT_DIR/scripts/module.sh")"
-
-# Tests
-assert_true "test case 1" function_name "arg1"
-assert_false "test case 2" function_name "invalid"
-
-# Summary
-echo "Tests run: $TESTS_RUN"
-```
-
-## Versioning
-
-The project uses semantic versioning:
-- **MAJOR** - Set in `scripts/00-init.sh`
-- **MINOR** - Count of git tags
-- **PATCH** - Commits since last tag
-
-PR builds get a `-pr.{number}` suffix.
+- Variable naming and escaping
+- Common variables reference
+- Deployment patterns
 
 ## Getting Help
 
-- Open an [issue](https://github.com/qoxi-cloud/proxmox-hetzner/issues)
-- Check [CLAUDE.md](CLAUDE.md) for detailed architecture docs
+- Check [Troubleshooting](wiki/Troubleshooting.md) for common issues
+- Open an [issue](https://github.com/qoxi-cloud/proxmox-installer/issues)
+- Review existing code for patterns
 
 ## License
 
-By contributing, you agree that your contributions will be licensed under the same license as the project.
+By contributing, you agree that your contributions will be licensed under the MIT License.

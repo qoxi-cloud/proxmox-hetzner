@@ -1,13 +1,7 @@
 ---
 
-<div align="center">
+**Qoxi** - Automated Proxmox VE Installer
 
-**[Home](Home)** · **[Installation](Installation-Guide)** · **[Configuration](Configuration-Reference)** · **[Network](Network-Modes)** · **[Post-Install](Post-Installation)** · **[Tailscale](Tailscale-Setup)**
+[Home](Home) • [Installation](Installation-Guide) • [Configuration](Configuration-Reference) • [Security](Security)
 
----
-
-Found this useful? Give us a ⭐ on [GitHub](https://github.com/qoxi-cloud/proxmox-hetzner)!
-
-Made with ❤️ by [qoxi.cloud](https://qoxi.cloud)
-
-</div>
+[GitHub](https://github.com/qoxi-cloud/proxmox-installer) • [Report Issue](https://github.com/qoxi-cloud/proxmox-installer/issues)

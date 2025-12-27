@@ -1,0 +1,59 @@
+# ShellCheck configuration for Proxmox Hetzner Installer
+# https://github.com/koalaman/shellcheck/wiki/Directive
+
+# Default shell
+shell=bash
+
+# =============================================================================
+# Global exclusions (apply to all scripts)
+# =============================================================================
+
+# SC1091: Not following sourced files
+# Reason: Scripts are sourced dynamically and shellcheck can't follow them
+disable=SC1091
+
+# SC2034: Variable appears unused
+# Reason: Variables defined in one script are used in another via sourcing
+# Example: INSTALL_* flags set in wizard, used in configure scripts
+disable=SC2034
+
+# SC2153: Possible misspelling (UPPERCASE vs lowercase)
+# Reason: False positives for similar but intentionally different variables
+# Example: TIMEZONES (array) vs TIMEZONE (selected value)
+disable=SC2153
+
+# SC2329: This function is never invoked
+# Reason: ShellSpec tests define mock functions invoked via DSL, not direct calls
+# Example: remote_exec() { ... } defined for mocking in spec files
+disable=SC2329
+
+# =============================================================================
+# Project-specific exclusions
+# =============================================================================
+
+# SC1003: Single quote escape issue
+# Reason: ASCII art banner uses intentional escape sequences
+disable=SC1003
+
+# SC2001: See if you can use ${var//search/replace}
+# Reason: sed is used for complex regex with ANSI escape codes that bash can't handle
+disable=SC2001
+
+# =============================================================================
+# NOT globally disabled (use inline comments where needed)
+# =============================================================================
+# SC2086: Quote to prevent word splitting
+#   - Use inline disable when word splitting is intentional
+#   - Example: ssh options, find commands with -name patterns
+#
+# SC2016: Expressions don't expand in single quotes
+#   - Use inline disable for remote execution strings
+#   - Example: remote_run commands that should expand on remote
+#
+# SC1090: Can't follow non-constant source
+#   - Use inline disable for dynamic sourcing
+#   - Example: sourcing exported variables from temp files
+#
+# SC2317: Command appears unreachable
+#   - Use inline disable in trap handlers
+#   - Example: cleanup functions called via trap

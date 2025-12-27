@@ -1,0 +1,41 @@
+# Netdata configuration
+# Web interface available at http://hostname:19999
+
+[global]
+    # Run as netdata user
+    run as user = netdata
+
+    # Memory mode: dbengine for persistent storage
+    memory mode = dbengine
+
+    # Data retention - 7 days
+    page cache size = 32
+    dbengine multihost disk space = 256
+
+[web]
+    # Bind addresses:
+    # - 127.0.0.1: localhost only
+    # - 100.*: Tailscale network (if enabled)
+    bind to = {{NETDATA_BIND_TO}}
+
+    # Default port
+    default port = 19999
+
+    # Allow connections from localhost and private networks only
+    allow connections from = localhost 10.* 100.* 172.16.* 172.17.* 172.18.* 172.19.* 172.20.* 172.21.* 172.22.* 172.23.* 172.24.* 172.25.* 172.26.* 172.27.* 172.28.* 172.29.* 172.30.* 172.31.* 192.168.*
+
+    # Allow dashboard access from same networks
+    allow dashboard from = localhost 10.* 100.* 172.16.* 172.17.* 172.18.* 172.19.* 172.20.* 172.21.* 172.22.* 172.23.* 172.24.* 172.25.* 172.26.* 172.27.* 172.28.* 172.29.* 172.30.* 172.31.* 192.168.*
+
+[plugins]
+    # Enable common plugins
+    proc = yes
+    diskspace = yes
+    cgroups = yes
+    tc = no
+
+[plugin:proc]
+    # Monitor network interfaces
+    /proc/net/dev = yes
+    # Monitor disk I/O
+    /proc/diskstats = yes

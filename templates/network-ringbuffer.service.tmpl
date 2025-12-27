@@ -1,0 +1,39 @@
+[Unit]
+Description=Network Ring Buffer Tuning
+After=network.target
+Wants=network.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+
+# Maximize ring buffer for primary interface
+# Get max values and apply them with validation
+ExecStart=/bin/bash -c '\
+  IFACE="{{RINGBUFFER_INTERFACE}}"; \
+  if [ -z "$IFACE" ]; then \
+    echo "ERROR: No interface specified" >&2; \
+    exit 0; \
+  fi; \
+  if [ ! -d "/sys/class/net/$IFACE" ]; then \
+    echo "ERROR: Interface $IFACE not found" >&2; \
+    exit 0; \
+  fi; \
+  MAX_RX=$(ethtool -g "$IFACE" 2>/dev/null | grep -A4 "Pre-set maximums" | grep "RX:" | awk "{print \$2}"); \
+  MAX_TX=$(ethtool -g "$IFACE" 2>/dev/null | grep -A4 "Pre-set maximums" | grep "TX:" | awk "{print \$2}"); \
+  if [ -z "$MAX_RX" ] || [ -z "$MAX_TX" ]; then \
+    echo "WARNING: Could not determine ring buffer limits for $IFACE" >&2; \
+    exit 0; \
+  fi; \
+  if ! [[ "$MAX_RX" =~ ^[0-9]+$ ]] || ! [[ "$MAX_TX" =~ ^[0-9]+$ ]]; then \
+    echo "WARNING: Invalid ring buffer values for $IFACE (RX=$MAX_RX, TX=$MAX_TX)" >&2; \
+    exit 0; \
+  fi; \
+  if ethtool -G "$IFACE" rx "$MAX_RX" tx "$MAX_TX" 2>/dev/null; then \
+    echo "Ring buffer set to RX=$MAX_RX TX=$MAX_TX for $IFACE"; \
+  else \
+    echo "WARNING: Failed to set ring buffer for $IFACE" >&2; \
+  fi'
+
+[Install]
+WantedBy=multi-user.target

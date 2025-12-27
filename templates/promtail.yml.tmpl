@@ -1,0 +1,67 @@
+# Promtail Configuration for Proxmox VE
+# Collects system and Proxmox logs, ships to Loki
+# Configure Loki URL after installation: /etc/promtail/promtail.yml
+
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /var/lib/promtail/positions.yaml
+
+clients:
+  # Configure your Loki server URL after installation:
+  # sudo nano /etc/promtail/promtail.yml
+  - url: http://localhost:3100/loki/api/v1/push
+
+scrape_configs:
+  # System logs
+  - job_name: syslog
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: syslog
+          host: {{HOSTNAME}}
+          __path__: /var/log/syslog
+
+  # Auth logs (SSH, sudo, etc.)
+  - job_name: auth
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: auth
+          host: {{HOSTNAME}}
+          __path__: /var/log/auth.log
+
+  # Proxmox VE logs
+  - job_name: pve
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: pve
+          host: {{HOSTNAME}}
+          __path__: /var/log/pve*.log
+
+  # Kernel logs
+  - job_name: kern
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: kern
+          host: {{HOSTNAME}}
+          __path__: /var/log/kern.log
+
+  # Systemd journal
+  - job_name: journal
+    journal:
+      max_age: 12h
+      labels:
+        job: journal
+        host: {{HOSTNAME}}
+    relabel_configs:
+      - source_labels: ['__journal__systemd_unit']
+        target_label: 'unit'

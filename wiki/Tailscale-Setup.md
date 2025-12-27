@@ -8,30 +8,17 @@ Secure remote access to your Proxmox server using Tailscale VPN.
 
 ## Installation Options
 
-### During Proxmox Installation
+### During Installation (Recommended)
 
-The installer offers Tailscale as an optional component:
+Enable Tailscale in the wizard's Services screen:
 
 | Setting | Options | Default |
 |---------|---------|---------|
-| Install Tailscale | `yes` / `no` | `no` |
-| Auth Key | Your Tailscale auth key | - |
-| Enable SSH | `yes` / `no` | `yes` |
-| Enable Web UI | `yes` / `no` | `yes` |
-| Disable OpenSSH | `yes` / `no` | `yes` when auth key provided, `no` otherwise |
+| Tailscale | Enabled / Disabled | Disabled |
+| Auth Key | Your Tailscale auth key | Required if enabled |
+| Web UI | Enabled / Disabled | Yes |
 
-> **Important:** When you provide a Tailscale auth key, security hardening is **automatically enabled**: OpenSSH is disabled and stealth firewall is activated on first boot.
-
-### Environment Variables
-
-**Using environment variables (optional):**
-
-```bash
-export INSTALL_TAILSCALE="yes"
-export TAILSCALE_AUTH_KEY="tskey-auth-xxxxx"
-# When auth key is provided, security hardening is auto-enabled
-bash pve-install.sh
-```
+> **Note:** When you provide a Tailscale auth key, the firewall mode automatically defaults to "Stealth" (blocks all public incoming traffic).
 
 ## Getting an Auth Key
 
@@ -51,14 +38,12 @@ After installation with Tailscale enabled:
 
 ### Web UI Access
 
-Access Proxmox through your Tailscale network:
-
+Via Tailscale hostname:
 ```
 https://YOUR-HOSTNAME.your-tailnet.ts.net
 ```
 
-Or using the Tailscale IP:
-
+Or via Tailscale IP:
 ```
 https://100.x.x.x:8006
 ```
@@ -66,197 +51,99 @@ https://100.x.x.x:8006
 ### SSH Access
 
 ```bash
-ssh root@YOUR-HOSTNAME
+ssh ADMIN_USER@YOUR-HOSTNAME
 # or
-ssh root@100.x.x.x
+ssh ADMIN_USER@100.x.x.x
 ```
 
-With Tailscale SSH enabled, you don't need SSH keys - Tailscale handles authentication.
+> **Note:** Use your admin username, not root. Root SSH is disabled.
 
-## Manual Setup (Without Auth Key)
+## Tailscale + Firewall Modes
 
-If you didn't provide an auth key during installation, Tailscale is installed but not authenticated. Complete the setup manually:
+When Tailscale is enabled, the firewall mode affects access:
 
-> **Warning:** Without an auth key, security hardening (stealth firewall, OpenSSH disable) is **NOT configured**. Your server remains accessible via public IP until you manually enable these features.
+| Firewall Mode | Public IP Access | Tailscale Access |
+|---------------|------------------|------------------|
+| **Stealth** | Blocked (all ports) | Full access |
+| **Strict** | SSH only | Full access |
+| **Standard** | SSH + Web UI | Full access |
+| **Disabled** | Full access | Full access |
 
-1. SSH to your server using the public IP:
-   ```bash
-   ssh root@YOUR-SERVER-IP
-   ```
+### Recommended: Stealth Mode
 
-2. Authenticate with Tailscale:
-   ```bash
-   tailscale up --ssh
-   ```
+When Tailscale is enabled with an auth key, **Stealth mode is automatically suggested**. This provides maximum security:
 
-3. Follow the URL to authenticate in your browser
-
-4. Enable the web UI proxy:
-   ```bash
-   tailscale serve --bg --https=443 https://127.0.0.1:8006
-   ```
-
-5. **Verify Tailscale SSH works** before proceeding:
-   ```bash
-   # From another device on your Tailscale network:
-   ssh root@YOUR-HOSTNAME
-   ```
-
-6. **(Optional but recommended)** Enable security features manually - see next section
-
-### Enabling Security Features Manually
-
-If you want the same security level as auto-configured installations, you can enable these features manually after Tailscale is working:
-
-#### Enable Stealth Firewall
-
-```bash
-# Download and install the stealth firewall service
-curl -sSL https://github.com/qoxi-cloud/proxmox-hetzner/raw/refs/heads/main/templates/stealth-firewall.service \
-  -o /etc/systemd/system/stealth-firewall.service
-
-# Enable and start
-systemctl daemon-reload
-systemctl enable stealth-firewall.service
-systemctl start stealth-firewall.service
-```
-
-#### Disable OpenSSH (Use with Caution!)
-
-> **Warning:** Only disable OpenSSH after confirming Tailscale SSH is working! Test by connecting via `ssh root@YOUR-HOSTNAME` through Tailscale first.
-
-```bash
-# Stop and disable OpenSSH
-systemctl stop ssh.service ssh.socket
-systemctl disable ssh.service ssh.socket
-systemctl mask ssh.service ssh.socket
-```
+- All incoming traffic on public IP blocked
+- Access only via Tailscale VPN
+- VMs still have full internet access via NAT
 
 ## Tailscale Features
 
 ### Tailscale SSH
 
-When enabled (`TAILSCALE_SSH=yes`), Tailscale manages SSH authentication:
+When Tailscale is authenticated, you can use Tailscale SSH:
 - No need to manage SSH keys
 - Access controlled via Tailscale ACLs
 - Session logging available in admin console
 
-### Web UI Proxy
+### Web UI Proxy (Tailscale Serve)
 
-When enabled (`TAILSCALE_WEBUI=yes`), the Proxmox web interface is served over HTTPS via Tailscale:
+When "Web UI" is enabled, Proxmox is accessible via Tailscale Serve:
 - Valid TLS certificate (no browser warnings)
 - Accessible at `https://hostname.tailnet.ts.net`
 - Only accessible from your Tailscale network
 
-## Security Hardening
-
-### Automatic vs Manual Setup
-
-| Feature | With Auth Key | Without Auth Key |
-|---------|---------------|------------------|
-| Tailscale authenticated | Automatic | Manual (`tailscale up`) |
-| Stealth firewall | Enabled automatically | Must enable manually |
-| OpenSSH disabled | Yes, on first boot | No, stays enabled |
-| Public IP accessible | No (blocked) | Yes (open) |
-
-When Tailscale is enabled **with an auth key**, the installer automatically configures security features:
-
-- **OpenSSH is disabled** on first boot (after Tailscale connects)
-- **Stealth firewall mode is enabled** - server is invisible from public internet
-
-### Stealth Firewall Mode
-
-This makes your server invisible from the public internet:
-
-| Traffic | Allowed |
-|---------|---------|
-| Outgoing connections | Yes (internet access works) |
-| Incoming on public IP | Blocked (all ports) |
-| Incoming on Tailscale | Allowed |
-| Incoming on vmbr0/vmbr1 | Allowed (VM traffic) |
-| Established connections | Allowed (responses to outgoing) |
-
-#### How It Works
-
-- A systemd service (`stealth-firewall.service`) runs on every boot
-- Sets iptables INPUT policy to DROP
-- Allows loopback, established connections, Tailscale, and bridge interfaces
-- VMs still have full internet access via NAT
-
-#### Disabling Stealth Mode
-
-If you need to disable stealth mode temporarily:
-
+Uses:
 ```bash
-# Stop the firewall (until next reboot)
-systemctl stop stealth-firewall
-
-# Disable permanently
-systemctl disable stealth-firewall
+tailscale serve --bg --https=443 https://127.0.0.1:8006
 ```
 
-#### Re-enabling Stealth Mode
+## Manual Setup
 
-```bash
-systemctl enable stealth-firewall
-systemctl start stealth-firewall
-```
+If you install Tailscale without an auth key, complete setup manually:
 
-### OpenSSH Disabled
+1. SSH to your server:
+   ```bash
+   ssh ADMIN_USER@YOUR-IP
+   ```
 
-OpenSSH is automatically disabled when you provide a Tailscale auth key. This prevents any SSH access via the public IP address (only Tailscale SSH will work).
+2. Authenticate with Tailscale:
+   ```bash
+   sudo tailscale up --ssh
+   ```
 
-How it works:
+3. Follow the URL to authenticate in your browser
 
-- A systemd service (`disable-openssh.service`) runs once on first boot
-- It waits for Tailscale to come online and authenticate
-- Once Tailscale is connected, it disables and masks `ssh.service` and `ssh.socket`
-- The service then removes itself (runs only once)
+4. Enable Web UI proxy:
+   ```bash
+   sudo tailscale serve --bg --https=443 https://127.0.0.1:8006
+   ```
 
-#### Warning
-
-> **Important:** Once OpenSSH is disabled, you can ONLY access the server via Tailscale SSH. If Tailscale becomes unavailable (e.g., account issues, network problems), you will need to use Hetzner Rescue Mode to regain access.
-
-#### Re-enabling OpenSSH
-
-If you need to re-enable OpenSSH:
-
-```bash
-# Unmask and enable SSH
-systemctl unmask ssh.service ssh.socket
-systemctl enable ssh.service ssh.socket
-systemctl start ssh.service
-```
-
-## Security Benefits
-
-| Feature | Benefit |
-|---------|---------|
-| No public ports | Web UI and SSH not exposed to internet |
-| Zero-trust | Every connection authenticated |
-| Encrypted | All traffic encrypted end-to-end |
-| ACLs | Fine-grained access control |
-| Audit logs | Track who accessed what |
+5. **Verify Tailscale SSH works** before changing firewall:
+   ```bash
+   # From another device on your Tailscale network
+   ssh ADMIN_USER@YOUR-HOSTNAME
+   ```
 
 ## Verifying Tailscale Status
 
 ```bash
-# Check Tailscale status
+# Check status
 tailscale status
 
-# Check Tailscale IP
+# Check IP
 tailscale ip
 
 # Check serve status
 tailscale serve status
 
-# View Tailscale logs
+# View logs
 journalctl -u tailscaled -f
 ```
 
 ## Troubleshooting
 
-### Cannot connect via Tailscale
+### Cannot Connect via Tailscale
 
 1. Verify Tailscale is running:
    ```bash
@@ -273,7 +160,7 @@ journalctl -u tailscaled -f
    tailscale up --ssh
    ```
 
-### Web UI not accessible via Tailscale
+### Web UI Not Accessible
 
 1. Check serve configuration:
    ```bash
@@ -285,27 +172,52 @@ journalctl -u tailscaled -f
    tailscale serve --bg --https=443 https://127.0.0.1:8006
    ```
 
-### Tailscale shows as offline
+### Tailscale Shows Offline
 
 - Check internet connectivity
-- Verify no firewall blocking UDP port 41641
-- Restart Tailscale: `systemctl restart tailscaled`
+- Verify firewall isn't blocking UDP 41641
+- Restart Tailscale:
+  ```bash
+  systemctl restart tailscaled
+  ```
+
+### Locked Out (Stealth Mode + Tailscale Issues)
+
+If Tailscale becomes unavailable and you're in stealth mode:
+
+1. Access via provider's KVM/IPMI console
+2. Temporarily disable firewall:
+   ```bash
+   nft flush ruleset
+   systemctl disable nftables
+   ```
+3. Fix Tailscale, then re-enable firewall
+
+## Security Benefits
+
+| Feature | Benefit |
+|---------|---------|
+| No public ports | Web UI and SSH not exposed |
+| Zero-trust | Every connection authenticated |
+| Encrypted | All traffic encrypted end-to-end |
+| ACLs | Fine-grained access control |
+| Audit logs | Track who accessed what |
 
 ## Removing Tailscale
 
-If you need to remove Tailscale:
-
 ```bash
-# Leave the Tailscale network
+# Leave the network
 tailscale logout
 
 # Remove the package
 apt remove tailscale
 
-# Remove from your Tailscale admin console
+# Remove from admin console
 # Go to: https://login.tailscale.com/admin/machines
 ```
 
+If using stealth firewall, update firewall mode before removing Tailscale.
+
 ---
 
-**Back to:** [Home](Home) | [Installation Guide](Installation-Guide)
+**Back to:** [Home](Home) | [Security](Security)

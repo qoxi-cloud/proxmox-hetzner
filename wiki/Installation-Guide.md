@@ -1,113 +1,177 @@
 # Installation Guide
 
-Complete guide to installing Proxmox VE on Hetzner dedicated servers.
-
-## Time Savings
-
-| Task | Manual Install | This Script |
-|------|----------------|-------------|
-| Proxmox installation | 20-30 min | ~5 min (automated) |
-| ZFS RAID configuration | 15-20 min | Included |
-| Network bridge setup | 10-15 min | Included |
-| SSH hardening | 10-15 min | Included |
-| Security updates config | 5-10 min | Included |
-| ZSH + plugins setup | 10-15 min | Included |
-| NTP configuration | 5 min | Included |
-| Let's Encrypt SSL | 10-15 min | Included |
-| Tailscale + firewall | 15-20 min | Included |
-| **Total** | **1.5-2.5 hours** | **~5 minutes** |
-
-One command replaces hours of manual configuration with battle-tested defaults.
+Complete guide to installing Proxmox VE on dedicated servers using Qoxi.
 
 ## Prerequisites
 
-- Hetzner dedicated server (AX, EX, or SX series)
-- Access to Hetzner Robot Manager
-- SSH client on your local machine
+- Dedicated server with KVM-enabled rescue system
+- SSH access to the rescue system
+- Minimum 4GB RAM (8GB+ recommended)
+- At least 6GB free disk space
 
-## Step 1: Prepare Rescue Mode
+## Step 1: Boot into Rescue Mode
 
-1. Log in to the [Hetzner Robot Manager](https://robot.hetzner.com/)
-2. Select your server
-3. Navigate to the **Rescue** tab and configure:
-   - Operating system: **Linux**
-   - Architecture: **64 bit**
-   - Public key: *optional but recommended*
+### Hetzner
+
+1. Log in to [Hetzner Robot](https://robot.hetzner.com/)
+2. Select your server → **Rescue** tab
+3. Configure: Linux 64-bit, optionally add your SSH key
 4. Click **Activate rescue system**
-5. Go to the **Reset** tab
-6. Check: **Execute an automatic hardware reset**
-7. Click **Send**
-8. Wait 2-3 minutes for the server to boot into rescue mode
-9. Connect via SSH to the rescue system:
-   ```bash
-   ssh root@YOUR-SERVER-IP
-   ```
+5. Go to **Reset** tab → check "Execute an automatic hardware reset" → click **Send**
+6. Wait 2-3 minutes, then SSH to your server
 
-## Step 2: Run Installation Script
+### OVH
 
-Execute this command in the rescue system terminal:
+1. Log in to [OVH Manager](https://www.ovh.com/manager/)
+2. Select your server → **Boot** tab
+3. Set to **Rescue mode** and select Linux distribution
+4. Reboot the server
+5. Wait for rescue mode credentials via email
+
+### Other Providers
+
+Boot into your provider's Linux rescue mode with KVM support. The rescue system needs access to `/dev/kvm`.
+
+## Step 2: Connect via SSH
 
 ```bash
-bash <(curl -sSL https://qoxi-cloud.github.io/proxmox-hetzner/pve-install.sh)
+ssh root@YOUR-SERVER-IP
 ```
 
-The interactive installer will guide you through:
+## Step 3: Run Installation
 
-- **Proxmox VE version selection** (last 5 versions available)
-- Hostname configuration
-- Root password setup (or press Enter to auto-generate)
-- SSH key configuration
-- Network bridge mode selection
-- ZFS RAID configuration
-- Optional Tailscale installation
+```bash
+bash <(curl -sSL https://qoxi-cloud.github.io/proxmox-installer/pve-install.min.sh)
+```
 
-> **Tip:** If you skip password entry, a secure 16-character password will be auto-generated and displayed in the final summary. Make sure to save it!
+### Optional: CLI Arguments
 
-## Step 3: Wait for Installation
+```bash
+# Use specific Proxmox version
+bash <(curl -sSL ...) --iso-version proxmox-ve_9.0-1.iso
 
-The script will:
+# Custom QEMU resources
+bash <(curl -sSL ...) --qemu-ram 16384 --qemu-cores 8
+```
 
-1. Download the latest Proxmox VE ISO (with automatic retry and fallback)
-2. Create an auto-installation configuration
-3. Install Proxmox VE using QEMU
-4. Configure networking and security
-5. Apply system optimizations
-6. Reboot into the installed system
+## Step 4: Interactive Wizard
 
-Total installation time: approximately 5 minutes depending on server hardware and network speed.
+The wizard guides you through configuration in 6 screens:
 
-## Step 4: Access Proxmox
+### Basic Settings
+- **Hostname** - Server hostname (e.g., `pve`, `node1`)
+- **Domain** - Domain suffix (e.g., `local`, `example.com`)
+- **Email** - Admin email for notifications
+- **Password** - Root password (or auto-generate)
+- **Timezone** - System timezone
+- **Keyboard** - Keyboard layout
+- **Country** - ISO country code
 
-After the server reboots:
+### Proxmox Settings
+- **ISO Version** - Proxmox VE version to install (v9+, last 5 available)
+- **Repository** - No-subscription, Enterprise, or Test
 
-1. Open your browser and navigate to: `https://YOUR-SERVER-IP:8006`
-2. Accept the self-signed certificate warning
-3. Log in with:
-   - **Username:** `root`
-   - **Password:** the password you set (or the auto-generated one from the summary)
+### Network Settings
+- **Interface** - Primary network interface
+- **Bridge Mode** - Internal NAT, External, or Both
+- **Private Subnet** - NAT subnet for internal VMs
+- **Bridge MTU** - 9000 (jumbo) or 1500 (standard)
+- **IPv6** - Auto, Manual, or Disabled
+- **Firewall** - Stealth, Strict, Standard, or Disabled
+
+### Storage Settings
+- **Boot Disk** - Disk for Proxmox installation (ext4)
+- **Pool Mode** - Create new or use existing ZFS pool
+- **Pool Disks** - Disks for ZFS data pool (if creating new)
+- **ZFS Mode** - Single, RAID-0/1, RAID-Z1/Z2/Z3, RAID-10
+- **ZFS ARC** - Memory allocation strategy
+
+> **Upgrading Proxmox?** Select "Use existing" pool to preserve VMs during reinstall.
+
+### Services
+- **Tailscale** - VPN with optional stealth mode
+- **SSL** - Self-signed or Let's Encrypt
+- **Shell** - ZSH with Powerlevel10k or Bash
+- **Power Profile** - CPU frequency governor
+- **Security Features** - AppArmor, auditd, AIDE, chkrootkit, lynis, needrestart
+- **Monitoring** - vnstat, Netdata, Promtail
+- **Tools** - yazi, nvim, ringbuffer tuning
+
+### Access Settings
+- **Admin Username** - Non-root admin user for SSH/UI access
+- **Admin Password** - Password for admin user
+- **SSH Key** - Public key for admin user
+- **API Token** - Optional automation token
+
+### Navigation
+
+| Key | Action |
+|-----|--------|
+| ↑/↓ | Move within screen |
+| ←/→ | Switch screens |
+| Enter | Edit field |
+| Space | Toggle checkbox |
+| S | Start installation |
+| Q | Quit |
+
+## Step 5: Installation Progress
+
+The installer will:
+
+1. Download Proxmox VE ISO
+2. Create auto-install configuration
+3. Install Proxmox in QEMU VM
+4. Configure system via SSH
+5. Apply security hardening
+6. Validate installation
+7. Show completion screen with credentials
+
+**Save the credentials shown on the completion screen!**
+
+## Step 6: Access Proxmox
+
+After pressing Enter to reboot:
+
+1. Wait 2-3 minutes for the server to boot
+2. Access Web UI: `https://YOUR-IP:8006`
+3. Login with admin user credentials
+4. SSH: `ssh ADMIN_USER@YOUR-IP`
+
+> **Note:** Root SSH is disabled. Use the admin user you configured.
 
 ## Troubleshooting
 
-### Installation hangs at a specific step
+### Installation Hangs
 
-Check the log file for detailed output:
+Check the log file:
 ```bash
 cat /root/pve-install-*.log
 ```
 
-The log file is named with a timestamp, e.g., `pve-install-20241130-123456.log`.
+### Cannot Connect After Reboot
 
-### Cannot connect after reboot
+- Wait 2-3 minutes for services to start
+- Try SSH before Web UI: `ssh ADMIN_USER@YOUR-IP`
+- Use provider's KVM/IPMI console if available
 
-- Wait 2-3 minutes for all services to start
-- Verify the server has rebooted (check Hetzner Robot console)
-- Try connecting via SSH first: `ssh root@YOUR-SERVER-IP`
+### Web UI Not Accessible
 
-### Web interface not accessible
+```bash
+# Check if services are running
+systemctl status pveproxy pvedaemon
 
-- Ensure port 8006 is not blocked by your firewall
-- Try accessing via IP instead of hostname
-- Check if Proxmox services are running: `systemctl status pveproxy`
+# Check firewall mode
+nft list ruleset
+```
+
+### Wrong Firewall Mode
+
+If you chose Stealth mode without Tailscale:
+```bash
+# Access via provider's KVM console
+nft flush ruleset
+systemctl disable nftables
+```
 
 ---
 

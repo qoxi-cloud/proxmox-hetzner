@@ -1,0 +1,3 @@
+# AppArmor kernel parameters for Proxmox VE
+# Enables mandatory access control for LXC containers and system services
+GRUB_CMDLINE_LINUX_DEFAULT="$GRUB_CMDLINE_LINUX_DEFAULT apparmor=1 security=apparmor"

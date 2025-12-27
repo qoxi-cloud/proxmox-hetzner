@@ -36,6 +36,40 @@ jobs:
             exit 1
           fi
 
+  file-size:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check file line counts (max 250 lines)
+        run: |
+          MAX_LINES=250
+          FAILED=0
+
+          echo "Checking script file sizes..."
+          echo ""
+
+          while IFS= read -r line; do
+            LINES=$(echo "$line" | awk '{print $1}')
+            FILE=$(echo "$line" | awk '{print $2}')
+
+            if [[ $LINES -gt $MAX_LINES ]]; then
+              echo "❌ $FILE: $LINES lines (max: $MAX_LINES)"
+              FAILED=$((FAILED + 1))
+            else
+              echo "✅ $FILE: $LINES lines"
+            fi
+          done < <(wc -l scripts/*.sh | grep -v total | sort -rn)
+
+          echo ""
+          if [[ $FAILED -gt 0 ]]; then
+            echo "::error::$FAILED file(s) exceed $MAX_LINES lines. Split large files into smaller modules."
+            exit 1
+          fi
+          echo "All files are within the $MAX_LINES line limit."
+
   commits:
     runs-on: ubuntu-latest
 

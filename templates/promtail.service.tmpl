@@ -1,0 +1,17 @@
+[Unit]
+Description=Promtail Log Collector
+Documentation=https://grafana.com/docs/loki/latest/clients/promtail/
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+ExecStartPre=/bin/mkdir -p /var/lib/promtail
+ExecStart=/usr/bin/promtail -config.file=/etc/promtail/promtail.yml
+Restart=on-failure
+RestartSec=10
+TimeoutStopSec=20
+
+[Install]
+WantedBy=multi-user.target

@@ -32,7 +32,7 @@ jobs:
         id: version
         run: |
           # Get MAJOR version from source file
-          MAJOR=$(grep -oP 'VERSION="\K[0-9]+' scripts/000-init.sh)
+          MAJOR=$(grep -oP 'VERSION="\K[0-9]+' scripts/000-colors.sh)
 
           # Count tags matching vMAJOR.* for MINOR
           MINOR=$(git tag -l "v${MAJOR}.*" 2>/dev/null | wc -l | tr -d ' ')
@@ -128,7 +128,7 @@ jobs:
         id: version
         run: |
           # Get MAJOR version from source file
-          MAJOR=$(grep -oP 'VERSION="\K[0-9]+' scripts/000-init.sh)
+          MAJOR=$(grep -oP 'VERSION="\K[0-9]+' scripts/000-colors.sh)
 
           # Count tags matching vMAJOR.* for MINOR
           MINOR=$(git tag -l "v${MAJOR}.*" 2>/dev/null | wc -l | tr -d ' ')

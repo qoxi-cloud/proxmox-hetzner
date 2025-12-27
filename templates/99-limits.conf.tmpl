@@ -1,0 +1,21 @@
+# Proxmox VE System Limits
+# Optimized for containers, VMs, and monitoring tools
+
+# Max open files (containers, monitoring, Docker)
+* soft nofile 1048576
+* hard nofile 1048576
+root soft nofile 1048576
+root hard nofile 1048576
+
+# Max processes (LXC, nested containers)
+* soft nproc 65535
+* hard nproc 65535
+root soft nproc 65535
+root hard nproc 65535
+
+# Locked memory (GPU passthrough, DPDK, VFIO)
+* soft memlock unlimited
+* hard memlock unlimited
+root soft memlock unlimited
+root hard memlock unlimited
+

@@ -12,7 +12,7 @@ Unattended-Upgrade::Origins-Pattern {
 
 // List of packages to NOT automatically upgrade
 // IMPORTANT: Kernel packages are excluded to prevent unexpected reboots
-Unattended-Upgrade::Package-Blacklist {
+Unattended-Upgrade::PackageBlacklist {
     // Kernel packages - require manual update and reboot planning
     "linux-image-*";
     "linux-headers-*";
@@ -30,7 +30,7 @@ Unattended-Upgrade::Package-Blacklist {
 };
 
 // Packages that will always be upgraded (even if blacklisted elsewhere)
-Unattended-Upgrade::Package-Whitelist {
+Unattended-Upgrade::PackageWhitelist {
 };
 
 // Send email notification on upgrade

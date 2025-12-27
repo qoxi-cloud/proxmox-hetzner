@@ -1,0 +1,59 @@
+# vnstat configuration file
+# Network traffic monitoring for Proxmox VE
+
+# Database directory
+DatabaseDir "/var/lib/vnstat"
+
+# Default interface (main physical interface)
+Interface "{{INTERFACE_NAME}}"
+
+# How often daemon updates the database (seconds)
+UpdateInterval 20
+
+# How often daemon saves to disk (minutes)
+SaveInterval 5
+
+# Boot time detection (auto-detect system restarts)
+BootVariation 15
+
+# Traffic rate calculation interval (seconds)
+TrafficlessEntries 1
+
+# Use binary or decimal units (0 = IEC/binary KiB, 1 = SI/decimal KB)
+UnitMode 0
+
+# Rate display (0 = bytes, 1 = bits)
+RateUnitMode 1
+
+# Output style
+OutputStyle 3
+
+# Bandwidth detection (1 = enabled)
+BandwidthDetection 1
+
+# Maximum bandwidth (Mbit), 0 = disabled
+MaxBandwidth 0
+
+# Check disk space before saving (1 = enabled)
+CheckDiskSpace 1
+
+# Use UTC time (0 = local time)
+UseUTC 0
+
+# Locale settings (empty = system locale)
+Locale "-"
+
+# Day starts at this hour (0-23)
+DayHour 0
+
+# Week starts on this day (0 = Sunday, 1 = Monday)
+WeekStart 1
+
+# Months to keep in database
+MonthsYears 5
+
+# Days to keep
+Days 30
+
+# Hours to keep
+Hours 24

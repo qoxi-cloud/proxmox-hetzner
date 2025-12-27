@@ -1,0 +1,9 @@
+[Unit]
+Description=ZFS scrub on %i
+Documentation=man:zpool-scrub(8)
+Requires=zfs.target
+After=zfs.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/zpool scrub %i
