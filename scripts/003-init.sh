@@ -25,7 +25,7 @@ EXISTING_POOL_DISKS=() # Disks containing the existing pool (detected or manual)
 WIPE_DISKS="yes"
 
 # System utilities to install on Proxmox
-SYSTEM_UTILITIES="btop iotop ncdu tmux pigz smartmontools jq bat fastfetch sysstat nethogs ethtool curl gnupg"
+SYSTEM_UTILITIES="sudo btop iotop ncdu tmux pigz smartmontools jq bat fastfetch sysstat nethogs ethtool curl gnupg"
 OPTIONAL_PACKAGES="libguestfs-tools"
 
 # Log file
