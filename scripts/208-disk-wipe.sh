@@ -1,18 +1,29 @@
 # shellcheck shell=bash
 # Disk wipe functions - clean disks before installation
 
-# Get all disks selected for installation (boot + pool)
-_get_install_disks() {
+# Get disks to wipe based on installation mode.
+# - USE_EXISTING_POOL=yes: only boot disk (preserve pool)
+# - BOOT_DISK set + new pool: boot + pool disks
+# - BOOT_DISK empty (rpool mode): all disks in pool
+_get_disks_to_wipe() {
   local disks=()
-  [[ -n $BOOT_DISK ]] && disks+=("$BOOT_DISK")
-  for disk in "${ZFS_POOL_DISKS[@]}"; do
-    # Avoid duplicates
-    local found=false
-    for d in "${disks[@]}"; do
-      [[ $d == "$disk" ]] && found=true && break
+
+  if [[ $USE_EXISTING_POOL == "yes" ]]; then
+    # Existing pool mode: wipe only boot disk (pool disks preserved)
+    [[ -n $BOOT_DISK ]] && disks+=("$BOOT_DISK")
+  else
+    # New pool mode: wipe boot + pool disks
+    [[ -n $BOOT_DISK ]] && disks+=("$BOOT_DISK")
+    for disk in "${ZFS_POOL_DISKS[@]}"; do
+      # Avoid duplicates
+      local found=false
+      for d in "${disks[@]}"; do
+        [[ $d == "$disk" ]] && found=true && break
+      done
+      [[ $found == false ]] && disks+=("$disk")
     done
-    [[ $found == false ]] && disks+=("$disk")
-  done
+  fi
+
   printf '%s\n' "${disks[@]}"
 }
 
@@ -187,28 +198,26 @@ _wipe_disk() {
   _wipe_partition_table "$disk"
 }
 
-# Main wipe function - wipes all selected installation disks
+# Main wipe function - wipes disks based on installation mode
 wipe_installation_disks() {
   [[ $WIPE_DISKS != "yes" ]] && {
     log "Disk wipe disabled, skipping"
     return 0
   }
 
-  # Skip wipe if using existing pool (preserve data!)
-  [[ $USE_EXISTING_POOL == "yes" ]] && {
-    log "Using existing pool, skipping disk wipe"
-    return 0
-  }
-
   local disks
-  mapfile -t disks < <(_get_install_disks)
+  mapfile -t disks < <(_get_disks_to_wipe)
 
   if [[ ${#disks[@]} -eq 0 ]]; then
     log "WARNING: No disks to wipe"
     return 0
   fi
 
-  log "Wiping ${#disks[@]} disk(s): ${disks[*]}"
+  if [[ $USE_EXISTING_POOL == "yes" ]]; then
+    log "Wiping boot disk only (preserving existing pool): ${disks[*]}"
+  else
+    log "Wiping ${#disks[@]} disk(s): ${disks[*]}"
+  fi
 
   for disk in "${disks[@]}"; do
     _wipe_disk "$disk"
