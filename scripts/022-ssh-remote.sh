@@ -39,11 +39,13 @@ remote_exec() {
     attempt=$((attempt + 1))
 
     # shellcheck disable=SC2086
-    if timeout "$cmd_timeout" sshpass -f "$passfile" ssh -p "$SSH_PORT" $SSH_OPTS root@localhost "$@"; then
+    timeout "$cmd_timeout" sshpass -f "$passfile" ssh -p "$SSH_PORT" $SSH_OPTS root@localhost "$@"
+    local exit_code=$?
+
+    if [[ $exit_code -eq 0 ]]; then
       return 0
     fi
 
-    local exit_code=$?
     if [[ $exit_code -eq 124 ]]; then
       log "ERROR: SSH command timed out after ${cmd_timeout}s: $*"
       return 124
