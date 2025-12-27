@@ -105,6 +105,9 @@ _phase_finalization() {
   # Non-fatal: continue even if validation has warnings
   validate_installation || { log "WARNING: validate_installation reported issues"; }
 
+  # Clean up installation logs for fresh first boot
+  cleanup_installation_logs || { log "WARNING: cleanup_installation_logs failed"; }
+
   # Restart SSH as the LAST operation - after this, password auth is disabled
   restart_ssh_service || { log "WARNING: restart_ssh_service failed"; }
 

@@ -12,12 +12,16 @@ _config_auditd() {
   }
 
   # Configure auditd log settings (50MB files, 10 max, rotate)
+  # Remove other rules to avoid "failure 1" duplicate warnings during augenrules --load
   remote_exec '
     mkdir -p /var/log/audit
     sed -i "s/^max_log_file = .*/max_log_file = 50/" /etc/audit/auditd.conf
     sed -i "s/^num_logs = .*/num_logs = 10/" /etc/audit/auditd.conf
     sed -i "s/^max_log_file_action = .*/max_log_file_action = ROTATE/" /etc/audit/auditd.conf
-    augenrules --load
+    # Remove default/conflicting rules before loading our rules
+    find /etc/audit/rules.d -name "*.rules" ! -name "proxmox.rules" -delete 2>/dev/null || true
+    rm -f /etc/audit/audit.rules 2>/dev/null || true
+    augenrules --load 2>/dev/null
   ' || {
     log "ERROR: Failed to configure auditd"
     return 1

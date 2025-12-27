@@ -14,13 +14,18 @@ _copy_config_files() {
     "templates/resolv.conf:/etc/resolv.conf"
 }
 
-# Apply basic system settings (backup sources, set hostname, disable rpcbind)
+# Apply basic system settings (backup sources, set hostname, disable unused services)
 _apply_basic_settings() {
   remote_exec "[ -f /etc/apt/sources.list ] && mv /etc/apt/sources.list /etc/apt/sources.list.bak" || return 1
   remote_exec "echo '$PVE_HOSTNAME' > /etc/hostname" || return 1
-  remote_exec "systemctl disable --now rpcbind rpcbind.socket" || {
-    log "WARNING: Failed to disable rpcbind"
+  # Disable NFS-related services (not needed on typical Proxmox install)
+  # rpcbind: NFS RPC portmapper
+  # nfs-blkmap: pNFS block layout mapper (causes "open pipe file failed" errors)
+  remote_exec "systemctl disable --now rpcbind rpcbind.socket nfs-blkmap.service 2>/dev/null" || {
+    log "WARNING: Failed to disable rpcbind/nfs-blkmap"
   }
+  # Mask nfs-blkmap to prevent it from starting on boot
+  remote_exec "systemctl mask nfs-blkmap.service 2>/dev/null" || true
 }
 
 # Copy locale files (locale.sh, default-locale, environment)
