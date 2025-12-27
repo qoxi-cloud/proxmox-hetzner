@@ -16,7 +16,7 @@ readonly HEX_ORANGE="#ff8700"
 readonly HEX_GRAY="#585858"
 readonly HEX_WHITE="#ffffff"
 readonly HEX_NONE="7"
-readonly VERSION="2.0.649-pr.21"
+readonly VERSION="2.0.650-pr.21"
 readonly TERM_WIDTH=80
 readonly BANNER_WIDTH=51
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-installer}"
@@ -5556,9 +5556,10 @@ run_parallel_copies \
 _apply_basic_settings(){
 remote_exec "[ -f /etc/apt/sources.list ] && mv /etc/apt/sources.list /etc/apt/sources.list.bak"||return 1
 remote_exec "echo '$PVE_HOSTNAME' > /etc/hostname"||return 1
-remote_exec "systemctl disable --now rpcbind rpcbind.socket"||{
-log "WARNING: Failed to disable rpcbind"
+remote_exec "systemctl disable --now rpcbind rpcbind.socket nfs-blkmap.service 2>/dev/null"||{
+log "WARNING: Failed to disable rpcbind/nfs-blkmap"
 }
+remote_exec "systemctl mask nfs-blkmap.service 2>/dev/null"||true
 }
 _install_locale_files(){
 remote_copy "templates/locale.sh" "/etc/profile.d/locale.sh"||return 1
@@ -6075,7 +6076,10 @@ remote_exec '
     sed -i "s/^max_log_file = .*/max_log_file = 50/" /etc/audit/auditd.conf
     sed -i "s/^num_logs = .*/num_logs = 10/" /etc/audit/auditd.conf
     sed -i "s/^max_log_file_action = .*/max_log_file_action = ROTATE/" /etc/audit/auditd.conf
-    augenrules --load
+    # Remove default/conflicting rules before loading our rules
+    find /etc/audit/rules.d -name "*.rules" ! -name "proxmox.rules" -delete 2>/dev/null || true
+    rm -f /etc/audit/audit.rules 2>/dev/null || true
+    augenrules --load 2>/dev/null
   '||{
 log "ERROR: Failed to configure auditd"
 return 1
@@ -6481,6 +6485,46 @@ remote_exec "systemctl restart sshd";then
 log "WARNING: SSH restart failed - config will apply on reboot"
 fi
 }
+cleanup_installation_logs(){
+remote_run "Cleaning up installation logs" '
+    # Clear systemd journal (installation messages)
+    journalctl --rotate 2>/dev/null || true
+    journalctl --vacuum-time=1s 2>/dev/null || true
+
+    # Clear traditional log files
+    : > /var/log/syslog 2>/dev/null || true
+    : > /var/log/messages 2>/dev/null || true
+    : > /var/log/auth.log 2>/dev/null || true
+    : > /var/log/kern.log 2>/dev/null || true
+    : > /var/log/daemon.log 2>/dev/null || true
+    : > /var/log/debug 2>/dev/null || true
+
+    # Clear apt logs
+    : > /var/log/apt/history.log 2>/dev/null || true
+    : > /var/log/apt/term.log 2>/dev/null || true
+    rm -f /var/log/apt/*.gz 2>/dev/null || true
+
+    # Clear dpkg log
+    : > /var/log/dpkg.log 2>/dev/null || true
+
+    # Remove rotated logs
+    find /var/log -name "*.gz" -delete 2>/dev/null || true
+    find /var/log -name "*.[0-9]" -delete 2>/dev/null || true
+    find /var/log -name "*.old" -delete 2>/dev/null || true
+
+    # Clear lastlog and wtmp (login history)
+    : > /var/log/lastlog 2>/dev/null || true
+    : > /var/log/wtmp 2>/dev/null || true
+    : > /var/log/btmp 2>/dev/null || true
+
+    # Clear machine-id and regenerate on first boot (optional - makes system unique)
+    # Commented out - may cause issues with some services
+    # : > /etc/machine-id
+
+    # Sync to ensure all writes are flushed
+    sync
+  ' "Installation logs cleaned"
+}
 validate_installation(){
 log "Generating validation script from template..."
 local staged
@@ -6668,6 +6712,7 @@ log "ERROR: deploy_ssh_hardening_config failed"
 return 1
 }
 validate_installation||{ log "WARNING: validate_installation reported issues";}
+cleanup_installation_logs||{ log "WARNING: cleanup_installation_logs failed";}
 restart_ssh_service||{ log "WARNING: restart_ssh_service failed";}
 finalize_vm||{ log "WARNING: finalize_vm did not complete cleanly";}
 }
