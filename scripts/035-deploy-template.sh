@@ -175,11 +175,7 @@ deploy_systemd_service() {
   # Deploy using common function
   deploy_template "$template" "$dest" "$@" || return 1
 
-  # Enable the service
-  remote_exec "systemctl daemon-reload && systemctl enable --now ${service_name}.service" || {
-    log "ERROR: Failed to enable ${service_name} service"
-    return 1
-  }
+  remote_enable_services "${service_name}.service"
 }
 
 # Enable multiple systemd services (with daemon-reload). $@=service names
