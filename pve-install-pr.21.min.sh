@@ -16,7 +16,7 @@ readonly HEX_ORANGE="#ff8700"
 readonly HEX_GRAY="#585858"
 readonly HEX_WHITE="#ffffff"
 readonly HEX_NONE="7"
-readonly VERSION="2.0.631-pr.21"
+readonly VERSION="2.0.632-pr.21"
 readonly TERM_WIDTH=80
 readonly BANNER_WIDTH=51
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-installer}"
@@ -1669,6 +1669,11 @@ echo ""
 _generate_vmbr0_external
 echo ""
 _generate_vmbr1_nat
+;;
+*)log "WARNING: Unknown BRIDGE_MODE '$mode', falling back to static config"
+_generate_iface_static
+echo ""
+_generate_vmbr0_nat
 esac
 }
 generate_interfaces_file(){
