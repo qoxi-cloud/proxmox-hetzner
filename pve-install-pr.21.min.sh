@@ -16,7 +16,7 @@ readonly HEX_ORANGE="#ff8700"
 readonly HEX_GRAY="#585858"
 readonly HEX_WHITE="#ffffff"
 readonly HEX_NONE="7"
-readonly VERSION="2.0.647-pr.21"
+readonly VERSION="2.0.649-pr.21"
 readonly TERM_WIDTH=80
 readonly BANNER_WIDTH=51
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-installer}"
@@ -5240,6 +5240,7 @@ EOF
 elif [[ $FILESYSTEM == "ext4" ]]||[[ $FILESYSTEM == "xfs" ]];then
 cat >>./answer.toml <<EOF
     lvm.swapsize = 0
+    lvm.maxroot = 0
     lvm.maxvz = 0
 EOF
 fi
@@ -6163,22 +6164,32 @@ remote_exec '
       echo "ERROR: Failed to get yazi version from GitHub API" >&2
       exit 1
     fi
-    curl -sL "https://github.com/sxyazi/yazi/releases/download/v${YAZI_VERSION}/yazi-x86_64-unknown-linux-gnu.zip" -o /tmp/yazi.zip
-    # Validate download (zip should be > 1MB)
-    if [ ! -s /tmp/yazi.zip ] || [ "$(stat -c%s /tmp/yazi.zip 2>/dev/null || echo 0)" -lt 1000000 ]; then
-      echo "ERROR: Yazi download failed or file too small" >&2
+    # -f fails on HTTP errors, --retry for transient failures
+    if ! curl -fsSL --retry 3 "https://github.com/sxyazi/yazi/releases/download/v${YAZI_VERSION}/yazi-x86_64-unknown-linux-gnu.zip" -o /tmp/yazi.zip; then
+      echo "ERROR: Failed to download yazi v${YAZI_VERSION}" >&2
+      exit 1
+    fi
+    # Validate zip file (should be > 1MB and valid zip)
+    if [ "$(stat -c%s /tmp/yazi.zip 2>/dev/null || echo 0)" -lt 1000000 ]; then
+      echo "ERROR: Yazi download too small (corrupt?)" >&2
       rm -f /tmp/yazi.zip
       exit 1
     fi
-    unzip -q /tmp/yazi.zip -d /tmp/
-    chmod +x /tmp/yazi-x86_64-unknown-linux-gnu/yazi /tmp/yazi-x86_64-unknown-linux-gnu/ya
-    mv /tmp/yazi-x86_64-unknown-linux-gnu/yazi /tmp/yazi-x86_64-unknown-linux-gnu/ya /usr/local/bin/
-    rm -rf /tmp/yazi.zip /tmp/yazi-x86_64-unknown-linux-gnu
-    # Verify installation
-    if [ ! -x /usr/local/bin/yazi ] || [ "$(stat -c%s /usr/local/bin/yazi 2>/dev/null || echo 0)" -lt 1000000 ]; then
-      echo "ERROR: Yazi binary installation failed" >&2
+    if ! unzip -tq /tmp/yazi.zip >/dev/null 2>&1; then
+      echo "ERROR: Yazi zip file is corrupt" >&2
+      rm -f /tmp/yazi.zip
       exit 1
     fi
+    unzip -oq /tmp/yazi.zip -d /tmp/
+    # Verify extracted binaries before moving
+    if [ ! -x /tmp/yazi-x86_64-unknown-linux-gnu/yazi ] || \
+       [ "$(stat -c%s /tmp/yazi-x86_64-unknown-linux-gnu/yazi 2>/dev/null || echo 0)" -lt 1000000 ]; then
+      echo "ERROR: Extracted yazi binary invalid" >&2
+      rm -rf /tmp/yazi.zip /tmp/yazi-x86_64-unknown-linux-gnu
+      exit 1
+    fi
+    mv /tmp/yazi-x86_64-unknown-linux-gnu/yazi /tmp/yazi-x86_64-unknown-linux-gnu/ya /usr/local/bin/
+    rm -rf /tmp/yazi.zip /tmp/yazi-x86_64-unknown-linux-gnu
   '||{
 log "ERROR: Failed to install yazi"
 return 1
