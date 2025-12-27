@@ -99,8 +99,12 @@ EOF
 _generate_tailscale_rules() {
   if [[ $INSTALL_TAILSCALE == "yes" ]]; then
     cat <<'EOF'
-        # Allow Tailscale VPN interface
+        # Allow Tailscale VPN interface (traffic already on tunnel)
         iifname "tailscale0" accept
+
+        # Allow incoming WireGuard UDP for direct peer connections
+        # Required for NAT hole-punching and peer-to-peer connectivity
+        udp dport 41641 accept
 EOF
   else
     echo "        # Tailscale not installed"
