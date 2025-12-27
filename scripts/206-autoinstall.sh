@@ -173,11 +173,11 @@ EOF
 EOF
   elif [[ $FILESYSTEM == "ext4" ]] || [[ $FILESYSTEM == "xfs" ]]; then
     # Add LVM parameters for ext4/xfs
-    # swapsize: Use 0 for no swap (rely on zswap for memory compression)
-    # maxvz: Omit to let Proxmox allocate remaining space for data volume (/var/lib/vz)
-    #        This is where ISO images, CT templates, and backups are stored
+    # swapsize: 0 = no swap (rely on zswap for memory compression)
+    # maxvz: 0 = no separate data LV, all space to root (no local-lvm storage)
     cat >>./answer.toml <<EOF
     lvm.swapsize = 0
+    lvm.maxvz = 0
 EOF
   fi
 
