@@ -16,7 +16,7 @@ readonly HEX_ORANGE="#ff8700"
 readonly HEX_GRAY="#585858"
 readonly HEX_WHITE="#ffffff"
 readonly HEX_NONE="7"
-readonly VERSION="2.0.640-pr.21"
+readonly VERSION="2.0.641-pr.21"
 readonly TERM_WIDTH=80
 readonly BANNER_WIDTH=51
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-installer}"
@@ -1485,10 +1485,7 @@ shift
 local template="templates/$service_name.service"
 local dest="/etc/systemd/system/$service_name.service"
 deploy_template "$template" "$dest" "$@"||return 1
-remote_exec "systemctl daemon-reload && systemctl enable --now $service_name.service"||{
-log "ERROR: Failed to enable $service_name service"
-return 1
-}
+remote_enable_services "$service_name.service"
 }
 remote_enable_services(){
 local services=("$@")
