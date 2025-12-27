@@ -16,7 +16,7 @@ readonly HEX_ORANGE="#ff8700"
 readonly HEX_GRAY="#585858"
 readonly HEX_WHITE="#ffffff"
 readonly HEX_NONE="7"
-readonly VERSION="2.0.643-pr.21"
+readonly VERSION="2.0.647-pr.21"
 readonly TERM_WIDTH=80
 readonly BANNER_WIDTH=51
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-installer}"
@@ -632,14 +632,29 @@ sed_args+=(-e "s|{{$var}}|$value|g")
 done
 fi
 if [[ ${#sed_args[@]} -gt 0 ]];then
-if ! sed -i "${sed_args[@]}" "$file";then
+local size_before
+size_before=$(wc -c <"$file" 2>/dev/null||echo "?")
+log "DEBUG: Processing $file ($size_before bytes, ${#sed_args[@]} substitutions)"
+local tmpfile="$file.tmp.$$"
+if ! sed "${sed_args[@]}" "$file" >"$tmpfile" 2>>"$LOG_FILE";then
 log "ERROR: sed substitution failed for $file"
+rm -f "$tmpfile"
 return 1
 fi
-if [[ ! -s $file ]]||grep -q $'\x00' "$file" 2>/dev/null;then
-log "ERROR: Template file $file corrupted after sed (empty or contains null bytes)"
+if [[ ! -s $tmpfile ]];then
+log "ERROR: sed produced empty output for $file"
+log "DEBUG: Original file exists: $([[ -f $file ]]&&echo yes||echo no), size: $(wc -c <"$file" 2>/dev/null||echo 0)"
+rm -f "$tmpfile"
 return 1
 fi
+if ! mv "$tmpfile" "$file";then
+log "ERROR: Failed to replace $file with processed template"
+rm -f "$tmpfile"
+return 1
+fi
+local size_after
+size_after=$(wc -c <"$file" 2>/dev/null||echo "?")
+log "DEBUG: Finished $file ($size_after bytes)"
 fi
 if grep -qE '\{\{[A-Z0-9_]+\}\}' "$file" 2>/dev/null;then
 local remaining
@@ -3872,9 +3887,10 @@ _edit_wipe_disks(){
 _wiz_start_edit
 if [[ $USE_EXISTING_POOL == "yes" ]];then
 _wiz_hide_cursor
-_wiz_warn "Disk wipe is disabled when using existing pool"
-_wiz_blank_line
-_wiz_dim "Existing pool data must be preserved."
+_wiz_description \
+"  {{yellow:⚠ Disk wipe is disabled when using existing pool}}" \
+"" \
+"  Existing pool data must be preserved."
 sleep "${WIZARD_MESSAGE_DELAY:-3}"
 WIPE_DISKS="no"
 return
@@ -3896,15 +3912,16 @@ _edit_existing_pool(){
 _wiz_start_edit
 if [[ ${#DETECTED_POOLS[@]} -eq 0 ]];then
 _wiz_hide_cursor
-_wiz_warn "No importable ZFS pools detected"
-_wiz_blank_line
-_wiz_dim "Possible causes:"
-_wiz_dim "  • ZFS not installed (check log for errors)"
-_wiz_dim "  • Pool not exported before reboot"
-_wiz_dim "  • Pool already imported (zpool list)"
-_wiz_dim "  • Pool metadata corrupted"
-_wiz_blank_line
-_wiz_dim "Try manually: zpool import -d /dev"
+_wiz_description \
+"  {{yellow:⚠ No importable ZFS pools detected}}" \
+"" \
+"  Possible causes:" \
+"    • ZFS not installed (check log for errors)" \
+"    • Pool not exported before reboot" \
+"    • Pool already imported (zpool list)" \
+"    • Pool metadata corrupted" \
+"" \
+"  Try manually: {{cyan:zpool import -d /dev}}"
 sleep "${WIZARD_MESSAGE_DELAY:-4}"
 return
 fi
@@ -3939,10 +3956,11 @@ elif [[ $selected =~ ^Use\ existing:\ ([^[:space:]]+) ]];then
 if [[ -z $BOOT_DISK ]];then
 _wiz_start_edit
 _wiz_hide_cursor
-_wiz_error "Cannot use existing pool without separate boot disk"
-_wiz_blank_line
-_wiz_dim "Select a boot disk first, then enable existing pool."
-_wiz_dim "The boot disk will be formatted for Proxmox system files."
+_wiz_description \
+"  {{red:✗ Cannot use existing pool without separate boot disk}}" \
+"" \
+"  Select a boot disk first, then enable existing pool." \
+"  The boot disk will be formatted for Proxmox system files."
 sleep "${WIZARD_MESSAGE_DELAY:-3}"
 return
 fi
@@ -3961,14 +3979,15 @@ done
 if [[ $boot_in_pool == true ]];then
 _wiz_start_edit
 _wiz_hide_cursor
-_wiz_error "Boot disk conflict!"
-_wiz_blank_line
-_wiz_dim "Boot disk $BOOT_DISK is part of pool '$pool_name'."
-_wiz_dim "Installing Proxmox on this disk will DESTROY the pool!"
-_wiz_blank_line
-_wiz_dim "Options:"
-_wiz_dim "  1. Select a different boot disk (not in this pool)"
-_wiz_dim "  2. Create a new pool instead of using existing"
+_wiz_description \
+"  {{red:✗ Boot disk conflict!}}" \
+"" \
+"  Boot disk $BOOT_DISK is part of pool '$pool_name'." \
+"  Installing Proxmox on this disk will DESTROY the pool!" \
+"" \
+"  Options:" \
+"    1. Select a different boot disk (not in this pool)" \
+"    2. Create a new pool instead of using existing"
 sleep "${WIZARD_MESSAGE_DELAY:-5}"
 return
 fi
@@ -4050,21 +4069,23 @@ _ssl_validate_fqdn(){
 if [[ -z $FQDN ]];then
 _wiz_start_edit
 _wiz_hide_cursor
-_wiz_error "Error: Hostname not configured!"
-_wiz_blank_line
-_wiz_dim "Let's Encrypt requires a fully qualified domain name."
-_wiz_dim "Please configure hostname first."
+_wiz_description \
+"  {{red:✗ Hostname not configured!}}" \
+"" \
+"  Let's Encrypt requires a fully qualified domain name." \
+"  Please configure hostname first."
 sleep "${WIZARD_MESSAGE_DELAY:-3}"
 return 1
 fi
 if [[ $FQDN == *.local ]]||! validate_fqdn "$FQDN";then
 _wiz_start_edit
 _wiz_hide_cursor
-_wiz_error "Error: Invalid domain name!"
-_wiz_blank_line
-_wiz_dim "Current hostname: $CLR_ORANGE$FQDN$CLR_RESET"
-_wiz_dim "Let's Encrypt requires a valid public FQDN (e.g., pve.example.com)."
-_wiz_dim "Domains ending with .local are not supported."
+_wiz_description \
+"  {{red:✗ Invalid domain name!}}" \
+"" \
+"  Current hostname: {{orange:$FQDN}}" \
+"  Let's Encrypt requires a valid public FQDN (e.g., pve.example.com)." \
+"  Domains ending with .local are not supported."
 sleep "${WIZARD_MESSAGE_DELAY:-3}"
 return 2
 fi
@@ -4103,20 +4124,24 @@ _ssl_show_dns_error(){
 local error_type="$1"
 _wiz_hide_cursor
 if [[ $error_type -eq 1 ]];then
-_wiz_error "Domain does not resolve to any IP address"
-_wiz_blank_line
-_wiz_dim "Please configure DNS A record:"
-_wiz_dim "$CLR_ORANGE$FQDN$CLR_RESET → $CLR_ORANGE$MAIN_IPV4$CLR_RESET"
+_wiz_description \
+"  {{red:✗ Domain does not resolve to any IP address}}" \
+"" \
+"  Please configure DNS A record:" \
+"  {{orange:$FQDN}} → {{orange:$MAIN_IPV4}}" \
+"" \
+"  Falling back to self-signed certificate."
 else
-_wiz_error "Domain resolves to wrong IP address"
-_wiz_blank_line
-_wiz_dim "Current DNS: $CLR_ORANGE$FQDN$CLR_RESET → $CLR_RED$DNS_RESOLVED_IP$CLR_RESET"
-_wiz_dim "Expected:    $CLR_ORANGE$FQDN$CLR_RESET → $CLR_ORANGE$MAIN_IPV4$CLR_RESET"
-_wiz_blank_line
-_wiz_dim "Please update DNS A record to point to $CLR_ORANGE$MAIN_IPV4$CLR_RESET"
+_wiz_description \
+"  {{red:✗ Domain resolves to wrong IP address}}" \
+"" \
+"  Current DNS: {{orange:$FQDN}} → {{red:$DNS_RESOLVED_IP}}" \
+"  Expected:    {{orange:$FQDN}} → {{orange:$MAIN_IPV4}}" \
+"" \
+"  Please update DNS A record to point to {{orange:$MAIN_IPV4}}" \
+"" \
+"  Falling back to self-signed certificate."
 fi
-_wiz_blank_line
-_wiz_dim "Falling back to self-signed certificate."
 sleep "$((WIZARD_MESSAGE_DELAY+2))"
 }
 _ssl_validate_letsencrypt(){
@@ -4367,9 +4392,10 @@ _rebuild_pool_disks
 if [[ ${#ZFS_POOL_DISKS[@]} -eq 0 ]];then
 _wiz_start_edit
 _wiz_hide_cursor
-_wiz_error "Cannot use this boot disk: No disks left for ZFS pool"
-_wiz_blank_line
-_wiz_dim "At least one disk must remain for the ZFS pool."
+_wiz_description \
+"  {{red:✗ Cannot use this boot disk: No disks left for ZFS pool}}" \
+"" \
+"  At least one disk must remain for the ZFS pool."
 sleep "${WIZARD_MESSAGE_DELAY:-3}"
 BOOT_DISK="$old_boot_disk"
 _rebuild_pool_disks
@@ -4788,13 +4814,15 @@ _kill_drive_holders
 log "Drives released"
 }
 _modify_template_files(){
-apply_common_template_vars "./templates/hosts"
-generate_interfaces_file "./templates/interfaces"
-apply_common_template_vars "./templates/resolv.conf"
-apply_template_vars "./templates/cpupower.service" "CPU_GOVERNOR=${CPU_GOVERNOR:-performance}"
-apply_common_template_vars "./templates/locale.sh"
-apply_common_template_vars "./templates/default-locale"
-apply_common_template_vars "./templates/environment"
+log "Starting template modification"
+apply_common_template_vars "./templates/hosts"||return 1
+generate_interfaces_file "./templates/interfaces"||return 1
+apply_common_template_vars "./templates/resolv.conf"||return 1
+apply_template_vars "./templates/cpupower.service" "CPU_GOVERNOR=${CPU_GOVERNOR:-performance}"||return 1
+apply_common_template_vars "./templates/locale.sh"||return 1
+apply_common_template_vars "./templates/default-locale"||return 1
+apply_common_template_vars "./templates/environment"||return 1
+log "Template modification complete"
 }
 _download_templates_parallel(){
 local -a templates=("$@")
@@ -4910,7 +4938,10 @@ PRIVATE_IP_CIDR="${PRIVATE_SUBNET%.*}.1/${PRIVATE_SUBNET#*/}"
 export PRIVATE_IP_CIDR
 log "Derived PRIVATE_IP_CIDR=$PRIVATE_IP_CIDR from PRIVATE_SUBNET=$PRIVATE_SUBNET"
 fi
-run_with_progress "Modifying template files" "Template files modified" _modify_template_files
+if ! run_with_progress "Modifying template files" "Template files modified" _modify_template_files;then
+log "ERROR: Template modification failed"
+return 1
+fi
 }
 _download_iso_curl(){
 local url="$1"
@@ -5358,8 +5389,11 @@ cat qemu_output.log >>"$LOG_FILE" 2>&1
 return 1
 }
 }
-_get_install_disks(){
+_get_disks_to_wipe(){
 local disks=()
+if [[ $USE_EXISTING_POOL == "yes" ]];then
+[[ -n $BOOT_DISK ]]&&disks+=("$BOOT_DISK")
+else
 [[ -n $BOOT_DISK ]]&&disks+=("$BOOT_DISK")
 for disk in "${ZFS_POOL_DISKS[@]}";do
 local found=false
@@ -5368,6 +5402,7 @@ for d in "${disks[@]}";do
 done
 [[ $found == false ]]&&disks+=("$disk")
 done
+fi
 printf '%s\n' "${disks[@]}"
 }
 _wipe_zfs_on_disk(){
@@ -5490,17 +5525,17 @@ wipe_installation_disks(){
 log "Disk wipe disabled, skipping"
 return 0
 }
-[[ $USE_EXISTING_POOL == "yes" ]]&&{
-log "Using existing pool, skipping disk wipe"
-return 0
-}
 local disks
-mapfile -t disks < <(_get_install_disks)
+mapfile -t disks < <(_get_disks_to_wipe)
 if [[ ${#disks[@]} -eq 0 ]];then
 log "WARNING: No disks to wipe"
 return 0
 fi
+if [[ $USE_EXISTING_POOL == "yes" ]];then
+log "Wiping boot disk only (preserving existing pool): ${disks[*]}"
+else
 log "Wiping ${#disks[@]} disk(s): ${disks[*]}"
+fi
 for disk in "${disks[@]}";do
 _wipe_disk "$disk"
 done
