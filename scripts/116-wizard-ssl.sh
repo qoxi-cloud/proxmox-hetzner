@@ -6,10 +6,11 @@ _ssl_validate_fqdn() {
   if [[ -z $FQDN ]]; then
     _wiz_start_edit
     _wiz_hide_cursor
-    _wiz_error "Error: Hostname not configured!"
-    _wiz_blank_line
-    _wiz_dim "Let's Encrypt requires a fully qualified domain name."
-    _wiz_dim "Please configure hostname first."
+    _wiz_description \
+      "  {{red:✗ Hostname not configured!}}" \
+      "" \
+      "  Let's Encrypt requires a fully qualified domain name." \
+      "  Please configure hostname first."
     sleep "${WIZARD_MESSAGE_DELAY:-3}"
     return 1
   fi
@@ -17,11 +18,12 @@ _ssl_validate_fqdn() {
   if [[ $FQDN == *.local ]] || ! validate_fqdn "$FQDN"; then
     _wiz_start_edit
     _wiz_hide_cursor
-    _wiz_error "Error: Invalid domain name!"
-    _wiz_blank_line
-    _wiz_dim "Current hostname: ${CLR_ORANGE}${FQDN}${CLR_RESET}"
-    _wiz_dim "Let's Encrypt requires a valid public FQDN (e.g., pve.example.com)."
-    _wiz_dim "Domains ending with .local are not supported."
+    _wiz_description \
+      "  {{red:✗ Invalid domain name!}}" \
+      "" \
+      "  Current hostname: {{orange:${FQDN}}}" \
+      "  Let's Encrypt requires a valid public FQDN (e.g., pve.example.com)." \
+      "  Domains ending with .local are not supported."
     sleep "${WIZARD_MESSAGE_DELAY:-3}"
     return 2
   fi
@@ -73,20 +75,24 @@ _ssl_show_dns_error() {
 
   _wiz_hide_cursor
   if [[ $error_type -eq 1 ]]; then
-    _wiz_error "Domain does not resolve to any IP address"
-    _wiz_blank_line
-    _wiz_dim "Please configure DNS A record:"
-    _wiz_dim "${CLR_ORANGE}${FQDN}${CLR_RESET} → ${CLR_ORANGE}${MAIN_IPV4}${CLR_RESET}"
+    _wiz_description \
+      "  {{red:✗ Domain does not resolve to any IP address}}" \
+      "" \
+      "  Please configure DNS A record:" \
+      "  {{orange:${FQDN}}} → {{orange:${MAIN_IPV4}}}" \
+      "" \
+      "  Falling back to self-signed certificate."
   else
-    _wiz_error "Domain resolves to wrong IP address"
-    _wiz_blank_line
-    _wiz_dim "Current DNS: ${CLR_ORANGE}${FQDN}${CLR_RESET} → ${CLR_RED}${DNS_RESOLVED_IP}${CLR_RESET}"
-    _wiz_dim "Expected:    ${CLR_ORANGE}${FQDN}${CLR_RESET} → ${CLR_ORANGE}${MAIN_IPV4}${CLR_RESET}"
-    _wiz_blank_line
-    _wiz_dim "Please update DNS A record to point to ${CLR_ORANGE}${MAIN_IPV4}${CLR_RESET}"
+    _wiz_description \
+      "  {{red:✗ Domain resolves to wrong IP address}}" \
+      "" \
+      "  Current DNS: {{orange:${FQDN}}} → {{red:${DNS_RESOLVED_IP}}}" \
+      "  Expected:    {{orange:${FQDN}}} → {{orange:${MAIN_IPV4}}}" \
+      "" \
+      "  Please update DNS A record to point to {{orange:${MAIN_IPV4}}}" \
+      "" \
+      "  Falling back to self-signed certificate."
   fi
-  _wiz_blank_line
-  _wiz_dim "Falling back to self-signed certificate."
   sleep "$((WIZARD_MESSAGE_DELAY + 2))"
 }
 

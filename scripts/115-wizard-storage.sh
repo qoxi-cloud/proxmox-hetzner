@@ -10,9 +10,10 @@ _edit_wipe_disks() {
   # Auto-disable if using existing pool
   if [[ $USE_EXISTING_POOL == "yes" ]]; then
     _wiz_hide_cursor
-    _wiz_warn "Disk wipe is disabled when using existing pool"
-    _wiz_blank_line
-    _wiz_dim "Existing pool data must be preserved."
+    _wiz_description \
+      "  {{yellow:⚠ Disk wipe is disabled when using existing pool}}" \
+      "" \
+      "  Existing pool data must be preserved."
     sleep "${WIZARD_MESSAGE_DELAY:-3}"
     WIPE_DISKS="no"
     return
@@ -94,10 +95,11 @@ _edit_existing_pool() {
     if [[ -z $BOOT_DISK ]]; then
       _wiz_start_edit
       _wiz_hide_cursor
-      _wiz_error "Cannot use existing pool without separate boot disk"
-      _wiz_blank_line
-      _wiz_dim "Select a boot disk first, then enable existing pool."
-      _wiz_dim "The boot disk will be formatted for Proxmox system files."
+      _wiz_description \
+        "  {{red:✗ Cannot use existing pool without separate boot disk}}" \
+        "" \
+        "  Select a boot disk first, then enable existing pool." \
+        "  The boot disk will be formatted for Proxmox system files."
       sleep "${WIZARD_MESSAGE_DELAY:-3}"
       return
     fi
@@ -122,14 +124,15 @@ _edit_existing_pool() {
     if [[ $boot_in_pool == true ]]; then
       _wiz_start_edit
       _wiz_hide_cursor
-      _wiz_error "Boot disk conflict!"
-      _wiz_blank_line
-      _wiz_dim "Boot disk $BOOT_DISK is part of pool '$pool_name'."
-      _wiz_dim "Installing Proxmox on this disk will DESTROY the pool!"
-      _wiz_blank_line
-      _wiz_dim "Options:"
-      _wiz_dim "  1. Select a different boot disk (not in this pool)"
-      _wiz_dim "  2. Create a new pool instead of using existing"
+      _wiz_description \
+        "  {{red:✗ Boot disk conflict!}}" \
+        "" \
+        "  Boot disk $BOOT_DISK is part of pool '$pool_name'." \
+        "  Installing Proxmox on this disk will DESTROY the pool!" \
+        "" \
+        "  Options:" \
+        "    1. Select a different boot disk (not in this pool)" \
+        "    2. Create a new pool instead of using existing"
       sleep "${WIZARD_MESSAGE_DELAY:-5}"
       return
     fi
