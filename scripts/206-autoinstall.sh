@@ -174,9 +174,11 @@ EOF
   elif [[ $FILESYSTEM == "ext4" ]] || [[ $FILESYSTEM == "xfs" ]]; then
     # Add LVM parameters for ext4/xfs
     # swapsize: 0 = no swap (rely on zswap for memory compression)
-    # maxvz: 0 = no separate data LV, all space to root (no local-lvm storage)
+    # maxroot: 0 = unlimited root size (use all available space)
+    # maxvz: 0 = no separate data LV, no local-lvm storage
     cat >>./answer.toml <<EOF
     lvm.swapsize = 0
+    lvm.maxroot = 0
     lvm.maxvz = 0
 EOF
   fi
