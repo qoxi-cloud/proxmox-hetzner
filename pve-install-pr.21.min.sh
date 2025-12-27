@@ -16,7 +16,7 @@ readonly HEX_ORANGE="#ff8700"
 readonly HEX_GRAY="#585858"
 readonly HEX_WHITE="#ffffff"
 readonly HEX_NONE="7"
-readonly VERSION="2.0.634-pr.21"
+readonly VERSION="2.0.635-pr.21"
 readonly TERM_WIDTH=80
 readonly BANNER_WIDTH=51
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-installer}"
@@ -5144,6 +5144,7 @@ EOF
 elif [[ $FILESYSTEM == "ext4" ]]||[[ $FILESYSTEM == "xfs" ]];then
 cat >>./answer.toml <<EOF
     lvm.swapsize = 0
+    lvm.maxvz = 0
 EOF
 fi
 if ! validate_answer_toml "./answer.toml";then
