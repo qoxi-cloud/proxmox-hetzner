@@ -16,7 +16,7 @@ readonly HEX_ORANGE="#ff8700"
 readonly HEX_GRAY="#585858"
 readonly HEX_WHITE="#ffffff"
 readonly HEX_NONE="7"
-readonly VERSION="2.0.629-pr.21"
+readonly VERSION="2.0.631-pr.21"
 readonly TERM_WIDTH=80
 readonly BANNER_WIDTH=51
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-installer}"
@@ -2690,12 +2690,16 @@ local missing_fields=()
 [[ -z $BRIDGE_MODE ]]&&missing_fields+=("Bridge mode")
 [[ $BRIDGE_MODE != "external" && -z $PRIVATE_SUBNET ]]&&missing_fields+=("Private subnet")
 [[ -z $IPV6_MODE ]]&&missing_fields+=("IPv6")
+if [[ $USE_EXISTING_POOL == "yes" ]];then
+[[ -z $EXISTING_POOL_NAME ]]&&missing_fields+=("Existing pool name")
+else
 [[ -z $ZFS_RAID ]]&&missing_fields+=("ZFS mode")
+[[ ${#ZFS_POOL_DISKS[@]} -eq 0 ]]&&missing_fields+=("Pool disks")
+fi
 [[ -z $ZFS_ARC_MODE ]]&&missing_fields+=("ZFS ARC")
 [[ -z $SHELL_TYPE ]]&&missing_fields+=("Shell")
 [[ -z $CPU_GOVERNOR ]]&&missing_fields+=("Power profile")
 [[ -z $SSH_PUBLIC_KEY ]]&&missing_fields+=("SSH Key")
-[[ ${#ZFS_POOL_DISKS[@]} -eq 0 ]]&&missing_fields+=("Pool disks")
 [[ $INSTALL_TAILSCALE != "yes" && -z $SSL_TYPE ]]&&missing_fields+=("SSL Certificate")
 [[ $FIREWALL_MODE == "stealth" && $INSTALL_TAILSCALE != "yes" ]]&&missing_fields+=("Tailscale (required for Stealth firewall)")
 if [[ ${#missing_fields[@]} -gt 0 ]];then
@@ -2996,7 +3000,7 @@ _wiz_config_complete(){
 [[ -z $PVE_REPO_TYPE ]]&&return 1
 [[ -z $INTERFACE_NAME ]]&&return 1
 [[ -z $BRIDGE_MODE ]]&&return 1
-[[ -z $PRIVATE_SUBNET ]]&&return 1
+[[ $BRIDGE_MODE != "external" && -z $PRIVATE_SUBNET ]]&&return 1
 [[ -z $IPV6_MODE ]]&&return 1
 if [[ $USE_EXISTING_POOL == "yes" ]];then
 [[ -z $EXISTING_POOL_NAME ]]&&return 1
