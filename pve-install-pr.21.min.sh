@@ -16,7 +16,7 @@ readonly HEX_ORANGE="#ff8700"
 readonly HEX_GRAY="#585858"
 readonly HEX_WHITE="#ffffff"
 readonly HEX_NONE="7"
-readonly VERSION="2.0.632-pr.21"
+readonly VERSION="2.0.633-pr.21"
 readonly TERM_WIDTH=80
 readonly BANNER_WIDTH=51
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-installer}"
@@ -2626,6 +2626,7 @@ bridge_mtu)_edit_bridge_mtu;;
 ipv6)_edit_ipv6;;
 firewall)_edit_firewall;;
 boot_disk)_edit_boot_disk;;
+wipe_disks)_edit_wipe_disks;;
 existing_pool)_edit_existing_pool;;
 pool_disks)_edit_pool_disks;;
 zfs_mode)_edit_zfs_mode;;
