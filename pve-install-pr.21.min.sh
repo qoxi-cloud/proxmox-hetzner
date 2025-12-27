@@ -16,7 +16,7 @@ readonly HEX_ORANGE="#ff8700"
 readonly HEX_GRAY="#585858"
 readonly HEX_WHITE="#ffffff"
 readonly HEX_NONE="7"
-readonly VERSION="2.0.635-pr.21"
+readonly VERSION="2.0.640-pr.21"
 readonly TERM_WIDTH=80
 readonly BANNER_WIDTH=51
 GITHUB_REPO="${GITHUB_REPO:-qoxi-cloud/proxmox-installer}"
@@ -136,7 +136,7 @@ USE_EXISTING_POOL=""
 EXISTING_POOL_NAME=""
 EXISTING_POOL_DISKS=()
 WIPE_DISKS="yes"
-SYSTEM_UTILITIES="btop iotop ncdu tmux pigz smartmontools jq bat fastfetch sysstat nethogs ethtool curl gnupg"
+SYSTEM_UTILITIES="sudo btop iotop ncdu tmux pigz smartmontools jq bat fastfetch sysstat nethogs ethtool curl gnupg"
 OPTIONAL_PACKAGES="libguestfs-tools"
 LOG_FILE="$INSTALL_DIR/pve-install-$(date +%Y%m%d-%H%M%S).log"
 INSTALL_COMPLETED=false
@@ -204,7 +204,7 @@ rm -f "/dev/shm/pve-ssh-session.$pid" "/tmp/pve-ssh-session.$pid" 2>/dev/null||t
 rm -f "/dev/shm/pve-passfile.$pid" "/tmp/pve-passfile.$pid" 2>/dev/null||true
 fi
 rm -f /tmp/tailscale_*.txt /tmp/iso_checksum.txt /tmp/*.tmp 2>/dev/null||true
-rm -f "/tmp/ssh-pve-control.$pid" 2>/dev/null||true
+rm -f "/tmp/ssh-pve-control.$pid" "/tmp/pve-scp-lock.$pid" 2>/dev/null||true
 if [[ $INSTALL_COMPLETED != "true" ]];then
 rm -f "$install_dir/pve.iso" "$install_dir/pve-autoinstall.iso" "$install_dir/SHA256SUMS" 2>/dev/null||true
 rm -f "$install_dir"/qemu_*.log 2>/dev/null||true
@@ -631,7 +631,14 @@ sed_args+=(-e "s|{{$var}}|$value|g")
 done
 fi
 if [[ ${#sed_args[@]} -gt 0 ]];then
-sed -i "${sed_args[@]}" "$file"
+if ! sed -i "${sed_args[@]}" "$file";then
+log "ERROR: sed substitution failed for $file"
+return 1
+fi
+if [[ ! -s $file ]]||grep -q $'\x00' "$file" 2>/dev/null;then
+log "ERROR: Template file $file corrupted after sed (empty or contains null bytes)"
+return 1
+fi
 fi
 if grep -qE '\{\{[A-Z0-9_]+\}\}' "$file" 2>/dev/null;then
 local remaining
@@ -735,7 +742,20 @@ log "ERROR: Template $remote_file corrupted - missing pool or server directive"
 return 1
 fi
 ;;
-*.conf|*.sources|*.service|*.timer)if
+*.service)if
+! grep -q "\[Service\]" "$local_path" 2>/dev/null
+then
+print_error "Template $remote_file appears corrupted (missing [Service] section)"
+log "ERROR: Template $remote_file corrupted - missing [Service] section"
+return 1
+fi
+if ! grep -qE "^ExecStart=" "$local_path" 2>/dev/null;then
+print_error "Template $remote_file appears corrupted (missing ExecStart)"
+log "ERROR: Template $remote_file corrupted - missing ExecStart"
+return 1
+fi
+;;
+*.conf|*.sources|*.timer)if
 [[ $(wc -l <"$local_path" 2>/dev/null||echo 0) -lt 2 ]]
 then
 print_error "Template $remote_file appears corrupted (too short)"
@@ -972,15 +992,21 @@ log "ERROR: $message failed"
 exit 1
 fi
 }
+_SCP_LOCK_FILE="/tmp/pve-scp-lock.$$"
 remote_copy(){
 local src="$1"
 local dst="$2"
 local passfile
 passfile=$(_ssh_get_passfile)
+(flock -x 200||{
+log "ERROR: Failed to acquire SCP lock for $src"
+exit 1
+}
 if ! sshpass -f "$passfile" scp -P "$SSH_PORT" $SSH_OPTS "$src" "root@localhost:$dst";then
 log "ERROR: Failed to copy $src to $dst"
-return 1
-fi
+exit 1
+fi) 200> \
+"$_SCP_LOCK_FILE"
 }
 generate_password(){
 local length="${1:-16}"
@@ -1401,50 +1427,8 @@ remote_copy "templates/$template_dir$timer_name.timer" \
 log "ERROR: Failed to deploy $timer_name timer"
 return 1
 }
-remote_exec "systemctl daemon-reload && systemctl enable $timer_name.timer"||{
+remote_exec "systemctl daemon-reload && systemctl enable --now $timer_name.timer"||{
 log "ERROR: Failed to enable $timer_name timer"
-return 1
-}
-}
-deploy_systemd_service(){
-local service_name="$1"
-shift
-local template="templates/$service_name.service"
-local dest="/etc/systemd/system/$service_name.service"
-local staged
-staged=$(mktemp)||{
-log "ERROR: Failed to create temp file for $service_name service"
-return 1
-}
-register_temp_file "$staged"
-cp "$template" "$staged"||{
-log "ERROR: Failed to stage template for $service_name service"
-rm -f "$staged"
-return 1
-}
-apply_template_vars "$staged" "$@"||{
-log "ERROR: Template substitution failed for $service_name service"
-rm -f "$staged"
-return 1
-}
-remote_copy "$staged" "$dest"||{
-log "ERROR: Failed to deploy $service_name service"
-rm -f "$staged"
-return 1
-}
-rm -f "$staged"
-remote_exec "systemctl daemon-reload && systemctl enable $service_name.service"||{
-log "ERROR: Failed to enable $service_name service"
-return 1
-}
-}
-remote_enable_services(){
-local services=("$@")
-if [[ ${#services[@]} -eq 0 ]];then
-return 0
-fi
-remote_exec "systemctl enable ${services[*]}"||{
-log "ERROR: Failed to enable services: ${services[*]}"
 return 1
 }
 }
@@ -1453,6 +1437,8 @@ local template="$1"
 local dest="$2"
 shift 2
 local staged
+local is_service=false
+[[ $dest == *.service ]]&&is_service=true
 staged=$(mktemp)||{
 log "ERROR: Failed to create temp file for $template"
 return 1
@@ -1468,6 +1454,11 @@ log "ERROR: Template substitution failed for $template"
 rm -f "$staged"
 return 1
 }
+if [[ $is_service == true ]]&&! grep -q "ExecStart=" "$staged" 2>/dev/null;then
+log "ERROR: Service file $dest missing ExecStart after template substitution"
+rm -f "$staged"
+return 1
+fi
 local dest_dir
 dest_dir=$(dirname "$dest")
 remote_exec "mkdir -p '$dest_dir'"||{
@@ -1481,6 +1472,33 @@ rm -f "$staged"
 return 1
 }
 rm -f "$staged"
+if [[ $is_service == true ]];then
+remote_exec "grep -q 'ExecStart=' '$dest'"||{
+log "ERROR: Remote service file $dest appears corrupted (missing ExecStart)"
+return 1
+}
+fi
+}
+deploy_systemd_service(){
+local service_name="$1"
+shift
+local template="templates/$service_name.service"
+local dest="/etc/systemd/system/$service_name.service"
+deploy_template "$template" "$dest" "$@"||return 1
+remote_exec "systemctl daemon-reload && systemctl enable --now $service_name.service"||{
+log "ERROR: Failed to enable $service_name service"
+return 1
+}
+}
+remote_enable_services(){
+local services=("$@")
+if [[ ${#services[@]} -eq 0 ]];then
+return 0
+fi
+remote_exec "systemctl daemon-reload && systemctl enable --now ${services[*]}"||{
+log "ERROR: Failed to enable services: ${services[*]}"
+return 1
+}
 }
 deploy_user_configs(){
 for pair in "$@";do
@@ -4763,6 +4781,13 @@ if aria2c -q \
 -i "$input_file" >> \
 "$LOG_FILE" 2>&1;then
 rm -f "$input_file"
+for entry in "${templates[@]}";do
+local local_path="${entry%%:*}"
+if [[ ! -s $local_path ]];then
+log "ERROR: Template $local_path is empty after aria2c download"
+return 1
+fi
+done
 return 0
 fi
 log "WARNING: aria2c failed, falling back to sequential download"
@@ -5545,7 +5570,22 @@ remote_run "Installing ZSH theme and plugins" '
             pid2=$!
             git clone --depth=1 https://github.com/zsh-users/zsh-syntax-highlighting /home/'"$ADMIN_USERNAME"'/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting &
             pid3=$!
-            wait $pid1 $pid2 $pid3
+            # Wait and check exit codes (set -e doesnt catch background failures)
+            failed=0
+            wait $pid1 || failed=1
+            wait $pid2 || failed=1
+            wait $pid3 || failed=1
+            if [ $failed -eq 1 ]; then
+              echo "ERROR: Failed to clone ZSH plugins" >&2
+              exit 1
+            fi
+            # Validate directories exist
+            for dir in themes/powerlevel10k plugins/zsh-autosuggestions plugins/zsh-syntax-highlighting; do
+              if [ ! -d "/home/'"$ADMIN_USERNAME"'/.oh-my-zsh/custom/$dir" ]; then
+                echo "ERROR: ZSH plugin directory missing: $dir" >&2
+                exit 1
+              fi
+            done
             chown -R '"$ADMIN_USERNAME"':'"$ADMIN_USERNAME"' /home/'"$ADMIN_USERNAME"'/.oh-my-zsh
         ' "ZSH theme and plugins installed"
 run_with_progress "Configuring ZSH" "ZSH with Powerlevel10k configured" _configure_zsh_files
@@ -5562,7 +5602,7 @@ _config_shell
 _config_tailscale(){
 remote_run "Starting Tailscale" '
         set -e
-        systemctl enable tailscaled
+        systemctl enable --now tailscaled
         systemctl start tailscaled
         for i in {1..3}; do tailscale status &>/dev/null && break; sleep 1; done
         true
@@ -5664,19 +5704,19 @@ return 0
 _configure_chrony(){
 remote_exec "systemctl stop chrony"||true
 remote_copy "templates/chrony" "/etc/chrony/chrony.conf"||return 1
-remote_exec "systemctl enable chrony"||return 1
+remote_exec "systemctl enable --now chrony"||return 1
 }
 _configure_unattended_upgrades(){
 remote_copy "templates/50unattended-upgrades" "/etc/apt/apt.conf.d/50unattended-upgrades"||return 1
 remote_copy "templates/20auto-upgrades" "/etc/apt/apt.conf.d/20auto-upgrades"||return 1
-remote_exec "systemctl enable unattended-upgrades"||return 1
+remote_exec "systemctl enable --now unattended-upgrades"||return 1
 }
 _configure_cpu_governor(){
 local governor="${CPU_GOVERNOR:-performance}"
 remote_copy "templates/cpupower.service" "/etc/systemd/system/cpupower.service"||return 1
 remote_exec "
     systemctl daemon-reload
-    systemctl enable cpupower.service
+    systemctl enable --now cpupower.service
     cpupower frequency-set -g '$governor' 2>/dev/null || true
   "||return 1
 }
@@ -5898,7 +5938,7 @@ log "ERROR: nftables config syntax validation failed"
 rm -f "$config_file"
 return 1
 }
-remote_exec "systemctl enable nftables"||{
+remote_exec "systemctl enable --now nftables"||{
 log "ERROR: Failed to enable nftables"
 rm -f "$config_file"
 return 1
@@ -5941,7 +5981,7 @@ _config_apparmor(){
 deploy_template "templates/apparmor-grub.cfg" "/etc/default/grub.d/apparmor.cfg"
 remote_exec '
     update-grub
-    systemctl enable apparmor.service
+    systemctl enable --now apparmor.service
   '||{
 log "ERROR: Failed to configure AppArmor"
 return 1
@@ -6013,7 +6053,7 @@ remote_exec "
     for bridge in vmbr0 vmbr1; do
       ip link show \"\$bridge\" &>/dev/null && vnstat --add -i \"\$bridge\"
     done
-    systemctl enable vnstat
+    systemctl enable --now vnstat
   "||{
 log "ERROR: Failed to configure vnstat"
 return 1
@@ -6044,11 +6084,26 @@ _install_yazi(){
 remote_exec '
     set -e
     YAZI_VERSION=$(curl -s https://api.github.com/repos/sxyazi/yazi/releases/latest | grep "tag_name" | cut -d "\"" -f 4 | sed "s/^v//")
+    if [ -z "$YAZI_VERSION" ]; then
+      echo "ERROR: Failed to get yazi version from GitHub API" >&2
+      exit 1
+    fi
     curl -sL "https://github.com/sxyazi/yazi/releases/download/v${YAZI_VERSION}/yazi-x86_64-unknown-linux-gnu.zip" -o /tmp/yazi.zip
+    # Validate download (zip should be > 1MB)
+    if [ ! -s /tmp/yazi.zip ] || [ "$(stat -c%s /tmp/yazi.zip 2>/dev/null || echo 0)" -lt 1000000 ]; then
+      echo "ERROR: Yazi download failed or file too small" >&2
+      rm -f /tmp/yazi.zip
+      exit 1
+    fi
     unzip -q /tmp/yazi.zip -d /tmp/
     chmod +x /tmp/yazi-x86_64-unknown-linux-gnu/yazi /tmp/yazi-x86_64-unknown-linux-gnu/ya
     mv /tmp/yazi-x86_64-unknown-linux-gnu/yazi /tmp/yazi-x86_64-unknown-linux-gnu/ya /usr/local/bin/
     rm -rf /tmp/yazi.zip /tmp/yazi-x86_64-unknown-linux-gnu
+    # Verify installation
+    if [ ! -x /usr/local/bin/yazi ] || [ "$(stat -c%s /usr/local/bin/yazi 2>/dev/null || echo 0)" -lt 1000000 ]; then
+      echo "ERROR: Yazi binary installation failed" >&2
+      exit 1
+    fi
   '||{
 log "ERROR: Failed to install yazi"
 return 1
@@ -6058,14 +6113,13 @@ log "Yazi binary installed"
 _config_yazi(){
 _install_yazi||return 1
 remote_exec 'su - '"$ADMIN_USERNAME"' -c "
-    ya pack -a kalidyasin/yazi-flavors:tokyonight-night
-    ya pack -a yazi-rs/plugins:chmod
-    ya pack -a yazi-rs/plugins:smart-enter
-    ya pack -a yazi-rs/plugins:smart-filter
-    ya pack -a yazi-rs/plugins:full-border
+    ya pack -a kalidyasin/yazi-flavors:tokyonight-night || echo \"WARNING: Failed to install yazi flavor\" >&2
+    ya pack -a yazi-rs/plugins:chmod || echo \"WARNING: Failed to install chmod plugin\" >&2
+    ya pack -a yazi-rs/plugins:smart-enter || echo \"WARNING: Failed to install smart-enter plugin\" >&2
+    ya pack -a yazi-rs/plugins:smart-filter || echo \"WARNING: Failed to install smart-filter plugin\" >&2
+    ya pack -a yazi-rs/plugins:full-border || echo \"WARNING: Failed to install full-border plugin\" >&2
   "'||{
-log "ERROR: Failed to install yazi plugins"
-return 1
+log "WARNING: Failed to install some yazi plugins (yazi will still work)"
 }
 deploy_user_configs \
 "templates/yazi.toml:.config/yazi/yazi.toml" \
