@@ -1,14 +1,32 @@
 # shellcheck shell=bash
 # System package installation
 
+# Check if ZFS is actually functional (not just wrapper script)
+_zfs_functional() {
+  # zpool version exits 0 and shows version if ZFS is compiled/loaded
+  zpool version &>/dev/null
+}
+
 # Install ZFS if needed (rescue scripts or apt fallback)
 _install_zfs_if_needed() {
-  if cmd_exists zpool; then
-    log "ZFS already installed: $(command -v zpool)"
+  # Check if ZFS is actually working, not just wrapper exists
+  if _zfs_functional; then
+    log "ZFS already installed and functional"
     return 0
   fi
 
-  log "ZFS not found, attempting installation..."
+  log "ZFS not functional, attempting installation..."
+
+  # Hetzner rescue: zpool command is a wrapper that compiles ZFS on first run
+  # Need to run it with 'y' to accept license
+  if cmd_exists zpool; then
+    log "Found zpool wrapper, triggering ZFS compilation..."
+    echo "y" | zpool version &>/dev/null || true
+    if _zfs_functional; then
+      log "ZFS compiled successfully via wrapper"
+      return 0
+    fi
+  fi
 
   # Common rescue system ZFS install scripts (auto-accept prompts)
   local install_dir="${INSTALL_DIR:-${HOME:-/root}}"
@@ -22,7 +40,7 @@ _install_zfs_if_needed() {
     if [[ -x $script ]]; then
       log "Running ZFS install script: $script"
       echo "y" | "$script" >/dev/null 2>&1 || true
-      if cmd_exists zpool; then
+      if _zfs_functional; then
         log "ZFS installed successfully via $script"
         return 0
       fi
@@ -33,7 +51,7 @@ _install_zfs_if_needed() {
   if [[ -f /etc/debian_version ]]; then
     log "Trying apt install zfsutils-linux..."
     apt-get install -qq -y zfsutils-linux >/dev/null 2>&1 || true
-    if cmd_exists zpool; then
+    if _zfs_functional; then
       log "ZFS installed via apt"
       return 0
     fi
